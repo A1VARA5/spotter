@@ -45,10 +45,21 @@ export function Demo({ spenders }: { spenders: SpenderLite[] }) {
           </span>
         )}
       </div>
-      <div className="scenarios" key={round}>
-        {SCENARIOS.map((s) => (
-          <ScenarioCard key={s.id} s={s} spender={spenders.find((p) => p.kind === s.spender)} />
-        ))}
+      <div key={round}>
+        {(["agent", "person", "kid"] as const).map((kind) => {
+          const spender = spenders.find((p) => p.kind === kind);
+          const list = SCENARIOS.filter((s) => s.spender === kind);
+          return (
+            <section key={kind} className="scen-group" aria-label={spender?.name ?? kind}>
+              <h2 className="section-title">{spender?.name ?? (kind === "agent" ? "An AI agent" : kind === "kid" ? "A kid" : "A relative")}</h2>
+              <div className="scenarios">
+                {list.map((s) => (
+                  <ScenarioCard key={s.id} s={s} spender={spender} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </>
   );
