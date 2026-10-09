@@ -6,12 +6,13 @@ import type { Flag } from "@/core/grounding";
 import type { MarketResult } from "@/core/market";
 
 export function BrandMark() {
-  // A bar resting on two spotting hands: the product's idea in one mark.
+  // The hold track in one mark: the money's path, and the yellow clamp that holds it while someone looks.
   return (
     <svg className="brand-mark" viewBox="0 0 28 28" aria-hidden="true">
-      <rect x="2" y="6" width="24" height="5" rx="2.5" fill="#17212b" />
-      <rect x="5" y="13" width="5" height="10" rx="2.5" fill="#f2b705" />
-      <rect x="18" y="13" width="5" height="10" rx="2.5" fill="#f2b705" />
+      <rect width="28" height="28" rx="8" fill="#17212b" />
+      <path d="M5 14h18" stroke="#f3f5f2" strokeWidth="2.5" strokeLinecap="round" />
+      <rect x="10" y="7.5" width="8" height="13" rx="3" fill="#f2b705" />
+      <path d="M12.75 11.5v5M15.25 11.5v5" stroke="#17212b" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }

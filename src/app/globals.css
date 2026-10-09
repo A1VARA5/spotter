@@ -590,39 +590,527 @@ p {
 }
 
 /* ---------- landing ---------- */
-.hero {
-  padding: clamp(40px, 9vh, 96px) 0 48px;
+.lead {
   display: grid;
-  gap: 22px;
+  gap: 40px;
+  align-items: center;
+  padding: clamp(28px, 6vh, 72px) 0 clamp(48px, 8vh, 96px);
 }
 
-.hero-title {
-  font-size: clamp(44px, 7vw, 76px);
+@media (min-width: 1000px) {
+  .lead {
+    grid-template-columns: 4fr 6fr;
+    gap: 48px;
+  }
+}
+
+.lead-text {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+
+.lead-title {
+  font-size: clamp(42px, 6.2vw, 74px);
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 0.98;
-  max-width: 14ch;
+  max-width: 12ch;
 }
 
-.hero-lede {
-  font-size: clamp(18px, 2vw, 22px);
+.lead-lede {
+  font-size: clamp(18px, 1.7vw, 21px);
   color: var(--ink-2);
-  max-width: 44ch;
+  max-width: 46ch;
 }
 
-.hero-actions {
+.lead-note {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.start {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.stage {
+.btn-hold {
+  background: var(--hold);
+  color: var(--ink);
+}
+
+.btn-hold:hover:not(:disabled) {
+  background: #ffc61a;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--chalk);
+  border-color: rgb(243 245 242 / 0.35);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--chalk);
+}
+
+/* The moment: the scam text, the money on its way, the clamp, your phone. Plays once. */
+.moment {
+  display: grid;
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .moment {
+    grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.2fr);
+    gap: 0;
+  }
+}
+
+.phone {
   background: var(--paper);
-  border-radius: 24px;
-  box-shadow: var(--raise);
-  padding: clamp(18px, 3vw, 32px);
+  border-radius: 32px;
+  padding: 22px 18px 24px;
+  box-shadow: 0 2px 4px rgb(23 33 43 / 0.06), 0 24px 48px -24px rgb(23 33 43 / 0.35);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.phone-who {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.bubble {
+  background: #e9ece9;
+  border-radius: 18px 18px 18px 6px;
+  padding: 11px 14px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.bubble-dark {
+  background: #2b3540;
+  color: #eef1ee;
+}
+
+.phone-act {
+  justify-self: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #0070e0;
+  color: #fff;
+}
+
+.moment-track {
+  position: relative;
+  height: 72px;
+}
+
+.moment-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ink);
+  transform: translateY(-50%);
+}
+
+.moment-clamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.moment-clamp .brand-mark {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.moment-coin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, calc(-50% - 30px));
+  background: var(--hold);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+@media (max-width: 719px) {
+  .moment-track {
+    height: 64px;
+    width: 72px;
+    justify-self: center;
+  }
+
+  .moment-rail {
+    left: 50%;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    height: auto;
+    transform: translateX(-50%);
+  }
+
+  .moment-coin {
+    transform: translate(calc(-50% + 52px), -50%);
+  }
+}
+
+.alert-card {
+  display: grid;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 14px;
+  background: var(--hold-soft);
+}
+
+.alert-head {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.alert-card .evidence {
+  background: var(--paper);
+  font-size: 14px;
+}
+
+.alert-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.alert-actions .btn {
+  min-height: 42px;
+  font-size: 15px;
+}
+
+@keyframes coin-in {
+  from {
+    left: 0%;
+    opacity: 0;
+  }
+}
+
+@keyframes coin-in-down {
+  from {
+    top: 0%;
+    opacity: 0;
+  }
+}
+
+@keyframes clamp-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes alert-in {
+  from {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .moment-coin {
+    animation: coin-in 1100ms var(--ease-out) 300ms both;
+  }
+
+  .moment-clamp {
+    animation: clamp-in 420ms var(--ease-out) 1250ms both;
+  }
+
+  .phone-you {
+    animation: alert-in 600ms var(--ease-out) 1550ms both;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (max-width: 719px) {
+  .moment-coin {
+    animation-name: coin-in-down;
+  }
+}
+
+/* The moments: what they saw, what Spotter did. */
+.band {
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: clamp(48px, 8vh, 96px) 0;
+}
+
+.band-title {
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.band-lede {
+  color: var(--ink-2);
+  font-size: 18px;
+  max-width: 56ch;
+  margin-top: 10px;
+}
+
+.scene {
+  display: grid;
+  gap: 18px 48px;
+  padding: 48px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.scene:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+@media (min-width: 960px) {
+  .scene {
+    grid-template-columns: 5fr 7fr;
+    grid-template-areas: "text did" "saw did";
+    align-items: start;
+  }
+
+  .scene[data-flip="true"] {
+    grid-template-columns: 7fr 5fr;
+    grid-template-areas: "did text" "did saw";
+  }
+
+  .scene-text {
+    grid-area: text;
+  }
+
+  .scene-saw {
+    grid-area: saw;
+  }
+
+  .scene-did {
+    grid-area: did;
+  }
+}
+
+.scene-text {
+  display: grid;
+  gap: 8px;
+}
+
+.scene-title {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.scene-body {
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+.scene-did {
+  display: grid;
+  gap: 14px;
+  background: var(--chalk);
+  border-radius: 22px;
+  padding: clamp(16px, 2.4vw, 24px);
+  min-width: 0;
+}
+
+.scene-verdict {
+  font-weight: 600;
+}
+
+.artifact {
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  max-width: 420px;
+  background: var(--paper);
+}
+
+.artifact-from,
+.artifact-url {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.artifact-chat {
+  background: #1d252e;
+  border-color: #1d252e;
+}
+
+.artifact-chat .artifact-from {
+  color: #b8c2cb;
+}
+
+.shop-item {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.shop-price {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.shop-hidden {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #9c2a21;
+  border: 1.5px dashed rgb(190 51 40 / 0.5);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--stop-soft);
+}
+
+.shop-hidden-tag {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* What happens to the money: a real sequence, so it is numbered. */
+.how {
+  padding-top: clamp(56px, 9vh, 104px);
+  padding-bottom: 24px;
+}
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 40px 0 0;
+  display: grid;
+  border-top: 3px solid var(--ink);
+}
+
+@media (min-width: 860px) {
+  .steps {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 28px 24px 8px 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  color: var(--ink-2);
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: -16px;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--chalk);
+  border: 3px solid var(--ink);
+  color: var(--ink);
+}
+
+.steps li:nth-child(3)::before {
+  background: var(--hold);
+}
+
+.step-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.connect-how {
+  padding-top: clamp(40px, 7vh, 80px);
+  padding-bottom: clamp(56px, 9vh, 104px);
+}
+
+.ways {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.way {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 16px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.way p {
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+
+.way-icon {
+  margin-top: 3px;
+}
+
+.way-title {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.final {
+  background: var(--ink);
+  color: var(--chalk);
+  padding: clamp(56px, 10vh, 112px) 0;
+}
+
+.final-inner {
   display: grid;
   gap: 18px;
+}
+
+.final-title {
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.final-lede {
+  color: #c7cfd6;
+  font-size: 18px;
+  max-width: 52ch;
 }
 
 .stage-tabs {
@@ -649,40 +1137,19 @@ p {
   color: var(--chalk);
 }
 
-.rows {
-  display: grid;
-  border-top: 1px solid var(--line);
-  margin: 56px 0;
-}
-
-.row {
-  display: grid;
-  gap: 8px 40px;
-  padding: 28px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-@media (min-width: 860px) {
-  .row {
-    grid-template-columns: 5fr 7fr;
-  }
-}
-
-.row-title {
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.row-body {
-  color: var(--ink-2);
-  max-width: 58ch;
-}
-
 .footer {
-  padding: 40px 0 56px;
+  padding-top: 32px;
+  padding-bottom: 56px;
   color: var(--ink-2);
   font-size: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.footer a {
+  margin-left: 14px;
 }
 
 /* ---------- demo ---------- */
@@ -1118,3 +1585,6 @@ p {
 .account-field { display: grid; gap: 6px; }
 .field-ok { color: var(--go); font-weight: 600; font-size: 15px; }
 .code-big { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.08em; background: var(--hold-soft); border-radius: 12px; padding: 12px 16px; justify-self: start; }
+
+.mail-subject { font-weight: 700; }
+.mail-body { font-size: 15px; color: var(--ink); }
