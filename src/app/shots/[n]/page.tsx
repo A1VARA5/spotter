@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { BrandMark, Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { Browser, GranPhone, Iphone, SpotterPhone } from "@/app/landing/Devices";
 import type { Flag } from "@/core/grounding";
+import { Inspector } from "@/app/landing/Inspector";
+import { Final, Hub } from "@/app/landing/Sections";
 
 export const dynamic = "force-dynamic";
 
@@ -192,6 +194,23 @@ export default async function ShotPage({ params }: { params: Promise<{ n: string
             <HoldTrack state="blocked" from="Shopping agent" to="BestDealz" amount={1999} currency="GBP" />
           </Browser>
         </Shot>
+      );
+    case "hub":
+      return (
+        <>
+          <Hub />
+          <Final>
+            <span className="btn btn-hold">Log in with PayPal</span>
+          </Final>
+        </>
+      );
+    case "i0":
+    case "i1":
+    case "i2":
+      return (
+        <div className="shell" style={{ padding: 40 }}>
+          <Inspector initial={Number(n.slice(1))} />
+        </div>
       );
     default:
       notFound();
