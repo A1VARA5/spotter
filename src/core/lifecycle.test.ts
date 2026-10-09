@@ -87,11 +87,11 @@ describe("payment lifecycle", () => {
     expect(after.error).toContain("AUTHORIZATION_EXPIRED");
   });
 
-  it("block never calls PayPal or the AI", async () => {
+  it("block never calls PayPal, but still runs the check for evidence", async () => {
     const p = await submitPayment(deps, input(1500, { category: "gift_cards" }));
     expect(p.status).toBe("blocked");
     expect(paypal.create).not.toHaveBeenCalled();
-    expect(deps.check).not.toHaveBeenCalled();
+    expect(deps.check).toHaveBeenCalledTimes(1);
   });
 
   it("an AI block (prompt injection) never calls PayPal", async () => {

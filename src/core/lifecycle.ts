@@ -138,13 +138,11 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
     spentThisWeek: { amount: await spentThisWeek(db, spender.id, spender.allowance.weekly.currency), currency: spender.allowance.weekly.currency },
   };
   const rules = checkRules(req, allowance);
-  const ruleBlock = !rules.valid || rules.hits.some((h) => h.outcome === "block");
 
-  // Don't spend an AI call on something the rules already refuse.
-  const ai: AiCheckResult = ruleBlock
-    ? { ok: true, flags: [], dropped: 0, hidden: [], summary: "", injectionAttempt: false }
-    : await deps.check(req);
-  if (!ruleBlock) await event(db, id, "checked", { ok: ai.ok, flags: ai.flags.length, dropped: ai.dropped });
+  // Always run the check, even when a rule already blocks: the spotter needs the evidence
+  // (a scam that is also over budget should be explained as a scam, not as "over budget").
+  const ai: AiCheckResult = await deps.check(req);
+  await event(db, id, "checked", { ok: ai.ok, flags: ai.flags.length, dropped: ai.dropped });
 
   const decision = decide(rules, ai, { amount: req.money.amount, askAbove: allowance.askAbove.amount });
   await event(db, id, "decided", { outcome: decision.outcome });
@@ -200,4 +198,10 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
     await event(db, id, "failed", { step: "void", error: errText(e) });
     return setStatus(db, id, "failed", { error: errText(e) });
   }
+}
+
+/** Demo only: clears all payments (and their events) so the allowances start fresh. */
+export async function resetPayments(db: Db): Promise<number> {
+  const rows = await db.query<{ id: string }>("delete from payments returning id");
+  return rows.length;
 }

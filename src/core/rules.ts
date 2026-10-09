@@ -1,5 +1,5 @@
 // Rules engine: plain code, no AI. spec.md > The core loop, step 2.
-import type { Allowance, PaymentRequest, RuleHit, RulesResult } from "./types";
+import { formatMoney, type Allowance, type PaymentRequest, type RuleHit, type RulesResult } from "./types";
 
 const BLOCKED_METHODS = new Set(["gift_card", "crypto"]);
 const lower = (s: string) => s.trim().toLowerCase();
@@ -15,8 +15,10 @@ export function checkRules(req: PaymentRequest, a: Allowance): RulesResult {
     hit("currency", "block", `Paying in ${currency} but the allowance is in ${a.weekly.currency}.`);
   } else {
     const left = a.weekly.amount - a.spentThisWeek.amount;
-    if (amount > left) hit("allowance", "block", `Only ${left} left this week, this payment is ${amount}.`);
-    if (amount > a.askAbove.amount) hit("threshold", "ask", `Above the "ask me above" limit of ${a.askAbove.amount}.`);
+    if (amount > left) {
+      hit("allowance", "block", `Only ${formatMoney({ amount: Math.max(0, left), currency })} left this week, this payment is ${formatMoney(req.money)}.`);
+    }
+    if (amount > a.askAbove.amount) hit("threshold", "ask", `Over the ${formatMoney(a.askAbove)} "ask me first" limit.`);
   }
 
   if (a.blockedCategories.map(lower).includes(lower(req.category))) {

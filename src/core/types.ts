@@ -35,3 +35,8 @@ export type Allowance = {
 export type RuleOutcome = "ask" | "block" | "protect";
 export type RuleHit = { rule: string; outcome: RuleOutcome; reason: string };
 export type RulesResult = { valid: boolean; hits: RuleHit[] };
+
+/** "£12.50" style text for reasons shown to people. Core stays free of UI code. */
+export function formatMoney(m: Money): string {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: m.currency }).format(m.amount / 100);
+}

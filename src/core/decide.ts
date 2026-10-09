@@ -26,16 +26,20 @@ export function decide(
   if (!rules.valid) return { outcome: "block", reasons: ["The payment amount isn't valid."], flags: [] };
 
   let outcome: Outcome = "allow";
-  const reasons: string[] = [];
+  // Most serious first: high severity evidence, then the rules, then softer flags.
+  const urgent: string[] = [];
+  const softer: string[] = [];
+  const ruleReasons: string[] = [];
   for (const h of rules.hits) {
     outcome = stricter(outcome, h.outcome);
-    reasons.push(h.reason);
+    ruleReasons.push(h.reason);
   }
   for (const f of ai.flags) {
     const o = flagOutcome(f);
     outcome = stricter(outcome, o);
-    if (o !== "allow") reasons.push(f.why);
+    if (o !== "allow") (f.severity === "high" ? urgent : softer).push(f.why);
   }
+  const reasons = [...urgent, ...ruleReasons, ...softer];
   if (!ai.ok) {
     reasons.push("The AI check didn't run, so only the rules were applied.");
     if (money.amount > money.askAbove) outcome = stricter(outcome, "ask");

@@ -65,6 +65,11 @@ describe("decide", () => {
     expect(decide(rules(hit("method", "protect")), ai([flag("prompt_injection", "high")]), small).outcome).toBe("block");
   });
 
+  it("puts high severity evidence before rule reasons", () => {
+    const d = decide(rules(hit("allowance", "block")), ai([{ ...flag("impersonation", "high"), why: "Pretending to be family." }]), small);
+    expect(d.reasons[0]).toBe("Pretending to be family.");
+  });
+
   it("explains itself with rule reasons and flag whys", () => {
     const d = decide(rules(hit("threshold", "ask")), ai([flag("pressure", "medium")]), small);
     expect(d.reasons).toEqual(["threshold", "w"]);

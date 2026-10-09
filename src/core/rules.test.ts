@@ -45,6 +45,11 @@ describe("checkRules", () => {
     expect(rules(r)).toContain("allowance:block");
   });
 
+  it("writes reasons in money, not pence", () => {
+    const r = checkRules(req({ money: gbp(600) }), allowance({ spentThisWeek: gbp(4500) }));
+    expect(r.hits.find((h) => h.rule === "allowance")!.reason).toBe("Only £5.00 left this week, this payment is £6.00.");
+  });
+
   it("asks above the ask threshold", () => {
     const r = checkRules(req({ money: gbp(2500) }), allowance());
     expect(rules(r)).toContain("threshold:ask");

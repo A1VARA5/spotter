@@ -7,6 +7,7 @@ export type Db = {
 
 export async function pgliteDb(dataDir?: string): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
+  if (dataDir) (await import("node:fs")).mkdirSync(dataDir, { recursive: true });
   const pg = new PGlite(dataDir);
   await pg.exec(DDL);
   return {
@@ -27,9 +28,14 @@ export async function neonDb(url: string): Promise<Db> {
   };
 }
 
-let shared: Promise<Db> | null = null;
+// One database per process. Kept on globalThis so dev hot reloads don't open a second PGlite on the same folder.
+const g = globalThis as unknown as { __spotterDb?: Promise<Db> | null };
+
 /** Neon when DATABASE_URL is set, otherwise a local PGlite folder (.data/). */
 export function getDb(): Promise<Db> {
-  shared ??= process.env.DATABASE_URL ? neonDb(process.env.DATABASE_URL) : pgliteDb(".data/spotter");
-  return shared;
+  g.__spotterDb ??= (process.env.DATABASE_URL ? neonDb(process.env.DATABASE_URL) : pgliteDb(".data/spotter")).catch((e) => {
+    g.__spotterDb = null; // don't cache a failed start
+    throw e;
+  });
+  return g.__spotterDb;
 }
