@@ -11,6 +11,7 @@ export type Household = {
   paypal_user_id: string | null;
   email: string | null;
   telegram_chat_id: string | null;
+  alert_email: string | null;
   pin_hash: string | null;
   demo: boolean;
   created_at: string;

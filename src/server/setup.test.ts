@@ -117,3 +117,14 @@ describe("connecting people", () => {
     expect((await h.pairingCode(req({ channel: "fax" }, { unlocked: true }), gran)).status).toBe(400);
   });
 });
+
+describe("account", () => {
+  it("changes the PIN only with the current one", async () => {
+    await h.pin(req({ pin: "4821", confirm: "4821" }));
+    expect((await h.changePin(req({ current: "0000", pin: "1357", confirm: "1357" }, { unlocked: true }))).status).toBe(401);
+    expect((await h.changePin(req({ current: "4821", pin: "1357", confirm: "1358" }, { unlocked: true }))).status).toBe(400);
+    expect((await h.changePin(req({ current: "4821", pin: "1357", confirm: "1357" }))).status).toBe(401);
+    expect((await h.changePin(req({ current: "4821", pin: "1357", confirm: "1357" }, { unlocked: true }))).status).toBe(200);
+    expect(await checkPin(db, hh, "1357")).toBe("ok");
+  });
+});

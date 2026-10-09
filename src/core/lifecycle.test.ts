@@ -210,4 +210,17 @@ describe("payment lifecycle", () => {
     expect((await getPayment(db, p.id))?.id).toBe(p.id);
     expect(await getPayment(db, "nope")).toBeNull();
   });
+
+  it("tells the spotter about a held payment, and a broken alert never changes the payment", async () => {
+    const notify = vi.fn(async () => {
+      throw new Error("mail down");
+    });
+    const held = await submitPayment({ ...deps, notify }, input(5000));
+    expect(held.status).toBe("needs_approval");
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect((notify.mock.calls[0] as unknown as [{ id: string }])[0].id).toBe(held.id);
+    const paid = await submitPayment({ ...deps, notify }, input(500));
+    expect(paid.status).toBe("captured");
+    expect(notify).toHaveBeenCalledTimes(1);
+  });
 });

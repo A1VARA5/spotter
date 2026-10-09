@@ -5,7 +5,7 @@ import { getHousehold, newId } from "@/core/households";
 import { createSpender, getSpender } from "@/core/lifecycle";
 import { PRESETS } from "@/core/presets";
 import { createPairingCode, issueAgentToken } from "@/core/pairing";
-import { householdFrom, isUnlocked, InvalidPinError, setPin, unlockCookie } from "./auth";
+import { checkPin, householdFrom, isUnlocked, InvalidPinError, setPin, unlockCookie } from "./auth";
 
 const json = (body: unknown, status = 200, headers?: HeadersInit) => Response.json(body, { status, headers });
 const issues = (e: z.ZodError) => e.issues.map((i) => i.message).join(" ");
@@ -91,6 +91,24 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
       if (s instanceof Response) return s;
       const rows = await s.db.query("delete from spenders where id = $1 and household_id = $2 returning id", [id, s.hh.id]);
       return rows.length ? json({ ok: true }) : json({ error: "No such person." }, 404);
+    },
+
+    async changePin(request: Request) {
+      const s = await session(request, "always");
+      if (s instanceof Response) return s;
+      const b = await body(request, z.object({ current: z.string().trim(), pin: z.string().trim(), confirm: z.string().trim() }));
+      if (b instanceof Response) return b;
+      const check = await checkPin(s.db, s.hh.id, b.current);
+      if (check === "locked") return json({ error: "Too many wrong tries. Wait 15 minutes, then try again." }, 429);
+      if (check === "wrong") return json({ error: "Your current PIN isn't right." }, 401);
+      if (b.pin !== b.confirm) return json({ error: "The two new PINs don't match." }, 400);
+      try {
+        await setPin(s.db, s.hh.id, b.pin);
+      } catch (e) {
+        if (e instanceof InvalidPinError) return json({ error: "Use 4 to 8 digits." }, 400);
+        throw e;
+      }
+      return json({ ok: true });
     },
 
     async agentToken(request: Request, spenderId: string) {

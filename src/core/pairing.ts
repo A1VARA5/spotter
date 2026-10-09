@@ -26,7 +26,7 @@ export async function createPairingCode(db: Db, p: { householdId: string; spende
 
 /** Finds a SPOT- code anywhere in a piece of text (an email subject or body, a Telegram /start payload). */
 export function findCode(text: string): string | null {
-  const m = new RegExp(`\bSPOT-[${CODE_ALPHABET}]{6}\b`, "i").exec(text);
+  const m = new RegExp(String.raw`\bSPOT-[${CODE_ALPHABET}]{6}\b`, "i").exec(text);
   return m ? m[0].toUpperCase() : null;
 }
 
@@ -61,7 +61,9 @@ export async function redeemPairingCode(
     await db.query(`update spenders set ${column} = $2 where id = $1`, [hit.spender_id, value]);
     return { householdId: hit.household_id, spender: await getSpender(db, hit.spender_id) };
   }
-  await db.query(`update households set ${column} = $2 where id = $1`, [hit.household_id, value]);
+  // The spotter's own email is where alerts go, so it lives in its own column (PayPal's email may be a sandbox one).
+  const hhColumn = channel === "email" ? "alert_email" : "telegram_chat_id";
+  await db.query(`update households set ${hhColumn} = $2 where id = $1`, [hit.household_id, value]);
   return { householdId: hit.household_id, spender: null };
 }
 

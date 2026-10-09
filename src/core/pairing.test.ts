@@ -3,7 +3,7 @@ import { pgliteDb, type Db } from "@/db";
 import { createHousehold, getHousehold, newId } from "./households";
 import { createSpender, getSpender } from "./lifecycle";
 import { PRESETS } from "./presets";
-import { createPairingCode, issueAgentToken, redeemPairingCode, verifyAgentToken, CODE_ALPHABET } from "./pairing";
+import { createPairingCode, findCode, issueAgentToken, redeemPairingCode, verifyAgentToken, CODE_ALPHABET } from "./pairing";
 
 let db: Db;
 let hh: string;
@@ -20,6 +20,13 @@ beforeEach(async () => {
 });
 
 describe("pairing codes", () => {
+  it("are found anywhere in a subject or message, in any case", () => {
+    expect(findCode("Subject: Pairing spot-abcdef\n\nhi")).toBe("SPOT-ABCDEF");
+    expect(findCode("/start SPOT-7KQ2XM")).toBe("SPOT-7KQ2XM");
+    expect(findCode("SPOT-ABCDEFG")).toBeNull();
+    expect(findCode("nothing here")).toBeNull();
+  });
+
   it("look like SPOT-XXXXXX with no lookalike characters", async () => {
     const code = await createPairingCode(db, { householdId: hh, spenderId: gran, channel: "email" });
     expect(code).toMatch(/^SPOT-[A-Z2-9]{6}$/);
@@ -82,4 +89,10 @@ describe("agent tokens", () => {
   it("only agents get tokens", async () => {
     await expect(issueAgentToken(db, gran)).rejects.toThrow();
   });
+
+it("a spotter email code sets where alerts go", async () => {
+  const code = await createPairingCode(db, { householdId: hh, spenderId: null, channel: "email" });
+  await redeemPairingCode(db, code, "email", "Me@Gmail.com");
+  expect((await getHousehold(db, hh))?.alert_email).toBe("me@gmail.com");
+});
 });

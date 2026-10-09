@@ -1109,3 +1109,12 @@ p {
 .legal ul { display: grid; gap: 10px; padding-left: 20px; max-width: 70ch; }
 .legal p { max-width: 70ch; }
 .legal { padding-bottom: 64px; }
+
+/* ---------- account ---------- */
+.account { display: grid; gap: 16px; max-width: 640px; margin-top: 16px; }
+.account-card { background: var(--paper); border-radius: var(--r-card); padding: 20px; box-shadow: var(--raise); display: grid; gap: 10px; }
+.account-title { font-size: 20px; font-weight: 700; }
+.account-sub { color: var(--ink-2); font-size: 15px; }
+.account-field { display: grid; gap: 6px; }
+.field-ok { color: var(--go); font-weight: 600; font-size: 15px; }
+.code-big { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.08em; background: var(--hold-soft); border-radius: 12px; padding: 12px 16px; justify-self: start; }

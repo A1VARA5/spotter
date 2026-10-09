@@ -16,7 +16,7 @@ export function BrandMark() {
   );
 }
 
-export function TopBar({ current }: { current?: "home" | "dashboard" | "demo" | "ledger" }) {
+export function TopBar({ current }: { current?: "home" | "dashboard" | "demo" | "ledger" | "account" }) {
   return (
     <header className="topbar">
       <Link href="/" className="brand" aria-label="Spotter home">
@@ -32,6 +32,9 @@ export function TopBar({ current }: { current?: "home" | "dashboard" | "demo" | 
         </Link>
         <Link className="nav-link" href="/demo" aria-current={current === "demo" ? "page" : undefined}>
           Try it
+        </Link>
+        <Link className="nav-link" href="/account" aria-current={current === "account" ? "page" : undefined}>
+          Account
         </Link>
       </nav>
     </header>

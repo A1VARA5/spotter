@@ -4,13 +4,15 @@ import { aiCheck } from "@/ai/check";
 import { captureAuthorization, createAuthorizeOrder, voidAuthorization } from "@/paypal/client";
 import type { Deps } from "@/core/lifecycle";
 import { makeMarket } from "@/market/channel3";
+import { makeNotify } from "@/email/alerts";
 
 let ready: Promise<Deps> | null = null;
 
 export function getDeps(): Promise<Deps> {
   ready ??= (async () => {
     const db = await getDb();
-    return { db, check: (req) => aiCheck(req), market: makeMarket(db), paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization } } satisfies Deps;
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app";
+    return { db, check: (req) => aiCheck(req), market: makeMarket(db), notify: process.env.AGENTBOXD_API_KEY ? makeNotify(db, site) : undefined, paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization } } satisfies Deps;
   })().catch((e) => {
     ready = null; // retry on the next request instead of failing forever
     throw e;

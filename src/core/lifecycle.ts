@@ -14,6 +14,8 @@ export type Deps = {
   check: (req: PaymentRequest) => Promise<AiCheckResult>;
   /** Real retailer offers for an item (Channel3). null means the lookup couldn't run. Optional. */
   market?: (item: string, currency: Currency) => Promise<Offer[] | null>;
+  /** Tells the spotter about a payment that needs them or was stopped. Failures are logged, never fatal. */
+  notify?: (payment: Payment, spender: Spender) => Promise<void>;
   paypal: {
     createAuthorizeOrder: typeof createAuthorizeOrder;
     captureAuthorization: typeof captureAuthorization;
@@ -197,11 +199,16 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
     [id, spender.id, JSON.stringify(req), input.money.amount, input.money.currency],
   );
   // From here on the row exists, so any crash must end as 'failed' with the reason, never stuck in 'checking'.
+  let result: Payment;
   try {
-    return await decideAndHold(deps, spender, req);
+    result = await decideAndHold(deps, spender, req);
   } catch (e) {
     return fail(db, id, "check", e);
   }
+  if (deps.notify && ["needs_approval", "blocked", "protected"].includes(result.status)) {
+    await deps.notify(result, spender).catch((e) => console.error(`[spotter] alert for ${id} failed:`, e instanceof Error ? e.message : e));
+  }
+  return result;
 }
 
 async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest): Promise<Payment> {

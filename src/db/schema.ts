@@ -106,4 +106,16 @@ create table if not exists agent_tokens (
   revoked_at timestamptz
 );
 create index if not exists agent_tokens_spender_idx on agent_tokens (spender_id);
+
+alter table households add column if not exists alert_email text;
+
+create table if not exists inbound (
+  provider text not null,
+  message_id text not null,
+  sender text,
+  outcome text,
+  received_at timestamptz not null default now(),
+  primary key (provider, message_id)
+);
+create index if not exists inbound_sender_idx on inbound (sender, received_at);
 `;
