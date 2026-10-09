@@ -20,6 +20,8 @@ export type Deps = {
     createAuthorizeOrder: typeof createAuthorizeOrder;
     captureAuthorization: typeof captureAuthorization;
     voidAuthorization: typeof voidAuthorization;
+    /** Looks up an authorisation's status at PayPal. Optional: only reconciliation needs it. */
+    getAuthorization?: (authorizationId: string) => Promise<{ status: string }>;
   };
 };
 
@@ -307,6 +309,37 @@ export async function sweepStale(db: Db, minutes = 5): Promise<number> {
     [minutes],
   );
   return rows.length;
+}
+
+/** A capture that was cut off between calling PayPal and saving the answer stays "capturing". Ask PayPal what
+ * really happened and settle it: captured, released (voided or expired), or back to waiting for the spotter.
+ * A failed lookup leaves the payment as it is, to try again later. */
+export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
+  const { db, paypal } = deps;
+  if (!paypal.getAuthorization) return 0;
+  const stuck = await db.query<Payment>(
+    "select * from payments where status = 'capturing' and paypal_authorization_id is not null and updated_at < now() - make_interval(mins => $1)",
+    [minutes],
+  );
+  let settled = 0;
+  for (const p of stuck) {
+    let status: string;
+    try {
+      status = (await paypal.getAuthorization(p.paypal_authorization_id!)).status;
+    } catch (e) {
+      console.error(`[spotter] reconcile lookup failed for ${p.id}:`, e instanceof Error ? e.message : e);
+      continue;
+    }
+    const next: PaymentStatus | null =
+      status === "CAPTURED" || status === "PARTIALLY_CAPTURED" ? "captured" : status === "VOIDED" || status === "EXPIRED" ? "voided" : status === "CREATED" || status === "PENDING" ? "needs_approval" : null;
+    if (!next) continue;
+    const moved = await transition(db, p.id, "capturing", next);
+    if (moved) {
+      await event(db, p.id, "reconciled", { paypal: status });
+      settled++;
+    }
+  }
+  return settled;
 }
 
 /** Clears a household's payments (and their events) so the allowances start fresh. */

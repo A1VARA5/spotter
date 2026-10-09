@@ -4,16 +4,18 @@ import { AppShell } from "@/ui/AppShell";
 import { getDeps } from "@/server/deps";
 import { requirePageSession } from "@/server/page-session";
 import { listSpenders } from "@/core/households";
-import { listPayments, sweepStale } from "@/core/lifecycle";
+import { listPayments, reconcileStuck, sweepStale } from "@/core/lifecycle";
 import { Dashboard } from "./Dashboard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard | Spotter" };
 
 export default async function DashboardPage() {
-  const { db } = await getDeps();
+  const deps = await getDeps();
+  const { db } = deps;
   const { household, unlocked } = await requirePageSession(db);
   await sweepStale(db);
+  await reconcileStuck(deps);
   const spenders = await listSpenders(db, household.id);
   const names = Object.fromEntries(spenders.map((s) => [s.id, s.name]));
   const payments = await listPayments(db, household.id);

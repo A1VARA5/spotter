@@ -138,3 +138,9 @@ export async function voidAuthorization(authorizationId: string) {
   const v = await call<{ status?: string }>("POST", `/v2/payments/authorizations/${authorizationId}/void`, {});
   return { status: v.status ?? "VOIDED" };
 }
+
+export async function getAuthorization(authorizationId: string): Promise<{ status: string }> {
+  const a = await call<{ status?: string }>("GET", `/v2/payments/authorizations/${authorizationId}`);
+  if (!a.status) throw new Error("PayPal returned an authorisation without a status");
+  return { status: a.status };
+}

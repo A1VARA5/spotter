@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb, type Db } from "@/db";
-import { approve, createSpender, deny, sweepStale, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
+import { approve, createSpender, deny, reconcileStuck, sweepStale, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
 import type { AiCheckResult } from "@/ai/check";
 import { PayPalError } from "@/paypal/client";
 import type { Allowance } from "./types";
@@ -232,5 +232,27 @@ describe("payment lifecycle", () => {
     expect((await getPayment(db, "pay_old"))?.status).toBe("failed");
     expect((await getPayment(db, "pay_old"))?.error).toMatch(/nothing was paid/i);
     expect((await getPayment(db, "pay_new"))?.status).toBe("checking");
+  });
+
+  it("settles payments stuck mid capture by asking PayPal what really happened", async () => {
+    const insert = (id: string, auth: string) =>
+      db.query(
+        "insert into payments (id, spender_id, request, status, amount, currency, paypal_authorization_id, updated_at) values ($1, 'agent1', '{}'::jsonb, 'capturing', 100, 'GBP', $2, now() - interval '10 minutes')",
+        [id, auth],
+      );
+    await insert("pay_cap", "AUTH_CAP");
+    await insert("pay_void", "AUTH_VOID");
+    await insert("pay_live", "AUTH_LIVE");
+    await insert("pay_err", "AUTH_ERR");
+    const lookup = vi.fn(async (id: string) => {
+      if (id === "AUTH_ERR") throw new Error("PayPal down");
+      return { status: id === "AUTH_CAP" ? "CAPTURED" : id === "AUTH_VOID" ? "VOIDED" : "CREATED" };
+    });
+    const n = await reconcileStuck({ ...deps, paypal: { ...deps.paypal, getAuthorization: lookup } });
+    expect(n).toBe(3);
+    expect((await getPayment(db, "pay_cap"))?.status).toBe("captured");
+    expect((await getPayment(db, "pay_void"))?.status).toBe("voided");
+    expect((await getPayment(db, "pay_live"))?.status).toBe("needs_approval");
+    expect((await getPayment(db, "pay_err"))?.status).toBe("capturing");
   });
 });
