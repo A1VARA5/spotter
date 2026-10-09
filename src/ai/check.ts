@@ -34,7 +34,10 @@ Report red flags only. Each flag needs:
 - quote: copy the exact words from the context, word for word, short (under 20 words)
 - why: one plain sentence for a normal person
 
-Genuine ordinary purchases should have no flags. Do not invent problems. summary: one calm sentence a grandparent would understand.`;
+Genuine ordinary purchases should have no flags. Do not invent problems.
+- Listing a price is never a flag. Use "price" only when a price is clearly unrealistic for the item (a £900 phone for £50, a gift card sold at a discount).
+- Use "new_shop" only when the context itself shows the shop is new or untrustworthy, not just because you don't know it.
+- One flag per problem: don't repeat the same issue under a second kind. summary: one calm sentence a grandparent would understand.`;
 
 export type AiCheckResult = {
   ok: boolean;

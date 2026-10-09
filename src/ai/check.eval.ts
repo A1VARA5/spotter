@@ -1,4 +1,4 @@
-// Live eval of aiCheck on 6 fixed cases (real Claude calls, about $0.07). Run: npx tsx src/ai/check.eval.ts
+// Live eval of aiCheck on 6 fixed cases (real Claude calls, about $0.07). Run: npx tsx src/ai/check.eval.ts [name filter]
 import { config } from "dotenv";
 config({ path: ".env.local", quiet: true });
 import { aiCheck } from "./check";
@@ -23,7 +23,8 @@ const CASES: Case[] = [
 ];
 
 let pass = 0;
-for (const c of CASES) {
+const only = process.argv[2];
+for (const c of CASES.filter((c) => !only || c.name.toLowerCase().includes(only.toLowerCase()))) {
   const req: PaymentRequest = {
     id: c.name, spenderId: "eval", money: { amount: 2499, currency: "GBP" },
     payee: { name: c.payee, isNew: true }, category: "shopping", method: c.method ?? "paypal_order",
