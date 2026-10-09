@@ -1,29 +1,8 @@
 // The right half of setup: a phone showing what the step you're on will feel like in real life.
-import { Iphone } from "@/app/landing/Devices";
-import { BrandMark } from "@/ui/components";
+import { Iphone, IosActions, IosNotification, LockScreen } from "@/app/landing/Devices";
 import type { SetupStep } from "./Setup";
 
 type Person = { name: string; kind: string };
-
-function Notification({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="notif notif-static">
-      <div className="notif-top">
-        <span className="notif-app">
-          <BrandMark />
-        </span>
-        <span className="notif-name">Spotter</span>
-        <span className="notif-when">now</span>
-      </div>
-      <p className="notif-title">{title}</p>
-      <p className="notif-body">{body}</p>
-      <div className="notif-actions">
-        <span>Deny</span>
-        <span>Approve</span>
-      </div>
-    </div>
-  );
-}
 
 export function Preview({ step, spotterName, people }: { step: SetupStep; spotterName: string; people: Person[] }) {
   const me = spotterName && spotterName !== "You" ? spotterName : "you";
@@ -36,10 +15,8 @@ export function Preview({ step, spotterName, people }: { step: SetupStep; spotte
   };
   return (
     <aside className="setup-preview" aria-label="Preview">
-      <Iphone dark className="preview-phone">
-        <div className="lock">
-          <p className="lock-date">Thursday 12 November</p>
-          <p className="lock-time num">9:41</p>
+      <Iphone dark scale={0.7} className="preview-phone">
+        <LockScreen>
           {step === "pin" ? (
             <div className="pinpad" aria-hidden="true">
               <p className="pinpad-title">Enter your Spotter PIN</p>
@@ -64,12 +41,15 @@ export function Preview({ step, spotterName, people }: { step: SetupStep; spotte
               <p className="mail-mini-body">Held, not paid. £2.99 to RM Parcel Services is on hold until {me === "you" ? "your spotter" : me} says yes. Why: the link is not a Royal Mail address.</p>
             </div>
           ) : (
-            <Notification
-              title={step === "people" ? `${someone} wants to pay £60` : "Gran wants to pay £250"}
-              body={step === "people" ? `Over the £50 you set, and a first time payee. The money is on hold.` : "A new number asked her for Friends and Family. The money is on hold."}
-            />
+            <>
+              <IosNotification
+                title={step === "people" ? `${someone} wants to pay £60` : "Gran wants to pay £250"}
+                body={step === "people" ? "Over the £50 you set, and a first time payee. The money is on hold." : "A new number asked her for Friends and Family. The money is on hold."}
+              />
+              <IosActions items={[{ label: "Approve" }, { label: "Deny", tone: "danger" }]} />
+            </>
           )}
-        </div>
+        </LockScreen>
       </Iphone>
       <p className="setup-preview-cap">{caption[step]}</p>
     </aside>

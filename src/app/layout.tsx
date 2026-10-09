@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Schibsted_Grotesk } from "next/font/google";
+import { Inter, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const sans = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Phone screens use Inter, the closest open face to Apple's SF, so mockups read as real iOS.
+const ios = Inter({ subsets: ["latin"], variable: "--font-ios", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Spotter: a spotter for every payment",
@@ -14,7 +16,7 @@ export const viewport: Viewport = { themeColor: "#f3f5f2", width: "device-width"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB" className={sans.variable}>
+    <html lang="en-GB" className={`${sans.variable} ${ios.variable}`}>
       <body>{children}</body>
     </html>
   );

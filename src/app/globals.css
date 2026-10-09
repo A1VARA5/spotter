@@ -706,295 +706,6 @@ p {
   border-color: rgb(255 255 255 / 0.6);
 }
 
-/* Devices */
-.stage-dark {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
-  gap: 28px;
-  align-items: start;
-  min-height: 560px;
-}
-
-.iphone {
-  width: 268px;
-  height: 560px;
-  border-radius: 50px;
-  padding: 9px;
-  background: linear-gradient(145deg, #3a434d, #12171d 40%, #2a323b);
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 50px 90px -30px rgb(0 0 0 / 0.75), 0 20px 40px -20px rgb(0 0 0 / 0.5);
-  flex: none;
-}
-
-.iphone-screen {
-  position: relative;
-  height: 100%;
-  border-radius: 42px;
-  overflow: hidden;
-  background: #fff;
-  color: #000;
-  display: flex;
-  flex-direction: column;
-  font-family: -apple-system, "SF Pro Text", var(--font-sans), system-ui, sans-serif;
-}
-
-.iphone-screen-dark {
-  background: radial-gradient(120% 70% at 30% 10%, #36506e, #142233 55%, #0b121b);
-  color: #fff;
-}
-
-.iphone-island {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 74px;
-  height: 22px;
-  border-radius: 999px;
-  background: #000;
-  z-index: 2;
-}
-
-.ios-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px 6px 28px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.ios-icons {
-  display: inline-flex;
-  gap: 4px;
-  transform: scale(0.82);
-  transform-origin: right center;
-  align-items: center;
-}
-
-.iphone-you {
-  margin-top: 64px;
-}
-
-/* iMessage */
-.imsg-head {
-  display: grid;
-  justify-items: center;
-  gap: 3px;
-  padding: 6px 0 10px;
-  border-bottom: 1px solid #ececec;
-  background: #f7f7f7;
-  position: relative;
-}
-
-.imsg-back {
-  position: absolute;
-  left: 14px;
-  top: 10px;
-  font-size: 28px;
-  line-height: 1;
-  color: #0a84ff;
-}
-
-.imsg-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(#a5adb6, #858e98);
-}
-
-.imsg-name {
-  font-size: 11px;
-  color: #222;
-}
-
-.imsg-body {
-  flex: 1;
-  padding: 10px 12px;
-  display: grid;
-  align-content: start;
-  gap: 6px;
-}
-
-.imsg-when {
-  text-align: center;
-  font-size: 10.5px;
-  color: #8a8a8e;
-}
-
-.imsg-bubble {
-  justify-self: start;
-  max-width: 88%;
-  background: #e9e9eb;
-  border-radius: 17px 17px 17px 5px;
-  padding: 8px 11px;
-  font-size: 13px;
-  line-height: 1.32;
-  text-wrap: pretty;
-}
-
-/* PayPal send sheet, held */
-.pp-sheet {
-  margin: 0 8px 8px;
-  border-radius: 26px;
-  background: #fff;
-  box-shadow: 0 -6px 24px rgb(0 0 0 / 0.12);
-  padding: 14px 14px 12px;
-  display: grid;
-  gap: 4px;
-  border: 1px solid #eee;
-}
-
-.pp-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pp-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: #003087;
-  color: #fff;
-  font-weight: 800;
-  font-size: 13px;
-  display: grid;
-  place-items: center;
-  font-style: italic;
-}
-
-.pp-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-}
-
-.pp-amount {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.pp-method {
-  font-size: 12px;
-  color: #6b6b6b;
-}
-
-.pp-held {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  gap: 8px;
-  align-items: center;
-  border-radius: 14px;
-  padding: 9px 10px;
-  background: #fff4cc;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.pp-held .brand-mark {
-  width: 22px;
-  height: 22px;
-}
-
-/* Lock screen */
-.lock {
-  flex: 1;
-  display: grid;
-  align-content: start;
-  justify-items: center;
-  padding: 18px 10px;
-}
-
-.lock-date {
-  font-size: 14px;
-  font-weight: 500;
-  color: rgb(255 255 255 / 0.85);
-}
-
-.lock-time {
-  font-size: 72px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  margin-bottom: 18px;
-}
-
-.notif {
-  width: 100%;
-  border-radius: 22px;
-  padding: 11px 12px 10px;
-  background: rgb(245 245 245 / 0.82);
-  backdrop-filter: blur(20px);
-  color: #111;
-  display: grid;
-  gap: 2px;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
-}
-
-.notif-top {
-  display: grid;
-  grid-template-columns: 20px 1fr auto;
-  gap: 7px;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.notif-app .brand-mark {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
-
-.notif-name {
-  font-size: 12px;
-  color: #555;
-  font-weight: 500;
-}
-
-.notif-when {
-  font-size: 11px;
-  color: #777;
-}
-
-.notif-title {
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.notif-body {
-  font-size: 12.5px;
-  line-height: 1.3;
-  color: #222;
-}
-
-.notif-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.notif-actions span {
-  text-align: center;
-  padding: 7px 0;
-  border-radius: 12px;
-  background: rgb(0 0 0 / 0.06);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.notif-actions span:first-child {
-  color: #c4291c;
-}
-
-.notif-actions span:last-child {
-  color: #1d7a52;
-}
-
 /* The checks floating between the phones */
 .checks {
   list-style: none;
@@ -2050,9 +1761,6 @@ p {
   margin-left: 6px;
 }
 
-@media (max-width: 720px) {
-  .iphone-you { height: 400px; }
-}
 
 /* ==========================================================================
    App shell (signed in). Sidebar, hairline panels, dense type. Shadows only
@@ -2604,25 +2312,6 @@ p {
 
 @media (prefers-reduced-motion: no-preference) {
   /* Hero: the text arrives, PayPal's sheet comes up, Spotter stamps it, the checks land, your phone lights up. */
-  .iphone-gran .imsg-typing {
-    position: absolute;
-    display: inline-flex;
-    gap: 4px;
-    padding: 10px 12px;
-    border-radius: 17px 17px 17px 5px;
-    background: #e9e9eb;
-    animation: typing-out 900ms ease 0ms both;
-    pointer-events: none;
-  }
-
-  .iphone-gran .imsg-body {
-    position: relative;
-  }
-
-  .iphone-gran .imsg-typing {
-    top: 30px;
-    left: 12px;
-  }
 
   .imsg-typing i {
     width: 7px;
@@ -2645,9 +2334,6 @@ p {
     transform-origin: left bottom;
   }
 
-  .iphone-gran .pp-sheet {
-    animation: sheet-up 650ms var(--ease-drawer) 1500ms both;
-  }
 
   .iphone-gran .pp-held {
     animation: stamp 420ms var(--ease-out) 2250ms both;
@@ -2669,61 +2355,6 @@ p {
     animation-delay: 2800ms;
   }
 
-  .notif {
-    animation: drop 650ms var(--ease-out) 3200ms both;
-  }
-
-  /* Scroll moments: the artifact, then Spotter's card, then the words get marked. */
-  [data-reveal="waiting"] .moment-art > *,
-  [data-reveal="waiting"].log li {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-
-  [data-reveal="waiting"] .mark {
-    background-size: 0% 2px, 0% 100%;
-  }
-
-  [data-reveal] .moment-art > *,
-  [data-reveal].log li {
-    transition: opacity 500ms var(--ease-out), transform 600ms var(--ease-out);
-  }
-
-  [data-reveal="shown"] .moment-art > :nth-child(2) {
-    transition-delay: 180ms;
-  }
-
-  [data-reveal="shown"] .mark {
-    transition-delay: 650ms;
-  }
-
-  [data-reveal="shown"] .mark:nth-of-type(2) {
-    transition-delay: 900ms;
-  }
-
-  [data-reveal="shown"] .mark:nth-of-type(3) {
-    transition-delay: 1150ms;
-  }
-
-  [data-reveal="shown"].log li:nth-child(2) {
-    transition-delay: 120ms;
-  }
-
-  [data-reveal="shown"].log li:nth-child(3) {
-    transition-delay: 240ms;
-  }
-
-  [data-reveal="shown"].log li:nth-child(4) {
-    transition-delay: 360ms;
-  }
-
-  [data-reveal="shown"].log li:nth-child(5) {
-    transition-delay: 480ms;
-  }
-
-  [data-reveal="shown"].log li[data-hold="true"]::before {
-    animation: pulse-once 900ms ease-out 900ms 2;
-  }
 
   /* App: a payment that newly needs you arrives with a brief yellow flash. */
   .app-main .held {
@@ -3141,4 +2772,779 @@ p {
   .held .track-end { display: none; }
   .people-strip { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 18px; scrollbar-width: none; }
   .person-chip { flex: none; }
+}
+
+/* ==========================================================================
+   Devices: iPhone 15 Pro at real point sizes (393 x 852), scaled as a whole.
+   ========================================================================== */
+.stage-dark {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 30px;
+  align-items: start;
+}
+
+.device {
+  position: relative;
+  flex: none;
+}
+
+.device-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  padding: 14px;
+  border-radius: 69px;
+  background: #050506;
+  box-shadow:
+    inset 0 0 0 1px #d9dde3,
+    inset 0 0 0 2.5px #8b9199,
+    inset 0 0 0 4px #4a4f56,
+    inset 0 0 0 5px #17191c,
+    0 2px 3px rgb(0 0 0 / 0.25),
+    0 50px 100px -30px rgb(0 0 0 / 0.65),
+    0 30px 60px -30px rgb(0 0 0 / 0.45);
+}
+
+.device-btn {
+  position: absolute;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #3d4248, #a9b0b8 45%, #5a6067);
+}
+
+.device-btn-action {
+  left: -3px;
+  top: 158px;
+  height: 34px;
+}
+
+.device-btn-up {
+  left: -3px;
+  top: 218px;
+  height: 64px;
+}
+
+.device-btn-down {
+  left: -3px;
+  top: 296px;
+  height: 64px;
+}
+
+.device-btn-power {
+  right: -3px;
+  top: 256px;
+  height: 102px;
+}
+
+.device-screen {
+  position: relative;
+  border-radius: 55px;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ios), -apple-system, "SF Pro Text", system-ui, sans-serif;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.device-screen-dark {
+  color: #fff;
+  background:
+    radial-gradient(80% 55% at 18% 12%, #5a7da6 0%, transparent 62%),
+    radial-gradient(70% 55% at 92% 38%, #8a5a43 0%, transparent 62%),
+    radial-gradient(90% 60% at 40% 100%, #1d3149 0%, transparent 70%),
+    #0d1520;
+}
+
+.device-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  border-radius: 20px;
+  background: #000;
+  z-index: 6;
+}
+
+.ios-status {
+  flex: none;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 34px 0 54px;
+  position: relative;
+  z-index: 5;
+}
+
+.ios-time {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.ios-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.device-home {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 139px;
+  height: 5px;
+  border-radius: 3px;
+  background: #000;
+  z-index: 7;
+}
+
+.device-screen-dark .device-home {
+  background: #fff;
+}
+
+.device-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 8;
+  background: linear-gradient(118deg, rgb(255 255 255 / 0.13) 0%, rgb(255 255 255 / 0.03) 30%, transparent 42%);
+}
+
+/* iMessage */
+.imsg-nav {
+  flex: none;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: 2px 0 9px;
+  background: rgb(246 246 246 / 0.95);
+  border-bottom: 0.5px solid rgb(0 0 0 / 0.18);
+  margin-top: -2px;
+}
+
+.imsg-back {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+}
+
+.imsg-contact {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.imsg-num {
+  font-size: 11.5px;
+  color: #111;
+}
+
+.imsg-num i {
+  font-style: normal;
+  color: #8e8e93;
+  margin-left: 2px;
+}
+
+.imsg-thread {
+  flex: 1;
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px 18px;
+}
+
+.imsg-meta {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #8e8e93;
+  line-height: 1.35;
+  margin: 2px 0 6px;
+}
+
+.imsg-bubble {
+  position: relative;
+  justify-self: start;
+  max-width: 78%;
+  background: #e9e9eb;
+  color: #000;
+  font-size: 17px;
+  line-height: 22px;
+  padding: 7px 13px 8px;
+  border-radius: 18px;
+  text-wrap: pretty;
+}
+
+.imsg-bubble::before,
+.imsg-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  height: 20px;
+}
+
+.imsg-bubble::before {
+  left: -7px;
+  width: 20px;
+  background: #e9e9eb;
+  border-bottom-right-radius: 16px;
+}
+
+.imsg-bubble::after {
+  left: -10px;
+  width: 10px;
+  background: #fff;
+  border-bottom-right-radius: 10px;
+}
+
+.imsg-typing {
+  display: none;
+}
+
+/* iOS sheet with PayPal */
+.ios-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  padding: 8px 22px 40px;
+  background: #f2f2f7;
+  border-radius: 38px 38px 0 0;
+  box-shadow: 0 -0.5px 0 rgb(0 0 0 / 0.1), 0 -24px 48px rgb(0 0 0 / 0.14);
+  display: grid;
+  gap: 6px;
+}
+
+.ios-grabber {
+  justify-self: center;
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: #c7c7cc;
+  margin-bottom: 10px;
+}
+
+.pp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: #3c3c43;
+}
+
+.pp-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12);
+}
+
+.pp-to b {
+  color: #000;
+  font-weight: 600;
+}
+
+.pp-amount {
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+
+.pp-method {
+  font-size: 15px;
+  color: #6c6c70;
+}
+
+.pp-held {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: #fff4cc;
+  box-shadow: inset 0 0 0 1px #f0cf4f;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.pp-held .brand-mark {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+/* Lock screen */
+.lock {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+  color: #fff;
+}
+
+.lock-date {
+  font-size: 20px;
+  font-weight: 600;
+  opacity: 0.92;
+  letter-spacing: -0.01em;
+}
+
+.lock-time {
+  font-size: 104px;
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  margin-top: -2px;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.08);
+}
+
+.lock-stack {
+  width: calc(100% - 22px);
+  margin-top: 28px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.lock-corners {
+  position: absolute;
+  left: 46px;
+  right: 46px;
+  bottom: 44px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.lock-corners span {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(12px);
+}
+
+.ios-notif {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 11px;
+  align-items: start;
+  padding: 13px 14px 14px;
+  border-radius: 23px;
+  background: rgb(246 246 246 / 0.76);
+  backdrop-filter: blur(24px) saturate(1.6);
+  color: #000;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+}
+
+.ios-notif-icon .brand-mark {
+  width: 38px;
+  height: 38px;
+  display: block;
+}
+
+.ios-notif-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.ios-notif-top b {
+  font-weight: 600;
+}
+
+.ios-notif-top span {
+  font-size: 13px;
+  color: rgb(60 60 67 / 0.6);
+  flex: none;
+}
+
+.ios-notif-body {
+  font-size: 15px;
+  line-height: 1.3;
+  margin-top: 1px;
+}
+
+.ios-actions {
+  width: 250px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgb(246 246 246 / 0.8);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+  display: grid;
+}
+
+.ios-action {
+  padding: 11px 16px;
+  font-size: 17px;
+  color: #000;
+}
+
+.ios-action + .ios-action {
+  border-top: 0.5px solid rgb(60 60 67 / 0.3);
+}
+
+.ios-action[data-tone="danger"] {
+  color: #ff3b30;
+}
+
+/* Landing placement */
+.iphone-you {
+  margin-top: 70px;
+}
+
+@media (max-width: 720px) {
+  .stage-dark {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .iphone-you {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .iphone-gran .imsg-typing {
+    position: absolute;
+    top: 52px;
+    left: 18px;
+    display: inline-flex;
+    gap: 5px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: #e9e9eb;
+    animation: typing-out 900ms ease 0ms both;
+  }
+
+  .imsg-typing i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #8e8e93;
+    animation: dot 600ms ease-in-out infinite;
+  }
+
+  .imsg-typing i:nth-child(2) {
+    animation-delay: 120ms;
+  }
+
+  .imsg-typing i:nth-child(3) {
+    animation-delay: 240ms;
+  }
+
+  .iphone-gran .imsg-bubble {
+    animation: bubble-in 380ms var(--ease-out) 850ms both;
+    transform-origin: left bottom;
+  }
+
+  .iphone-gran .ios-sheet {
+    animation: sheet-up 650ms var(--ease-drawer) 1500ms both;
+  }
+
+  .iphone-gran .pp-held {
+    animation: stamp 420ms var(--ease-out) 2250ms both;
+  }
+
+  .iphone-you .ios-notif {
+    animation: drop 650ms var(--ease-out) 3100ms both;
+  }
+
+  .iphone-you .ios-actions {
+    animation: menu-in 380ms var(--ease-out) 3600ms both;
+    transform-origin: top left;
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+/* ==========================================================================
+   One system for every surface: radius, shadow and heading tokens, then
+   motion. Landing, setup, app and shots all draw from these.
+   ========================================================================== */
+:root {
+  --r-panel: 14px;
+  --r-ctl: 12px;
+  --sh-1: 0 1px 2px rgb(23 33 43 / 0.06);
+  --sh-2: 0 1px 2px rgb(23 33 43 / 0.05), 0 18px 36px -24px rgb(23 33 43 / 0.35);
+  --h-weight: 650;
+  --h-track: -0.03em;
+}
+
+.mail-client,
+.browser,
+.game-chat,
+.outcome,
+.shot-card,
+.preset,
+.app-main .held,
+.app-main .connect-card,
+.app-main .account-card,
+.app-main .start-list,
+.app-main .scenarios,
+.app-main .feed,
+.app-main .allowance,
+.app-main .people-list,
+.app-main .empty {
+  border-radius: var(--r-panel);
+}
+
+.mail-client,
+.browser,
+.outcome {
+  box-shadow: var(--sh-2);
+}
+
+.btn,
+.field,
+.ledger-search {
+  border-radius: var(--r-ctl);
+}
+
+.page-title,
+.app-main .page-title,
+.setup-q,
+.sec-title,
+.moment-copy h3,
+.band-title,
+.final-title,
+.hero-h1,
+.shot-title {
+  font-weight: var(--h-weight);
+  letter-spacing: var(--h-track);
+}
+
+.hero-h1,
+.final-title,
+.shot-title {
+  letter-spacing: -0.04em;
+}
+
+/* Hero: the tilt plane and the phones' slow float */
+.stage-dark {
+  display: block;
+  perspective: 1600px;
+}
+
+.stage-tilt {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: start;
+  gap: 30px;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 900ms var(--ease-out);
+}
+
+@media (max-width: 720px) {
+  .stage-tilt {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes mark-in {
+  from {
+    background-size: 0% 2px, 0% 100%;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .iphone-gran {
+    animation: float 7s ease-in-out infinite;
+  }
+
+  .iphone-you {
+    animation: float 7s ease-in-out -3.5s infinite;
+  }
+
+  /* App: each page settles in, then its rows follow. */
+  .app-main > * {
+    animation: page-in 420ms var(--ease-out) both;
+  }
+
+  .app-main > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .app-main > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .app-main > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+
+  .app-main .feed-row,
+  .app-main .scenario,
+  .app-main .person-row,
+  .start-steps li {
+    animation: page-in 380ms var(--ease-out) both;
+  }
+
+  .app-main .feed-row:nth-child(2),
+  .app-main .scenario:nth-child(2),
+  .app-main .person-row:nth-child(2),
+  .start-steps li:nth-child(2) {
+    animation-delay: 40ms;
+  }
+
+  .app-main .feed-row:nth-child(3),
+  .app-main .scenario:nth-child(3),
+  .app-main .person-row:nth-child(3),
+  .start-steps li:nth-child(3) {
+    animation-delay: 80ms;
+  }
+
+  .app-main .feed-row:nth-child(4),
+  .app-main .scenario:nth-child(4),
+  .app-main .person-row:nth-child(4),
+  .start-steps li:nth-child(4) {
+    animation-delay: 120ms;
+  }
+
+  .app-main .feed-row:nth-child(n + 5),
+  .app-main .scenario:nth-child(n + 5) {
+    animation-delay: 160ms;
+  }
+}
+
+/* Scrolling: sections rise in as you reach them, and the scam words get marked as they come into view. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal,
+    .reveal-kids > * {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+
+    .moment-row .moment-art > :nth-child(2) {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 32%;
+    }
+
+    .moments .mark {
+      animation: mark-in linear both;
+      animation-timeline: view();
+      animation-range: entry 60% cover 50%;
+    }
+  }
+}
+
+/* Hover and press, only where a pointer can hover */
+@media (hover: hover) and (pointer: fine) {
+  .app-main .feed-row,
+  .app-main .scenario,
+  .side-link,
+  .side-person,
+  .person-chip,
+  .preset {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .app-main .feed-row:hover,
+  .app-main .scenario:hover {
+    background: #fafbf8;
+  }
+
+  .outcome,
+  .mail-client,
+  .browser,
+  .game-chat {
+    transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out);
+  }
+
+  .outcome:hover,
+  .mail-client:hover,
+  .browser:hover,
+  .game-chat:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 1px 2px rgb(23 33 43 / 0.05), 0 26px 44px -26px rgb(23 33 43 / 0.45);
+  }
+}
+
+/* Setup preview content at iOS point sizes */
+.preview-phone .pinpad { justify-self: center; width: 100%; gap: 20px; }
+.preview-phone .pinpad-title { font-size: 20px; }
+.preview-phone .pinpad-dots i { width: 15px; height: 15px; }
+.preview-phone .pinpad-keys { grid-template-columns: repeat(3, 78px); gap: 16px 24px; justify-content: center; }
+.preview-phone .pinpad-keys span { width: 78px; height: 78px; font-size: 34px; font-weight: 400; }
+.preview-phone .mail-mini { border-radius: 22px; padding: 18px; font-size: 16px; gap: 6px; }
+.preview-phone { height: auto; }
+@media (prefers-reduced-motion: no-preference) {
+  .setup-preview .ios-notif, .setup-preview .ios-actions, .setup-preview .pinpad, .setup-preview .mail-mini { animation: drop 500ms var(--ease-out) 150ms both; }
+  .setup-preview .ios-actions { animation-delay: 450ms; }
+}
+
+.shot-phone .mini-app, .shot-phone .gmail { zoom: 1.45; }
+
+@media (min-width: 721px) {
+  .checks { top: auto; right: auto; bottom: -46px; left: 50%; transform: translateX(-50%) translateZ(40px); width: max-content; display: flex; gap: 10px; }
+  .check { width: 205px; }
+  .check:nth-child(n) { margin-left: 0; }
+  .hero-dark { padding-bottom: clamp(88px, 12vh, 128px); }
 }

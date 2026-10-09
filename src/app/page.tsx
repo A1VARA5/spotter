@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandMark, Evidence, HoldTrack } from "@/ui/components";
 import type { Flag } from "@/core/grounding";
 import { Browser, GranPhone, SpotterPhone } from "./landing/Devices";
-import { Reveal } from "@/ui/Reveal";
+import { HeroStage } from "./landing/HeroStage";
 
 function StartButtons({ onDark = false }: { onDark?: boolean }) {
   return (
@@ -80,8 +80,8 @@ export default function Home() {
               <p className="hero-fine">Runs on the PayPal sandbox. Nothing real is paid.</p>
             </div>
 
-            <div className="stage-dark" aria-label="Gran gets a scam text asking for £250. Spotter holds the payment at PayPal and asks you.">
-              <GranPhone text={GRAN_TEXT} />
+            <HeroStage label="Gran gets a scam text asking for £250. Spotter holds the payment at PayPal and asks you.">
+              <GranPhone text={GRAN_TEXT} scale={0.68} />
               <ul className="checks" aria-label="What Spotter checked">
                 <li className="check">
                   <span className="check-label">Her rules</span>
@@ -96,14 +96,14 @@ export default function Home() {
                   <span className="check-value">£250 authorised, not taken</span>
                 </li>
               </ul>
-              <SpotterPhone />
-            </div>
+              <SpotterPhone scale={0.68} />
+            </HeroStage>
           </div>
         </div>
       </section>
 
       <section className="runs" aria-label="What Spotter runs on">
-        <div className="shell runs-inner">
+        <div className="shell runs-inner reveal-kids">
           <span className="runs-label">Runs on</span>
           <span>PayPal</span>
           <span>Claude</span>
@@ -113,7 +113,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="shell statement">
+      <section className="shell statement reveal">
         <p>
           Scams don&apos;t break in, they ask nicely.{" "}
           <span>
@@ -124,11 +124,11 @@ export default function Home() {
       </section>
 
       <section id="moments" className="shell moments" aria-labelledby="moments-title">
-        <h2 id="moments-title" className="sec-title">
+        <h2 id="moments-title" className="sec-title reveal">
           Three ordinary moments
         </h2>
 
-        <Reveal as="article" className="moment-row">
+        <article className="moment-row reveal">
           <div className="moment-copy">
             <h3>Gran forwards an email she isn&apos;t sure about.</h3>
             <p>She doesn&apos;t have to work out if it&apos;s real. She forwards it to spotter@homingbox.net and gets a plain answer in the same thread.</p>
@@ -145,9 +145,9 @@ export default function Home() {
             </div>
             <Outcome who="Gran" to="RM Parcel Services" amount={299} state="held" text={PARCEL_EMAIL} flags={PARCEL_FLAGS} verdict="Held, not paid. Gran gets a reply, you get an email to decide." />
           </div>
-        </Reveal>
+        </article>
 
-        <Reveal as="article" className="moment-row">
+        <article className="moment-row reveal">
           <div className="moment-copy">
             <h3>Your AI agent lands on a booby-trapped shop.</h3>
             <p>The page hides a line no person sees, telling the agent to ignore its budget. Spotter reads what the agent read, and shows you the hidden line.</p>
@@ -169,9 +169,9 @@ export default function Home() {
             </Browser>
             <Outcome who="Shopping agent" to="BestDealz" amount={1999} state="blocked" text={AGENT_PAGE} flags={AGENT_FLAGS} verdict="Stopped. The agent is told not to try another way." />
           </div>
-        </Reveal>
+        </article>
 
-        <Reveal as="article" className="moment-row">
+        <article className="moment-row reveal">
           <div className="moment-copy">
             <h3>Leo is offered cheap game credit.</h3>
             <p>A stranger wants paying in a gift card code. Once a code is sent, the money is gone for good, so Leo&apos;s rules never allow it.</p>
@@ -199,15 +199,15 @@ export default function Home() {
               verdict="Stopped before it starts."
             />
           </div>
-        </Reveal>
+        </article>
       </section>
 
       <section id="money" className="money" aria-labelledby="money-title">
         <div className="shell">
-          <h2 id="money-title" className="sec-title">
+          <h2 id="money-title" className="sec-title reveal">
             What happens to the money, second by second
           </h2>
-          <Reveal as="ol" className="log">
+          <ol className="log reveal-kids">
             <li>
               <span className="log-t num">09:41:02</span>
               <span className="log-e">Gran taps send. Spotter gets the request instead of PayPal sending it straight away.</span>
@@ -228,15 +228,15 @@ export default function Home() {
               <span className="log-t num">09:41:06</span>
               <span className="log-e">You get the alert. Approve and PayPal captures it. Deny and the hold is released.</span>
             </li>
-          </Reveal>
+          </ol>
         </div>
       </section>
 
       <section className="shell ways-sec" aria-labelledby="ways-title">
-        <h2 id="ways-title" className="sec-title">
+        <h2 id="ways-title" className="sec-title reveal">
           Nobody installs anything new
         </h2>
-        <div className="ways-grid">
+        <div className="ways-grid reveal-kids">
           <div className="way2">
             <h3>Email</h3>
             <p>Forward anything that asks for money to spotter@homingbox.net. Only addresses you&apos;ve connected get an answer.</p>
@@ -253,7 +253,7 @@ export default function Home() {
       </section>
 
       <section className="final">
-        <div className="shell final-inner">
+        <div className="shell final-inner reveal">
           <h2 className="final-title">Try it on fake money.</h2>
           <p className="final-lede">The demo family has Gran, Leo and a shopping agent ready. Or log in with a PayPal sandbox account and set up your own.</p>
           <StartButtons onDark />
