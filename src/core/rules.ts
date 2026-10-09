@@ -2,7 +2,12 @@
 import { formatMoney, type Allowance, type PaymentRequest, type RuleHit, type RulesResult } from "./types";
 
 const BLOCKED_METHODS = new Set(["gift_card", "crypto"]);
-const lower = (s: string) => s.trim().toLowerCase();
+const INVISIBLE = /[​-‍⁠﻿‪-‮⁦-⁩]/g;
+/** Names compare without case, invisible characters or surrounding space. */
+export const normName = (s: string) => s.replace(INVISIBLE, "").trim().toLowerCase();
+/** "Gift-Cards", "gift cards" and "gift_cards" are the same category. */
+export const normCategory = (s: string) => normName(s).replace(/[\s-]+/g, "_");
+const lower = normName;
 
 export function checkRules(req: PaymentRequest, a: Allowance): RulesResult {
   const { amount, currency } = req.money;
@@ -21,7 +26,7 @@ export function checkRules(req: PaymentRequest, a: Allowance): RulesResult {
     if (amount > a.askAbove.amount) hit("threshold", "ask", `Over the ${formatMoney(a.askAbove)} "ask me first" limit.`);
   }
 
-  if (a.blockedCategories.map(lower).includes(lower(req.category))) {
+  if (a.blockedCategories.map(normCategory).includes(normCategory(req.category))) {
     hit("category", "block", `${req.category} is a blocked category.`);
   }
 

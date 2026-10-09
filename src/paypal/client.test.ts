@@ -99,6 +99,20 @@ describe("paypal client", () => {
     expect(err).toMatchObject({ status: 422, issue: "AUTHORIZATION_EXPIRED", debugId: "dbg1" });
   });
 
+  it("turns an HTML error page into a readable PayPalError, not a JSON crash", async () => {
+    calls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return url.endsWith("/token")
+        ? new Response(JSON.stringify(TOKEN.body), { status: 200 })
+        : new Response("<html>502 Bad Gateway</html>", { status: 502 });
+    }));
+    const err = await captureAuthorization("A1", "k").catch((e) => e);
+    expect(err).toBeInstanceOf(PayPalError);
+    expect(err.status).toBe(502);
+    expect(err.message).toContain("Non JSON reply");
+  });
+
   it("voids an authorisation", async () => {
     mockFetch([TOKEN, { status: 200, body: { id: "A1", status: "VOIDED" } }]);
     expect(await voidAuthorization("A1")).toEqual({ status: "VOIDED" });

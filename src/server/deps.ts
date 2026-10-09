@@ -2,7 +2,7 @@
 import { getDb } from "@/db";
 import { aiCheck } from "@/ai/check";
 import { captureAuthorization, createAuthorizeOrder, voidAuthorization } from "@/paypal/client";
-import { createSpender, type Deps } from "@/core/lifecycle";
+import { ensureSpender, type Deps } from "@/core/lifecycle";
 import { DEMO_SPENDERS } from "./seed";
 
 let ready: Promise<Deps> | null = null;
@@ -10,7 +10,7 @@ let ready: Promise<Deps> | null = null;
 export function getDeps(): Promise<Deps> {
   ready ??= (async () => {
     const db = await getDb();
-    for (const s of DEMO_SPENDERS) await createSpender(db, s);
+    for (const s of DEMO_SPENDERS) await ensureSpender(db, s);
     return { db, check: (req) => aiCheck(req), paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization } } satisfies Deps;
   })().catch((e) => {
     ready = null; // retry on the next request instead of failing forever

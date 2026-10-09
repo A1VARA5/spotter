@@ -81,6 +81,15 @@ describe("payments API", () => {
     expect((await h.approve("pay_nope", "Aivaras")).status).toBe(404);
   });
 
+  it("answers a crash with JSON 500, not an HTML page", async () => {
+    const broken = makeHandlers(async () => {
+      throw new Error("database down");
+    });
+    const r = await broken.list();
+    expect(r.status).toBe(500);
+    expect((await r.json()).error).toMatch(/Nothing was paid/);
+  });
+
   it("lists payments newest first", async () => {
     await h.submit(post(valid));
     await h.submit(post({ ...valid, amount: 500 }));

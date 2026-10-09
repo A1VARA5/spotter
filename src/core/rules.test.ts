@@ -65,6 +65,17 @@ describe("checkRules", () => {
     expect(rules(r)).toContain("category:block");
   });
 
+  it("matches categories loosely so 'gift cards' can't dodge gift_cards", () => {
+    for (const category of ["gift cards", "Gift-Cards", " GIFT_CARDS "]) {
+      expect(rules(checkRules(req({ category }), allowance()))).toContain("category:block");
+    }
+  });
+
+  it("ignores invisible characters in payee names", () => {
+    const r = checkRules(req({ payee: { name: "Shady​Shop", isNew: false } }), allowance());
+    expect(rules(r)).toContain("payee:block");
+  });
+
   it("blocks a blocked payee, case insensitive", () => {
     const r = checkRules(req({ payee: { name: "shadyshop", isNew: false } }), allowance());
     expect(rules(r)).toContain("payee:block");

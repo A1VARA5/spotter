@@ -2,6 +2,17 @@
 import type { PaymentRequest } from "@/core/types";
 
 const BASE = "https://api-m.sandbox.paypal.com";
+const TIMEOUT_MS = 15_000;
+
+/** PayPal (or a proxy in front of it) can answer with HTML; never let that become "Unexpected token <". */
+function parseBody(text: string): Record<string, any> {
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: `Non JSON reply from PayPal: ${text.slice(0, 120)}` };
+  }
+}
 
 // The demo "saved card" for agents (PayPal sandbox test card). Never a real card.
 const SANDBOX_CARD = {
@@ -43,8 +54,9 @@ async function token(): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  const j = (await r.json()) as { access_token?: string; expires_in?: number };
+  const j = parseBody(await r.text()) as { access_token?: string; expires_in?: number };
   if (!r.ok || !j.access_token) throw new PayPalError("PayPal token request failed", r.status, "AUTH_FAILED");
   cached = { token: j.access_token, expiresAt: Date.now() + ((j.expires_in ?? 300) - 60) * 1000 };
   return j.access_token;
@@ -57,9 +69,13 @@ async function call<T>(method: string, path: string, body?: unknown, requestId?:
     Prefer: "return=representation",
   };
   if (requestId) headers["PayPal-Request-Id"] = requestId;
-  const r = await fetch(`${BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  const text = await r.text();
-  const j = text ? JSON.parse(text) : {};
+  const r = await fetch(`${BASE}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const j = parseBody(await r.text());
   if (!r.ok) {
     throw new PayPalError(j.message ?? `PayPal ${method} ${path} failed`, r.status, j.details?.[0]?.issue ?? j.name, j.debug_id);
   }

@@ -41,8 +41,9 @@ export function decide(
   }
   const reasons = [...urgent, ...ruleReasons, ...softer];
   if (!ai.ok) {
-    reasons.push("The AI check didn't run, so only the rules were applied.");
-    if (money.amount > money.askAbove) outcome = stricter(outcome, "ask");
+    // Fail closed: without the check, nothing is paid automatically.
+    reasons.unshift("The AI check didn't run, so this needs your yes.");
+    outcome = stricter(outcome, "ask");
   }
   return { outcome, reasons, flags: ai.flags };
 }

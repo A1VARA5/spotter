@@ -5,6 +5,7 @@ import { HoldTrack } from "@/ui/components";
 import { STATE_LABEL, trackState } from "@/ui/format";
 import { SCENARIOS, type Scenario } from "@/ui/scenarios";
 import type { Payment } from "@/core/lifecycle";
+import { readJson } from "@/ui/http";
 
 export function Demo() {
   const [round, setRound] = useState(0);
@@ -15,8 +16,12 @@ export function Demo() {
     setResetting(true);
     try {
       const r = await fetch("/api/demo/reset", { method: "POST" });
+      if (r.status === 401) {
+        setNote("Only the spotter can start fresh. Unlock with the PIN on the dashboard first.");
+        return;
+      }
       if (!r.ok) throw new Error();
-      const { cleared } = await r.json();
+      const { cleared } = await readJson(r);
       setNote(cleared ? `Cleared ${cleared} payments. Allowances are full again.` : "Already fresh.");
       setRound((n) => n + 1);
     } catch {
@@ -57,7 +62,7 @@ function ScenarioCard({ s }: { s: Scenario }) {
     setError(null);
     try {
       const r = await fetch("/api/payments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s.body) });
-      const j = await r.json();
+      const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
       setResult(j.payment);
     } catch (e) {
@@ -83,7 +88,7 @@ function ScenarioCard({ s }: { s: Scenario }) {
           {result.status === "needs_approval" ? (
             <Link href="/dashboard">Open the dashboard to decide</Link>
           ) : (
-            result.decision?.reasons[0] ?? "Within the rules and nothing suspicious."
+            (result.status === "failed" ? result.error : result.decision?.reasons[0]) ?? "Within the rules and nothing suspicious."
           )}
         </p>
       ) : (

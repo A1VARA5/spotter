@@ -1,7 +1,7 @@
 // The demo household: an AI shopping agent, Gran, and a kid. Amounts in pence.
-import type { createSpender } from "@/core/lifecycle";
+import type { ensureSpender } from "@/core/lifecycle";
 
-type SpenderSeed = Parameters<typeof createSpender>[1];
+type SpenderSeed = Parameters<typeof ensureSpender>[1];
 const gbp = (amount: number) => ({ amount, currency: "GBP" as const });
 
 export const DEMO_SPENDERS: SpenderSeed[] = [

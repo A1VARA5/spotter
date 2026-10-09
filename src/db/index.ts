@@ -33,6 +33,9 @@ const g = globalThis as unknown as { __spotterDb?: Promise<Db> | null };
 
 /** Neon when DATABASE_URL is set, otherwise a local PGlite folder (.data/). */
 export function getDb(): Promise<Db> {
+  if (process.env.VERCEL && !process.env.DATABASE_URL) {
+    return Promise.reject(new Error("DATABASE_URL is not set. On Vercel, Spotter needs a Postgres database (Neon)."));
+  }
   g.__spotterDb ??= (process.env.DATABASE_URL ? neonDb(process.env.DATABASE_URL) : pgliteDb(".data/spotter")).catch((e) => {
     g.__spotterDb = null; // don't cache a failed start
     throw e;

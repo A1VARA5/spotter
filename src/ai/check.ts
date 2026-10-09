@@ -51,9 +51,22 @@ export type AiCheckResult = {
 
 export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaultModel): Promise<AiCheckResult> {
   const clean = sanitizeContext(req.context);
-  const codeFlags: Flag[] = clean.hidden
-    .filter((h) => h.kind === "invisible_text")
-    .map((h) => ({ kind: "prompt_injection", severity: "high", quote: h.text, why: "This text was hidden from people but readable by an AI." }));
+  // Findings made by code, not the model. Trusted, so they skip grounding (their quote may sit past the cut).
+  const codeFlags: Flag[] = clean.hidden.map((h): Flag => {
+    switch (h.kind) {
+      case "invisible_text":
+        return { kind: "prompt_injection", severity: "high", quote: h.text, why: "This text was hidden from people but readable by an AI." };
+      case "fake_delimiter":
+        return { kind: "prompt_injection", severity: "high", quote: "", why: "The content tried to fake Spotter's own markers to sneak in instructions." };
+      case "direction_override":
+        return { kind: "other", severity: "medium", quote: "", why: "The text direction was secretly flipped, a trick used to disguise names and file types." };
+      case "zero_width":
+        return { kind: "other", severity: "low", quote: "", why: "Invisible spaces were hidden in the text." };
+    }
+  });
+  if (clean.truncated) {
+    codeFlags.push({ kind: "other", severity: "medium", quote: "", why: "This was too long to check fully, so it needs a person to look." });
+  }
 
   const user = [
     `Payment: ${(req.money.amount / 100).toFixed(2)} ${req.money.currency} to "${req.payee.name}" (${req.payee.isNew ? "first time" : "paid before"}), category ${req.category}, method ${req.method}.`,
@@ -75,8 +88,8 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
     };
   }
 
-  const grounded = groundFlags([...codeFlags, ...parsed.flags], clean.text);
-  const flags = [...grounded.kept];
+  const grounded = groundFlags(parsed.flags, clean.text);
+  const flags = [...codeFlags, ...grounded.kept];
   if (parsed.injection_attempt && !flags.some((f) => f.kind === "prompt_injection")) {
     flags.unshift({ kind: "prompt_injection", severity: "high", quote: "", why: "The content tried to give the paying agent instructions." });
   }

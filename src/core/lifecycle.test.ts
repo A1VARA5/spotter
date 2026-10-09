@@ -10,7 +10,7 @@ const allowance: Omit<Allowance, "spentThisWeek"> = {
   weekly: gbp(10000),
   askAbove: gbp(2000),
   blockedCategories: ["gift_cards"],
-  allowedPayees: [],
+  allowedPayees: ["Clay & Kiln"],
   blockedPayees: [],
 };
 
@@ -117,6 +117,22 @@ describe("payment lifecycle", () => {
     expect(p.status).toBe("blocked");
   });
 
+  it("works out a new payee from history, not from the caller", async () => {
+    const first = await submitPayment(deps, input(1500, { payee: { name: "Brand New Shop", isNew: false } }));
+    expect(first.decision!.reasons.join(" ")).toMatch(/First time paying/);
+    const second = await submitPayment(deps, input(1500, { payee: { name: "Brand New Shop", isNew: true } }));
+    expect(second.decision!.reasons.join(" ")).not.toMatch(/First time paying/);
+  });
+
+  it("two payments at the same moment can't both squeeze past the weekly allowance", async () => {
+    deps.check = vi.fn<Deps["check"]>(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+      return cleanAi();
+    });
+    const [a, b] = await Promise.all([submitPayment(deps, input(6000)), submitPayment(deps, input(6000))]);
+    expect([a.status, b.status].filter((s) => s === "blocked")).toHaveLength(1);
+  });
+
   it("writes an event for every step", async () => {
     const p = await submitPayment(deps, input(2500));
     await approve(deps, p.id, "Aivaras");
@@ -129,6 +145,30 @@ describe("payment lifecycle", () => {
       await expect(submitPayment(deps, input(amount))).rejects.toBeInstanceOf(InvalidPaymentError);
     }
     expect(await listPayments(db)).toHaveLength(0);
+  });
+
+  it("an AI outage never auto pays, even a small payment", async () => {
+    deps.check = vi.fn<Deps["check"]>(async () => ({ ...cleanAi(), ok: false, error: "timeout" }));
+    const p = await submitPayment(deps, input(500));
+    expect(p.status).toBe("needs_approval");
+    expect(paypal.capture).not.toHaveBeenCalled();
+  });
+
+  it("a declined card (no authorisation) ends failed with a clear reason", async () => {
+    paypal.create.mockResolvedValueOnce({ orderId: "O9" });
+    const p = await submitPayment(deps, input(1500));
+    expect(p.status).toBe("failed");
+    expect(p.error).toMatch(/declined|no hold/i);
+    expect(paypal.capture).not.toHaveBeenCalled();
+  });
+
+  it("a crash after the insert ends failed with the error, never stuck in checking", async () => {
+    deps.check = vi.fn<Deps["check"]>(async () => {
+      throw new Error("boom");
+    });
+    const p = await submitPayment(deps, input(1500));
+    expect(p.status).toBe("failed");
+    expect(p.error).toContain("boom");
   });
 
   it("returns the stored payment by id", async () => {

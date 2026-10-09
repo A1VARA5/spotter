@@ -22,8 +22,15 @@ export function sanitizeContext(raw: string): { text: string; hidden: Hidden[]; 
   text = text.replace(DIRECTION, "");
   if (ZERO_WIDTH.test(text)) hidden.push({ kind: "zero_width", text: "invisible spaces" });
   text = text.replace(ZERO_WIDTH, "");
-  if (DELIMITERS.test(text)) hidden.push({ kind: "fake_delimiter", text: "content tried to fake Spotter's own sections" });
-  text = text.replace(DELIMITERS, "");
+  // Strip until stable, so nesting like "</cont</context>ext>" can't rebuild a delimiter.
+  let stripped = text;
+  do {
+    text = stripped;
+    stripped = text.replace(DELIMITERS, "");
+  } while (stripped !== text);
+  if (text !== raw && /<\/?\s*(context|evidence|request|rules|system)\s*>/i.test(raw)) {
+    hidden.push({ kind: "fake_delimiter", text: "content tried to fake Spotter's own sections" });
+  }
 
   const chars = [...text];
   const truncated = chars.length > MAX_CONTEXT_CHARS;

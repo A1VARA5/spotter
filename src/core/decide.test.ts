@@ -46,9 +46,9 @@ describe("decide", () => {
     expect(decide(rules(), ai([], false), big).outcome).toBe("ask");
   });
 
-  it("still allows a small clean request when the AI check failed, and says so", () => {
+  it("fails closed: a failed AI check asks the spotter even for a small clean request", () => {
     const d = decide(rules(), ai([], false), small);
-    expect(d.outcome).toBe("allow");
+    expect(d.outcome).toBe("ask");
     expect(d.reasons.join(" ")).toMatch(/AI check didn't run/);
   });
 

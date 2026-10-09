@@ -4,6 +4,7 @@ import { Hand, ShieldCheck, Ban, Info } from "lucide-react";
 import { Evidence, HoldTrack } from "@/ui/components";
 import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
+import { readJson } from "@/ui/http";
 
 const SPENDER_NAMES: Record<string, string> = { agent: "Shopping agent", gran: "Gran", leo: "Leo" };
 const who = (p: Payment) => SPENDER_NAMES[p.spender_id] ?? p.spender_id;
@@ -11,12 +12,21 @@ const who = (p: Payment) => SPENDER_NAMES[p.spender_id] ?? p.spender_id;
 export function Dashboard({ initial }: { initial: Payment[] }) {
   const [payments, setPayments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/session", { cache: "no-store" })
+      .then(readJson)
+      .then((j) => setLocked(j.spotter === false))
+      .catch(() => {});
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
       const r = await fetch("/api/payments", { cache: "no-store" });
-      if (!r.ok) throw new Error(`Couldn't load payments (${r.status}).`);
-      setPayments((await r.json()).payments);
+      const j = await readJson(r);
+      if (!r.ok) throw new Error(j.error ?? `Couldn't load payments (${r.status}).`);
+      setPayments(j.payments);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load payments.");
@@ -40,6 +50,7 @@ export function Dashboard({ initial }: { initial: Payment[] }) {
         <p className="lede" style={{ marginTop: 6 }}>
           Payments that need a yes from you. The money is held by PayPal until you decide.
         </p>
+        {locked && <PinGate onUnlocked={() => setLocked(false)} />}
         <div className="stack" style={{ marginTop: 20 }}>
           {waiting.length === 0 && (
             <div className="empty">
@@ -48,7 +59,7 @@ export function Dashboard({ initial }: { initial: Payment[] }) {
             </div>
           )}
           {waiting.map((p) => (
-            <HeldCard key={p.id} p={p} onSettled={refresh} />
+            <HeldCard key={p.id} p={p} onSettled={refresh} onLocked={() => setLocked(true)} />
           ))}
         </div>
         {error && (
@@ -76,7 +87,55 @@ export function Dashboard({ initial }: { initial: Payment[] }) {
   );
 }
 
-function HeldCard({ p, onSettled }: { p: Payment; onSettled: () => void }) {
+function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const r = await fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin }) });
+    const j = await readJson(r);
+    setBusy(false);
+    if (r.ok) onUnlocked();
+    else setError(j.error ?? "That PIN isn't right.");
+  }
+
+  return (
+    <form className="pin" onSubmit={unlock} aria-labelledby="pin-title">
+      <p id="pin-title" className="pin-title">
+        You're viewing as a guest. Enter the spotter PIN to approve or deny.
+      </p>
+      <div className="pin-row">
+        <label className="sr-only" htmlFor="pin">
+          Spotter PIN
+        </label>
+        <input
+          id="pin"
+          className="pin-input num"
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          placeholder="PIN"
+        />
+        <button className="btn btn-primary" disabled={busy || !pin}>
+          {busy ? "Checking" : "Unlock"}
+        </button>
+      </div>
+      {error && (
+        <p className="error-line" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
+  );
+}
+
+function HeldCard({ p, onSettled, onLocked }: { p: Payment; onSettled: () => void; onLocked: () => void }) {
   const [busy, setBusy] = useState<"approve" | "deny" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +146,12 @@ function HeldCard({ p, onSettled }: { p: Payment; onSettled: () => void }) {
     setError(null);
     try {
       const r = await fetch(`/api/payments/${p.id}/${action}`, { method: "POST" });
-      const j = await r.json();
+      const j = await readJson(r);
+      if (r.status === 401) {
+        onLocked();
+        setBusy(null);
+        return;
+      }
       if (!r.ok && r.status !== 409) throw new Error(j.error ?? `PayPal step failed (${r.status}).`);
       setState(trackState(j.payment.status));
       setTimeout(onSettled, 700);
@@ -157,7 +221,7 @@ function FeedRow({ p }: { p: Payment }) {
       </span>
       <span className="feed-amount num">{money(p.amount, p.currency)}</span>
       <span className="feed-meta">
-        {firstReason && s !== "paid" ? firstReason : `For ${p.request.category}.`}
+        {s === "failed" && p.error ? p.error : firstReason && s !== "paid" ? firstReason : `For ${p.request.category}.`}
         <span className="feed-time">{timeAgo(p.created_at)}</span>
       </span>
       <span className="feed-state" data-state={s}>
