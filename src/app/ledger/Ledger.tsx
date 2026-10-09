@@ -88,22 +88,27 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
 
   const columns = useMemo<ColDef<Row>[]>(
     () => [
-      { field: "when", headerName: "When", width: 120, valueFormatter: (p) => timeAgo(p.value), sort: "desc" },
+      { field: "when", headerName: "When", width: 108, valueFormatter: (p) => timeAgo(p.value), sort: "desc" },
       { field: "who", headerName: "Who", width: 150 },
-      { field: "payee", headerName: "Paid to", flex: 1, minWidth: 160 },
-      { field: "item", headerName: "For", flex: 1, minWidth: 140 },
+      {
+        field: "payee",
+        headerName: "Paid to",
+        flex: 1,
+        minWidth: 150,
+        tooltipValueGetter: (p) => (p.data?.item ? `${p.value}, for ${p.data.item}` : p.value),
+      },
       {
         field: "amount",
         headerName: "Amount",
-        width: 120,
+        width: 104,
         type: "rightAligned",
         valueFormatter: (p) => money(p.value, p.data!.currency),
         cellClass: "num ledger-amount",
       },
-      { field: "state", headerName: "Outcome", width: 230, cellRenderer: StateCell },
-      { field: "why", headerName: "Why", flex: 2, minWidth: 260, wrapText: true, autoHeight: true, cellClass: "ledger-why" },
-      { field: "market", headerName: "Real shops (Channel3)", width: 210 },
-      { field: "paypal", headerName: "PayPal id", width: 180, cellClass: "ledger-id" },
+      { field: "state", headerName: "Outcome", width: 168, cellRenderer: StateCell },
+      { field: "why", headerName: "Why", flex: 2, minWidth: 220, wrapText: true, autoHeight: true, cellClass: "ledger-why" },
+      { field: "market", headerName: "Real shops (Channel3)", width: 176, tooltipField: "market" },
+      { field: "paypal", headerName: "PayPal id", width: 150, cellClass: "ledger-id", tooltipField: "paypal" },
     ],
     [],
   );

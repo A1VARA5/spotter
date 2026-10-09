@@ -5,6 +5,7 @@ import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
+import { Hint } from "@/ui/Hint";
 
 
 export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean }) {
@@ -41,6 +42,12 @@ export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; na
         <p className="lede" style={{ marginTop: 6 }}>
           Payments that need a yes from you. The money is held by PayPal until you decide.
         </p>
+        <Hint q="How does a hold work?">
+          <p>
+            Spotter asks PayPal to authorise the payment instead of taking it. The money is reserved on the payer&apos;s side, but nothing reaches the payee. Approve and
+            PayPal captures it. Deny and PayPal releases it. Unanswered holds expire on their own.
+          </p>
+        </Hint>
         {locked && <PinGate onUnlocked={() => setLocked(false)} />}
         <div className="stack" style={{ marginTop: 20 }}>
           {waiting.length === 0 && (

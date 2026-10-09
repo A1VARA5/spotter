@@ -42,6 +42,18 @@ export function TopBar({ current }: { current?: "home" | "dashboard" | "demo" | 
   );
 }
 
+/** What each checkpoint state means, for the tooltip on the gate. */
+export const STATE_HELP: Record<TrackState, string> = {
+  checking: "Spotter is checking the rules and the message.",
+  moving: "Within the rules. On its way through PayPal.",
+  held: "PayPal is holding the money until you approve or deny.",
+  paid: "Approved and captured by PayPal.",
+  blocked: "Stopped by a rule or a scam warning. Nothing was paid.",
+  failed: "PayPal couldn't complete it. Nothing was paid.",
+  protected: "Asked for in a way with no buyer protection, so not sent.",
+  returned: "Denied. PayPal released the hold.",
+};
+
 const GATE_ICON: Record<TrackState, React.ReactNode> = {
   checking: <Loader size={16} strokeWidth={1.75} />,
   moving: <Check size={16} strokeWidth={1.75} />,
@@ -58,7 +70,7 @@ export function HoldTrack({ state, from, to, amount, currency }: { state: TrackS
     <div className="track" data-state={state} role="img" aria-label={`${money(amount, currency)} from ${from} to ${to}: ${STATE_LABEL[state]}`}>
       <span className="track-end track-from">{from}</span>
       <span className="track-rail track-rail-a" />
-      <span className="track-gate" aria-hidden="true">
+      <span className="track-gate" aria-hidden="true" data-tip={STATE_HELP[state]}>
         {GATE_ICON[state]}
       </span>
       <span className="track-rail track-rail-b" />

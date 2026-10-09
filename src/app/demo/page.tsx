@@ -1,5 +1,6 @@
 import { AppShell } from "@/ui/AppShell";
 import { Demo } from "./Demo";
+import { Hint } from "@/ui/Hint";
 import { getDeps } from "@/server/deps";
 import { requirePageSession } from "@/server/page-session";
 import { listSpenders } from "@/core/households";
@@ -19,6 +20,14 @@ export default async function DemoPage() {
         Each one sends a real request through Spotter: the rules, an AI check that has to quote its evidence, and a real
         hold in the PayPal sandbox. No real money moves. Anything held waits for you on the dashboard.
       </p>
+      <Hint q="What happens when I press Send it?">
+        <ol className="hint-steps">
+          <li>The request goes to Spotter as if that person asked to pay.</li>
+          <li>Their rules run: weekly limit, ask me above, never allowed.</li>
+          <li>Claude reads the message as untrusted text and must quote every warning word for word. Real shop prices come from Channel3.</li>
+          <li>If it can go ahead, PayPal (sandbox) authorises the money. If it needs you, it waits on your dashboard. Nothing real moves.</li>
+        </ol>
+      </Hint>
       <Demo spenders={spenders} />
     </AppShell>
   );

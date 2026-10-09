@@ -11,7 +11,7 @@ export type Section = "waiting" | "activity" | "try" | "account" | `person:${str
 
 const KIND: Record<string, string> = { person: "Relative", kid: "Kid", agent: "AI agent" };
 
-export async function AppShell({ db, household, current, children }: { db: Db; household: Household; current: Section; children: React.ReactNode }) {
+export async function AppShell({ db, household, current, wide = false, children }: { db: Db; household: Household; current: Section; wide?: boolean; children: React.ReactNode }) {
   const people = await listSpenders(db, household.id);
   const [w] = await db.query<{ n: string }>(
     "select count(*)::text as n from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 and p.status = 'needs_approval'",
@@ -65,7 +65,9 @@ export async function AppShell({ db, household, current, children }: { db: Db; h
           <button className="side-signout">Sign out</button>
         </form>
       </aside>
-      <main className="app-main">{children}</main>
+      <main className="app-main" data-wide={wide || undefined}>
+        {children}
+      </main>
       <nav className="tabbar" aria-label="Main">
         {nav.map((n) => (
           <Link key={n.key} href={n.href} className="tab" aria-current={current === n.key ? "page" : undefined}>

@@ -5,6 +5,7 @@ import { getSpender, listPayments, weekSpend } from "@/core/lifecycle";
 import { AppShell } from "@/ui/AppShell";
 import { money, STATE_LABEL, trackState } from "@/ui/format";
 import { Connect } from "./Connect";
+import { Hint } from "@/ui/Hint";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Person | Spotter" };
@@ -41,6 +42,26 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </div>
       </dl>
       <h2 className="section-title">How {spender.name} reaches Spotter</h2>
+      {spender.kind === "agent" ? (
+        <Hint q="What's an AI agent, and how does it connect?">
+          <p>
+            An AI agent is an assistant that does tasks for you, like Claude or ChatGPT shopping on your behalf. Agents can already open shop pages and pay. Spotter
+            makes sure they pay through a checkpoint you control.
+          </p>
+          <p>
+            It connects with MCP, the standard way AI apps plug into tools. Your agent gets four Spotter tools: find real products and prices, ask to pay, check on a
+            payment, and see what&apos;s left of its allowance. It has no tool to approve, so only you can say yes to a held payment.
+          </p>
+        </Hint>
+      ) : (
+        <Hint q={`How does ${spender.name} use Spotter?`}>
+          <p>
+            Nothing new to install. When something asks {spender.name} for money (a text, an email, a seller), they forward it to Spotter by email or Telegram. Spotter
+            checks it against the rules you set here and replies to them in plain words.
+          </p>
+          <p>Small, ordinary payments go straight through. Anything over the ask you amount, to someone new, or that looks like a scam waits for you.</p>
+        </Hint>
+      )}
       <Connect
         spender={{ id: spender.id, name: spender.name, kind: spender.kind, email: spender.email, telegram: spender.telegram_chat_id }}
         inbox={process.env.AGENTBOXD_INBOX_ADDRESS ?? null}

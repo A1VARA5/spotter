@@ -10,12 +10,12 @@ import { Final, Hub } from "./landing/Sections";
 function StartButtons({ onDark = false }: { onDark?: boolean }) {
   return (
     <div className="start">
-      <a className="btn btn-hold" href="/api/auth/paypal/start">
+      <form action="/api/demo/start" method="post">
+        <button className="btn btn-hold">Try the demo family</button>
+      </form>
+      <a className={onDark ? "btn btn-ghost" : "btn btn-quiet"} href="/api/auth/paypal/start">
         Log in with PayPal
       </a>
-      <form action="/api/demo/start" method="post">
-        <button className={onDark ? "btn btn-ghost" : "btn btn-quiet"}>Try the demo family</button>
-      </form>
     </div>
   );
 }
@@ -48,7 +48,7 @@ export default function Home() {
                 payment looks wrong, PayPal holds the money and you get asked.
               </p>
               <StartButtons onDark />
-              <p className="hero-fine">Runs on the PayPal sandbox. Nothing real is paid.</p>
+              <p className="hero-fine">No sign up for the demo: a family with Gran, Leo and a shopping agent, ready in ten seconds. Runs on the PayPal sandbox.</p>
             </div>
 
             <HeroStage label="Gran gets a scam text asking for £250. Spotter holds the payment at PayPal and asks you.">

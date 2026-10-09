@@ -8,7 +8,7 @@ export function Hub() {
         <h2 id="hub-title" className="sec-title reveal">
           Nobody installs anything new
         </h2>
-        <p className="sec-lede reveal">They keep using email, Telegram or their AI agent. Everything flows through one check before it reaches PayPal.</p>
+        <p className="sec-lede reveal">They keep using email, Telegram, Discord or their AI agent. Everything flows through one check before it reaches PayPal.</p>
         <div className="hub">
           <div className="hub-in">
             <div className="hub-card reveal">
@@ -30,6 +30,16 @@ export function Hub() {
               <p className="hub-note">One tap pairs Gran&apos;s phone. You get Approve and Deny in yours.</p>
             </div>
             <div className="hub-card reveal">
+                <p className="hub-label">Discord</p>
+                <div className="hub-snip hub-dc">
+                  <span className="hub-dc-msg">selling 2000 robux for £8!! pay with a steam gift card</span>
+                  <span className="hub-dc-menu">
+                    Apps <i>›</i> <b>Check with Spotter</b>
+                  </span>
+                </div>
+                <p className="hub-note">Right click any message, in a server or a DM. Leo gets the answer privately.</p>
+              </div>
+              <div className="hub-card reveal">
               <p className="hub-label">AI agents</p>
               <div className="hub-snip hub-term">
                 <span>

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Gamepad2, Mail, ShoppingBag } from "lucide-react";
 import { findQuotes } from "@/ui/format";
 import { Browser, Iphone } from "./Devices";
+import { BrandMark } from "@/ui/components";
 
 const PLAY_MS = 7500;
 
@@ -37,7 +38,7 @@ const MOMENTS = [
     who: "Gran",
     title: "Gran forwards an email she isn't sure about.",
     line: "She forwards it to spotter@homingbox.net and gets a plain answer in the same thread.",
-    verdict: { tone: "held", text: "Held, £2.99" },
+    verdict: { tone: "held", label: "On hold", amount: "£2.99", to: "RM Parcel Services" },
     reply: { from: "Spotter replied to Gran", text: "Held, not paid. The payment link isn't a Royal Mail address. Sam has been asked to decide." },
   },
   {
@@ -46,7 +47,7 @@ const MOMENTS = [
     who: "Gran",
     title: "Gran finds a cheap iPad on Marketplace.",
     line: "The seller can't meet, will post it today, and wants PayPal Friends and Family to \"save the fees\".",
-    verdict: { tone: "protect", text: "Not sent, £180" },
+    verdict: { tone: "protect", label: "Not sent", amount: "£180", to: "dan.reeves.88@outlook.com" },
     reply: { from: "Spotter replied to Gran", text: "Not sent. Friends and Family has no buyer protection, so if the iPad never arrives the money is gone. If it's genuine, pay with Goods and Services." },
   },
   {
@@ -55,7 +56,7 @@ const MOMENTS = [
     who: "Shopping agent",
     title: "Your AI agent lands on a booby-trapped shop.",
     line: "The page hides a line no person sees. Spotter reads what the agent read, and shows you the hidden line.",
-    verdict: { tone: "stop", text: "Stopped, £19.99" },
+    verdict: { tone: "stop", label: "Stopped", amount: "£19.99", to: "BestDealz" },
     reply: { from: "Spotter replied to the agent", text: "Not paid. Spotter stopped this payment: the page tried to give you instructions. Don't retry it another way; tell the user." },
   },
   {
@@ -64,7 +65,7 @@ const MOMENTS = [
     who: "Leo",
     title: "Leo is offered cheap game credit.",
     line: "A stranger wants paying in a gift card code. Once a code is sent the money is gone, so Leo's rules never allow it.",
-    verdict: { tone: "stop", text: "Stopped, £8.00" },
+    verdict: { tone: "stop", label: "Stopped", amount: "£8.00", to: "xX_cheapcoins_Xx" },
     reply: { from: "Spotter told Leo", text: "Gift card codes can't be undone, so this one is never allowed. Ask Sam if you want game credit." },
   },
 ] as const;
@@ -250,11 +251,17 @@ export function Inspector({ initial = 0 }: { initial?: number }) {
         <div className="insp-art">
           <span className="insp-scan" aria-hidden="true" />
           <Art />
-          <span className="insp-stamp" data-tone={m.verdict.tone}>
-            {m.verdict.text}
+          <span className="verdict" data-tone={m.verdict.tone}>
+            <BrandMark />
+            <span className="verdict-state">
+              <i aria-hidden="true" />
+              {m.verdict.label}
+            </span>
+            <b className="num">{m.verdict.amount}</b>
+            <span className="verdict-to">to {m.verdict.to}</span>
           </span>
         </div>
-        <div className="insp-reply">
+        <div className="insp-reply" data-kind={m.key}>
           <p className="insp-reply-from">{m.reply.from}</p>
           <p>{m.reply.text}</p>
         </div>
