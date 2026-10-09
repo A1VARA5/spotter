@@ -3,6 +3,7 @@ import { BrandMark, Evidence, HoldTrack } from "@/ui/components";
 import type { Flag } from "@/core/grounding";
 import { Browser, GranPhone, SpotterPhone } from "./landing/Devices";
 import { HeroStage } from "./landing/HeroStage";
+import { ScrollStory } from "./landing/ScrollStory";
 
 function StartButtons({ onDark = false }: { onDark?: boolean }) {
   return (
@@ -62,7 +63,7 @@ export default function Home() {
             </Link>
             <nav className="lnav-links" aria-label="Main">
               <a href="#moments">How it helps</a>
-              <a href="#money">The money</a>
+              <a href="#story-title">How it works</a>
               <a href="/api/auth/paypal/start" className="lnav-login">
                 Log in
               </a>
@@ -82,20 +83,7 @@ export default function Home() {
 
             <HeroStage label="Gran gets a scam text asking for £250. Spotter holds the payment at PayPal and asks you.">
               <GranPhone text={GRAN_TEXT} scale={0.68} />
-              <ul className="checks" aria-label="What Spotter checked">
-                <li className="check">
-                  <span className="check-label">Her rules</span>
-                  <span className="check-value">Over the £50 she asked you to check</span>
-                </li>
-                <li className="check">
-                  <span className="check-label">The message</span>
-                  <span className="check-value">3 warning signs, each quoted</span>
-                </li>
-                <li className="check">
-                  <span className="check-label">PayPal</span>
-                  <span className="check-value">£250 authorised, not taken</span>
-                </li>
-              </ul>
+
               <SpotterPhone scale={0.68} />
             </HeroStage>
           </div>
@@ -112,6 +100,8 @@ export default function Home() {
           <span>AG Grid</span>
         </div>
       </section>
+
+      <ScrollStory />
 
       <section className="shell statement reveal">
         <p>
@@ -202,35 +192,7 @@ export default function Home() {
         </article>
       </section>
 
-      <section id="money" className="money" aria-labelledby="money-title">
-        <div className="shell">
-          <h2 id="money-title" className="sec-title reveal">
-            What happens to the money, second by second
-          </h2>
-          <ol className="log reveal-kids">
-            <li>
-              <span className="log-t num">09:41:02</span>
-              <span className="log-e">Gran taps send. Spotter gets the request instead of PayPal sending it straight away.</span>
-            </li>
-            <li>
-              <span className="log-t num">09:41:02</span>
-              <span className="log-e">Her rules run: weekly limit, ask me above £50, never gift cards or crypto.</span>
-            </li>
-            <li>
-              <span className="log-t num">09:41:05</span>
-              <span className="log-e">Claude reads the message as untrusted text and must quote every warning word for word. Code throws out any quote it can&apos;t find.</span>
-            </li>
-            <li data-hold="true">
-              <span className="log-t num">09:41:06</span>
-              <span className="log-e">PayPal authorises £250. The money is reserved, not taken.</span>
-            </li>
-            <li>
-              <span className="log-t num">09:41:06</span>
-              <span className="log-e">You get the alert. Approve and PayPal captures it. Deny and the hold is released.</span>
-            </li>
-          </ol>
-        </div>
-      </section>
+
 
       <section className="shell ways-sec" aria-labelledby="ways-title">
         <h2 id="ways-title" className="sec-title reveal">

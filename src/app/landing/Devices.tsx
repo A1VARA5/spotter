@@ -79,10 +79,10 @@ function PersonGlyph() {
   );
 }
 
-/** Gran's phone: a text from a new number, then PayPal's send sheet, stopped by Spotter. */
-export function GranPhone({ text, scale }: { text: string; scale?: number }) {
+/** iMessage: a text from an unknown number. */
+export function IMessage({ text }: { text: string }) {
   return (
-    <Iphone scale={scale} className="iphone-gran" label="Gran's phone: a text from a new number asking for £250 by Friends and Family, and the PayPal payment held by Spotter">
+    <>
       <div className="imsg-nav">
         <span className="imsg-back">
           <Chevron />
@@ -107,28 +107,65 @@ export function GranPhone({ text, scale }: { text: string; scale?: number }) {
         </p>
         <p className="imsg-bubble">{text}</p>
       </div>
-      <div className="ios-sheet">
-        <span className="ios-grabber" aria-hidden="true" />
-        <div className="pp-head">
-          <span className="pp-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22">
-              <path d="M7.6 21.4H4.1L6.9 3.1h6.3c3.9 0 6.2 2 5.5 5.6-.7 3.9-3.4 5.8-7.3 5.8H9.1l-1.5 6.9Z" fill="#003087" />
-              <path d="M19.3 8.1c-.8 4-3.6 6.2-7.6 6.2h-1.3l-1.1 7.1H6.6l.3-1.6h1.9l1.1-6.6h1.9c3.6 0 6.2-1.8 6.9-5.5l.6.4Z" fill="#0079c1" />
-            </svg>
-          </span>
-          <span className="pp-to">
-            Send to <b>mate.payments</b>
+    </>
+  );
+}
+
+export type SheetState = "pay" | "checking" | "held" | "released";
+
+/** PayPal's send sheet, as Spotter sees it through: about to pay, being checked, held, or released. */
+export function PayPalSheet({ state = "held" }: { state?: SheetState }) {
+  return (
+    <div className="ios-sheet" data-state={state}>
+      <span className="ios-grabber" aria-hidden="true" />
+      <div className="pp-head">
+        <span className="pp-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M7.6 21.4H4.1L6.9 3.1h6.3c3.9 0 6.2 2 5.5 5.6-.7 3.9-3.4 5.8-7.3 5.8H9.1l-1.5 6.9Z" fill="#003087" />
+            <path d="M19.3 8.1c-.8 4-3.6 6.2-7.6 6.2h-1.3l-1.1 7.1H6.6l.3-1.6h1.9l1.1-6.6h1.9c3.6 0 6.2-1.8 6.9-5.5l.6.4Z" fill="#0079c1" />
+          </svg>
+        </span>
+        <span className="pp-to">
+          Send to <b>mate.payments</b>
+        </span>
+      </div>
+      <p className="pp-amount num">£250.00</p>
+      <p className="pp-method">Friends and Family, no purchase protection</p>
+      {state === "pay" && <span className="pp-send">Send £250.00</span>}
+      {state === "checking" && (
+        <div className="pp-held pp-checking">
+          <span className="pp-spin" aria-hidden="true" />
+          <span>
+            <b>Spotter is checking</b> before anything moves.
           </span>
         </div>
-        <p className="pp-amount num">£250.00</p>
-        <p className="pp-method">Friends and Family, no purchase protection</p>
+      )}
+      {state === "held" && (
         <div className="pp-held">
           <BrandMark />
           <span>
             <b>Held by Spotter.</b> Sam has been asked to look first.
           </span>
         </div>
-      </div>
+      )}
+      {state === "released" && (
+        <div className="pp-held pp-released">
+          <BrandMark />
+          <span>
+            <b>Not sent.</b> Sam said no, so PayPal released the hold. Nothing left your account.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Gran's phone: a text from a new number, then PayPal's send sheet, held by Spotter. */
+export function GranPhone({ text, scale }: { text: string; scale?: number }) {
+  return (
+    <Iphone scale={scale} className="iphone-gran" label="Gran's phone: a text from a new number asking for £250 by Friends and Family, and the PayPal payment held by Spotter">
+      <IMessage text={text} />
+      <PayPalSheet state="held" />
     </Iphone>
   );
 }

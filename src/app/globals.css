@@ -3548,3 +3548,404 @@ p {
   .check:nth-child(n) { margin-left: 0; }
   .hero-dark { padding-bottom: clamp(88px, 12vh, 128px); }
 }
+
+/* ==========================================================================
+   The scroll story: one phone stays pinned while the steps scroll past.
+   Continues the hero's dark scene so the page reads as one piece.
+   ========================================================================== */
+.hero-dark {
+  padding-bottom: clamp(40px, 8vh, 96px);
+}
+
+.story {
+  background:
+    radial-gradient(50% 40% at 80% 20%, rgb(242 183 5 / 0.08), transparent 70%),
+    linear-gradient(#0d141c, #0f1822 70%, #0d141c);
+  color: #eef2f5;
+  padding: clamp(48px, 10vh, 112px) 0 clamp(64px, 14vh, 160px);
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 64px;
+}
+
+.story-title {
+  color: #fff;
+  margin-bottom: 8vh;
+}
+
+.story-steps {
+  padding-bottom: 30vh;
+}
+
+.story-step {
+  min-height: 72vh;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  max-width: 44ch;
+  opacity: 0.28;
+  transform: translateY(8px);
+  transition: opacity 450ms var(--ease-out), transform 600ms var(--ease-out);
+}
+
+.story-step[data-active="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.story-step h3 {
+  font-size: clamp(26px, 2.6vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.story-step p {
+  font-size: 18px;
+  line-height: 1.55;
+  color: #aeb9c3;
+}
+
+.story-n {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1.5px solid rgb(255 255 255 / 0.3);
+  color: #fff;
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+
+.story-step[data-active="true"] .story-n {
+  background: var(--hold);
+  border-color: var(--hold);
+  color: var(--ink);
+}
+
+.story-stage {
+  position: relative;
+}
+
+.story-sticky {
+  position: sticky;
+  top: 6vh;
+  height: 88vh;
+  display: grid;
+  place-items: center;
+}
+
+.story-phones {
+  position: relative;
+  width: 312px;
+  height: 652px;
+}
+
+.story-phone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform 800ms var(--ease-in-out), opacity 600ms ease, filter 600ms ease;
+}
+
+.story-you {
+  opacity: 0;
+  transform: translateX(70px) scale(0.92) rotate(3deg);
+  filter: blur(6px);
+}
+
+.story-phones[data-yours="true"] .story-gran {
+  opacity: 0.35;
+  transform: translateX(-90px) scale(0.9) rotate(-3deg);
+  filter: blur(3px);
+}
+
+.story-phones[data-yours="true"] .story-you {
+  opacity: 1;
+  transform: translateX(40px) scale(1);
+  filter: none;
+}
+
+.story-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  pointer-events: none;
+  transform: translateY(105%);
+  transition: transform 700ms var(--ease-drawer);
+  z-index: 4;
+}
+
+.story-sheet[data-open="true"] {
+  transform: none;
+}
+
+.ios-sheet[data-state] .pp-held {
+  animation: stamp 420ms var(--ease-out) both;
+}
+
+.pp-send {
+  margin-top: 14px;
+  display: block;
+  text-align: center;
+  padding: 15px;
+  border-radius: 999px;
+  background: #0070e0;
+  color: #fff;
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.pp-checking {
+  background: #eef3ff;
+  box-shadow: inset 0 0 0 1px #c9d6f7;
+}
+
+.pp-released {
+  background: #e8f4ee;
+  box-shadow: inset 0 0 0 1px #a8d5be;
+}
+
+.pp-spin {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #c9d6f7;
+  border-top-color: var(--protect);
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The Spotter panel that attaches to the phone while it checks */
+.spot-card {
+  position: absolute;
+  left: max(-40px, calc(50% - 156px - 300px));
+  bottom: 9vh;
+  width: 330px;
+  z-index: 5;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgb(23 33 43 / 0.06), 0 40px 80px -30px rgb(0 0 0 / 0.7);
+  opacity: 0;
+  transform: translateY(24px) scale(0.97);
+  transition: opacity 450ms var(--ease-out), transform 600ms var(--ease-out);
+  pointer-events: none;
+}
+
+.spot-card[data-show="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.spot-card-head {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.spot-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.spot-rows li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0.25;
+  transform: translateX(-6px);
+  transition: opacity 400ms var(--ease-out), transform 500ms var(--ease-out);
+}
+
+.spot-rows li[data-on="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.spot-rows li:nth-child(2) {
+  transition-delay: 150ms;
+}
+
+.spot-rows li svg {
+  margin-top: 2px;
+  color: var(--stop);
+}
+
+.spot-rows li:first-child svg {
+  color: #a77a00;
+}
+
+.spot-rows li:last-child svg {
+  color: var(--go);
+}
+
+.spot-rows b {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.spot-evidence .evidence {
+  font-size: 13px;
+  max-height: none;
+  padding: 10px 12px;
+}
+
+.spot-card .track {
+  font-size: 12px;
+}
+
+/* Phones and small screens: the phone stays pinned, the steps slide over it on glass. */
+@media (max-width: 999px) {
+  .story-grid {
+    display: block;
+  }
+
+  .story-stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    z-index: 0;
+  }
+
+  .story-sticky {
+    position: static;
+    height: 100%;
+  }
+
+  .story-phones {
+    zoom: 0.78;
+  }
+
+  .story-steps {
+    position: relative;
+    z-index: 1;
+    margin-top: -100svh;
+    padding-bottom: 10vh;
+  }
+
+  .story-title {
+    padding-top: 4vh;
+    margin-bottom: 70svh;
+  }
+
+  .story-step {
+    min-height: 90svh;
+    align-content: end;
+    padding-bottom: 6svh;
+    opacity: 1;
+  }
+
+  .story-step > * {
+    background: rgb(13 20 28 / 0.86);
+    backdrop-filter: blur(14px);
+  }
+
+  .story-step h3,
+  .story-step p {
+    padding: 0 16px;
+  }
+
+  .story-step h3 {
+    padding-top: 14px;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .story-step p {
+    padding-bottom: 16px;
+    border-radius: 0 0 14px 14px;
+  }
+
+  .story-n {
+    display: none;
+  }
+
+  .spot-card {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-step,
+  .story-phone,
+  .story-sheet,
+  .spot-card,
+  .spot-rows li {
+    transition: none;
+  }
+}
+
+.story-phones .spot-card {
+  left: auto;
+  right: calc(100% - 46px);
+  bottom: 70px;
+}
+
+.story-card {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 999px) {
+  .story-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .story-stage {
+    order: -1;
+  }
+
+  .story-step > * {
+    background: none;
+    backdrop-filter: none;
+  }
+
+  .story-step h3,
+  .story-step p {
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .story-card {
+    background: rgb(13 20 28 / 0.88);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 18px;
+    padding: 18px;
+    gap: 8px;
+  }
+
+  .story-step h3 {
+    font-size: 24px;
+  }
+
+  .story-step p {
+    font-size: 16px;
+  }
+}
