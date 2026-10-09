@@ -40,7 +40,7 @@ async function guarded(name: string, run: () => Promise<Response>): Promise<Resp
 
 export function makeHandlers(getDeps: () => Promise<Deps>) {
   return {
-    submit: (request: Request) => guarded("submit", async () => {
+    submit: (householdId: string, request: Request) => guarded("submit", async () => {
       let raw: unknown;
       try {
         raw = await request.json();
@@ -53,7 +53,8 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
       }
       const b = parsed.data;
       const deps = await getDeps();
-      if (!(await getSpender(deps.db, b.spenderId))) return json({ error: "Unknown spender." }, 404);
+      const spender = await getSpender(deps.db, b.spenderId);
+      if (!spender || spender.household_id !== householdId) return json({ error: "Unknown spender." }, 404);
       const [row] = await deps.db.query<{ n: string }>("select count(*)::text as n from payments where created_at > now() - interval '1 day'");
       if (Number(row?.n ?? 0) >= DAILY_LIMIT) {
         return json({ error: `The demo has hit today's limit of ${DAILY_LIMIT} checks. It resets within 24 hours.` }, 429);
@@ -75,16 +76,16 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
       }
     }),
 
-    list: () => guarded("list", async () => json({ payments: await listPayments((await getDeps()).db) })),
+    list: (householdId: string) => guarded("list", async () => json({ payments: await listPayments((await getDeps()).db, householdId) })),
 
-    approve: (id: string, by: string) => guarded("approve", async () => settle(await getDeps(), id, by, approve)),
+    approve: (householdId: string, id: string, by: string) => guarded("approve", async () => settle(await getDeps(), householdId, id, by, approve)),
 
-    deny: (id: string, by: string) => guarded("deny", async () => settle(await getDeps(), id, by, deny)),
+    deny: (householdId: string, id: string, by: string) => guarded("deny", async () => settle(await getDeps(), householdId, id, by, deny)),
   };
 }
 
-async function settle(deps: Deps, id: string, by: string, action: typeof approve) {
-  const before = await getPayment(deps.db, id);
+async function settle(deps: Deps, householdId: string, id: string, by: string, action: typeof approve) {
+  const before = await getPayment(deps.db, id, householdId);
   if (!before) return json({ error: "No such payment." }, 404);
   if (before.status !== "needs_approval") return json({ error: `Already ${before.status}.`, payment: before }, 409);
   return json({ payment: await action(deps, id, by) });

@@ -1,29 +1,26 @@
-// The demo household: an AI shopping agent, Gran, and a kid. Amounts in pence.
-import type { ensureSpender } from "@/core/lifecycle";
+// The demo family: an AI shopping agent, Gran, and a kid. Amounts in pence. Ids are made per household.
+import type { NewSpender } from "@/core/lifecycle";
 
-type SpenderSeed = Parameters<typeof ensureSpender>[1];
+type SpenderSeed = Omit<NewSpender, "id" | "householdId" | "spotterName">;
 const gbp = (amount: number) => ({ amount, currency: "GBP" as const });
+
+export const DEMO_SPOTTER = "Sam";
+export const DEMO_PIN = "2468";
 
 export const DEMO_SPENDERS: SpenderSeed[] = [
   {
-    id: "agent",
     name: "Shopping agent",
     kind: "agent",
-    spotterName: "Aivaras",
-    allowance: { weekly: gbp(40000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Tesco"], blockedPayees: [] },
+    allowance: { weekly: gbp(40000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Tesco", "Clay & Kiln (Etsy)"], blockedPayees: [] },
   },
   {
-    id: "gran",
     name: "Gran",
     kind: "person",
-    spotterName: "Aivaras",
-    allowance: { weekly: gbp(30000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: [], blockedPayees: [] },
+    allowance: { weekly: gbp(30000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Boots"], blockedPayees: [] },
   },
   {
-    id: "leo",
     name: "Leo",
     kind: "kid",
-    spotterName: "Aivaras",
     allowance: { weekly: gbp(1000), askAbove: gbp(500), blockedCategories: ["gambling", "crypto"], allowedPayees: [], blockedPayees: [] },
   },
 ];

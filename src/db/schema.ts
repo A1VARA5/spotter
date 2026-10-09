@@ -16,14 +16,35 @@ export const STATUSES = [
 export type PaymentStatus = (typeof STATUSES)[number];
 
 export const DDL = `
+create table if not exists households (
+  id text primary key,
+  name text not null,
+  spotter_name text not null,
+  paypal_user_id text unique,
+  email text,
+  telegram_chat_id text,
+  pin_hash text,
+  pin_failures int not null default 0,
+  pin_locked_until timestamptz,
+  demo boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists households_demo_created_idx on households (created_at) where demo;
+
 create table if not exists spenders (
   id text primary key,
+  household_id text not null references households(id) on delete cascade,
+  email text,
+  telegram_chat_id text,
   name text not null,
   kind text not null check (kind in ('agent', 'person', 'kid')),
   spotter_name text not null,
   allowance jsonb not null,
   created_at timestamptz not null default now()
 );
+create index if not exists spenders_household_idx on spenders (household_id);
+create unique index if not exists spenders_email_idx on spenders (lower(email)) where email is not null;
+create unique index if not exists spenders_telegram_idx on spenders (telegram_chat_id) where telegram_chat_id is not null;
 
 create table if not exists payments (
   id text primary key,

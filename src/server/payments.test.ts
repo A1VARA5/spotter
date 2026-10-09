@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHousehold } from "@/core/households";
 import { pgliteDb } from "@/db";
 import { createSpender, type Deps } from "@/core/lifecycle";
 import { makeHandlers } from "./payments";
 
 let h: ReturnType<typeof makeHandlers>;
+let capture: ReturnType<typeof vi.fn>;
+let otherHh: string;
+
+let hhId: string;
 
 beforeEach(async () => {
   const db = await pgliteDb();
+  hhId = (await createHousehold(db, { name: "Test", spotterName: "Aivaras" })).id;
   await createSpender(db, {
+    householdId: hhId,
     id: "agent1",
     name: "Shopping agent",
     kind: "agent",
@@ -19,10 +26,11 @@ beforeEach(async () => {
     check: vi.fn(async () => ({ ok: true, flags: [], dropped: 0, hidden: [], summary: "", injectionAttempt: false })),
     paypal: {
       createAuthorizeOrder: vi.fn(async () => ({ orderId: "O1", authorizationId: "A1" })),
-      captureAuthorization: vi.fn(async () => ({ captureId: "C1", status: "COMPLETED" })),
+      captureAuthorization: (capture = vi.fn(async () => ({ captureId: "C1", status: "COMPLETED" }))),
       voidAuthorization: vi.fn(async () => ({ status: "VOIDED" })),
     },
   };
+  otherHh = (await createHousehold(db, { name: "Other", spotterName: "Other" })).id;
   h = makeHandlers(async () => deps);
 });
 
@@ -42,7 +50,7 @@ const valid = {
 
 describe("payments API", () => {
   it("creates a payment and returns the decision", async () => {
-    const r = await h.submit(post(valid));
+    const r = await h.submit(hhId, post(valid));
     expect(r.status).toBe(201);
     const j = await r.json();
     expect(j.payment.status).toBe("needs_approval");
@@ -50,51 +58,60 @@ describe("payments API", () => {
   });
 
   it("rejects a bad body with 400 and says why", async () => {
-    const r = await h.submit(post({ ...valid, amount: -3 }));
+    const r = await h.submit(hhId, post({ ...valid, amount: -3 }));
     expect(r.status).toBe(400);
     expect((await r.json()).error).toMatch(/amount/i);
   });
 
   it("rejects malformed JSON with 400", async () => {
-    const r = await h.submit(new Request("http://x", { method: "POST", body: "{nope" }));
+    const r = await h.submit(hhId, new Request("http://x", { method: "POST", body: "{nope" }));
     expect(r.status).toBe(400);
   });
 
   it("404s an unknown spender", async () => {
-    expect((await h.submit(post({ ...valid, spenderId: "ghost" }))).status).toBe(404);
+    expect((await h.submit(hhId, post({ ...valid, spenderId: "ghost" }))).status).toBe(404);
   });
 
   it("approves a pending payment, then 409s a second approve", async () => {
-    const id = (await (await h.submit(post(valid))).json()).payment.id;
-    const ok = await h.approve(id, "Aivaras");
+    const id = (await (await h.submit(hhId, post(valid))).json()).payment.id;
+    const ok = await h.approve(hhId, id, "Aivaras");
     expect(ok.status).toBe(200);
     expect((await ok.json()).payment.status).toBe("captured");
-    expect((await h.approve(id, "Aivaras")).status).toBe(409);
+    expect((await h.approve(hhId, id, "Aivaras")).status).toBe(409);
   });
 
   it("denies a pending payment", async () => {
-    const id = (await (await h.submit(post(valid))).json()).payment.id;
-    expect((await (await h.deny(id, "Aivaras")).json()).payment.status).toBe("voided");
+    const id = (await (await h.submit(hhId, post(valid))).json()).payment.id;
+    expect((await (await h.deny(hhId, id, "Aivaras")).json()).payment.status).toBe("voided");
   });
 
   it("404s approve on an unknown payment", async () => {
-    expect((await h.approve("pay_nope", "Aivaras")).status).toBe(404);
+    expect((await h.approve(hhId, "pay_nope", "Aivaras")).status).toBe(404);
   });
 
   it("answers a crash with JSON 500, not an HTML page", async () => {
     const broken = makeHandlers(async () => {
       throw new Error("database down");
     });
-    const r = await broken.list();
+    const r = await broken.list("hh_x");
     expect(r.status).toBe(500);
     expect((await r.json()).error).toMatch(/Nothing was paid/);
   });
 
   it("lists payments newest first", async () => {
-    await h.submit(post(valid));
-    await h.submit(post({ ...valid, amount: 500 }));
-    const j = await (await h.list()).json();
+    await h.submit(hhId, post(valid));
+    await h.submit(hhId, post({ ...valid, amount: 500 }));
+    const j = await (await h.list(hhId)).json();
     expect(j.payments).toHaveLength(2);
     expect(Number(j.payments[0].amount)).toBe(500);
+  });
+
+  it("one household can't pay as, see, approve or deny another household's people", async () => {
+    expect((await h.submit(otherHh, post(valid))).status).toBe(404);
+    const id = (await (await h.submit(hhId, post(valid))).json()).payment.id;
+    expect((await (await h.list(otherHh)).json()).payments).toHaveLength(0);
+    expect((await h.approve(otherHh, id, "Other")).status).toBe(404);
+    expect((await h.deny(otherHh, id, "Other")).status).toBe(404);
+    expect(capture).not.toHaveBeenCalled();
   });
 });

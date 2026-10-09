@@ -43,15 +43,13 @@ type Row = {
   paypal: string;
 };
 
-const SPENDERS: Record<string, string> = { agent: "Shopping agent", gran: "Gran", leo: "Leo" };
-
-function toRow(p: Payment): Row {
+function toRow(p: Payment, names: Record<string, string>): Row {
   const s = trackState(p.status);
   const m = p.market;
   return {
     id: p.id,
     when: p.created_at,
-    who: SPENDERS[p.spender_id] ?? p.spender_id,
+    who: names[p.spender_id] ?? "Someone",
     payee: p.request.payee.name,
     item: p.request.item ?? p.request.category,
     amount: Number(p.amount),
@@ -79,10 +77,10 @@ function StateCell({ value }: ICellRendererParams<Row, TrackState>) {
   );
 }
 
-export function Ledger({ payments }: { payments: Payment[] }) {
+export function Ledger({ payments, names }: { payments: Payment[]; names: Record<string, string> }) {
   const [filter, setFilter] = useState(0);
   const [search, setSearch] = useState("");
-  const rows = useMemo(() => payments.map(toRow), [payments]);
+  const rows = useMemo(() => payments.map((p) => toRow(p, names)), [payments, names]);
   const shown = useMemo(() => {
     const states = FILTERS[filter]!.states;
     return states ? rows.filter((r) => states.includes(r.state)) : rows;

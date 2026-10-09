@@ -22,7 +22,17 @@ export type Deps = {
 };
 
 export type SpenderKind = "agent" | "person" | "kid";
-export type Spender = { id: string; name: string; kind: SpenderKind; spotter_name: string; allowance: Omit<Allowance, "spentThisWeek"> };
+export type Spender = {
+  id: string;
+  household_id: string;
+  name: string;
+  kind: SpenderKind;
+  spotter_name: string;
+  email: string | null;
+  telegram_chat_id: string | null;
+  allowance: Omit<Allowance, "spentThisWeek">;
+};
+export type NewSpender = { id: string; householdId: string; name: string; kind: SpenderKind; spotterName: string; allowance: Omit<Allowance, "spentThisWeek"> };
 
 export type Payment = {
   id: string;
@@ -85,24 +95,10 @@ async function transition(db: Db, id: string, from: PaymentStatus, to: PaymentSt
   return rows[0] ?? null;
 }
 
-export async function createSpender(
-  db: Db,
-  s: { id: string; name: string; kind: SpenderKind; spotterName: string; allowance: Omit<Allowance, "spentThisWeek"> },
-) {
+export async function createSpender(db: Db, s: NewSpender) {
   await db.query(
-    "insert into spenders (id, name, kind, spotter_name, allowance) values ($1, $2, $3, $4, $5) on conflict (id) do update set name = excluded.name, kind = excluded.kind, spotter_name = excluded.spotter_name, allowance = excluded.allowance",
-    [s.id, s.name, s.kind, s.spotterName, JSON.stringify(s.allowance)],
-  );
-}
-
-/** Seed only: adds a spender if missing, never overwrites edits made since. */
-export async function ensureSpender(
-  db: Db,
-  s: { id: string; name: string; kind: SpenderKind; spotterName: string; allowance: Omit<Allowance, "spentThisWeek"> },
-) {
-  await db.query(
-    "insert into spenders (id, name, kind, spotter_name, allowance) values ($1, $2, $3, $4, $5) on conflict (id) do nothing",
-    [s.id, s.name, s.kind, s.spotterName, JSON.stringify(s.allowance)],
+    "insert into spenders (id, household_id, name, kind, spotter_name, allowance) values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set name = excluded.name, kind = excluded.kind, spotter_name = excluded.spotter_name, allowance = excluded.allowance",
+    [s.id, s.householdId, s.name, s.kind, s.spotterName, JSON.stringify(s.allowance)],
   );
 }
 
@@ -110,12 +106,19 @@ export async function getSpender(db: Db, id: string): Promise<Spender | null> {
   return (await db.query<Spender>("select * from spenders where id = $1", [id]))[0] ?? null;
 }
 
-export async function getPayment(db: Db, id: string): Promise<Payment | null> {
-  return (await db.query<Payment>("select * from payments where id = $1", [id]))[0] ?? null;
+/** With a household, only finds the payment if it belongs to that household. */
+export async function getPayment(db: Db, id: string, householdId?: string): Promise<Payment | null> {
+  const rows = householdId
+    ? await db.query<Payment>("select p.* from payments p join spenders s on s.id = p.spender_id where p.id = $1 and s.household_id = $2", [id, householdId])
+    : await db.query<Payment>("select * from payments where id = $1", [id]);
+  return rows[0] ?? null;
 }
 
-export async function listPayments(db: Db, limit = 50): Promise<Payment[]> {
-  return db.query<Payment>("select * from payments order by created_at desc limit $1", [limit]);
+export async function listPayments(db: Db, householdId: string, limit = 50): Promise<Payment[]> {
+  return db.query<Payment>(
+    "select p.* from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 order by p.created_at desc limit $2",
+    [householdId, limit],
+  );
 }
 
 export async function listEvents(db: Db, paymentId: string) {
@@ -284,8 +287,11 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
   return setStatus(db, id, "voided");
 }
 
-/** Demo only: clears all payments (and their events) so the allowances start fresh. */
-export async function resetPayments(db: Db): Promise<number> {
-  const rows = await db.query<{ id: string }>("delete from payments returning id");
+/** Clears a household's payments (and their events) so the allowances start fresh. */
+export async function resetPayments(db: Db, householdId: string): Promise<number> {
+  const rows = await db.query<{ id: string }>(
+    "delete from payments where spender_id in (select id from spenders where household_id = $1) returning id",
+    [householdId],
+  );
   return rows.length;
 }

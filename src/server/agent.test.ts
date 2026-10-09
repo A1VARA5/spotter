@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHousehold } from "@/core/households";
 import { pgliteDb } from "@/db";
 import { createSpender, type Deps } from "@/core/lifecycle";
 import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "./agent";
@@ -7,9 +8,13 @@ import type { AiCheckResult } from "@/ai/check";
 let deps: Deps;
 const clean = (): AiCheckResult => ({ ok: true, flags: [], dropped: 0, hidden: [], summary: "Fine.", injectionAttempt: false });
 
+let hhId: string;
+
 beforeEach(async () => {
   const db = await pgliteDb();
+  hhId = (await createHousehold(db, { name: "Test", spotterName: "Aivaras" })).id;
   await createSpender(db, {
+    householdId: hhId,
     id: "agent",
     name: "Shopping agent",
     kind: "agent",

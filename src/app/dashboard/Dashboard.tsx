@@ -6,20 +6,11 @@ import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
 
-const SPENDER_NAMES: Record<string, string> = { agent: "Shopping agent", gran: "Gran", leo: "Leo" };
-const who = (p: Payment) => SPENDER_NAMES[p.spender_id] ?? p.spender_id;
 
-export function Dashboard({ initial }: { initial: Payment[] }) {
+export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean }) {
   const [payments, setPayments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/session", { cache: "no-store" })
-      .then(readJson)
-      .then((j) => setLocked(j.spotter === false))
-      .catch(() => {});
-  }, []);
+  const [locked, setLocked] = useState(!unlocked);
 
   const refresh = useCallback(async () => {
     try {
@@ -59,7 +50,7 @@ export function Dashboard({ initial }: { initial: Payment[] }) {
             </div>
           )}
           {waiting.map((p) => (
-            <HeldCard key={p.id} p={p} onSettled={refresh} onLocked={() => setLocked(true)} />
+            <HeldCard key={p.id} p={p} who={names[p.spender_id] ?? "Someone"} onSettled={refresh} onLocked={() => setLocked(true)} />
           ))}
         </div>
         {error && (
@@ -78,7 +69,7 @@ export function Dashboard({ initial }: { initial: Payment[] }) {
         ) : (
           <ul className="feed">
             {rest.map((p) => (
-              <FeedRow key={p.id} p={p} />
+              <FeedRow key={p.id} p={p} who={names[p.spender_id] ?? "Someone"} />
             ))}
           </ul>
         )}
@@ -106,7 +97,7 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
   return (
     <form className="pin" onSubmit={unlock} aria-labelledby="pin-title">
       <p id="pin-title" className="pin-title">
-        You're viewing as a guest. Enter the spotter PIN to approve or deny.
+        Enter your PIN to approve or deny.
       </p>
       <div className="pin-row">
         <label className="sr-only" htmlFor="pin">
@@ -135,7 +126,7 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
   );
 }
 
-function HeldCard({ p, onSettled, onLocked }: { p: Payment; onSettled: () => void; onLocked: () => void }) {
+function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; onSettled: () => void; onLocked: () => void }) {
   const [busy, setBusy] = useState<"approve" | "deny" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
@@ -169,12 +160,12 @@ function HeldCard({ p, onSettled, onLocked }: { p: Payment; onSettled: () => voi
             {money(p.amount, p.currency)}
           </p>
           <p className="held-who">
-            {who(p)} to {p.request.payee.name}, {timeAgo(p.created_at)}
+            {who} to {p.request.payee.name}, {timeAgo(p.created_at)}
           </p>
         </div>
       </div>
 
-      <HoldTrack state={state} from={who(p)} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
+      <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
 
       {p.ai?.summary && <p className="held-summary">{p.ai.summary}</p>}
 
@@ -212,14 +203,14 @@ function HeldCard({ p, onSettled, onLocked }: { p: Payment; onSettled: () => voi
 
 const ROW_ICON = { blocked: Ban, protected: ShieldCheck, held: Hand } as const;
 
-function FeedRow({ p }: { p: Payment }) {
+function FeedRow({ p, who }: { p: Payment; who: string }) {
   const s = trackState(p.status);
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
   const firstReason = p.decision?.reasons[0];
   return (
     <li className="feed-row">
       <span className="feed-title">
-        {who(p)} to {p.request.payee.name}
+        {who} to {p.request.payee.name}
       </span>
       <span className="feed-amount num">{money(p.amount, p.currency)}</span>
       <span className="feed-meta">

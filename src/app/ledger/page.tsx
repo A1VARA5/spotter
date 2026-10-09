@@ -1,5 +1,7 @@
 import { TopBar } from "@/ui/components";
 import { getDeps } from "@/server/deps";
+import { requirePageSession } from "@/server/page-session";
+import { listSpenders } from "@/core/households";
 import { listPayments } from "@/core/lifecycle";
 import { Ledger } from "./Ledger";
 
@@ -8,7 +10,9 @@ export const metadata = { title: "Ledger | Spotter" };
 
 export default async function LedgerPage() {
   const { db } = await getDeps();
-  const payments = await listPayments(db, 500);
+  const { household, unlocked } = await requirePageSession(db);
+  const names = Object.fromEntries((await listSpenders(db, household.id)).map((s) => [s.id, s.name]));
+  const payments = await listPayments(db, household.id, 500);
   return (
     <main className="shell" style={{ paddingBottom: 64 }}>
       <TopBar current="ledger" />
@@ -16,7 +20,7 @@ export default async function LedgerPage() {
       <p className="lede" style={{ margin: "8px 0 20px" }}>
         Every payment Spotter has seen: who asked, what happened, why, what real shops charge, and the PayPal id.
       </p>
-      <Ledger payments={JSON.parse(JSON.stringify(payments))} />
+      <Ledger names={names} payments={JSON.parse(JSON.stringify(payments))} />
     </main>
   );
 }

@@ -7,7 +7,9 @@ import { SCENARIOS, type Scenario } from "@/ui/scenarios";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
 
-export function Demo() {
+export type SpenderLite = { id: string; name: string; kind: string };
+
+export function Demo({ spenders }: { spenders: SpenderLite[] }) {
   const [round, setRound] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -17,7 +19,7 @@ export function Demo() {
     try {
       const r = await fetch("/api/demo/reset", { method: "POST" });
       if (r.status === 401) {
-        setNote("Only the spotter can start fresh. Unlock with the PIN on the dashboard first.");
+        setNote("Unlock with your PIN on the dashboard first.");
         return;
       }
       if (!r.ok) throw new Error();
@@ -45,23 +47,24 @@ export function Demo() {
       </div>
       <div className="scenarios" key={round}>
         {SCENARIOS.map((s) => (
-          <ScenarioCard key={s.id} s={s} />
+          <ScenarioCard key={s.id} s={s} spender={spenders.find((p) => p.kind === s.spender)} />
         ))}
       </div>
     </>
   );
 }
 
-function ScenarioCard({ s }: { s: Scenario }) {
+function ScenarioCard({ s, spender }: { s: Scenario; spender?: SpenderLite }) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Payment | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function run() {
+    if (!spender) return;
     setRunning(true);
     setError(null);
     try {
-      const r = await fetch("/api/payments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s.body) });
+      const r = await fetch("/api/payments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...s.body, spenderId: spender.id }) });
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
       setResult(j.payment);
@@ -80,7 +83,7 @@ function ScenarioCard({ s }: { s: Scenario }) {
       </h2>
       <p className="scenario-body">{s.blurb}</p>
       {state && (
-        <HoldTrack state={state} from={s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />
+        <HoldTrack state={state} from={spender?.name ?? s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />
       )}
       {result ? (
         <p aria-live="polite">
@@ -100,9 +103,13 @@ function ScenarioCard({ s }: { s: Scenario }) {
         </p>
       )}
       <div>
-        <button className="btn btn-quiet" onClick={run} disabled={running}>
-          {running ? "Checking" : result ? "Run again" : "Run this"}
-        </button>
+        {spender ? (
+          <button className="btn btn-quiet" onClick={run} disabled={running}>
+            {running ? "Checking" : result ? "Run again" : "Run this"}
+          </button>
+        ) : (
+          <p className="feed-meta">Add {s.spender === "agent" ? "an AI agent" : s.spender === "kid" ? "a kid" : "a relative"} to try this one.</p>
+        )}
       </div>
     </article>
   );

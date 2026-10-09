@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHousehold } from "@/core/households";
 import { pgliteDb, type Db } from "@/db";
 import { approve, createSpender, deny, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
 import type { AiCheckResult } from "@/ai/check";
@@ -25,6 +26,8 @@ let paypal: {
   void: ReturnType<typeof vi.fn<P["voidAuthorization"]>>;
 };
 
+let hhId: string;
+
 beforeEach(async () => {
   db = await pgliteDb();
   paypal = {
@@ -37,7 +40,9 @@ beforeEach(async () => {
     check: vi.fn<Deps["check"]>(async () => cleanAi()),
     paypal: { createAuthorizeOrder: paypal.create, captureAuthorization: paypal.capture, voidAuthorization: paypal.void },
   };
-  await createSpender(db, { id: "agent1", name: "Shopping agent", kind: "agent", spotterName: "Aivaras", allowance });
+  hhId = (await createHousehold(db, { name: "Test", spotterName: "Aivaras" })).id;
+  await createSpender(db, {
+    householdId: hhId, id: "agent1", name: "Shopping agent", kind: "agent", spotterName: "Aivaras", allowance });
 });
 
 const input = (amount: number, over: Record<string, unknown> = {}) => ({
@@ -144,7 +149,7 @@ describe("payment lifecycle", () => {
     for (const amount of [0, -5, 12.5]) {
       await expect(submitPayment(deps, input(amount))).rejects.toBeInstanceOf(InvalidPaymentError);
     }
-    expect(await listPayments(db)).toHaveLength(0);
+    expect(await listPayments(db, hhId)).toHaveLength(0);
   });
 
   it("an AI outage never auto pays, even a small payment", async () => {
