@@ -24,8 +24,9 @@ const PER_SENDER_PER_DAY = 6;
 const ALL_PER_DAY = 60;
 const EVENTS = new Set(["message.received", "message.enriched", "message.released"]);
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const html = (paras: string[]) => paras.map((p) => `<p style="font:16px/1.5 system-ui,sans-serif;color:#17212b">${esc(p)}</p>`).join("");
+import { simple, type Tone } from "./template";
+
+const EYEBROW: Record<Tone, string> = { held: "On hold", stopped: "Not paid", paid: "Paid", info: "Spotter" };
 
 async function record(db: Db, messageId: string): Promise<boolean> {
   const rows = await db.query("insert into inbound (provider, message_id) values ('agentboxd', $1) on conflict do nothing returning message_id", [messageId]);
@@ -81,7 +82,7 @@ export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promi
   if (!(await record(db, thin.id))) return "duplicate";
 
   let paymentId: string | null = null;
-  let say: ((paras: string[]) => Promise<void>) | null = null;
+  let say: ((paras: string[], tone?: Tone) => Promise<void>) | null = null;
   const finish = async (outcome: InboundOutcome) => {
     await db.query("update inbound set outcome = $2 where provider = 'agentboxd' and message_id = $1", [thin.id, outcome]);
     return outcome;
@@ -105,6 +106,7 @@ export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promi
     await db.query("update inbound set sender = $2 where provider = 'agentboxd' and message_id = $1", [thin.id, from]);
 
     const subject = m.subject ?? "";
+    const page = (paras: string[], tone: Tone) => simple(ctx.site, tone, EYEBROW[tone], paras[0] ?? "Spotter", paras.slice(1));
     const body = (m.text?.trim() || (m.html ? htmlToText(m.html) : "") || m.extracted_text || "").slice(0, 100_000);
     const text = subject ? `Subject: ${subject}\n\n${body}` : body;
     // Replies go only to the verified sender. If the email names a different Reply-To, send a fresh email
@@ -112,8 +114,8 @@ export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promi
     const rt = replyToOf(m);
     say =
       rt && rt !== from
-        ? (paras) => ctx.sendTo(from, `Re: ${subject}`.slice(0, 200), paras.join("\n\n"), html(paras), `reply-${m.id}`)
-        : (paras) => ctx.reply(inboxId, m.id, paras.join("\n\n"), html(paras));
+        ? (paras, tone = "info") => ctx.sendTo(from, `Re: ${subject}`.slice(0, 200), paras.join("\n\n"), page(paras, tone), `reply-${m.id}`)
+        : (paras, tone = "info") => ctx.reply(inboxId, m.id, paras.join("\n\n"), page(paras, tone));
 
     const spender = (await db.query<Spender>("select * from spenders where lower(email) = $1", [from]))[0];
 
@@ -151,7 +153,9 @@ export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promi
       context: `An email ${spender.name} forwarded to Spotter:\n\n${text}`,
     });
     paymentId = p.id;
-    await say(outcomeText((await getPayment(db, p.id)) ?? p, spender, ctx.site));
+    const final = (await getPayment(db, p.id)) ?? p;
+    const tone: Tone = final.status === "needs_approval" ? "held" : final.status === "captured" ? "paid" : "stopped";
+    await say(outcomeText(final, spender, ctx.site), tone);
     return finish("checked");
   } catch (e) {
     console.error("[spotter] email handling failed:", e instanceof Error ? e.message : e);
