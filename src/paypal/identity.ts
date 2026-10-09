@@ -43,7 +43,7 @@ async function exchangeCode(f: typeof fetch, code: string): Promise<string> {
 }
 
 async function userInfo(f: typeof fetch, accessToken: string): Promise<PayPalUser> {
-  const r = await f(`${API}/v1/identity/oauth2/userinfo?schema=paypalv1.1`, {
+  const r = await f(`${API}/v1/identity/openidconnect/userinfo?schema=openid`, {
     headers: { authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(15_000),
   });
@@ -55,7 +55,10 @@ async function userInfo(f: typeof fetch, accessToken: string): Promise<PayPalUse
     emails?: Array<{ value?: string; primary?: boolean }>;
   };
   const userId = j.user_id ?? j.sub;
-  if (!r.ok || !userId) throw new Error(`PayPal userinfo failed: ${r.status}`);
+  if (!r.ok || !userId) {
+    const e = j as { name?: string; message?: string; error?: string; error_description?: string; debug_id?: string };
+    throw new Error(`PayPal userinfo failed: ${r.status} ${e.name ?? e.error ?? ""} ${e.message ?? e.error_description ?? ""} debug_id=${e.debug_id ?? "none"}`);
+  }
   const email = j.emails?.find((e) => e.primary)?.value ?? j.emails?.[0]?.value ?? j.email;
   return { userId, email, name: j.name };
 }

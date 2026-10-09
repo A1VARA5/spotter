@@ -68,6 +68,21 @@ describe("log in with PayPal", () => {
     expect(r2.headers.get("location")).toMatch(/\/setup$/); // still no PIN
   });
 
+  it("reads the profile from PayPal's OpenID Connect userinfo endpoint", async () => {
+    await h.callback(callback("code=C&state=S1", "S1"));
+    const urls = fetchFn.mock.calls.map((c) => String(c[0]));
+    expect(urls[1]).toBe("https://api-m.sandbox.paypal.com/v1/identity/openidconnect/userinfo?schema=openid");
+  });
+
+  it("understands the OpenID shape (sub and a plain email)", async () => {
+    fetchFn.mockImplementation(async (url: string) =>
+      String(url).includes("/oauth2/token") ? ok({ access_token: "AT" }) : ok({ sub: "user-xyz", name: "Sam Lee", email: "sam@example.com" }),
+    );
+    await h.callback(callback("code=C&state=S1", "S1"));
+    const rows = await db.query<{ email: string; paypal_user_id: string }>("select email, paypal_user_id from households");
+    expect(rows[0]).toMatchObject({ email: "sam@example.com", paypal_user_id: "user-xyz" });
+  });
+
   it("a PayPal error sends them back to the front door, nothing created", async () => {
     fetchFn.mockImplementationOnce(async () => new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }));
     const r = await h.callback(callback("code=C&state=S1", "S1"));

@@ -1105,3 +1105,7 @@ p {
 .copy-block { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; background: var(--chalk); border-radius: 12px; padding: 10px; min-width: 0; }
 .copy-text { margin: 0; font-size: 14px; white-space: pre-wrap; word-break: break-all; min-width: 0; padding: 6px; }
 .copy-btn { min-height: 40px; }
+
+.legal ul { display: grid; gap: 10px; padding-left: 20px; max-width: 70ch; }
+.legal p { max-width: 70ch; }
+.legal { padding-bottom: 64px; }
