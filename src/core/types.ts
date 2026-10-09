@@ -1,0 +1,37 @@
+// Shared domain types. Money is always integer minor units (pence / cents).
+
+export type Currency = "GBP" | "USD";
+export type Money = { amount: number; currency: Currency };
+
+export type PaymentMethod =
+  | "paypal_order"
+  | "friends_and_family"
+  | "gift_card"
+  | "crypto"
+  | "bank_transfer"
+  | "other";
+
+export type PaymentRequest = {
+  id: string;
+  spenderId: string;
+  money: Money;
+  payee: { name: string; id?: string; isNew: boolean };
+  category: string;
+  method: PaymentMethod;
+  /** What the spender saw: the agent's cart and page, or the message Gran got. Untrusted. */
+  context: string;
+  createdAt: string;
+};
+
+export type Allowance = {
+  weekly: Money;
+  spentThisWeek: Money;
+  askAbove: Money;
+  blockedCategories: string[];
+  allowedPayees: string[];
+  blockedPayees: string[];
+};
+
+export type RuleOutcome = "ask" | "block" | "protect";
+export type RuleHit = { rule: string; outcome: RuleOutcome; reason: string };
+export type RulesResult = { valid: boolean; hits: RuleHit[] };
