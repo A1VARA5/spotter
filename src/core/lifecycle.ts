@@ -129,6 +129,15 @@ async function spentThisWeek(db: Db, spenderId: string, currency: string, before
   return Number(rows[0]?.total ?? 0);
 }
 
+/** Everything paid, held or being checked for a spender over the last 7 days. */
+export async function weekSpend(db: Db, spenderId: string, currency: string): Promise<number> {
+  const rows = await db.query<{ total: string | null }>(
+    "select sum(amount)::text as total from payments where spender_id = $1 and currency = $2 and status = any($3) and created_at > now() - interval '7 days'",
+    [spenderId, currency, [...HOLDING, "checking"]],
+  );
+  return Number(rows[0]?.total ?? 0);
+}
+
 /** A payee is new unless this spender has paid or is paying them already. Never trusted from the caller. */
 async function isNewPayee(db: Db, spenderId: string, payee: string, beforeId: string): Promise<boolean> {
   const rows = await db.query<{ request: PaymentRequest }>(
