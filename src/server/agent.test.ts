@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb } from "@/db";
 import { createSpender, type Deps } from "@/core/lifecycle";
-import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "./agent";
+import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment } from "./agent";
 import type { AiCheckResult } from "@/ai/check";
 
 let deps: Deps;
@@ -32,8 +32,8 @@ beforeEach(async () => {
   };
 });
 
-const ask = (over: Partial<Parameters<typeof agentRequestPayment>[1]> = {}) =>
-  agentRequestPayment(deps, {
+const ask = (over: Partial<Parameters<typeof agentRequestPayment>[2]> = {}) =>
+  agentRequestPayment(deps, "agent", {
     amount_pence: 2499,
     currency: "GBP",
     payee: "Clay & Kiln",
@@ -73,13 +73,13 @@ describe("agent tools", () => {
 
   it("reports status of a payment, and refuses ids it doesn't own", async () => {
     const r = await ask({ amount_pence: 11900, payee: "SoundDepot UK" });
-    expect((await agentPaymentStatus(deps, r.payment_id!)).status).toBe("waiting_for_human");
-    expect((await agentPaymentStatus(deps, "pay_nope")).status).toBe("unknown");
+    expect((await agentPaymentStatus(deps, "agent", r.payment_id!)).status).toBe("waiting_for_human");
+    expect((await agentPaymentStatus(deps, "agent", "pay_nope")).status).toBe("unknown");
   });
 
   it("shows the allowance left this week", async () => {
     await ask();
-    const a = await agentAllowance(deps);
+    const a = await agentAllowance(deps, "agent");
     expect(a.message).toMatch(/£125.01 left of £150.00 this week/);
     expect(a.message).toMatch(/over £30.00/);
   });
@@ -96,12 +96,8 @@ describe("agent tools", () => {
     expect(r.message).toMatch(/unavailable/);
   });
 
-  it("only accepts the configured agent token", () => {
-    process.env.SPOTTER_AGENT_TOKEN = "agent-token-123456";
-    expect(verifyAgentToken("agent-token-123456")).toBeTruthy();
-    expect(verifyAgentToken("wrong")).toBeUndefined();
-    expect(verifyAgentToken(undefined)).toBeUndefined();
-    delete process.env.SPOTTER_AGENT_TOKEN;
-    expect(verifyAgentToken("anything")).toBeUndefined();
+  it("an agent can't see another agent's payments", async () => {
+    const r = await ask({ amount_pence: 11900, payee: "SoundDepot UK" });
+    expect((await agentPaymentStatus(deps, "someone_else", r.payment_id!)).status).toBe("unknown");
   });
 });

@@ -4,6 +4,7 @@ import type { Db } from "@/db";
 import { getHousehold, newId } from "@/core/households";
 import { createSpender, getSpender } from "@/core/lifecycle";
 import { PRESETS } from "@/core/presets";
+import { createPairingCode, issueAgentToken } from "@/core/pairing";
 import { householdFrom, isUnlocked, InvalidPinError, setPin, unlockCookie } from "./auth";
 
 const json = (body: unknown, status = 200, headers?: HeadersInit) => Response.json(body, { status, headers });
@@ -90,6 +91,28 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
       if (s instanceof Response) return s;
       const rows = await s.db.query("delete from spenders where id = $1 and household_id = $2 returning id", [id, s.hh.id]);
       return rows.length ? json({ ok: true }) : json({ error: "No such person." }, 404);
+    },
+
+    async agentToken(request: Request, spenderId: string) {
+      const s = await session(request, "always");
+      if (s instanceof Response) return s;
+      const spender = await getSpender(s.db, spenderId);
+      if (!spender || spender.household_id !== s.hh.id) return json({ error: "No such person." }, 404);
+      if (spender.kind !== "agent") return json({ error: "Only AI agents get a token." }, 400);
+      return json({ token: await issueAgentToken(s.db, spenderId) }, 201);
+    },
+
+    /** spenderId null makes a code that pairs the spotter themselves (for alerts). */
+    async pairingCode(request: Request, spenderId: string | null) {
+      const s = await session(request, "always");
+      if (s instanceof Response) return s;
+      const b = await body(request, z.object({ channel: z.enum(["email", "telegram"], { message: "Pick email or Telegram." }) }));
+      if (b instanceof Response) return b;
+      if (spenderId) {
+        const spender = await getSpender(s.db, spenderId);
+        if (!spender || spender.household_id !== s.hh.id) return json({ error: "No such person." }, 404);
+      }
+      return json({ code: await createPairingCode(s.db, { householdId: s.hh.id, spenderId, channel: b.channel }) }, 201);
     },
   };
 }

@@ -1,14 +1,22 @@
 // Spotter's MCP server: AI agents pay through Spotter instead of calling PayPal directly.
-// Bearer token required (SPOTTER_AGENT_TOKEN). Agents can ask and check; only the human spotter approves.
+// Each agent has its own bearer token (issued on its page in Spotter). Agents can ask and check; only the human spotter approves.
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import { getDeps } from "@/server/deps";
-import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "@/server/agent";
+import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment } from "@/server/agent";
+import { verifyAgentToken } from "@/core/pairing";
 import { searchProducts } from "@/market/channel3";
 
 export const maxDuration = 60;
 
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
+
+/** The agent this call is for, from the verified token. withMcpAuth guarantees it is present. */
+function agentOf(ctx: { http?: { authInfo?: { extra?: Record<string, unknown> } } }): string {
+  const id = ctx.http?.authInfo?.extra?.spenderId;
+  if (typeof id !== "string") throw new Error("Missing agent identity.");
+  return id;
+}
 
 const handler = createMcpHandler(
   (server) => {
@@ -30,8 +38,8 @@ const handler = createMcpHandler(
           page_text: z.string().max(50_000).describe("The full text of the page or message you are paying from, verbatim"),
         }),
       },
-      async (input) => {
-        const r = await agentRequestPayment(await getDeps(), input);
+      async (input, ctx) => {
+        const r = await agentRequestPayment(await getDeps(), agentOf(ctx), input);
         return text(`${r.message}${r.payment_id ? ` (payment_id: ${r.payment_id})` : ""}`);
       },
     );
@@ -59,7 +67,7 @@ const handler = createMcpHandler(
         description: "Check whether a payment you requested was paid, is still waiting for the user's spotter, or was refused.",
         inputSchema: z.object({ payment_id: z.string().min(1).max(64) }),
       },
-      async ({ payment_id }) => text((await agentPaymentStatus(await getDeps(), payment_id)).message),
+      async ({ payment_id }, ctx) => text((await agentPaymentStatus(await getDeps(), agentOf(ctx), payment_id)).message),
     );
 
     server.registerTool(
@@ -69,12 +77,19 @@ const handler = createMcpHandler(
         description: "See how much you can still spend this week, what needs the spotter's approval and what is never allowed.",
         inputSchema: z.object({}),
       },
-      async () => text((await agentAllowance(await getDeps())).message),
+      async (_args, ctx) => text((await agentAllowance(await getDeps(), agentOf(ctx))).message),
     );
   },
   { serverInfo: { name: "spotter", version: "0.1.0" } },
 );
 
-const authed = withMcpAuth(handler, (_req, bearer) => verifyAgentToken(bearer), { required: true });
+const authed = withMcpAuth(
+  handler,
+  async (_req, bearer) => {
+    const agent = await verifyAgentToken((await getDeps()).db, bearer);
+    return agent ? { token: bearer!, clientId: "spotter-agent", scopes: ["payments:request"], extra: { spenderId: agent.spenderId } } : undefined;
+  },
+  { required: true },
+);
 
 export { authed as GET, authed as POST, authed as DELETE };

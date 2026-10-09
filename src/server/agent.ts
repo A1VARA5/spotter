@@ -1,10 +1,8 @@
-// The agent face: what an AI agent can do through Spotter's MCP tools. It can ask to pay and check
-// on a payment. It can never approve, deny or change its own allowance; only the human spotter can.
-import { timingSafeEqual } from "node:crypto";
+// The agent face: what an AI agent can do through Spotter's MCP tools. Each agent is a spender with its own
+// token (see core/pairing). It can ask to pay and check on its own payments. It can never approve, deny or
+// change its allowance; only the human spotter can.
 import { getPayment, getSpender, submitPayment, weekSpend, type Deps, type Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
-
-export const AGENT_ID = "agent";
 
 export type AgentPaymentInput = {
   item?: string;
@@ -46,11 +44,11 @@ function reply(p: Payment, spotter: string): AgentReply {
   }
 }
 
-export async function agentRequestPayment(deps: Deps, input: AgentPaymentInput): Promise<AgentReply> {
-  const spender = await getSpender(deps.db, AGENT_ID);
-  if (!spender) return { status: "unknown", message: "Spotter has no agent set up." };
+export async function agentRequestPayment(deps: Deps, agentId: string, input: AgentPaymentInput): Promise<AgentReply> {
+  const spender = await getSpender(deps.db, agentId);
+  if (!spender) return { status: "unknown", message: "This agent isn't set up in Spotter any more. Ask the user to reconnect it." };
   const payment = await submitPayment(deps, {
-    spenderId: AGENT_ID,
+    spenderId: agentId,
     money: { amount: input.amount_pence, currency: input.currency },
     payee: { name: input.payee, isNew: true },
     category: input.category,
@@ -62,17 +60,17 @@ export async function agentRequestPayment(deps: Deps, input: AgentPaymentInput):
   return reply(payment, spender.spotter_name);
 }
 
-export async function agentPaymentStatus(deps: Deps, paymentId: string): Promise<AgentReply> {
+export async function agentPaymentStatus(deps: Deps, agentId: string, paymentId: string): Promise<AgentReply> {
   const p = await getPayment(deps.db, paymentId);
-  if (!p || p.spender_id !== AGENT_ID) return { status: "unknown", message: "No payment with that id for this agent." };
-  const spender = await getSpender(deps.db, AGENT_ID);
+  if (!p || p.spender_id !== agentId) return { status: "unknown", message: "No payment with that id for this agent." };
+  const spender = await getSpender(deps.db, agentId);
   return reply(p, spender?.spotter_name ?? "Your spotter");
 }
 
-export async function agentAllowance(deps: Deps): Promise<{ message: string }> {
-  const s = await getSpender(deps.db, AGENT_ID);
-  if (!s) return { message: "Spotter has no agent set up." };
-  const used = await weekSpend(deps.db, AGENT_ID, s.allowance.weekly.currency);
+export async function agentAllowance(deps: Deps, agentId: string): Promise<{ message: string }> {
+  const s = await getSpender(deps.db, agentId);
+  if (!s) return { message: "This agent isn't set up in Spotter any more." };
+  const used = await weekSpend(deps.db, agentId, s.allowance.weekly.currency);
   const left = { amount: Math.max(0, s.allowance.weekly.amount - used), currency: s.allowance.weekly.currency };
   return {
     message:
@@ -99,12 +97,4 @@ export async function agentFindProducts(
     return `${i + 1}. ${p.title}${p.brand ? ` by ${p.brand}` : ""}: ${offers || "no offers in stock"}`;
   });
   return { message: `${lines.join("\n")}\n\nWhen you pay, pass the product name as item so Spotter can check the price.` };
-}
-
-/** Bearer token check for the MCP endpoint. Without SPOTTER_AGENT_TOKEN set, nobody gets in. */
-export function verifyAgentToken(bearer: string | undefined) {
-  const expected = process.env.SPOTTER_AGENT_TOKEN;
-  if (!expected || !bearer || bearer.length !== expected.length) return undefined;
-  if (!timingSafeEqual(Buffer.from(bearer), Buffer.from(expected))) return undefined;
-  return { token: bearer, clientId: AGENT_ID, scopes: ["payments:request"] };
 }

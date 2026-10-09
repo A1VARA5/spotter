@@ -83,4 +83,27 @@ create table if not exists events (
   at timestamptz not null default now()
 );
 create index if not exists events_payment_idx on events (payment_id, at);
+
+create table if not exists pairing_codes (
+  code text primary key,
+  household_id text not null references households(id) on delete cascade,
+  spender_id text references spenders(id) on delete cascade,
+  channel text not null check (channel in ('email', 'telegram')),
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
+
+create table if not exists pairing_failures (
+  identity text not null,
+  at timestamptz not null default now()
+);
+create index if not exists pairing_failures_identity_idx on pairing_failures (identity, at);
+
+create table if not exists agent_tokens (
+  hash text primary key,
+  spender_id text not null references spenders(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+create index if not exists agent_tokens_spender_idx on agent_tokens (spender_id);
 `;

@@ -84,3 +84,36 @@ describe("people", () => {
     expect((await h.addSpender(req({ name: "  ", preset: "kid" }, { unlocked: true }))).status).toBe(400);
   });
 });
+
+describe("connecting people", () => {
+  async function addPerson(preset: string, name: string) {
+    return (await (await h.addSpender(req({ name, preset }, { unlocked: true }))).json()).spender.id as string;
+  }
+
+  it("issues an agent token only to an unlocked spotter of the same household", async () => {
+    const agent = await addPerson("agent", "Bot");
+    expect((await h.agentToken(req({}), agent)).status).toBe(401);
+    const r = await h.agentToken(req({}, { unlocked: true }), agent);
+    expect(r.status).toBe(201);
+    expect((await r.json()).token).toMatch(/^spt_/);
+    const otherHh = (await createHousehold(db, { name: "o", spotterName: "o" })).id;
+    const saved = hh;
+    hh = otherHh;
+    expect((await h.agentToken(req({}, { unlocked: true }), agent)).status).toBe(404);
+    hh = saved;
+  });
+
+  it("refuses an agent token for a person who isn't an agent", async () => {
+    const gran = await addPerson("relative", "Gran");
+    expect((await h.agentToken(req({}, { unlocked: true }), gran)).status).toBe(400);
+  });
+
+  it("makes an email pairing code for a person, or for the spotter", async () => {
+    const gran = await addPerson("relative", "Gran");
+    const r = await h.pairingCode(req({ channel: "email" }, { unlocked: true }), gran);
+    expect((await r.json()).code).toMatch(/^SPOT-/);
+    const me = await h.pairingCode(req({ channel: "email" }, { unlocked: true }), null);
+    expect((await me.json()).code).toMatch(/^SPOT-/);
+    expect((await h.pairingCode(req({ channel: "fax" }, { unlocked: true }), gran)).status).toBe(400);
+  });
+});

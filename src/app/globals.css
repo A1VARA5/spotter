@@ -1084,3 +1084,24 @@ p {
   background: rgb(23 33 43 / 0.06);
   color: var(--ink);
 }
+
+/* ---------- person page and connections ---------- */
+.person-crumb { color: var(--ink-2); font-size: 15px; margin: 8px 0 6px; }
+.allowance { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0 0; }
+.allowance div { background: var(--paper); border-radius: 14px; padding: 14px 16px; box-shadow: var(--raise); }
+.allowance dt { color: var(--ink-2); font-size: 14px; }
+.allowance dd { margin: 2px 0 0; font-size: 22px; font-weight: 700; }
+.allowance dd span { color: var(--ink-2); font-size: 15px; font-weight: 500; }
+.connect-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.connect-card { background: var(--paper); border-radius: var(--r-card); padding: 20px; box-shadow: var(--raise); display: grid; gap: 14px; align-content: start; min-width: 0; }
+.connect-head { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.connect-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--chalk); }
+.connect-title { font-size: 18px; font-weight: 700; }
+.connect-sub { color: var(--ink-2); font-size: 15px; }
+.connect-status { grid-column: 2; justify-self: start; font-size: 14px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--chalk); color: var(--ink-2); }
+.connect-status[data-on="true"] { background: var(--go-soft); color: var(--go); }
+.connect-warn { background: var(--hold-soft); border-radius: 12px; padding: 10px 12px; font-size: 15px; }
+.connect-steps { display: grid; gap: 10px; }
+.copy-block { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; background: var(--chalk); border-radius: 12px; padding: 10px; min-width: 0; }
+.copy-text { margin: 0; font-size: 14px; white-space: pre-wrap; word-break: break-all; min-width: 0; padding: 6px; }
+.copy-btn { min-height: 40px; }
