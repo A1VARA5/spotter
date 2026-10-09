@@ -1,0 +1,8 @@
+.env*
+!.env.example
+.secrets
+.data
+.next
+node_modules
+*.tsbuildinfo
+scripts/_*
