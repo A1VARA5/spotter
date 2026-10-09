@@ -103,6 +103,7 @@ function EmailOnPhone() {
   );
 }
 
+// A real run (2026-10-10): Claude with Spotter's live MCP server, via the API's MCP connector.
 function AgentChat() {
   return (
     <div className="claude-win">
@@ -112,21 +113,20 @@ function AgentChat() {
           <i />
           <i />
         </span>
-        <span>Claude</span>
+        <span>Claude, connected to Spotter</span>
       </div>
       <div className="claude-body">
-        <p className="claude-user">Buy me the Sony WF-1000XM5 earbuds, the best price you can find.</p>
+        <p className="claude-user">Buy me the Sony WF-1000XM5 earbuds at the best price you can find. Pay through Spotter.</p>
         <div className="claude-tool">
-          <p className="claude-tool-name">spotter · request_payment</p>
-          <p>Sony WF-1000XM5, £249.00 to SoundDepot UK</p>
+          <p className="claude-tool-name">spotter · find_products</p>
+          <p>£179.00 at currys.ie, £179.99 at johnlewis.com</p>
         </div>
+        <p className="claude-ans">Currys.ie is £1 cheaper, but it&apos;s the Irish site and probably won&apos;t deliver to the UK, so I&apos;m going with John Lewis at £179.99.</p>
         <div className="claude-tool claude-tool-result">
-          <p className="claude-tool-name">Spotter replied</p>
-          <p>Held, not paid yet: Sam has to approve £249.00 to SoundDepot UK. Reasons: over the £30 ask me first limit. That&apos;s well over the going rate: currys.ie sells it for £179.</p>
+          <p className="claude-tool-name">spotter · request_payment</p>
+          <p>Held, not paid yet: Sam has to approve £179.99 to John Lewis. The money is reserved meanwhile. Reasons: Over the £30.00 &quot;ask me first&quot; limit. First time paying John Lewis.</p>
         </div>
-        <p className="claude-ans">
-          I&apos;ve asked to pay, but Spotter is holding it for Sam. It also found the same earbuds for £179 at Currys. Want me to cancel this one and buy from Currys instead?
-        </p>
+        <p className="claude-ans">I&apos;ve asked to buy them from John Lewis for £179.99, but it isn&apos;t paid yet. Sam needs to approve it first.</p>
       </div>
     </div>
   );

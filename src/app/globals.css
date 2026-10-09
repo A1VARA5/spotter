@@ -6225,3 +6225,5 @@ h3 {
     font-size: 16px;
   }
 }
+
+.term-hold { color: var(--hold); }

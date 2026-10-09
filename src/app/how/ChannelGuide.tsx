@@ -158,10 +158,11 @@ function AgentShot() {
       <p>
         <b>$</b> claude
       </p>
-      <p className="term-me">&gt; buy me wireless earbuds under £30, the best ones</p>
-      <p className="term-tool">● spotter · find_products(&quot;wireless earbuds&quot;)</p>
-      <p className="term-tool">● spotter · request_payment(£24.99, Currys)</p>
-      <p className="term-ok">Paid £24.99 to Currys.</p>
+      <p className="term-me">&gt; buy me the Sony WF-1000XM5 earbuds at the best price you can find</p>
+      <p className="term-tool">● spotter · find_products(&quot;Sony WF-1000XM5&quot;)</p>
+      <p>£179.00 at currys.ie (Irish site), £179.99 at johnlewis.com</p>
+      <p className="term-tool">● spotter · request_payment(£179.99, John Lewis)</p>
+      <p className="term-hold">Held, not paid yet: Sam has to approve £179.99 to John Lewis.</p>
     </div>
   );
 }
