@@ -146,7 +146,7 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
           pagination
           paginationPageSize={20}
           paginationPageSizeSelector={[20, 50, 100]}
-          overlayNoRowsTemplate="<span>No payments here yet. Run a scenario from Try it.</span>"
+          overlayNoRowsTemplate='<span>No payments here yet. <a href="/demo">Try one with fake money</a>.</span>'
         />
       </div>
     </section>

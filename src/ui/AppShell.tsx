@@ -6,6 +6,7 @@ import type { Db } from "@/db";
 import type { Household } from "@/core/households";
 import { listSpenders } from "@/core/households";
 import { BrandMark } from "./components";
+import { SignOut } from "./SignOut";
 
 export type Section = "waiting" | "activity" | "try" | "account" | `person:${string}`;
 
@@ -64,9 +65,9 @@ export async function AppShell({ db, household, current, wide = false, children 
         <Link href="/how" className="side-help">
           How Spotter works
         </Link>
-        <form className="side-foot" action="/api/auth/logout" method="post">
-          <button className="side-signout">Sign out</button>
-        </form>
+        <div className="side-foot">
+          <SignOut demo={household.demo} className="side-signout" />
+        </div>
       </aside>
       <main className="app-main" data-wide={wide || undefined}>
         {children}

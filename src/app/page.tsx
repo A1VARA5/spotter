@@ -7,6 +7,7 @@ import { Inspector } from "./landing/Inspector";
 import { LitText } from "./landing/LitText";
 import { Final, Hub } from "./landing/Sections";
 import { FAQ } from "./how/faq";
+import { LoopPauser } from "@/ui/LoopPauser";
 
 function StartButtons({ onDark = false }: { onDark?: boolean }) {
   return (
@@ -25,7 +26,8 @@ function StartButtons({ onDark = false }: { onDark?: boolean }) {
 export default function Home() {
   return (
     <main>
-      <section className="hero-dark">
+      <LoopPauser />
+      <section className="hero-dark" data-loop>
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">

@@ -6124,3 +6124,104 @@ p {
 .side-help + .side-foot {
   margin-top: 0;
 }
+
+/* Body text wraps pretty; only headings balance. */
+p {
+  text-wrap: pretty;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+/* Money in tables lines up */
+.ledger-amount,
+.feed-amount,
+.mini-feed b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Loops pause while their section is off screen or the tab is hidden */
+[data-loop][data-inview="false"] *,
+[data-loop][data-inview="false"] *::before,
+[data-loop][data-inview="false"] *::after {
+  animation-play-state: paused !important;
+}
+
+.empty-cta {
+  display: inline-flex;
+  margin-top: 12px;
+  justify-self: start;
+}
+
+/* Confirm dialog */
+.confirm {
+  border: 0;
+  padding: 0;
+  border-radius: 18px;
+  width: min(420px, calc(100vw - 32px));
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.5);
+}
+
+.confirm::backdrop {
+  background: rgb(13 20 28 / 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.confirm-box {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+}
+
+.confirm-title {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.confirm-body {
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .confirm[open] {
+    animation: page-in 200ms var(--ease-out) both;
+  }
+}
+
+.empty { display: grid; gap: 4px; }
+
+@media (max-width: 999px) {
+  .insp-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 4px var(--gutter) 8px;
+    scrollbar-width: none;
+  }
+
+  .insp-tab {
+    flex: none;
+    width: 78%;
+    scroll-snap-align: start;
+    background: var(--paper);
+    border-color: var(--line);
+  }
+
+  .insp-tab-text b {
+    font-size: 16px;
+  }
+}

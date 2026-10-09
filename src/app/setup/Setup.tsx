@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bot, HeartHandshake, Smile, X } from "lucide-react";
 import { money } from "@/ui/format";
 import { readJson } from "@/ui/http";
+import { Confirm } from "@/ui/Confirm";
 
 export type SetupStep = "name" | "pin" | "people" | "connect";
 type Person = { id: string; name: string; kind: string };
@@ -210,14 +211,21 @@ function PeopleStep({ heading, people, presets }: H & { people: Person[]; preset
             <li key={p.id} className="person-row">
               <span className="person-name">{p.name}</span>
               <span className="person-kind">{KIND_LABEL[p.kind] ?? p.kind}</span>
-              <button
-                className="icon-btn"
-                aria-label={`Remove ${p.name}`}
+              <Confirm
+                trigger={<X size={18} strokeWidth={1.75} aria-hidden="true" />}
+                triggerClass="icon-btn"
+                triggerLabel={`Remove ${p.name}`}
                 disabled={remove.busy}
-                onClick={() => remove.run(() => fetch(`/api/spenders/${p.id}`, { method: "DELETE" }).then((r) => { if (!r.ok) throw new Error("Couldn't remove them. Try again."); }))}
-              >
-                <X size={18} strokeWidth={1.75} />
-              </button>
+                title={`Remove ${p.name}?`}
+                body={`${p.name} and their payment history will be deleted. Anything they forward afterwards won't be checked.`}
+                confirmLabel={`Remove ${p.name}`}
+                onConfirm={() =>
+                  remove.run(async () => {
+                    const r = await fetch(`/api/spenders/${p.id}`, { method: "DELETE" });
+                    if (!r.ok) throw new Error((await readJson(r)).error ?? "Couldn't remove them. Try again.");
+                  })
+                }
+              />
             </li>
           ))}
         </ul>

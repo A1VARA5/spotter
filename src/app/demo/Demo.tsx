@@ -6,6 +6,7 @@ import { STATE_LABEL, trackState } from "@/ui/format";
 import { SCENARIOS, type Scenario } from "@/ui/scenarios";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
+import { Confirm } from "@/ui/Confirm";
 
 export type SpenderLite = { id: string; name: string; kind: string };
 
@@ -36,9 +37,14 @@ export function Demo({ spenders }: { spenders: SpenderLite[] }) {
   return (
     <>
       <div className="demo-bar">
-        <button className="btn btn-quiet" onClick={reset} disabled={resetting}>
-          {resetting ? "Clearing" : "Start fresh"}
-        </button>
+        <Confirm
+          trigger={resetting ? "Clearing" : "Start fresh"}
+          disabled={resetting}
+          title="Start fresh?"
+          body="This clears every payment in this family, so allowances are full again. Holds already at PayPal simply expire. It can't be undone."
+          confirmLabel="Clear payments"
+          onConfirm={reset}
+        />
         {note && (
           <span className="feed-meta" aria-live="polite">
             {note}

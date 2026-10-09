@@ -69,7 +69,9 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       />
       <h2 className="section-title">Recent payments</h2>
       {recent.length === 0 ? (
-        <p className="lede">Nothing yet. Their payments show up here as soon as they ask to pay.</p>
+        <p className="lede">
+          Nothing yet. Their payments show up here as soon as they ask to pay. <a href="/demo">Try one with fake money</a>.
+        </p>
       ) : (
         <ul className="people-list">
           {recent.map((p) => (

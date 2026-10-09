@@ -3,7 +3,7 @@ import { BrandMark } from "@/ui/components";
 
 export function Hub() {
   return (
-    <section className="hub-sec" aria-labelledby="hub-title">
+    <section data-loop className="hub-sec" aria-labelledby="hub-title">
       <div className="shell">
         <h2 id="hub-title" className="sec-title reveal">
           Nobody installs anything new
@@ -78,7 +78,7 @@ export function Hub() {
 
 export function Final({ children }: { children: React.ReactNode }) {
   return (
-    <section className="final">
+    <section data-loop className="final">
       <div className="shell final-inner reveal">
         <div className="final-track" aria-hidden="true">
           <span className="final-rail" />

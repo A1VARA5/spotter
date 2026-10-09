@@ -44,7 +44,7 @@ export function ScrollStory() {
   const screen = step === 0 ? "sms" : step === 1 ? "wa" : "tg";
 
   return (
-    <section className="story" aria-labelledby="story-title">
+    <section className="story" data-loop aria-labelledby="story-title">
       <div className="shell story-grid">
         <div className="story-steps">
           <h2 id="story-title" className="sec-title story-title">

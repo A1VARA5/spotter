@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { readJson } from "@/ui/http";
+import { SignOut } from "@/ui/SignOut";
 
 async function post(url: string, body: unknown) {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -163,13 +164,15 @@ export function Account({ spotterName, alertEmail, inbox, demo }: { spotterName:
         </form>
       )}
 
-      <form className="account-card" action="/api/auth/logout" method="post">
-        <h2 className="account-title">Sign out</h2>
+      <section className="account-card" aria-labelledby="a-out">
+        <h2 id="a-out" className="account-title">
+          Sign out
+        </h2>
         <p className="account-sub">{demo ? "You'll lose this demo family. You can start a new one any time." : "Sign back in with PayPal any time."}</p>
         <div>
-          <button className="btn btn-deny">Sign out</button>
+          <SignOut demo={demo} className="btn btn-deny" />
         </div>
-      </form>
+      </section>
     </div>
   );
 }

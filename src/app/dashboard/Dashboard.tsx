@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Hand, ShieldCheck, Ban, Info } from "lucide-react";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
@@ -54,6 +55,9 @@ export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; na
             <div className="empty">
               <strong>All clear.</strong>
               When someone in your house, or your AI agent, tries a payment that needs a second look, it shows up here.
+              <Link className="btn btn-quiet empty-cta" href="/demo">
+                Try a payment
+              </Link>
             </div>
           )}
           {waiting.map((p) => (
@@ -72,7 +76,9 @@ export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; na
           Everything today
         </h2>
         {rest.length === 0 ? (
-          <p className="feed-meta">No payments yet. Run a scenario from Try it.</p>
+          <p className="feed-meta">
+            No payments yet. <Link href="/demo">Try one with fake money</Link>.
+          </p>
         ) : (
           <ul className="feed">
             {rest.map((p) => (
