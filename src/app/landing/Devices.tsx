@@ -79,93 +79,11 @@ function PersonGlyph() {
   );
 }
 
-/** iMessage: a text from an unknown number. */
-export function IMessage({ text }: { text: string }) {
+/** Gran's phone in the hero: she forwarded the ask to Spotter on Telegram, and the money is on hold. */
+export function GranPhone({ scale }: { scale?: number; text?: string }) {
   return (
-    <>
-      <div className="imsg-nav">
-        <span className="imsg-back">
-          <Chevron />
-        </span>
-        <span className="imsg-contact">
-          <PersonGlyph />
-          <span className="imsg-num">
-            +44 7700 900461 <i>›</i>
-          </span>
-        </span>
-      </div>
-      <div className="imsg-thread">
-        <p className="imsg-meta">
-          Text Message
-          <br />
-          Today 09:38
-        </p>
-        <p className="imsg-typing" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </p>
-        <p className="imsg-bubble">{text}</p>
-      </div>
-    </>
-  );
-}
-
-export type SheetState = "pay" | "checking" | "held" | "released";
-
-/** PayPal's send sheet, as Spotter sees it through: about to pay, being checked, held, or released. */
-export function PayPalSheet({ state = "held" }: { state?: SheetState }) {
-  return (
-    <div className="ios-sheet" data-state={state}>
-      <span className="ios-grabber" aria-hidden="true" />
-      <div className="pp-head">
-        <span className="pp-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="22" height="22">
-            <path d="M7.6 21.4H4.1L6.9 3.1h6.3c3.9 0 6.2 2 5.5 5.6-.7 3.9-3.4 5.8-7.3 5.8H9.1l-1.5 6.9Z" fill="#003087" />
-            <path d="M19.3 8.1c-.8 4-3.6 6.2-7.6 6.2h-1.3l-1.1 7.1H6.6l.3-1.6h1.9l1.1-6.6h1.9c3.6 0 6.2-1.8 6.9-5.5l.6.4Z" fill="#0079c1" />
-          </svg>
-        </span>
-        <span className="pp-to">
-          Send to <b>mate.payments</b>
-        </span>
-      </div>
-      <p className="pp-amount num">£250.00</p>
-      <p className="pp-method">Friends and Family, no purchase protection</p>
-      {state === "pay" && <span className="pp-send">Send £250.00</span>}
-      {state === "checking" && (
-        <div className="pp-held pp-checking">
-          <span className="pp-spin" aria-hidden="true" />
-          <span>
-            <b>Spotter is checking</b> before anything moves.
-          </span>
-        </div>
-      )}
-      {state === "held" && (
-        <div className="pp-held">
-          <BrandMark />
-          <span>
-            <b>Held by Spotter.</b> Sam has been asked to look first.
-          </span>
-        </div>
-      )}
-      {state === "released" && (
-        <div className="pp-held pp-released">
-          <BrandMark />
-          <span>
-            <b>Not sent.</b> Sam said no, so PayPal released the hold. Nothing left your account.
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Gran's phone: a text from a new number, then PayPal's send sheet, held by Spotter. */
-export function GranPhone({ text, scale }: { text: string; scale?: number }) {
-  return (
-    <Iphone scale={scale} className="iphone-gran" label="Gran's phone: a text from a new number asking for £250 by Friends and Family, and the PayPal payment held by Spotter">
-      <IMessage text={text} />
-      <PayPalSheet state="held" />
+    <Iphone scale={scale} className="iphone-gran" label="Gran's phone: she forwarded a scam asking for £250 to Spotter on Telegram, and Spotter put the payment on hold">
+      <TelegramScreen step="held" />
     </Iphone>
   );
 }
@@ -229,7 +147,7 @@ export function SpotterPhone({ scale }: { scale?: number }) {
   return (
     <Iphone dark scale={scale} className="iphone-you" label="Your phone: a Spotter notification saying Gran wants to pay £250, with Approve and Deny">
       <LockScreen>
-        <IosNotification title="Gran wants to pay £250" body="A new number asked her for Friends and Family. The money is on hold until you decide." />
+        <IosNotification title="Gran wants to pay £250" body="To jamie.k1994@gmail.com, a first time payee. It looks like the Hi Mum scam. The money is on hold." />
         <IosActions items={[{ label: "Approve £250" }, { label: "Deny", tone: "danger" }, { label: "Open Spotter" }]} />
       </LockScreen>
     </Iphone>
@@ -248,6 +166,145 @@ export function Browser({ url, children }: { url: string; children: React.ReactN
         <span className="browser-url">{url}</span>
       </div>
       <div className="browser-page">{children}</div>
+    </div>
+  );
+}
+
+export const SCAM = {
+  sms: "Hi mum I'm texting you off a friends phone I've smashed mine. WhatsApp my new number please x",
+  number: "+44 7700 900461",
+  whatsapp: [
+    { me: false, text: "Hi mum its me, new number 🙂", at: "09:31" },
+    { me: true, text: "Hello love, are you ok?", at: "09:33" },
+    { me: false, text: "Not really, phones dead and I cant get into my banking on this one", at: "09:34" },
+    { me: false, text: "I've got a bill that has to be paid today or I get a late fee. Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow", at: "09:34" },
+    { me: false, text: "jamie.k1994@gmail.com", at: "09:35" },
+    { me: false, text: "Please hurry mum x", at: "09:35" },
+  ],
+} as const;
+
+function WaTick() {
+  return (
+    <svg width="16" height="11" viewBox="0 0 16 11" aria-hidden="true">
+      <path d="M1 6l3 3 6-7M6 9l1 1 6-8" fill="none" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Messages: the opening text from a stranger's number. */
+export function SmsScreen() {
+  return (
+    <>
+      <div className="imsg-nav">
+        <span className="imsg-back">
+          <Chevron />
+        </span>
+        <span className="imsg-contact">
+          <PersonGlyph />
+          <span className="imsg-num">
+            {SCAM.number} <i>›</i>
+          </span>
+        </span>
+      </div>
+      <div className="imsg-thread">
+        <p className="imsg-meta">
+          Text Message
+          <br />
+          Today 09:28
+        </p>
+        <p className="imsg-bubble">{SCAM.sms}</p>
+      </div>
+    </>
+  );
+}
+
+/** WhatsApp: the "new number" asks for the money and names who to pay. */
+export function WhatsAppScreen({ upto = SCAM.whatsapp.length }: { upto?: number }) {
+  return (
+    <div className="wa">
+      <div className="wa-bar">
+        <Chevron />
+        <span className="wa-av" aria-hidden="true" />
+        <span className="wa-who">
+          <b>{SCAM.number}</b>
+          <i>online</i>
+        </span>
+      </div>
+      <div className="wa-chat">
+        <p className="wa-day">Today</p>
+        {SCAM.whatsapp.slice(0, upto).map((m, i) => (
+          <p key={i} className={m.me ? "wa-msg wa-me" : "wa-msg"}>
+            <span>{m.text}</span>
+            <i>
+              {m.at}
+              {m.me && <WaTick />}
+            </i>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export type TgStep = "forwarded" | "checking" | "held" | "denied";
+
+/** Telegram: Gran forwards the message to the Spotter bot, and Spotter answers in the same chat. */
+export function TelegramScreen({ step }: { step: TgStep }) {
+  return (
+    <div className="tg">
+      <div className="tg-bar">
+        <Chevron />
+        <span className="tg-av">
+          <BrandMark />
+        </span>
+        <span className="tg-who">
+          <b>Spotter</b>
+          <i>bot</i>
+        </span>
+      </div>
+      <div className="tg-chat">
+        <div className="tg-msg tg-me tg-fwd">
+          <span className="tg-fwd-from">Forwarded from {SCAM.number}</span>
+          <span>{SCAM.whatsapp[3].text}</span>
+          <span className="tg-mail">{SCAM.whatsapp[4].text}</span>
+          <i>09:36 ✓✓</i>
+        </div>
+        <div className="tg-msg tg-me">
+          <span>Is this alright to pay? It's from James</span>
+          <i>09:36 ✓✓</i>
+        </div>
+        {step === "checking" && (
+          <div className="tg-msg tg-bot tg-typing" aria-label="Spotter is checking">
+            <span className="tg-dots">
+              <b />
+              <b />
+              <b />
+            </span>
+          </div>
+        )}
+        {(step === "held" || step === "denied") && (
+          <div className="tg-msg tg-bot">
+            <span>
+              <b>On hold, nothing has left your account.</b> £250 to jamie.k1994@gmail.com is waiting for Sam. This looks like the &ldquo;Hi Mum&rdquo; scam: a new number, can&apos;t use their bank, pay a friend instead.
+            </span>
+            <i>09:36</i>
+          </div>
+        )}
+        {step === "denied" && (
+          <div className="tg-msg tg-bot tg-bot-ok">
+            <span>
+              <b>Sam said no, so nothing was paid.</b> If it might really be James, call him on the number you already have.
+            </span>
+            <i>09:41</i>
+          </div>
+        )}
+        {step === "denied" && (
+          <div className="tg-msg tg-me">
+            <span>Thank you love x</span>
+            <i>09:42 ✓✓</i>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

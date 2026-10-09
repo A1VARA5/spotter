@@ -20,7 +20,6 @@ function StartButtons({ onDark = false }: { onDark?: boolean }) {
   );
 }
 
-const GRAN_TEXT = "Hi Mum it's me, dropped my phone in the bath so this is my new number. Can you send £250 to my mate's PayPal, Friends and Family so there's no fee. Please hurry it's urgent x";
 
 export default function Home() {
   return (
@@ -53,7 +52,7 @@ export default function Home() {
             </div>
 
             <HeroStage label="Gran gets a scam text asking for £250. Spotter holds the payment at PayPal and asks you.">
-              <GranPhone text={GRAN_TEXT} scale={0.68} />
+              <GranPhone scale={0.68} />
 
               <SpotterPhone scale={0.68} />
             </HeroStage>

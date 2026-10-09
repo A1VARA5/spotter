@@ -1,39 +1,30 @@
 "use client";
-// The story of one payment, told on one phone that stays on screen while you scroll. Each step of text that
-// reaches the middle of the screen moves the phone to its next state, so the page reads as one continuous scene.
+// The story of one payment, told on one phone that stays on screen while you scroll. It follows the real "Hi Mum"
+// pattern (a text from a stranger's number, then the ask on WhatsApp, as Which? reports it) and the way Spotter
+// really works: Gran forwards the ask to Spotter, PayPal holds the money, her spotter decides.
 import { useEffect, useRef, useState } from "react";
 import { Check, CircleAlert, Hand } from "lucide-react";
-import { IMessage, Iphone, IosActions, IosNotification, LockScreen, PayPalSheet, type SheetState } from "./Devices";
+import { Iphone, IosActions, IosNotification, LockScreen, SCAM, SmsScreen, TelegramScreen, WhatsAppScreen, type TgStep } from "./Devices";
 import { Evidence, HoldTrack } from "@/ui/components";
 import type { Flag } from "@/core/grounding";
 
 const STEPS = [
-  {
-    title: "Gran gets a text from a new number.",
-    body: "It sounds like her son. It asks for Friends and Family, which has no protection if it goes wrong, and it's in a hurry.",
-  },
-  { title: "She does what anyone kind would do.", body: "She opens PayPal and taps send. Without Spotter, the £250 would be gone in a second." },
-  {
-    title: "Spotter checks before anything moves.",
-    body: "Her rules first, then an AI check that has to quote the exact words that worried it. Code throws out any warning it can't point to.",
-  },
-  { title: "PayPal holds the money.", body: "Spotter asks PayPal to authorise the payment, not take it. The £250 is reserved while someone she trusts looks." },
-  {
-    title: "Your phone lights up.",
-    body: "You see who, how much, and why. Press and hold to approve or deny. Approving needs your PIN, so nobody else can say yes for you.",
-  },
-  { title: "You say no. Nothing is lost.", body: "PayPal releases the hold. Gran is told in plain words, and to call her son on the number she already has." },
+  { title: "A text from a number Gran doesn't know.", body: "\"Hi mum, I'm texting you off a friend's phone, I've smashed mine.\" It's one of the most reported family scams in the UK, and it always moves to WhatsApp." },
+  { title: "On WhatsApp, the ask.", body: "A bill to pay today, can't get into the banking, so send £250 to a mate's PayPal instead. Kind people pay this in minutes." },
+  { title: "Gran forwards it to Spotter.", body: "That's the one habit you set up with her: anything that asks for money goes to Spotter on Telegram first. Or by email, if she prefers." },
+  { title: "Spotter checks, and PayPal holds the money.", body: "Her rules first, then an AI check that must quote the exact words that worried it. PayPal authorises the £250 but doesn't take it." },
+  { title: "Your phone lights up.", body: "Who, how much, to whom, and why it looks wrong. Approving needs your PIN, so nobody else can say yes for you." },
+  { title: "You say no. Gran hears it from Spotter.", body: "PayPal releases the hold. Spotter tells her in the same chat, and to call James on the number she already has." },
 ] as const;
 
-const TEXT =
-  "Hi Mum it's me, dropped my phone in the bath so this is my new number. Can you send £250 to my mate's PayPal, Friends and Family so there's no fee. Please hurry it's urgent x";
+const ASK = SCAM.whatsapp[3].text;
 const FLAGS: Flag[] = [
-  { kind: "impersonation", severity: "high", quote: "this is my new number", why: "" },
-  { kind: "friends_and_family", severity: "high", quote: "Friends and Family so there's no fee", why: "" },
-  { kind: "pressure", severity: "medium", quote: "Please hurry it's urgent", why: "" },
+  { kind: "impersonation", severity: "high", quote: "cant get into my banking", why: "" },
+  { kind: "pressure", severity: "medium", quote: "has to be paid today", why: "" },
+  { kind: "other", severity: "high", quote: "send £250 to my mate Jamie's PayPal", why: "" },
 ];
 
-const SHEET: Record<number, SheetState | null> = { 0: null, 1: "pay", 2: "checking", 3: "held", 4: "held", 5: "released" };
+const TG: Record<number, TgStep> = { 2: "checking", 3: "held", 4: "held", 5: "denied" };
 
 export function ScrollStory() {
   const [step, setStep] = useState(0);
@@ -50,8 +41,7 @@ export function ScrollStory() {
     return () => io.disconnect();
   }, []);
 
-  const sheet = SHEET[step];
-  const yours = step === 4;
+  const screen = step === 0 ? "sms" : step === 1 ? "wa" : "tg";
 
   return (
     <section className="story" aria-labelledby="story-title">
@@ -77,36 +67,42 @@ export function ScrollStory() {
               </div>
             </div>
           ))}
+          <p className="story-source">Message wording follows the &ldquo;Hi Mum&rdquo; texts reported by Which?. Names and numbers are made up.</p>
         </div>
 
         <div className="story-stage" aria-hidden="true">
           <div className="story-sticky">
-            <div className="story-phones" data-yours={yours}>
+            <div className="story-phones" data-yours={step === 4}>
               <Iphone scale={0.74} className="story-phone story-gran">
-                <IMessage text={TEXT} />
-                <div className="story-sheet" data-open={sheet !== null}>
-                  <PayPalSheet state={sheet ?? "pay"} />
+                <div className="screens">
+                  <div className="screen" data-on={screen === "sms"}>
+                    <SmsScreen />
+                  </div>
+                  <div className="screen" data-on={screen === "wa"}>
+                    <WhatsAppScreen />
+                  </div>
+                  <div className="screen" data-on={screen === "tg"}>
+                    <TelegramScreen step={TG[step] ?? "forwarded"} />
+                  </div>
                 </div>
               </Iphone>
               <Iphone dark scale={0.74} className="story-phone story-you">
                 <LockScreen>
-                  <IosNotification
-                    title="Gran wants to pay £250"
-                    body="A new number asked her for Friends and Family. The money is on hold until you decide."
-                  />
+                  <IosNotification title="Gran wants to pay £250" body="To jamie.k1994@gmail.com, a first time payee. It looks like the Hi Mum scam. The money is on hold." />
                   <IosActions items={[{ label: "Approve £250" }, { label: "Deny", tone: "danger" }, { label: "Open Spotter" }]} />
                 </LockScreen>
               </Iphone>
-              <div className="spot-card" data-show={step === 2 || step === 3}>
+
+              <div className="spot-card" data-show={step === 3}>
                 <p className="spot-card-head">Spotter checked</p>
                 <ul className="spot-rows">
-                  <li data-on={step >= 2}>
+                  <li data-on={step >= 3}>
                     <Hand size={16} strokeWidth={2} />
                     <span>
-                      <b>Her rules</b> Over the £50 she asked you to check, and a first time payee.
+                      <b>Her rules</b> Over the £50 she asked you to check. First payment to this address.
                     </span>
                   </li>
-                  <li data-on={step >= 2}>
+                  <li data-on={step >= 3}>
                     <CircleAlert size={16} strokeWidth={2} />
                     <span>
                       <b>The message</b> 3 warning signs, each quoted word for word.
@@ -120,9 +116,9 @@ export function ScrollStory() {
                   </li>
                 </ul>
                 <div className="spot-evidence">
-                  <Evidence text={TEXT} flags={FLAGS} />
+                  <Evidence text={ASK} flags={FLAGS} />
                 </div>
-                <HoldTrack state="held" from="Gran" to="mate.payments" amount={25000} currency="GBP" />
+                <HoldTrack state="held" from="Gran" to="jamie.k1994@" amount={25000} currency="GBP" />
               </div>
             </div>
           </div>

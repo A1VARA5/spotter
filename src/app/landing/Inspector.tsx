@@ -2,7 +2,7 @@
 // Three ordinary moments, shown as one live inspector: pick a moment (or let it play), and Spotter reads the
 // real thing they saw where they saw it, marks the words that worried it, and stamps the outcome.
 import { useEffect, useRef, useState } from "react";
-import { Bot, Gamepad2, Mail } from "lucide-react";
+import { Bot, Gamepad2, Mail, ShoppingBag } from "lucide-react";
 import { findQuotes } from "@/ui/format";
 import { Browser, Iphone } from "./Devices";
 
@@ -39,6 +39,15 @@ const MOMENTS = [
     line: "She forwards it to spotter@homingbox.net and gets a plain answer in the same thread.",
     verdict: { tone: "held", text: "Held, £2.99" },
     reply: { from: "Spotter replied to Gran", text: "Held, not paid. The payment link isn't a Royal Mail address. Sam has been asked to decide." },
+  },
+  {
+    key: "market",
+    icon: ShoppingBag,
+    who: "Gran",
+    title: "Gran finds a cheap iPad on Marketplace.",
+    line: "The seller can't meet, will post it today, and wants PayPal Friends and Family to \"save the fees\".",
+    verdict: { tone: "protect", text: "Not sent, £180" },
+    reply: { from: "Spotter replied to Gran", text: "Not sent. Friends and Family has no buyer protection, so if the iPad never arrives the money is gone. If it's genuine, pay with Goods and Services." },
   },
   {
     key: "agent",
@@ -137,7 +146,41 @@ function LeoArt() {
   );
 }
 
-const ART = { email: EmailArt, agent: AgentArt, leo: LeoArt } as const;
+function MarketArt() {
+  return (
+    <Iphone scale={0.66} className="art-phone">
+      <div className="msgr">
+        <div className="msgr-bar">
+          <span className="msgr-av" aria-hidden="true" />
+          <span>
+            <b>Dan Reeves</b>
+            <i>Marketplace</i>
+          </span>
+        </div>
+        <div className="msgr-item">
+          <span className="msgr-thumb" aria-hidden="true" />
+          <span>
+            <b>iPad 9th gen 64GB, boxed</b>
+            <i>£180 · Leicester</i>
+          </span>
+        </div>
+        <div className="msgr-chat">
+          <p className="msgr-msg msgr-me">Hi, is this still available?</p>
+          <p className="msgr-msg">Hi yes still available 😊</p>
+          <p className="msgr-msg">
+            <Marked text="£180 and I can post it first class today, can't meet this week sorry" quotes={[{ quote: "can't meet this week", sev: "medium" }]} />
+          </p>
+          <p className="msgr-msg">
+            <Marked text="Pay me on PayPal as friends and family so we don't lose the fees" quotes={[{ quote: "friends and family so we don't lose the fees", sev: "high" }]} />
+          </p>
+          <p className="msgr-msg">dan.reeves.88@outlook.com</p>
+        </div>
+      </div>
+    </Iphone>
+  );
+}
+
+const ART = { email: EmailArt, market: MarketArt, agent: AgentArt, leo: LeoArt } as const;
 
 export function Inspector({ initial = 0 }: { initial?: number }) {
   const [i, setI] = useState(initial);

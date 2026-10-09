@@ -97,14 +97,7 @@ function ScenarioCard({ s, spender }: { s: Scenario; spender?: SpenderLite }) {
         <HoldTrack state={state} from={spender?.name ?? s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />
       )}
       {result ? (
-        <p aria-live="polite">
-          <strong>{STATE_LABEL[trackState(result.status)]}.</strong>{" "}
-          {result.status === "needs_approval" ? (
-            <Link href="/dashboard">Open the dashboard to decide</Link>
-          ) : (
-            (result.status === "failed" ? result.error : result.decision?.reasons[0]) ?? "Within the rules and nothing suspicious."
-          )}
-        </p>
+        <Outcome p={result} onAgain={run} running={running} />
       ) : (
         <p className="scenario-body">Expected: {s.expect}</p>
       )}
@@ -115,13 +108,43 @@ function ScenarioCard({ s, spender }: { s: Scenario; spender?: SpenderLite }) {
       )}
       <div>
         {spender ? (
-          <button className="btn btn-quiet" onClick={run} disabled={running}>
-            {running ? "Checking" : result ? "Run again" : "Run this"}
-          </button>
+          !result && (
+            <button className="btn btn-quiet" onClick={run} disabled={running}>
+              {running ? "Checking" : "Send it"}
+            </button>
+          )
         ) : (
           <p className="feed-meta">Add {s.spender === "agent" ? "an AI agent" : s.spender === "kid" ? "a kid" : "a relative"} to try this one.</p>
         )}
       </div>
     </article>
+  );
+}
+
+/** The outcome in one line, and the one sensible next step for it. */
+function Outcome({ p, onAgain, running }: { p: Payment; onAgain: () => void; running: boolean }) {
+  const s = trackState(p.status);
+  const why = (s === "failed" ? p.error : p.decision?.reasons[0]) ?? "Within the rules, and nothing looked wrong.";
+  const tone = s === "held" ? "held" : s === "paid" ? "paid" : "stop";
+  return (
+    <div className="scen-result" data-tone={tone} aria-live="polite">
+      <p>
+        <strong>{s === "held" ? "Waiting for you." : `${STATE_LABEL[s]}.`}</strong> {s === "held" ? "PayPal is holding the money until you approve or deny it." : why}
+      </p>
+      <div className="scen-next">
+        {s === "held" ? (
+          <Link className="btn btn-primary" href="/dashboard">
+            Review it now
+          </Link>
+        ) : (
+          <Link className="btn btn-quiet" href="/ledger">
+            {s === "paid" ? "See it in Activity" : "See the full reasons"}
+          </Link>
+        )}
+        <button className="scen-again" onClick={onAgain} disabled={running}>
+          {running ? "Checking" : "Send it again"}
+        </button>
+      </div>
+    </div>
   );
 }

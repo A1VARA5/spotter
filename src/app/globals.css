@@ -4735,3 +4735,425 @@ p {
     transform: translate(-50%, 16px);
   }
 }
+
+/* The amount pill sits on the rail: solid fill and a ring the colour of what's behind it, so no line shows through. */
+.track-coin {
+  background: color-mix(in srgb, var(--tone) 14%, var(--paper));
+  box-shadow: 0 0 0 4px var(--track-bg, var(--paper));
+}
+
+.app-main .scenario:hover .track {
+  --track-bg: #fafbf8;
+}
+
+.spot-evidence + .track,
+.scene-did .track {
+  --track-bg: var(--paper);
+}
+
+/* Try a payment: what happened, and the one thing to do next */
+.scen-result {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fbfbf8;
+}
+
+.scen-result[data-tone="held"] {
+  background: #fff8db;
+  border-color: #f0d76a;
+}
+
+.scen-result[data-tone="stop"] {
+  background: #fdf1ef;
+  border-color: #f0c2bc;
+}
+
+.scen-result[data-tone="paid"] {
+  background: #eef7f2;
+  border-color: #b9dcc9;
+}
+
+.scen-result p {
+  font-size: 14.5px;
+}
+
+.scen-next {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.scen-again {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---------- message apps inside the phones (iOS point sizes) ---------- */
+.screens {
+  position: relative;
+  flex: 1;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateX(16px);
+  transition: opacity 450ms var(--ease-out), transform 550ms var(--ease-out);
+}
+
+.screen[data-on="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* WhatsApp */
+.wa {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wa-bar,
+.tg-bar {
+  flex: none;
+  display: grid;
+  grid-template-columns: 22px 38px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 16px 10px;
+  background: rgb(247 247 247 / 0.96);
+  border-bottom: 0.5px solid rgb(0 0 0 / 0.15);
+}
+
+.wa-av {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(#c3c8ce, #a3aab3);
+}
+
+.wa-who,
+.tg-who {
+  display: grid;
+  line-height: 1.2;
+}
+
+.wa-who b,
+.tg-who b {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.wa-who i,
+.tg-who i {
+  font-style: normal;
+  font-size: 12.5px;
+  color: #8e8e93;
+}
+
+.wa-chat {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 10px 12px;
+  background-color: #efeae2;
+  background-image: radial-gradient(rgb(0 0 0 / 0.035) 1px, transparent 1.4px);
+  background-size: 14px 14px;
+}
+
+.wa-day {
+  justify-self: center;
+  font-size: 12px;
+  background: #fff;
+  color: #54656f;
+  padding: 3px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  box-shadow: 0 1px 0.5px rgb(0 0 0 / 0.08);
+}
+
+.wa-msg {
+  justify-self: start;
+  max-width: 82%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  align-items: end;
+  background: #fff;
+  padding: 6px 8px 5px 9px;
+  border-radius: 8px;
+  font-size: 15.5px;
+  line-height: 1.3;
+  box-shadow: 0 1px 0.5px rgb(0 0 0 / 0.13);
+}
+
+.wa-msg i {
+  font-style: normal;
+  font-size: 11px;
+  color: #667781;
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.wa-me {
+  justify-self: end;
+  background: #d9fdd3;
+}
+
+/* Telegram */
+.tg {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tg-av .brand-mark {
+  width: 38px;
+  height: 38px;
+  display: block;
+  border-radius: 50%;
+}
+
+.tg-chat {
+  flex: 1;
+  display: grid;
+  align-content: end;
+  gap: 6px;
+  padding: 10px 10px 40px;
+  background:
+    radial-gradient(60% 50% at 20% 20%, #d5e8b8, transparent 70%),
+    radial-gradient(60% 50% at 80% 70%, #b8d8c0, transparent 70%),
+    linear-gradient(#c8dfa8, #a9cfa6);
+}
+
+.tg-msg {
+  display: grid;
+  gap: 3px;
+  max-width: 86%;
+  padding: 7px 10px 5px;
+  border-radius: 15px;
+  font-size: 15px;
+  line-height: 1.32;
+  background: #fff;
+  justify-self: start;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08);
+}
+
+.tg-msg i {
+  justify-self: end;
+  font-style: normal;
+  font-size: 11px;
+  color: #8e9aa3;
+}
+
+.tg-me {
+  justify-self: end;
+  background: #effdde;
+}
+
+.tg-me i {
+  color: #4fae4e;
+}
+
+.tg-fwd {
+  border-left: 0;
+}
+
+.tg-fwd-from {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a8a3a;
+}
+
+.tg-mail {
+  color: #2f7fd1;
+}
+
+.tg-bot b {
+  font-weight: 650;
+}
+
+.tg-bot-ok {
+  background: #fff;
+  box-shadow: inset 3px 0 0 #1f7a55, 0 1px 1px rgb(0 0 0 / 0.08);
+}
+
+.tg-typing {
+  padding: 12px 14px;
+}
+
+.tg-dots {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.tg-dots b {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9aa5ad;
+  animation: dot 600ms ease-in-out infinite;
+}
+
+.tg-dots b:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.tg-dots b:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.story-source {
+  font-size: 13px;
+  color: #7f8c98;
+  margin-top: -18vh;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .iphone-gran .tg-msg {
+    animation: bubble-in 420ms var(--ease-out) both;
+  }
+
+  .iphone-gran .tg-msg:nth-child(1) {
+    animation-delay: 300ms;
+  }
+
+  .iphone-gran .tg-msg:nth-child(2) {
+    animation-delay: 900ms;
+  }
+
+  .iphone-gran .tg-msg:nth-child(3) {
+    animation-delay: 1900ms;
+  }
+
+  .story-gran .tg-msg {
+    animation: bubble-in 420ms var(--ease-out) both;
+  }
+}
+
+/* Screens switch like iOS apps: the new one slides in over the old, which fades out after it's covered. */
+.screen {
+  background: #fff;
+  z-index: 1;
+  opacity: 0;
+  transform: translateX(28%);
+  transition: transform 520ms var(--ease-drawer), opacity 0ms linear 520ms;
+}
+
+.screen[data-on="true"] {
+  z-index: 2;
+  opacity: 1;
+  transform: none;
+  transition: transform 520ms var(--ease-drawer), opacity 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen,
+  .screen[data-on="true"] {
+    transform: none;
+    transition: opacity 200ms ease;
+  }
+}
+
+.story-phones .spot-card { bottom: auto; top: 54px; }
+
+/* Messenger (Marketplace) */
+.msgr {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+}
+
+.msgr-bar {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 16px 10px;
+  border-bottom: 0.5px solid #e4e6eb;
+}
+
+.msgr-bar b,
+.msgr-item b {
+  display: block;
+  font-weight: 600;
+}
+
+.msgr-bar i,
+.msgr-item i {
+  font-style: normal;
+  font-size: 13px;
+  color: #65676b;
+}
+
+.msgr-av {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8d99a6, #5f6b78);
+}
+
+.msgr-item {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 14px 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #f0f2f5;
+  font-size: 14px;
+}
+
+.msgr-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #e7e9ec, #c9ced6 60%, #aeb5bf);
+}
+
+.msgr-chat {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 10px 14px;
+}
+
+.msgr-msg {
+  justify-self: start;
+  max-width: 80%;
+  background: #f0f0f0;
+  padding: 8px 12px;
+  border-radius: 18px;
+  line-height: 1.3;
+}
+
+.msgr-me {
+  justify-self: end;
+  background: #0084ff;
+  color: #fff;
+}
+
+.insp-stamp[data-tone="protect"] {
+  background: var(--protect);
+  color: #fff;
+}
