@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { TopBar } from "@/ui/components";
 import { Stage } from "./Stage";
 
@@ -14,12 +13,12 @@ export default function Home() {
           your gran and your kid.
         </p>
         <div className="hero-actions">
-          <Link className="btn btn-primary" href="/demo">
-            Try it with fake money
-          </Link>
-          <Link className="btn btn-quiet" href="/dashboard">
-            Open the dashboard
-          </Link>
+          <a className="btn btn-primary" href="/api/auth/paypal/start">
+            Log in with PayPal
+          </a>
+          <form action="/api/demo/start" method="post">
+            <button className="btn btn-quiet">Try the demo family</button>
+          </form>
         </div>
       </section>
 
