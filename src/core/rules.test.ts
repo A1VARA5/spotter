@@ -101,4 +101,10 @@ describe("checkRules", () => {
     expect(r.valid).toBe(true);
     expect(r.hits).toEqual([]);
   });
+
+  it("never sends a bank transfer: Spotter pays through PayPal, where there's protection", () => {
+    const r = checkRules(req({ method: "bank_transfer" }), allowance());
+    expect(r.hits).toContainEqual(expect.objectContaining({ rule: "method", outcome: "protect" }));
+    expect(r.hits.find((h) => h.rule === "method")!.reason).toMatch(/bank transfer/i);
+  });
 });

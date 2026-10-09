@@ -41,6 +41,8 @@ export function checkRules(req: PaymentRequest, a: Allowance): RulesResult {
     hit("method", "block", `Paying by ${req.method.replace("_", " ")} can't be undone and is a classic scam ask.`);
   } else if (req.method === "friends_and_family") {
     hit("method", "protect", "Friends & Family payments have no buyer protection. Pay with a protected PayPal order instead.");
+  } else if (req.method === "bank_transfer") {
+    hit("method", "protect", "A bank transfer to someone new is hard to get back if it's a scam. Spotter only pays through PayPal, where there's buyer protection.");
   }
 
   return { valid: true, hits };
