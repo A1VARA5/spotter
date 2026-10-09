@@ -167,7 +167,11 @@ function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; on
 
       <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
 
-      {p.ai?.summary && <p className="held-summary">{p.ai.summary}</p>}
+      {p.ai?.summary && (
+        <p className="held-summary">
+          <strong>Scam check:</strong> {p.ai.summary}
+        </p>
+      )}
 
       {p.decision && p.decision.reasons.length > 0 && (
         <ul className="reasons">

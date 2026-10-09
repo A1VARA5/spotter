@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { requirePageSession } from "@/server/page-session";
 import { getSpender, listPayments, weekSpend } from "@/core/lifecycle";
-import { TopBar } from "@/ui/components";
+import { AppShell } from "@/ui/AppShell";
 import { money, STATE_LABEL, trackState } from "@/ui/format";
 import { Connect } from "./Connect";
 
@@ -21,11 +21,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const used = await weekSpend(db, spender.id, weekly.currency);
   const recent = (await listPayments(db, household.id, 200)).filter((p) => p.spender_id === spender.id).slice(0, 8);
   return (
-    <main className="shell" style={{ paddingBottom: 64 }}>
-      <TopBar current="dashboard" />
-      <p className="person-crumb">
-        <a href="/dashboard">Dashboard</a> / {KIND[spender.kind] ?? spender.kind}
-      </p>
+    <AppShell db={db} household={household} current={`person:${spender.id}`}>
+      <p className="person-crumb">{KIND[spender.kind] ?? spender.kind}</p>
       <h1 className="page-title">{spender.name}</h1>
       <dl className="allowance">
         <div>
@@ -63,6 +60,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           ))}
         </ul>
       )}
-    </main>
+    </AppShell>
   );
 }

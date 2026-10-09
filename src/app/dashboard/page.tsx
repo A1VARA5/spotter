@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { TopBar } from "@/ui/components";
+import { AppShell } from "@/ui/AppShell";
 import { getDeps } from "@/server/deps";
 import { requirePageSession } from "@/server/page-session";
 import { listSpenders } from "@/core/households";
@@ -9,8 +9,6 @@ import { Dashboard } from "./Dashboard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard | Spotter" };
-
-const KIND: Record<string, string> = { person: "Relative", kid: "Kid", agent: "AI agent" };
 
 export default async function DashboardPage() {
   const { db } = await getDeps();
@@ -39,8 +37,7 @@ export default async function DashboardPage() {
   const left = steps.filter((s) => !s.done).length;
 
   return (
-    <main className="shell">
-      <TopBar current="dashboard" />
+    <AppShell db={db} household={household} current="waiting">
       {left > 0 && (
         <section className="start-list" aria-labelledby="start-title">
           <h2 id="start-title" className="start-title">
@@ -59,20 +56,7 @@ export default async function DashboardPage() {
           </ol>
         </section>
       )}
-      {spenders.length > 0 && (
-        <nav className="people-strip" aria-label="Your people">
-          {spenders.map((s) => (
-            <Link key={s.id} href={`/people/${s.id}`} className="person-chip">
-              <span className="person-chip-name">{s.name}</span>
-              <span className="person-chip-kind">{KIND[s.kind] ?? s.kind}</span>
-            </Link>
-          ))}
-          <Link href="/setup?step=people" className="person-chip person-chip-add">
-            Add someone
-          </Link>
-        </nav>
-      )}
       <Dashboard names={names} unlocked={unlocked} initial={JSON.parse(JSON.stringify(payments))} />
-    </main>
+    </AppShell>
   );
 }
