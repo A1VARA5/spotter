@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandMark, Evidence, HoldTrack } from "@/ui/components";
 import type { Flag } from "@/core/grounding";
 import { Browser, GranPhone, SpotterPhone } from "./landing/Devices";
+import { Reveal } from "@/ui/Reveal";
 
 function StartButtons({ onDark = false }: { onDark?: boolean }) {
   return (
@@ -127,7 +128,7 @@ export default function Home() {
           Three ordinary moments
         </h2>
 
-        <article className="moment-row">
+        <Reveal as="article" className="moment-row">
           <div className="moment-copy">
             <h3>Gran forwards an email she isn&apos;t sure about.</h3>
             <p>She doesn&apos;t have to work out if it&apos;s real. She forwards it to spotter@homingbox.net and gets a plain answer in the same thread.</p>
@@ -144,9 +145,9 @@ export default function Home() {
             </div>
             <Outcome who="Gran" to="RM Parcel Services" amount={299} state="held" text={PARCEL_EMAIL} flags={PARCEL_FLAGS} verdict="Held, not paid. Gran gets a reply, you get an email to decide." />
           </div>
-        </article>
+        </Reveal>
 
-        <article className="moment-row">
+        <Reveal as="article" className="moment-row">
           <div className="moment-copy">
             <h3>Your AI agent lands on a booby-trapped shop.</h3>
             <p>The page hides a line no person sees, telling the agent to ignore its budget. Spotter reads what the agent read, and shows you the hidden line.</p>
@@ -168,9 +169,9 @@ export default function Home() {
             </Browser>
             <Outcome who="Shopping agent" to="BestDealz" amount={1999} state="blocked" text={AGENT_PAGE} flags={AGENT_FLAGS} verdict="Stopped. The agent is told not to try another way." />
           </div>
-        </article>
+        </Reveal>
 
-        <article className="moment-row">
+        <Reveal as="article" className="moment-row">
           <div className="moment-copy">
             <h3>Leo is offered cheap game credit.</h3>
             <p>A stranger wants paying in a gift card code. Once a code is sent, the money is gone for good, so Leo&apos;s rules never allow it.</p>
@@ -198,7 +199,7 @@ export default function Home() {
               verdict="Stopped before it starts."
             />
           </div>
-        </article>
+        </Reveal>
       </section>
 
       <section id="money" className="money" aria-labelledby="money-title">
@@ -206,7 +207,7 @@ export default function Home() {
           <h2 id="money-title" className="sec-title">
             What happens to the money, second by second
           </h2>
-          <ol className="log">
+          <Reveal as="ol" className="log">
             <li>
               <span className="log-t num">09:41:02</span>
               <span className="log-e">Gran taps send. Spotter gets the request instead of PayPal sending it straight away.</span>
@@ -227,7 +228,7 @@ export default function Home() {
               <span className="log-t num">09:41:06</span>
               <span className="log-e">You get the alert. Approve and PayPal captures it. Deny and the hold is released.</span>
             </li>
-          </ol>
+          </Reveal>
         </div>
       </section>
 

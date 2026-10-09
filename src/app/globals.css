@@ -1089,32 +1089,6 @@ p {
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .check {
-    animation: rise 700ms var(--ease-out) both;
-  }
-
-  .check:nth-child(1) {
-    animation-delay: 500ms;
-  }
-
-  .check:nth-child(2) {
-    animation-delay: 900ms;
-  }
-
-  .check:nth-child(3) {
-    animation-delay: 1300ms;
-  }
-
-  .pp-held {
-    animation: rise 600ms var(--ease-out) 1600ms both;
-  }
-
-  .notif {
-    animation: drop 700ms var(--ease-out) 1900ms both;
-  }
-}
-
 /* Runs on */
 .runs {
   border-bottom: 1px solid var(--line);
@@ -2493,4 +2467,278 @@ p {
 .app-main .scenario-body {
   font-size: 14.5px;
   color: var(--ink-2);
+}
+
+/* ==========================================================================
+   Motion. One explanatory moment per place, transform and opacity only,
+   ease-out for things arriving, ease-in-out for things moving on screen.
+   With reduced motion, things simply appear.
+   ========================================================================== */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* The coin travelling on the hold track: on to the payee when approved, back home when denied. */
+.track-coin {
+  transition: left 750ms var(--ease-in-out), translate 750ms var(--ease-in-out), background-color 300ms ease, color 300ms ease;
+}
+
+/* Highlights drawn as backgrounds so they can be swept in, as if Spotter is reading. */
+.mark {
+  --mk: var(--hold-soft);
+  --ml: var(--hold);
+  background: linear-gradient(var(--ml), var(--ml)) 0 100% / 100% 2px no-repeat, linear-gradient(var(--mk), var(--mk)) 0 0 / 100% 100% no-repeat;
+  box-shadow: none;
+  transition: background-size 650ms var(--ease-out);
+}
+
+.mark[data-sev="high"] {
+  --mk: var(--stop-soft);
+  --ml: var(--stop);
+  background: linear-gradient(var(--ml), var(--ml)) 0 100% / 100% 2px no-repeat, linear-gradient(var(--mk), var(--mk)) 0 0 / 100% 100% no-repeat;
+  box-shadow: none;
+}
+
+.mark[data-kind="friends_and_family"] {
+  --mk: var(--protect-soft);
+  --ml: var(--protect);
+  background: linear-gradient(var(--ml), var(--ml)) 0 100% / 100% 2px no-repeat, linear-gradient(var(--mk), var(--mk)) 0 0 / 100% 100% no-repeat;
+  box-shadow: none;
+}
+
+.imsg-typing {
+  display: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(6px);
+  }
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes typing-out {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+@keyframes pulse-once {
+  0% {
+    box-shadow: 0 0 0 0 rgb(242 183 5 / 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgb(242 183 5 / 0);
+  }
+}
+
+@keyframes arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+    box-shadow: 0 0 0 3px rgb(242 183 5 / 0.7);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(242 183 5 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero: the text arrives, PayPal's sheet comes up, Spotter stamps it, the checks land, your phone lights up. */
+  .iphone-gran .imsg-typing {
+    position: absolute;
+    display: inline-flex;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 17px 17px 17px 5px;
+    background: #e9e9eb;
+    animation: typing-out 900ms ease 0ms both;
+    pointer-events: none;
+  }
+
+  .iphone-gran .imsg-body {
+    position: relative;
+  }
+
+  .iphone-gran .imsg-typing {
+    top: 30px;
+    left: 12px;
+  }
+
+  .imsg-typing i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #8e8e93;
+    animation: dot 600ms ease-in-out infinite;
+  }
+
+  .imsg-typing i:nth-child(2) {
+    animation-delay: 120ms;
+  }
+
+  .imsg-typing i:nth-child(3) {
+    animation-delay: 240ms;
+  }
+
+  .iphone-gran .imsg-bubble {
+    animation: bubble-in 380ms var(--ease-out) 850ms both;
+    transform-origin: left bottom;
+  }
+
+  .iphone-gran .pp-sheet {
+    animation: sheet-up 650ms var(--ease-drawer) 1500ms both;
+  }
+
+  .iphone-gran .pp-held {
+    animation: stamp 420ms var(--ease-out) 2250ms both;
+  }
+
+  .check {
+    animation: rise 600ms var(--ease-out) both;
+  }
+
+  .check:nth-child(1) {
+    animation-delay: 2500ms;
+  }
+
+  .check:nth-child(2) {
+    animation-delay: 2650ms;
+  }
+
+  .check:nth-child(3) {
+    animation-delay: 2800ms;
+  }
+
+  .notif {
+    animation: drop 650ms var(--ease-out) 3200ms both;
+  }
+
+  /* Scroll moments: the artifact, then Spotter's card, then the words get marked. */
+  [data-reveal="waiting"] .moment-art > *,
+  [data-reveal="waiting"].log li {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  [data-reveal="waiting"] .mark {
+    background-size: 0% 2px, 0% 100%;
+  }
+
+  [data-reveal] .moment-art > *,
+  [data-reveal].log li {
+    transition: opacity 500ms var(--ease-out), transform 600ms var(--ease-out);
+  }
+
+  [data-reveal="shown"] .moment-art > :nth-child(2) {
+    transition-delay: 180ms;
+  }
+
+  [data-reveal="shown"] .mark {
+    transition-delay: 650ms;
+  }
+
+  [data-reveal="shown"] .mark:nth-of-type(2) {
+    transition-delay: 900ms;
+  }
+
+  [data-reveal="shown"] .mark:nth-of-type(3) {
+    transition-delay: 1150ms;
+  }
+
+  [data-reveal="shown"].log li:nth-child(2) {
+    transition-delay: 120ms;
+  }
+
+  [data-reveal="shown"].log li:nth-child(3) {
+    transition-delay: 240ms;
+  }
+
+  [data-reveal="shown"].log li:nth-child(4) {
+    transition-delay: 360ms;
+  }
+
+  [data-reveal="shown"].log li:nth-child(5) {
+    transition-delay: 480ms;
+  }
+
+  [data-reveal="shown"].log li[data-hold="true"]::before {
+    animation: pulse-once 900ms ease-out 900ms 2;
+  }
+
+  /* App: a payment that newly needs you arrives with a brief yellow flash. */
+  .app-main .held {
+    animation: arrive 1100ms var(--ease-out) both;
+  }
+
+  /* Setup: each question settles in. */
+  .setup-form {
+    animation: rise 260ms var(--ease-out) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-coin,
+  .mark {
+    transition: none;
+  }
 }

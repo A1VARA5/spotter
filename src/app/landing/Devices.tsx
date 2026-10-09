@@ -53,6 +53,11 @@ export function GranPhone({ text }: { text: string }) {
       </div>
       <div className="imsg-body">
         <p className="imsg-when">Today 09:38</p>
+        <p className="imsg-typing" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </p>
         <p className="imsg-bubble">{text}</p>
       </div>
       <div className="pp-sheet">
