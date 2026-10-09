@@ -2742,3 +2742,139 @@ p {
     transition: none;
   }
 }
+
+/* ---------- setup: question left, real life preview right ---------- */
+.setup-split {
+  min-height: 100dvh;
+  display: grid;
+  background: var(--paper);
+}
+
+@media (min-width: 1000px) {
+  .setup-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.setup-split .setup-shell {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-top: 28px;
+}
+
+.setup-preview {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .setup-preview {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 22px;
+    padding: 40px;
+    background:
+      radial-gradient(60% 50% at 60% 30%, rgb(242 183 5 / 0.12), transparent 70%),
+      #0d141c;
+  }
+}
+
+.preview-phone {
+  width: 280px;
+  height: 580px;
+}
+
+.setup-preview-cap {
+  color: #aeb9c3;
+  max-width: 34ch;
+  text-align: center;
+  font-size: 15.5px;
+}
+
+.notif-static {
+  animation: none;
+}
+
+.pinpad {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.pinpad-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pinpad-dots {
+  display: flex;
+  gap: 12px;
+}
+
+.pinpad-dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+}
+
+.pinpad-dots i[data-on="true"] {
+  background: #fff;
+}
+
+.pinpad-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  gap: 10px 16px;
+}
+
+.pinpad-keys span {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.14);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+}
+
+.pinpad-keys span[data-blank] {
+  background: none;
+}
+
+.mail-mini {
+  width: 100%;
+  background: #fff;
+  color: #111;
+  border-radius: 18px;
+  padding: 14px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.mail-mini-from {
+  font-weight: 700;
+}
+
+.mail-mini-subj {
+  font-weight: 600;
+}
+
+.mail-mini-body {
+  color: #333;
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .setup-preview .notif,
+  .setup-preview .pinpad,
+  .setup-preview .mail-mini {
+    animation: drop 500ms var(--ease-out) 150ms both;
+  }
+}

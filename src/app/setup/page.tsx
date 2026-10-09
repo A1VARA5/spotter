@@ -5,6 +5,7 @@ import { listSpenders } from "@/core/households";
 import { PRESETS } from "@/core/presets";
 import { BrandMark } from "@/ui/components";
 import { Setup, type SetupStep } from "./Setup";
+import { Preview } from "./Preview";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Set up | Spotter" };
@@ -21,7 +22,8 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const allowed: SetupStep[] = household.pin_hash ? ["name", "people", "connect"] : ["name", "pin"];
   const step = asked && allowed.includes(asked) ? asked : resume;
   return (
-    <main className="setup-shell">
+    <main className="setup-split">
+      <div className="setup-shell">
       <a href="/" className="brand setup-brand" aria-label="Spotter home">
         <BrandMark />
         Spotter
@@ -33,6 +35,8 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         people={people}
         presets={Object.entries(PRESETS).map(([key, p]) => ({ key, label: p.label, hint: p.hint, weekly: p.allowance.weekly.amount, askAbove: p.allowance.askAbove.amount }))}
       />
+      </div>
+      <Preview step={step} spotterName={household.spotter_name} people={people} />
     </main>
   );
 }
