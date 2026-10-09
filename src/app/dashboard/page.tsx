@@ -56,6 +56,18 @@ export default async function DashboardPage() {
           </ol>
         </section>
       )}
+      {spenders.length > 0 && (
+        <nav className="people-strip mobile-only" aria-label="Your people">
+          {spenders.map((s) => (
+            <Link key={s.id} href={`/people/${s.id}`} className="person-chip">
+              <span className="person-chip-name">{s.name}</span>
+            </Link>
+          ))}
+          <Link href="/setup?step=people" className="person-chip person-chip-add">
+            Add someone
+          </Link>
+        </nav>
+      )}
       <Dashboard names={names} unlocked={unlocked} initial={JSON.parse(JSON.stringify(payments))} />
     </AppShell>
   );

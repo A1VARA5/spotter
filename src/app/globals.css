@@ -3132,3 +3132,13 @@ p {
 .mini-feed em[data-state="blocked"] { color: var(--stop); }
 .mini-feed em[data-state="paid"] { color: var(--go); }
 .mini-feed b { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+
+@media (min-width: 900px) {
+  .mobile-only { display: none !important; }
+}
+
+@media (max-width: 560px) {
+  .held .track-end { display: none; }
+  .people-strip { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 18px; scrollbar-width: none; }
+  .person-chip { flex: none; }
+}
