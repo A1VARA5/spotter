@@ -61,6 +61,9 @@ export async function AppShell({ db, household, current, wide = false, children 
             <span>Add someone</span>
           </Link>
         </div>
+        <Link href="/how" className="side-help">
+          How Spotter works
+        </Link>
         <form className="side-foot" action="/api/auth/logout" method="post">
           <button className="side-signout">Sign out</button>
         </form>

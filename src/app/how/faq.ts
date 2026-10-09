@@ -1,0 +1,13 @@
+// Questions people ask, shared by the landing page and the How it works page.
+export const FAQ: Array<[string, string]> = [
+  ["Does Gran need an account?", "No. Only you, the spotter, sign in (with PayPal). You add Gran on your dashboard, set her limits, and she connects her email, Telegram or Discord once with a code or a link. She never sees a dashboard or a password."],
+  ["Can Spotter read Gran's texts or WhatsApp by itself?", "No, and nothing should. iPhones and Android phones don't let apps read your messages. Spotter works like ringing a sensible friend: when something asks for money, Gran sends it to Spotter first, as a forward or a screenshot. It takes two taps."],
+  ["What does Spotter check?", "Gran's rules first: her weekly limit, the amount above which you're asked, and things never allowed (like gift cards or crypto). Then Claude reads the message as untrusted text and must quote the exact words that worried it; code throws out any warning it can't find in the message. For shopping, Channel3 compares the price with real shops."],
+  ["What happens to the money while I decide?", "Spotter asks PayPal to authorise the payment, not take it. The money is reserved but hasn't gone anywhere. Approve and PayPal captures it. Deny and PayPal releases it."],
+  ["What about Friends and Family payments?", "PayPal Friends and Family has no buyer protection, which is why scammers ask for it. Spotter doesn't send those. It tells the person to pay with Goods and Services if the seller is genuine."],
+  ["Can an AI agent approve its own payment?", "No. An agent gets four tools: find products, request a payment, check a payment, and check its allowance. There's no approve tool, and approving on the dashboard needs your PIN."],
+  ["Where do I put the AI agent's key?", "On the agent's page in Spotter, press Make a key. Paste the one line it shows into Claude Code, or the config block into Claude Desktop (Settings, Developer, Edit config). The key is shown once and only stored scrambled."],
+  ["Can Gran still pay someone directly in the PayPal app?", "Yes. Spotter is a second look she chooses to use, not a lock on her account. For AI agents it is enforced: the agent can only pay through Spotter."],
+  ["Is this real money?", "Not here. This is the PayPal sandbox, so every payment is real PayPal, with fake money. In a live version, Gran would link her PayPal once so Spotter can pay on her behalf after the check."],
+  ["What data does Spotter keep?", "Your household, the people you add, their limits, and the payments with the text that was checked, so you can see why. Demo families are deleted after 48 hours. See the privacy page."],
+];

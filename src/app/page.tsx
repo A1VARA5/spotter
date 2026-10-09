@@ -6,6 +6,7 @@ import { ScrollStory } from "./landing/ScrollStory";
 import { Inspector } from "./landing/Inspector";
 import { LitText } from "./landing/LitText";
 import { Final, Hub } from "./landing/Sections";
+import { FAQ } from "./how/faq";
 
 function StartButtons({ onDark = false }: { onDark?: boolean }) {
   return (
@@ -32,8 +33,8 @@ export default function Home() {
               Spotter
             </Link>
             <nav className="lnav-links" aria-label="Main">
-              <a href="#moments">How it helps</a>
-              <a href="#story-title">How it works</a>
+              <a href="/how">How it works</a>
+              <a href="/how#faq">FAQ</a>
               <a href="/api/auth/paypal/start" className="lnav-login">
                 Log in
               </a>
@@ -89,6 +90,23 @@ export default function Home() {
       </section>
 
       <Hub />
+
+      <section className="shell how-sec land-faq" aria-labelledby="faq-title">
+        <h2 id="faq-title" className="sec-title reveal">
+          Questions people ask
+        </h2>
+        <div className="faq">
+          {FAQ.slice(0, 5).map(([q, a]) => (
+            <details key={q} className="faq-item">
+              <summary>{q}</summary>
+              <p>{a}</p>
+            </details>
+          ))}
+        </div>
+        <p className="land-faq-more">
+          <a href="/how">How Spotter works, step by step, with every channel</a>
+        </p>
+      </section>
       <Final>
         <StartButtons onDark />
       </Final>
