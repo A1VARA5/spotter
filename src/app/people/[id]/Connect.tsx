@@ -68,18 +68,47 @@ function AgentCard({ spender }: { spender: SpenderView }) {
           </p>
         </div>
       </header>
-      {t.data ? (
-        <>
-          <p className="connect-warn">This key is shown once. Copy it into your agent now. Making a new one switches the old one off.</p>
-          <CopyBlock label="MCP config for your agent" value={config} />
-        </>
-      ) : (
-        <div>
-          <button className="btn btn-primary" disabled={t.busy} onClick={() => t.call(`/api/spenders/${spender.id}/token`)}>
-            {t.busy ? "Making a key" : "Make a key for this agent"}
-          </button>
-        </div>
-      )}
+      <ol className="agent-steps">
+        <li>
+          <h4 className="agent-step-title">Make a key</h4>
+          {t.data ? (
+            <p className="connect-warn">Done. This key is shown once, so copy it in the next step now. Making a new one switches this one off.</p>
+          ) : (
+            <div>
+              <button className="btn btn-primary" disabled={t.busy} onClick={() => t.call(`/api/spenders/${spender.id}/token`)}>
+                {t.busy ? "Making a key" : "Make a key for this agent"}
+              </button>
+            </div>
+          )}
+        </li>
+        <li data-off={!t.data}>
+          <h4 className="agent-step-title">Give it to your agent</h4>
+          {t.data ? (
+            <>
+              <p>
+                <strong>Claude Code:</strong> run this in a terminal.
+              </p>
+              <CopyBlock label="Claude Code command" value={`claude mcp add --transport http spotter ${origin}/api/mcp --header "Authorization: Bearer ${t.data.token}"`} />
+              <p>
+                <strong>Claude Desktop or another MCP app:</strong> add this to its MCP config (in Claude Desktop: Settings, Developer, Edit config), then restart it.
+              </p>
+              <CopyBlock label="MCP config" value={config} />
+            </>
+          ) : (
+            <p className="connect-sub">The command and config to paste appear here once the key is made.</p>
+          )}
+        </li>
+        <li data-off={!t.data}>
+          <h4 className="agent-step-title">Ask it to buy something</h4>
+          <p className="connect-sub">
+            For example: &ldquo;Find me wireless earbuds under £30 and buy the best ones.&rdquo; It searches real shops, then asks Spotter to pay. Anything over{" "}
+            the ask me amount shows up on your dashboard to approve.
+          </p>
+        </li>
+      </ol>
+      <p className="connect-sub">
+        No agent yet? <a href="/demo">Try the agent scenarios</a> to see exactly what it would get back.
+      </p>
       {t.error && (
         <p className="field-error" role="alert">
           {t.error}

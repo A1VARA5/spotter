@@ -1588,3 +1588,25 @@ p {
 
 .mail-subject { font-weight: 700; }
 .mail-body { font-size: 15px; color: var(--ink); }
+
+/* ---------- getting started and people strip ---------- */
+.start-list { background: var(--paper); border-radius: var(--r-card); box-shadow: var(--raise); padding: 18px 20px; margin: 8px 0 20px; display: grid; gap: 12px; }
+.start-title { font-size: 18px; font-weight: 700; }
+.start-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.start-steps li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; }
+.start-tick { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; }
+.start-steps li[data-done="true"] .start-tick { background: var(--go); border-color: var(--go); color: #fff; }
+.start-steps a { font-weight: 600; }
+.start-done { color: var(--ink-2); text-decoration: line-through; text-decoration-color: rgb(74 88 102 / 0.4); }
+.people-strip { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 24px; }
+.person-chip { display: inline-flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); text-decoration: none; min-height: 44px; align-items: center; }
+.person-chip:hover { border-color: var(--ink-2); }
+.person-chip-name { font-weight: 600; }
+.person-chip-kind { color: var(--ink-2); font-size: 14px; }
+.person-chip-add { color: var(--ink-2); border-style: dashed; }
+
+.agent-steps { list-style: none; counter-reset: a; margin: 0; padding: 0; display: grid; gap: 18px; }
+.agent-steps li { counter-increment: a; display: grid; gap: 10px; padding-left: 40px; position: relative; min-width: 0; }
+.agent-steps li::before { content: counter(a); position: absolute; left: 0; top: -1px; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--chalk); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.agent-steps li[data-off="true"]::before { background: var(--line); color: var(--ink-2); }
+.agent-step-title { font-size: 17px; font-weight: 700; }
