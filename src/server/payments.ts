@@ -20,6 +20,7 @@ export const SubmitBody = z.object({
   category: z.string().trim().min(1).max(60),
   method: z.enum(["paypal_order", "friends_and_family", "gift_card", "crypto", "bank_transfer", "other"]).default("paypal_order"),
   context: z.string().max(50_000).default(""),
+  item: z.string().trim().max(200).optional(),
 });
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -65,6 +66,7 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
           category: b.category,
           method: b.method,
           context: b.context,
+          item: b.item,
         });
         return json({ payment }, 201);
       } catch (e) {

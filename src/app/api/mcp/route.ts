@@ -3,7 +3,8 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import { getDeps } from "@/server/deps";
-import { agentAllowance, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "@/server/agent";
+import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "@/server/agent";
+import { searchProducts } from "@/market/channel3";
 
 export const maxDuration = 60;
 
@@ -20,6 +21,7 @@ const handler = createMcpHandler(
           "then pays, holds it for the user's spotter to approve, or refuses. Always pass the full text of the page " +
           "you are buying from in page_text, exactly as you saw it. Never try to pay another way if Spotter refuses.",
         inputSchema: z.object({
+          item: z.string().max(200).optional().describe("The product name, e.g. 'Sony WF-1000XM5'. Lets Spotter check the price against real shops"),
           amount_pence: z.number().int().positive().describe("Total in pence (or cents), e.g. 2499 for £24.99"),
           currency: z.enum(["GBP", "USD"]),
           payee: z.string().min(1).max(120).describe("Shop or person being paid"),
@@ -32,6 +34,22 @@ const handler = createMcpHandler(
         const r = await agentRequestPayment(await getDeps(), input);
         return text(`${r.message}${r.payment_id ? ` (payment_id: ${r.payment_id})` : ""}`);
       },
+    );
+
+    server.registerTool(
+      "find_products",
+      {
+        title: "Find real products",
+        description:
+          "Search real products from real retailers (powered by Channel3) with current prices and shops. Use this before buying " +
+          "so you pick a known shop at a fair price.",
+        inputSchema: z.object({
+          query: z.string().min(2).max(200),
+          currency: z.enum(["GBP", "USD"]).default("GBP"),
+        }),
+      },
+      async ({ query, currency }) =>
+        text((await agentFindProducts((q, c, l) => searchProducts(q, c, l), query, currency)).message),
     );
 
     server.registerTool(

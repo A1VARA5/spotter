@@ -1,0 +1,174 @@
+# Channel3
+
+- [What's Channel3?](https://docs.trychannel3.com/index.md)
+- [Shopping Agent with MCP](https://docs.trychannel3.com/use-cases/mcp-agent.md)
+- [Conversational Shopping](https://docs.trychannel3.com/use-cases/conversation-shopping-agent.md)
+- [OpenClaw with CLI](https://docs.trychannel3.com/use-cases/openclaw-cli.md)
+- [Lovable with API](https://docs.trychannel3.com/use-cases/lovable-api.md)
+- [Agent via UCP](https://docs.trychannel3.com/use-cases/ucp.md)
+- [App with SDK](https://docs.trychannel3.com/use-cases/sdk-app.md)
+- [Make a Search](https://docs.trychannel3.com/guides/make-a-search.md)
+- [Collections](https://docs.trychannel3.com/guides/collections.md)
+- [Search](https://docs.trychannel3.com/guides/search.md)
+- [Agentic Search](https://docs.trychannel3.com/guides/agentic-search.md)
+- [Image Search](https://docs.trychannel3.com/guides/image-search.md)
+- [Price](https://docs.trychannel3.com/guides/price-filters.md)
+- [Color](https://docs.trychannel3.com/guides/color-filters.md)
+- [Dimension](https://docs.trychannel3.com/guides/dimension-filters.md)
+- [Brand](https://docs.trychannel3.com/guides/brand-filters.md)
+- [Website](https://docs.trychannel3.com/guides/website-filters.md)
+- [Attributes](https://docs.trychannel3.com/guides/attribute-filters.md)
+- [URL Lookup](https://docs.trychannel3.com/guides/url-lookup.md)
+- [Similar Products](https://docs.trychannel3.com/guides/similar-products.md)
+- [Set Locale](https://docs.trychannel3.com/guides/locale.md)
+- [Search Response](https://docs.trychannel3.com/guides/response-overview.md)
+- [Images](https://docs.trychannel3.com/guides/images.md)
+- [Product](https://docs.trychannel3.com/guides/product.md)
+- [Product Detail](https://docs.trychannel3.com/guides/product-detail.md)
+- [Offer](https://docs.trychannel3.com/guides/offer.md)
+- [Brand](https://docs.trychannel3.com/guides/brand.md)
+- [Website](https://docs.trychannel3.com/guides/website.md)
+- [Category](https://docs.trychannel3.com/guides/category.md)
+- [Variant](https://docs.trychannel3.com/guides/variant.md)
+- [Overview](https://docs.trychannel3.com/conversations/index.md)
+- [Quickstart](https://docs.trychannel3.com/conversations/quickstart.md)
+- [Client Tokens](https://docs.trychannel3.com/conversations/client-tokens.md)
+- [Run a Turn](https://docs.trychannel3.com/conversations/run-a-turn.md)
+- [Streaming Events](https://docs.trychannel3.com/conversations/streaming-events.md)
+- [Messages and Parts](https://docs.trychannel3.com/conversations/messages-and-parts.md)
+- [Context](https://docs.trychannel3.com/conversations/context.md)
+- [Filters](https://docs.trychannel3.com/conversations/filters.md)
+- [Collections](https://docs.trychannel3.com/conversations/collections.md)
+- [Read a Conversation](https://docs.trychannel3.com/conversations/read-a-conversation.md)
+- [Errors](https://docs.trychannel3.com/conversations/errors.md)
+- [Rate Limits](https://docs.trychannel3.com/conversations/rate-limits.md)
+- [Checkout](https://docs.trychannel3.com/checkout.md)
+- [Pricing](https://docs.trychannel3.com/pricing.md)
+- [Reporting](https://docs.trychannel3.com/guides/reporting.md)
+- [Commissions](https://docs.trychannel3.com/commissions.md)
+- [UI + Hooks](https://docs.trychannel3.com/guides/ui-and-hooks.md)
+- [Price Tracking](https://docs.trychannel3.com/guides/price-tracking.md)
+- [Localization](https://docs.trychannel3.com/guides/localization.md)
+- [Caching Best Practices](https://docs.trychannel3.com/guides/caching.md)
+- [Lovable](https://docs.trychannel3.com/lovable.md)
+- [Channel3 API Skill](https://docs.trychannel3.com/skills/channel3-api.md)
+- [Product Discovery Skill](https://docs.trychannel3.com/skills/product-discovery.md)
+- [SDK](https://docs.trychannel3.com/sdk.md)
+- [Keyword Search](https://docs.trychannel3.com/sdk/keyword-search.md)
+- [Search with an Image URL](https://docs.trychannel3.com/sdk/image-url.md)
+- [Search with a Base64 Image](https://docs.trychannel3.com/sdk/base64-image.md)
+- [Find Products in Image](https://docs.trychannel3.com/sdk/find-products-in-image.md)
+- [Find Similar Products](https://docs.trychannel3.com/sdk/similar-products.md)
+- [Search with Filters](https://docs.trychannel3.com/sdk/search-with-filters.md)
+- [Search with Pagination](https://docs.trychannel3.com/sdk/pagination.md)
+- [Configure Search Behavior](https://docs.trychannel3.com/sdk/configure-search.md)
+- [Find Brands by Name](https://docs.trychannel3.com/sdk/find-brands.md)
+- [Browse the Brand Catalog](https://docs.trychannel3.com/sdk/browse-brands.md)
+- [Websites](https://docs.trychannel3.com/sdk/websites.md)
+- [Find Categories](https://docs.trychannel3.com/sdk/find-categories.md)
+- [Look Up a Product by URL](https://docs.trychannel3.com/sdk/lookup-by-url.md)
+- [Error Handling](https://docs.trychannel3.com/sdk/error-handling.md)
+- [CLI](https://docs.trychannel3.com/cli.md)
+- [Search Products](https://docs.trychannel3.com/cli/search.md)
+- [Image Search](https://docs.trychannel3.com/cli/image-search.md)
+- [Find Similar Products](https://docs.trychannel3.com/cli/similar-products.md)
+- [Look Up a Product URL](https://docs.trychannel3.com/cli/lookup.md)
+- [Brands](https://docs.trychannel3.com/cli/brands.md)
+- [Websites](https://docs.trychannel3.com/cli/websites.md)
+- [Categories](https://docs.trychannel3.com/cli/categories.md)
+- [Format Output](https://docs.trychannel3.com/cli/output.md)
+- [Usage](https://docs.trychannel3.com/cli/usage.md)
+- [Migrating to 0.5.0](https://docs.trychannel3.com/cli/migrating.md)
+- [MCP](https://docs.trychannel3.com/mcp-overview.md)
+- [Setup](https://docs.trychannel3.com/mcp/setup.md)
+- [Free Tier](https://docs.trychannel3.com/mcp/free-tier.md)
+- [Available Tools](https://docs.trychannel3.com/mcp/tools.md)
+- [Usage Examples](https://docs.trychannel3.com/mcp/usage.md)
+- [UCP Catalog Overview](https://docs.trychannel3.com/ucp/index.md)
+- [Quickstart](https://docs.trychannel3.com/ucp/quickstart.md)
+- [About Profiles](https://docs.trychannel3.com/ucp/about-profiles.md)
+- [Authenticate Your Agent](https://docs.trychannel3.com/ucp/authentication.md)
+- [Auth and Rate Limiting](https://docs.trychannel3.com/ucp/auth-and-rate-limiting.md)
+- [About the Catalog](https://docs.trychannel3.com/ucp/about-catalog.md)
+- [Search the Catalog](https://docs.trychannel3.com/ucp/search-catalog.md)
+- [Lookup Catalog](https://docs.trychannel3.com/ucp/lookup-catalog.md)
+- [Get Product](https://docs.trychannel3.com/ucp/get-product.md)
+- [Extension Reference](https://docs.trychannel3.com/ucp/catalog-global-extension.md)
+- [MPP (Pay Per Call)](https://docs.trychannel3.com/mpp.md)
+- [Catalog & Coverage](https://docs.trychannel3.com/faq/catalog-and-coverage.md)
+- [Commissions](https://docs.trychannel3.com/faq/commissions.md)
+- [Billing & Credits](https://docs.trychannel3.com/faq/billing-and-credits.md)
+- [Rate Limits](https://docs.trychannel3.com/faq/rate-limits.md)
+- [Support](https://docs.trychannel3.com/faq/support.md)
+- [Search](https://docs.trychannel3.com/api-reference/v1/search.md): Search for products with pagination support.
+- [Image Search](https://docs.trychannel3.com/api-reference/v1/image-search.md): Search the catalog by image (URL or base64), with pagination support.
+- [Find products in an image](https://docs.trychannel3.com/api-reference/v1/find-products-in-image.md): Name objects in a scene image, localize them, and search the catalog per crop.
+- [Similar Products](https://docs.trychannel3.com/api-reference/v1/similar-products.md): Find products similar to a given product.
+- [Product Detail](https://docs.trychannel3.com/api-reference/v1/product-detail.md): Get detailed information about a specific product by its ID.
+- [Lookup Product](https://docs.trychannel3.com/api-reference/v1/lookup-product.md): Retrieve product information for any supported product URL.
+- [Browse](https://docs.trychannel3.com/api-reference/v1/browse.md): List and page through products for a set of filters.
+- [Create Turn](https://docs.trychannel3.com/api-reference/v1/create-turn.md): Run one conversation turn. Omit `conversation_id` to create the thread with this turn; pass it to continue an existing thread.
+- [Create Client Token](https://docs.trychannel3.com/api-reference/v1/create-client-token.md): Mint a short-lived, browser-safe token. With ``conversation_id`` the token continues and reads that thread; without it, the token's first turn creates the thread and binds the token to it.
+- [Revoke Client Token](https://docs.trychannel3.com/api-reference/v1/revoke-client-token.md): Revoke a client token immediately. The token travels in the request body, not the URL, so it stays out of access logs; only the minting vendor can revoke it.
+- [Get Conversation](https://docs.trychannel3.com/api-reference/v1/get-conversation.md): Thread metadata plus one page of its message history. Paginate `items` with `limit` and `cursor`.
+- [Create Collection](https://docs.trychannel3.com/api-reference/v1/create-collection.md): Create a collection. Clauses are optional so an empty collection can be curated later. Collection CRUD is free.
+- [List Collections](https://docs.trychannel3.com/api-reference/v1/list-collections.md): List collections, optionally filtered to one partner user. Collection CRUD is free.
+- [Get Collection](https://docs.trychannel3.com/api-reference/v1/get-collection.md): Get a collection owned by this API key.
+- [Update Collection](https://docs.trychannel3.com/api-reference/v1/update-collection.md): Rename a collection and/or add, replace, or remove clauses by id.
+- [Delete Collection](https://docs.trychannel3.com/api-reference/v1/delete-collection.md): Delete a collection owned by this API key.
+- [Search Brands](https://docs.trychannel3.com/api-reference/v1/search-brands.md): Search brands by free-text query.
+- [List Brands](https://docs.trychannel3.com/api-reference/v1/list-brands.md): Paginated list of brands, capped at the top 5,000.
+- [Brand Detail](https://docs.trychannel3.com/api-reference/v1/brand-detail.md): Get detailed information about a specific brand by its ID.
+- [Category Explorer](https://docs.trychannel3.com/categories.md)
+- [Search Categories](https://docs.trychannel3.com/api-reference/v1/search-categories.md): Search categories by free-text query.
+- [List Categories](https://docs.trychannel3.com/api-reference/v1/list-categories.md): Paginated list of all categories.
+- [Category Detail](https://docs.trychannel3.com/api-reference/v1/category-detail.md): Look up a category by slug.
+- [Websites](https://docs.trychannel3.com/api-reference/channel3-api/websites.md): Resolve a website URL to its ID and best_commission_rate. Tip: website_ids filters accept domains directly, so this lookup is most useful for retrieving commission rates.
+- [List Clicks](https://docs.trychannel3.com/api-reference/v1/reporting-clicks.md): List clicks for your account over a datetime window.
+- [List Transactions](https://docs.trychannel3.com/api-reference/v1/reporting-transactions.md): List transactions for your account over a datetime window.
+- [Start Tracking](https://docs.trychannel3.com/api-reference/price-tracking/start-tracking.md): Start tracking prices for a canonical product.
+- [Stop Tracking](https://docs.trychannel3.com/api-reference/price-tracking/stop-tracking.md): Stop tracking prices for a canonical product.
+- [Get Price History](https://docs.trychannel3.com/api-reference/price-tracking/get-price-history.md): Get price history for a canonical product.
+- [List Subscriptions](https://docs.trychannel3.com/api-reference/price-tracking/list-subscriptions.md): List your active price tracking subscriptions.
+- [Webhooks](https://docs.trychannel3.com/price-tracking-webhooks.md)
+- [Product](https://docs.trychannel3.com/product-model.md)
+- [Category](https://docs.trychannel3.com/api-reference/category-model.md)
+- [Brand](https://docs.trychannel3.com/api-reference/brand-model.md)
+- [Website](https://docs.trychannel3.com/api-reference/website-model.md)
+- [We Built Your Frontend for You](https://docs.trychannel3.com/changelog/announcements/update-7-component-library.md)
+- [Variants How-To](https://docs.trychannel3.com/changelog/announcements/update-6-variants-how-to.md)
+- [SDK 3.3.1 — Color Filters, Cleaned Images & a CLI](https://docs.trychannel3.com/changelog/announcements/update-5-sdk-331.md)
+- [Brands, Categories, and Search Goes Fast](https://docs.trychannel3.com/changelog/announcements/update-4-brands-categories-fast.md)
+- [Endpoints, Endpoints, Endpoints](https://docs.trychannel3.com/changelog/announcements/update-3-new-endpoints.md)
+- [Internationalization](https://docs.trychannel3.com/changelog/announcements/update-2-internationalization.md)
+- [Announcing the /v1 Search API & SDK 3.0.0](https://docs.trychannel3.com/changelog/announcements/update-1-v1-search-api.md)
+- [Changelog](https://docs.trychannel3.com/changelog/overview.md)
+- [v4.1.0 — August 2026](https://docs.trychannel3.com/changelog/v4-1-0.md)
+- [v4.0.0 — August 2026](https://docs.trychannel3.com/changelog/v4-0-0.md)
+- [v3.5.0 — July 2026](https://docs.trychannel3.com/changelog/v3-5-0.md)
+- [v3.4.0 — July 2026](https://docs.trychannel3.com/changelog/v3-4-0.md)
+- [v3.3.1 — May 2026](https://docs.trychannel3.com/changelog/v3-3-1.md)
+- [v3.3.0 — May 2026](https://docs.trychannel3.com/changelog/v3-3-0.md)
+- [v3.2.0 — April 2026](https://docs.trychannel3.com/changelog/v3-2-0.md)
+- [v3.1.0 — April 2026](https://docs.trychannel3.com/changelog/v3-1-0.md)
+- [v3.0.0 — March 2026](https://docs.trychannel3.com/changelog/v3-0-0.md)
+- [v2.13.0 — March 2026](https://docs.trychannel3.com/changelog/v2-13-0.md)
+- [v2.12.0 — January 2026](https://docs.trychannel3.com/changelog/v2-12-0.md)
+- [v2.11.0 — January 2026](https://docs.trychannel3.com/changelog/v2-11-0.md)
+- [v2.10.0 — January 2026](https://docs.trychannel3.com/changelog/v2-10-0.md)
+- [v2.9.0 — December 2025](https://docs.trychannel3.com/changelog/v2-9-0.md)
+- [v2.8.0 — December 2025](https://docs.trychannel3.com/changelog/v2-8-0.md)
+- [v2.6.0 — December 2025](https://docs.trychannel3.com/changelog/v2-6-0.md)
+- [v2.5.0 — November 2025](https://docs.trychannel3.com/changelog/v2-5-0.md)
+- [v2.4.0 — November 2025](https://docs.trychannel3.com/changelog/v2-4-0.md)
+- [v2.3.0 — October 2025](https://docs.trychannel3.com/changelog/v2-3-0.md)
+- [v2.2.0 — September 2025](https://docs.trychannel3.com/changelog/v2-2-0.md)
+- [v2.1.0 — September 2025](https://docs.trychannel3.com/changelog/v2-1-0.md)
+- [v2.0.0 — September 2025](https://docs.trychannel3.com/changelog/v2-0-0.md)
+
+## OpenAPI Specs
+
+- [openapi.documented](/openapi/openapi.documented.yml)
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

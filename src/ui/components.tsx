@@ -1,8 +1,9 @@
 // Shared presentational pieces: brand, top bar, the hold track, evidence with in place highlights.
 import Link from "next/link";
-import { Ban, Hand, ShieldCheck, Check, RotateCcw, CircleAlert, Loader } from "lucide-react";
+import { Ban, Hand, ShieldCheck, Check, RotateCcw, CircleAlert, Loader, Store } from "lucide-react";
 import { findQuotes, money, STATE_LABEL, type TrackState } from "./format";
 import type { Flag } from "@/core/grounding";
+import type { MarketResult } from "@/core/market";
 
 export function BrandMark() {
   // A bar resting on two spotting hands: the product's idea in one mark.
@@ -80,4 +81,22 @@ export function Evidence({ text, flags }: { text: string; flags: Flag[] }) {
   }
   if (at < text.length) parts.push(text.slice(at));
   return <blockquote className="evidence">{parts}</blockquote>;
+}
+
+/** What real shops charge for the same item (Channel3), next to what's about to be paid. */
+export function MarketNote({ market, currency }: { market: (MarketResult & { item: string }) | null; currency: string }) {
+  if (!market || !market.cheapest || !market.median) return null;
+  return (
+    <p className="market">
+      <Store className="market-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
+      <span>
+        Real shops sell {market.item} from{" "}
+        <a href={market.cheapest.url} target="_blank" rel="noopener noreferrer nofollow">
+          {money(market.cheapest.price, currency)} at {market.cheapest.domain}
+        </a>
+        , around {money(market.median, currency)} across {market.offers} retailers.{" "}
+        <span className="market-src">Prices from Channel3.</span>
+      </span>
+    </p>
+  );
 }

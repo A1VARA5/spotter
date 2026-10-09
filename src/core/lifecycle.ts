@@ -6,11 +6,14 @@ import type { AiCheckResult } from "@/ai/check";
 import type { captureAuthorization, createAuthorizeOrder, voidAuthorization } from "@/paypal/client";
 import { checkRules, normName } from "./rules";
 import { decide, type Decision } from "./decide";
-import type { Allowance, Money, PaymentMethod, PaymentRequest } from "./types";
+import type { Allowance, Currency, Money, PaymentMethod, PaymentRequest } from "./types";
+import { priceCheck, type MarketResult, type Offer } from "./market";
 
 export type Deps = {
   db: Db;
   check: (req: PaymentRequest) => Promise<AiCheckResult>;
+  /** Real retailer offers for an item (Channel3). null means the lookup couldn't run. Optional. */
+  market?: (item: string, currency: Currency) => Promise<Offer[] | null>;
   paypal: {
     createAuthorizeOrder: typeof createAuthorizeOrder;
     captureAuthorization: typeof captureAuthorization;
@@ -27,6 +30,7 @@ export type Payment = {
   request: PaymentRequest;
   decision: Decision | null;
   ai: AiCheckResult | null;
+  market: (MarketResult & { item: string }) | null;
   status: PaymentStatus;
   amount: string | number;
   currency: string;
@@ -47,6 +51,7 @@ export type PaymentInput = {
   category: string;
   method: PaymentMethod;
   context: string;
+  item?: string;
 };
 
 export class InvalidPaymentError extends Error {
@@ -138,6 +143,17 @@ export async function weekSpend(db: Db, spenderId: string, currency: string): Pr
   return Number(rows[0]?.total ?? 0);
 }
 
+async function marketCheck(deps: Deps, req: PaymentRequest): Promise<(MarketResult & { item: string }) | null> {
+  if (!deps.market || !req.item?.trim()) return null;
+  try {
+    const offers = await deps.market(req.item, req.money.currency);
+    return offers ? { ...priceCheck(req.money.amount, req.money.currency, offers), item: req.item } : null;
+  } catch (e) {
+    console.error(`[spotter] market check failed for ${req.id}:`, e instanceof Error ? e.message : e);
+    return null; // a missing price check never blocks or approves anything on its own
+  }
+}
+
 /** A payee is new unless this spender has paid or is paying them already. Never trusted from the caller. */
 async function isNewPayee(db: Db, spenderId: string, payee: string, beforeId: string): Promise<boolean> {
   const rows = await db.query<{ request: PaymentRequest }>(
@@ -199,7 +215,10 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest):
 
   // Always run the check, even when a rule already blocks: the spotter needs the evidence
   // (a scam that is also over budget should be explained as a scam, not as "over budget").
-  const ai: AiCheckResult = await deps.check(req);
+  const [aiRaw, market] = await Promise.all([deps.check(req), marketCheck(deps, req)]);
+  // Market evidence is code, not model output: it joins the flags as is.
+  const ai: AiCheckResult = market?.flag ? { ...aiRaw, flags: [market.flag, ...aiRaw.flags] } : aiRaw;
+  if (market) await setStatus(db, id, "checking", { market });
   await event(db, id, "checked", { ok: ai.ok, flags: ai.flags.length, dropped: ai.dropped, ...(ai.error ? { error: ai.error } : {}) });
   if (!ai.ok) console.error(`[spotter] AI check failed for ${id}: ${ai.error ?? "unknown"}`);
 

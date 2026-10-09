@@ -14,6 +14,7 @@ export type Scenario = {
     category: string;
     method: "paypal_order" | "friends_and_family" | "gift_card";
     context: string;
+    item?: string;
   };
 };
 
@@ -34,12 +35,25 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "agent-big",
     who: "Shopping agent",
-    title: "Agent wants £119 earbuds",
-    blurb: "Over the £30 ask me limit, from a shop it has never used.",
-    expect: "Held. You decide.",
+    title: "Agent wants £249 Sony earbuds",
+    blurb: "Over the £30 ask me limit, from a new shop, and pricier than real retailers.",
+    expect: "Held, with the real shop price next to it.",
     body: {
-      spenderId: "agent", amount: 11900, currency: "GBP", payee: "SoundDepot UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
-      context: "Noise cancelling wireless earbuds, 30 hour battery. £119.00. Free next day delivery. Sold by SoundDepot UK.",
+      spenderId: "agent", amount: 24900, currency: "GBP", payee: "SoundDepot UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
+      item: "Sony WF-1000XM5",
+      context: "Sony WF-1000XM5 noise cancelling wireless earbuds. £249.00. Free next day delivery. Sold by SoundDepot UK.",
+    },
+  },
+  {
+    id: "agent-too-cheap",
+    who: "Shopping agent",
+    title: "Agent finds AirPods Pro 3 for £24.99",
+    blurb: "A shop selling brand new AirPods Pro at a price no real retailer does.",
+    expect: "Held: real shops charge many times that.",
+    body: {
+      spenderId: "agent", amount: 2499, currency: "GBP", payee: "AirPods Outlet UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
+      item: "Apple AirPods Pro 3",
+      context: "Apple AirPods Pro 3, brand new and sealed. Clearance sale £24.99, was £249. Only 3 left! Ships from our UK warehouse.",
     },
   },
   {

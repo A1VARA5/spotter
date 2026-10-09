@@ -46,6 +46,14 @@ create table if not exists payments (
 create index if not exists payments_spender_created_idx on payments (spender_id, created_at desc);
 create index if not exists payments_needs_approval_idx on payments (created_at) where status = 'needs_approval';
 
+alter table payments add column if not exists market jsonb;
+
+create table if not exists market_cache (
+  key text primary key,
+  offers jsonb not null,
+  fetched_at timestamptz not null default now()
+);
+
 create table if not exists events (
   id bigint generated always as identity primary key,
   payment_id text not null references payments(id) on delete cascade,

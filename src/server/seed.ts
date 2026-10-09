@@ -10,7 +10,7 @@ export const DEMO_SPENDERS: SpenderSeed[] = [
     name: "Shopping agent",
     kind: "agent",
     spotterName: "Aivaras",
-    allowance: { weekly: gbp(15000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Tesco"], blockedPayees: [] },
+    allowance: { weekly: gbp(40000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Tesco"], blockedPayees: [] },
   },
   {
     id: "gran",

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Hand, ShieldCheck, Ban, Info } from "lucide-react";
-import { Evidence, HoldTrack } from "@/ui/components";
+import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
@@ -188,6 +188,8 @@ function HeldCard({ p, onSettled, onLocked }: { p: Payment; onSettled: () => voi
           ))}
         </ul>
       )}
+
+      <MarketNote market={p.market} currency={p.currency} />
 
       {p.request.context && <Evidence text={p.request.context} flags={flags} />}
 

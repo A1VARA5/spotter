@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pgliteDb } from "@/db";
 import { createSpender, type Deps } from "@/core/lifecycle";
-import { agentAllowance, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "./agent";
+import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, verifyAgentToken } from "./agent";
 import type { AiCheckResult } from "@/ai/check";
 
 let deps: Deps;
@@ -77,6 +77,18 @@ describe("agent tools", () => {
     const a = await agentAllowance(deps);
     expect(a.message).toMatch(/£125.01 left of £150.00 this week/);
     expect(a.message).toMatch(/over £30.00/);
+  });
+
+  it("lists real products with prices and shops for the agent", async () => {
+    const search = vi.fn(async () => [{ title: "Sony WF-1000XM5", brand: "Sony", offers: [{ domain: "currys.co.uk", price: 17900, url: "https://buy/1" }] }]);
+    const r = await agentFindProducts(search, "sony earbuds", "GBP");
+    expect(r.message).toMatch(/1\. Sony WF-1000XM5 by Sony: £179\.00 at currys\.co\.uk/);
+    expect(r.message).toMatch(/pass the product name as item/);
+  });
+
+  it("is honest when product search is down", async () => {
+    const r = await agentFindProducts(vi.fn(async () => null), "x", "GBP");
+    expect(r.message).toMatch(/unavailable/);
   });
 
   it("only accepts the configured agent token", () => {

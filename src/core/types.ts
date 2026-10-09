@@ -18,6 +18,8 @@ export type PaymentRequest = {
   payee: { name: string; id?: string; isNew: boolean };
   category: string;
   method: PaymentMethod;
+  /** The product being bought, for the market price check (optional). */
+  item?: string;
   /** What the spender saw: the agent's cart and page, or the message Gran got. Untrusted. */
   context: string;
   createdAt: string;

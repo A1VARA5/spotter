@@ -171,6 +171,35 @@ describe("payment lifecycle", () => {
     expect(p.error).toContain("boom");
   });
 
+  describe("market price check", () => {
+    const offers = [17900, 18900, 16999].map((price, i) => ({ title: "Sony WF-1000XM5", domain: `shop${i}.co.uk`, price, currency: "GBP" as const, url: "https://x" }));
+
+    it("flags a price far below real shops and asks the spotter", async () => {
+      deps.market = vi.fn(async () => offers);
+      const p = await submitPayment(deps, input(1999, { item: "Sony WF-1000XM5" }));
+      expect(p.status).toBe("needs_approval");
+      expect(p.decision!.reasons[0]).toMatch(/far below what real shops charge/);
+      expect(p.market?.median).toBe(17900);
+    });
+
+    it("leaves a normal price alone and records the market", async () => {
+      deps.market = vi.fn(async () => offers.map((o, i) => ({ ...o, price: [1700, 1800, 1900][i]! })));
+      const p = await submitPayment(deps, input(1800, { item: "Sony WF-1000XM5" }));
+      expect(p.status).toBe("captured");
+      expect(p.market?.offers).toBe(3);
+    });
+
+    it("skips the lookup with no item, and survives an outage without deciding anything", async () => {
+      deps.market = vi.fn(async () => null);
+      expect((await submitPayment(deps, input(1500))).status).toBe("captured");
+      expect(deps.market).not.toHaveBeenCalled();
+      deps.market = vi.fn(async () => {
+        throw new Error("channel3 down");
+      });
+      expect((await submitPayment(deps, input(1500, { item: "mug" }))).status).toBe("captured");
+    });
+  });
+
   it("returns the stored payment by id", async () => {
     const p = await submitPayment(deps, input(1500));
     expect((await getPayment(db, p.id))?.id).toBe(p.id);

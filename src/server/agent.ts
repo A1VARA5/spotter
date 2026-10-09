@@ -7,6 +7,7 @@ import { formatMoney } from "@/core/types";
 export const AGENT_ID = "agent";
 
 export type AgentPaymentInput = {
+  item?: string;
   amount_pence: number;
   currency: "GBP" | "USD";
   payee: string;
@@ -54,6 +55,7 @@ export async function agentRequestPayment(deps: Deps, input: AgentPaymentInput):
     payee: { name: input.payee, isNew: true },
     category: input.category,
     method: "paypal_order",
+    item: input.item,
     // Everything the agent saw is checked: its stated purpose and the page, verbatim.
     context: `What the agent says this is for: ${input.what_for}\n\nThe page it is buying from:\n${input.page_text}`,
   });
@@ -78,6 +80,25 @@ export async function agentAllowance(deps: Deps): Promise<{ message: string }> {
       `Payments over ${formatMoney(s.allowance.askAbove)} wait for ${s.spotter_name}. ` +
       `Never allowed: ${s.allowance.blockedCategories.join(", ").replace(/_/g, " ") || "nothing"}.`,
   };
+}
+
+/** Real products from real retailers (Channel3), so agents shop known shops at known prices. */
+export async function agentFindProducts(
+  search: (q: string, c: "GBP" | "USD", limit: number) => Promise<Array<{ title: string; brand?: string; offers: Array<{ domain: string; price: number; url: string }> }> | null>,
+  query: string,
+  currency: "GBP" | "USD",
+): Promise<{ message: string }> {
+  const products = await search(query, currency, 5);
+  if (products === null) return { message: "Product search is unavailable right now. Tell the user instead of guessing a shop." };
+  if (products.length === 0) return { message: `No products found for "${query}".` };
+  const lines = products.map((p, i) => {
+    const offers = p.offers
+      .slice(0, 3)
+      .map((o) => `${formatMoney({ amount: o.price, currency })} at ${o.domain} (${o.url})`)
+      .join("; ");
+    return `${i + 1}. ${p.title}${p.brand ? ` by ${p.brand}` : ""}: ${offers || "no offers in stock"}`;
+  });
+  return { message: `${lines.join("\n")}\n\nWhen you pay, pass the product name as item so Spotter can check the price.` };
 }
 
 /** Bearer token check for the MCP endpoint. Without SPOTTER_AGENT_TOKEN set, nobody gets in. */

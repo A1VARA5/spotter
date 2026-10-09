@@ -774,3 +774,21 @@ p {
   white-space: nowrap;
   border: 0;
 }
+
+/* ---------- market evidence ---------- */
+.market {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 15px;
+}
+
+.market-icon {
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+
+.market-src {
+  color: var(--ink-2);
+}
