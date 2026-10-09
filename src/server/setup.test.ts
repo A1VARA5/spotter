@@ -118,6 +118,19 @@ describe("connecting people", () => {
   });
 });
 
+describe("removing a person", () => {
+  it("is refused while one of their payments is held at PayPal", async () => {
+    const id = (await (await h.addSpender(req({ name: "Gran", preset: "relative" }, { unlocked: true }))).json()).spender.id;
+    await db.query(
+      "insert into payments (id, spender_id, request, status, amount, currency) values ('pay_x', $1, '{}'::jsonb, 'needs_approval', 100, 'GBP')",
+      [id],
+    );
+    expect((await h.removeSpender(req({}, { unlocked: true }), id)).status).toBe(409);
+    await db.query("update payments set status = 'voided'");
+    expect((await h.removeSpender(req({}, { unlocked: true }), id)).status).toBe(200);
+  });
+});
+
 describe("account", () => {
   it("changes the PIN only with the current one", async () => {
     await h.pin(req({ pin: "4821", confirm: "4821" }));

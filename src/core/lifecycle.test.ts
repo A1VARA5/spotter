@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb, type Db } from "@/db";
-import { approve, createSpender, deny, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
+import { approve, createSpender, deny, sweepStale, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
 import type { AiCheckResult } from "@/ai/check";
 import { PayPalError } from "@/paypal/client";
 import type { Allowance } from "./types";
@@ -222,5 +222,15 @@ describe("payment lifecycle", () => {
     const paid = await submitPayment({ ...deps, notify }, input(500));
     expect(paid.status).toBe("captured");
     expect(notify).toHaveBeenCalledTimes(1);
+  });
+
+  it("a check that never finished becomes failed, so it can't hold the allowance forever", async () => {
+    await db.query(
+      "insert into payments (id, spender_id, request, status, amount, currency, updated_at) values ('pay_old', 'agent1', '{}'::jsonb, 'checking', 100, 'GBP', now() - interval '10 minutes'), ('pay_new', 'agent1', '{}'::jsonb, 'checking', 100, 'GBP', now())",
+    );
+    expect(await sweepStale(db)).toBe(1);
+    expect((await getPayment(db, "pay_old"))?.status).toBe("failed");
+    expect((await getPayment(db, "pay_old"))?.error).toMatch(/nothing was paid/i);
+    expect((await getPayment(db, "pay_new"))?.status).toBe("checking");
   });
 });

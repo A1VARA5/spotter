@@ -92,9 +92,14 @@ export async function checkPin(db: Db, householdId: string, pin: string): Promis
   )[0];
   if (!row?.pin_hash) return "wrong";
   if (row.locked) return "locked";
-  const [, salt, stored] = row.pin_hash.split("$") as [string, string, string];
+  const [scheme, salt, stored] = row.pin_hash.split("$");
+  const want = Buffer.from(stored ?? "", "base64url");
+  if (scheme !== "scrypt" || !salt || want.length !== 32) {
+    console.error(`[spotter] stored PIN for ${householdId} is malformed`);
+    return "wrong";
+  }
   const got = await scryptAsync(pin, Buffer.from(salt, "base64url"), 32);
-  if (timingSafeEqual(got, Buffer.from(stored, "base64url"))) {
+  if (timingSafeEqual(got, want)) {
     await db.query("update households set pin_failures = 0 where id = $1", [householdId]);
     return "ok";
   }

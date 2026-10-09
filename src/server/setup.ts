@@ -89,6 +89,12 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
     async removeSpender(request: Request, id: string) {
       const s = await session(request, "always");
       if (s instanceof Response) return s;
+      // Their payment history is the audit trail and a live hold must be settled first, so refuse while one is open.
+      const open = await s.db.query(
+        "select 1 from payments p join spenders sp on sp.id = p.spender_id where p.spender_id = $1 and sp.household_id = $2 and p.status in ('checking', 'needs_approval', 'authorised', 'capturing', 'voiding') limit 1",
+        [id, s.hh.id],
+      );
+      if (open.length) return json({ error: "They have a payment waiting. Approve or deny it first, then remove them." }, 409);
       const rows = await s.db.query("delete from spenders where id = $1 and household_id = $2 returning id", [id, s.hh.id]);
       return rows.length ? json({ ok: true }) : json({ error: "No such person." }, 404);
     },

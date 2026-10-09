@@ -206,7 +206,11 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
     return fail(db, id, "check", e);
   }
   if (deps.notify && ["needs_approval", "blocked", "protected"].includes(result.status)) {
-    await deps.notify(result, spender).catch((e) => console.error(`[spotter] alert for ${id} failed:`, e instanceof Error ? e.message : e));
+    await deps.notify(result, spender).catch(async (e) => {
+      const error = e instanceof Error ? e.message : String(e);
+      console.error(`[spotter] alert for ${id} failed:`, error);
+      await event(db, id, "alert_failed", { error }).catch(() => {});
+    });
   }
   return result;
 }
@@ -292,6 +296,17 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
   }
   await event(db, id, "voided");
   return setStatus(db, id, "voided");
+}
+
+/** A check that was cut off (the server stopped mid way) never finished. Nothing reached PayPal's capture, so it
+ * is marked failed and stops counting against the allowance. Holds stuck mid capture are left for a person. */
+export async function sweepStale(db: Db, minutes = 5): Promise<number> {
+  const rows = await db.query<{ id: string }>(
+    `update payments set status = 'failed', error = 'Spotter stopped before finishing this check. Nothing was paid.', updated_at = now()
+     where status = 'checking' and updated_at < now() - make_interval(mins => $1) returning id`,
+    [minutes],
+  );
+  return rows.length;
 }
 
 /** Clears a household's payments (and their events) so the allowances start fresh. */

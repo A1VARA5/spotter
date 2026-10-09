@@ -87,7 +87,10 @@ const headers = () => ({ Authorization: `Bearer ${process.env.AGENTBOXD_API_KEY}
 
 export async function getMessage(id: string): Promise<MailMessage | null> {
   const r = await fetch(`${API}/messages/${idPath(id)}`, { headers: headers(), signal: AbortSignal.timeout(10_000) });
-  if (!r.ok) return null;
+  if (!r.ok) {
+    console.error(`[spotter] Agentboxd getMessage failed: ${r.status}`);
+    return null;
+  }
   const j = (await r.json()) as MailMessage & { data?: MailMessage };
   return j.id ? j : (j.data ?? null);
 }

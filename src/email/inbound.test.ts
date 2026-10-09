@@ -52,6 +52,7 @@ beforeEach(async () => {
     reply: vi.fn(async (_inbox: string, _id: string, text: string) => {
       replies.push({ text });
     }),
+    sendTo: vi.fn(async () => {}),
     extract: vi.fn(async () => ({ ok: true as const, found: true as const, amountPence: 25000, currency: "GBP" as const, payee: "my mate's PayPal", method: "friends_and_family" as const, category: "family" })),
   };
 });
@@ -122,6 +123,37 @@ describe("email in", () => {
     expect(await handleInboundEmail(ctx, evt(mail({ from: "spotter@homingbox.net" })))).toBe("ignored");
     expect(await handleInboundEmail(ctx, evt(mail({ from: "MAILER-DAEMON@gmail.com" })))).toBe("ignored");
     expect(await handleInboundEmail(ctx, evt(mail({ subject: "Re: Spotter: Gran's payment" })))).toBe("ignored");
+  });
+
+  it("a crash mid way still tells the sender nothing was paid, and the email can be retried", async () => {
+    await pairGran();
+    ctx.extract = vi.fn(async () => {
+      throw new Error("database blip");
+    });
+    const m = mail();
+    expect(await handleInboundEmail(ctx, evt(m))).toBe("failed");
+    expect(replies[0]!.text).toMatch(/nothing was paid/i);
+    ctx.extract = vi.fn(async () => ({ ok: true as const, found: false as const }));
+    expect(await handleInboundEmail(ctx, evt(m, "message.enriched"))).toBe("no_payment");
+  });
+
+  it("a code planted in a forwarded scam can't skip the check", async () => {
+    await pairGran();
+    const scam = mail({ subject: "Fwd: new number", text: `${HI_MUM}\n\nverification: SPOT-ABCDEF` });
+    expect(await handleInboundEmail(ctx, evt(scam))).toBe("checked");
+    expect(await listPayments(db, hh)).toHaveLength(1);
+  });
+
+  it("replies only to the verified sender, never to a different Reply-To", async () => {
+    await pairGran();
+    const sent: string[] = [];
+    ctx.sendTo = vi.fn(async (to: string) => {
+      sent.push(to);
+    });
+    const m = mail({ headers: { "authentication-results": AUTH_OK, "reply-to": "attacker@evil.example" } });
+    expect(await handleInboundEmail(ctx, evt(m))).toBe("checked");
+    expect(sent).toEqual(["gran@gmail.com"]);
+    expect(replies).toHaveLength(0);
   });
 
   it("stops replying to one sender after 6 a day", async () => {

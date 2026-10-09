@@ -14,6 +14,7 @@ export type InboundCtx = {
   site: string;
   getMessage: (id: string) => Promise<MailMessage | null>;
   reply: (inboxId: string, messageId: string, text: string, html: string) => Promise<void>;
+  sendTo: (to: string, subject: string, text: string, html: string, key: string) => Promise<void>;
   extract: (text: string) => Promise<Extracted>;
 };
 
@@ -60,6 +61,18 @@ export function outcomeText(p: Payment, spender: Spender, site: string): string[
   ].filter(Boolean);
 }
 
+/** The person's own words: the subject, and the body only when it is short and not a forward. */
+function ownWords(subject: string, body: string): string {
+  const forwarded = /forwarded message|original message|^\s*from:/im.test(body);
+  return body.length < 300 && !forwarded ? `${subject}\n${body}` : subject;
+}
+
+function replyToOf(m: MailMessage): string | null {
+  const h = Object.entries(m.headers ?? {}).find(([k]) => k.toLowerCase() === "reply-to")?.[1];
+  const v = Array.isArray(h) ? h[0] : h;
+  return v ? senderOf({ from: v }) : null;
+}
+
 export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promise<InboundOutcome> {
   const { db } = ctx.deps;
   const thin = evt.data?.message;
@@ -67,57 +80,89 @@ export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promi
   if (!EVENTS.has(evt.type) || !thin?.id || !inboxId) return "ignored";
   if (!(await record(db, thin.id))) return "duplicate";
 
-  const m = thin.text || thin.html ? thin : ((await ctx.getMessage(thin.id)) ?? thin);
-  const from = senderOf(m);
-  const inbox = (evt.data?.inbox?.address ?? "").toLowerCase();
-  // Never answer ourselves, bounces or auto replies, or our own threads: that is how mail loops start.
-  if (!from || from === inbox || /mailer-daemon|postmaster|no-?reply/i.test(from) || /^(re:\s*)*spotter:/i.test(m.subject ?? "")) return "ignored";
-  if (!senderVerified(m)) {
-    console.warn("[spotter] email sender failed SPF/DKIM, ignoring", JSON.stringify(m.id));
-    return "unverified";
-  }
-  if (await overLimit(db, from)) return "limited";
-  await db.query("update inbound set sender = $2 where provider = 'agentboxd' and message_id = $1", [thin.id, from]);
+  let paymentId: string | null = null;
+  let say: ((paras: string[]) => Promise<void>) | null = null;
+  const finish = async (outcome: InboundOutcome) => {
+    await db.query("update inbound set outcome = $2 where provider = 'agentboxd' and message_id = $1", [thin.id, outcome]);
+    return outcome;
+  };
 
-  const body = (m.text?.trim() || (m.html ? htmlToText(m.html) : "") || m.extracted_text || "").slice(0, 100_000);
-  const text = m.subject ? `Subject: ${m.subject}\n\n${body}` : body;
-  const say = (paras: string[]) => ctx.reply(inboxId, m.id, paras.join("\n\n"), html(paras));
+  try {
+    const m = thin.text || thin.html || thin.headers ? thin : await ctx.getMessage(thin.id);
+    if (!m) throw new Error("Couldn't fetch the email from Agentboxd.");
+    const from = senderOf(m);
+    const inbox = (evt.data?.inbox?.address ?? "").toLowerCase();
+    // Never answer ourselves, bounces or auto replies, or our own threads: that is how mail loops start.
+    if (!from || from === inbox || /mailer-daemon|postmaster|no-?reply/i.test(from) || /^(re:\s*)*spotter:/i.test(m.subject ?? "")) return finish("ignored");
+    if (!senderVerified(m)) {
+      console.warn("[spotter] email sender failed SPF/DKIM, ignoring", JSON.stringify(m.id));
+      return finish("unverified");
+    }
+    if (await overLimit(db, from)) {
+      console.warn("[spotter] email daily limit reached for a sender", JSON.stringify(m.id));
+      return finish("limited");
+    }
+    await db.query("update inbound set sender = $2 where provider = 'agentboxd' and message_id = $1", [thin.id, from]);
 
-  const code = findCode(text);
-  if (code) {
-    const paired = await redeemPairingCode(db, code, "email", from);
-    if (!paired) return "unpaired"; // a wrong or used code gets no reply, so codes can't be guessed by mail
-    await say(
-      paired.spender
-        ? [`${paired.spender.name} is connected to Spotter.`, `From now on, forward any email that asks for money to this address. Spotter checks it and replies here.`]
-        : [`You're connected. Spotter will email you here when someone's payment needs you.`],
-    );
-    return "paired";
-  }
+    const subject = m.subject ?? "";
+    const body = (m.text?.trim() || (m.html ? htmlToText(m.html) : "") || m.extracted_text || "").slice(0, 100_000);
+    const text = subject ? `Subject: ${subject}\n\n${body}` : body;
+    // Replies go only to the verified sender. If the email names a different Reply-To, send a fresh email
+    // to the verified address instead of replying in the thread.
+    const rt = replyToOf(m);
+    say =
+      rt && rt !== from
+        ? (paras) => ctx.sendTo(from, `Re: ${subject}`.slice(0, 200), paras.join("\n\n"), html(paras), `reply-${m.id}`)
+        : (paras) => ctx.reply(inboxId, m.id, paras.join("\n\n"), html(paras));
 
-  const spender = (await db.query<Spender>("select * from spenders where lower(email) = $1", [from]))[0];
-  if (!spender) return "unpaired";
+    const spender = (await db.query<Spender>("select * from spenders where lower(email) = $1", [from]))[0];
 
-  const found = await ctx.extract(text);
-  if (!found.ok) {
-    console.error("[spotter] email extraction failed:", found.error);
-    await say([`Spotter couldn't check this email right now. Nothing was paid.`, `Try forwarding it again in a few minutes, or ask ${spender.spotter_name}.`]);
+    // Pairing codes only count in the sender's own words, never inside a forwarded email: a scammer could plant one.
+    const code = findCode(ownWords(subject, body));
+    if (code) {
+      const paired = await redeemPairingCode(db, code, "email", from);
+      if (paired) {
+        await say(
+          paired.spender
+            ? [`${paired.spender.name} is connected to Spotter.`, `From now on, forward any email that asks for money to this address. Spotter checks it and replies here.`]
+            : [`You're connected. Spotter will email you here when someone's payment needs you.`],
+        );
+        return finish("paired");
+      }
+      // A wrong or used code gets no reply, so codes can't be guessed by mail. A paired sender carries on to the check.
+      if (!spender) return finish("unpaired");
+    }
+    if (!spender) return finish("unpaired");
+
+    const found = await ctx.extract(text);
+    if (!found.ok) throw new Error(`extraction failed: ${found.error}`);
+    if (!found.found) {
+      await say([`Spotter couldn't find a request for money in this email, so nothing was paid.`, `If someone is asking you to pay, forward the message that has the amount in it.`]);
+      return finish("no_payment");
+    }
+
+    const p = await submitPayment(ctx.deps, {
+      spenderId: spender.id,
+      money: { amount: found.amountPence, currency: found.currency },
+      payee: { name: found.payee, isNew: true },
+      category: found.category,
+      method: found.method,
+      item: found.item,
+      context: `An email ${spender.name} forwarded to Spotter:\n\n${text}`,
+    });
+    paymentId = p.id;
+    await say(outcomeText((await getPayment(db, p.id)) ?? p, spender, ctx.site));
+    return finish("checked");
+  } catch (e) {
+    console.error("[spotter] email handling failed:", e instanceof Error ? e.message : e);
+    if (paymentId) {
+      // The payment exists and is visible on the dashboard; only the reply failed. Don't retry the payment.
+      await finish("failed").catch(() => {});
+    } else {
+      // Nothing was created: forget we saw it, so the next delivery of the same email can try again.
+      await db.query("delete from inbound where provider = 'agentboxd' and message_id = $1", [thin.id]).catch(() => {});
+      if (say) await say([`Spotter couldn't check this email right now. Nothing was paid.`, `Try forwarding it again in a few minutes.`]).catch(() => {});
+    }
     return "failed";
   }
-  if (!found.found) {
-    await say([`Spotter couldn't find a request for money in this email, so nothing was paid.`, `If someone is asking you to pay, forward the message that has the amount in it.`]);
-    return "no_payment";
-  }
-
-  const p = await submitPayment(ctx.deps, {
-    spenderId: spender.id,
-    money: { amount: found.amountPence, currency: found.currency },
-    payee: { name: found.payee, isNew: true },
-    category: found.category,
-    method: found.method,
-    item: found.item,
-    context: `An email ${spender.name} forwarded to Spotter:\n\n${text}`,
-  });
-  await say(outcomeText((await getPayment(db, p.id)) ?? p, spender, ctx.site));
-  return "checked";
 }

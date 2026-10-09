@@ -3,10 +3,11 @@
 import { after } from "next/server";
 import { getDeps } from "@/server/deps";
 import { extractPayment } from "@/ai/extract";
-import { getMessage, reply, verifyMailroom, type MailEvent } from "@/email/agentboxd";
+import { getMessage, reply, send, verifyMailroom, type MailEvent } from "@/email/agentboxd";
 import { handleInboundEmail } from "@/email/inbound";
 
-export const maxDuration = 60;
+// The worst case adds up past a minute (fetch, extraction, check, PayPal hold, reply), so allow the full 5 minutes.
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const raw = await request.text();
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
   after(async () => {
     try {
-      const outcome = await handleInboundEmail({ deps: await getDeps(), site, getMessage, reply, extract: (t) => extractPayment(t) }, evt);
+      const outcome = await handleInboundEmail({ deps: await getDeps(), site, getMessage, reply, sendTo: send, extract: (t) => extractPayment(t) }, evt);
       console.log("[spotter] email", evt.data?.message?.id ?? "?", outcome);
     } catch (e) {
       console.error("[spotter] email handling failed:", e);
