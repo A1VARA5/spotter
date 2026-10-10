@@ -188,6 +188,11 @@ describe("watch alerts", () => {
     heldAtPayPal: 0,
     paypalExpires: null,
     paypalId: "",
+    marketCheapest: null,
+    marketMedian: null,
+    priceGap: null,
+    marketShop: "",
+    marketItem: "",
     ...over,
   });
 
@@ -237,5 +242,36 @@ describe("watch alerts", () => {
   it("doesn't call everything new when there is no history older than a week", () => {
     const rows = [row({ id: "a", topSign: "Pressure to hurry", signs: 1, when: new Date(hoursAgo(24)) })];
     expect(watchAlerts(rows, NOW)).toEqual([]);
+  });
+});
+
+describe("fair price fields", () => {
+  const offer = (domain: string, pence: number) => ({ title: "Pro wireless earbuds 2", domain, price: pence, currency: "GBP" as const, url: `https://${domain}/x` });
+  const base = payment({ id: "x", spender_id: "sp_gran", status: "captured" }).request;
+
+  it("carries Channel3's cheapest and median real retailer price in pounds, and the gap to what was paid", () => {
+    const p = payment({
+      id: "pay_m",
+      spender_id: "sp_gran",
+      status: "captured",
+      amount: "18700",
+      request: { ...base, id: "pay_m", item: "Pro wireless earbuds 2" },
+      market: { item: "Pro wireless earbuds 2", flag: null, median: 17900, offers: 4, cheapest: offer("highstreet-sound.example", 16900) },
+    });
+    const r = toSources([p], [gran], NOW).payments[0]!;
+    expect(r).toMatchObject({ marketCheapest: 169, marketMedian: 179, priceGap: 18, marketShop: "highstreet-sound.example", marketItem: "Pro wireless earbuds 2" });
+  });
+
+  it("says saved money as a negative gap", () => {
+    const p = payment({ id: "pay_m", spender_id: "sp_gran", status: "captured", amount: "1500", market: { item: "Kettle", flag: null, median: 1900, offers: 3, cheapest: offer("homeware.example", 1650) } });
+    expect(toSources([p], [gran], NOW).payments[0]!.priceGap).toBe(-1.5);
+  });
+
+  it("leaves the fields empty when there was no price check, or too few retailers to compare", () => {
+    const none = payment({ id: "p1", spender_id: "sp_gran", status: "captured" });
+    const thin = payment({ id: "p2", spender_id: "sp_gran", status: "captured", market: { item: "Thing", flag: null, offers: 1 } });
+    for (const r of toSources([none, thin], [gran], NOW).payments) {
+      expect(r).toMatchObject({ marketCheapest: null, marketMedian: null, priceGap: null, marketShop: "", marketItem: "" });
+    }
   });
 });

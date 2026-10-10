@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_NETWORK, sampleMonth } from "./sample";
 import { SAMPLE_PREFIX, toSources, watchAlerts } from "./data";
+import { fairPrice } from "./widgetLogic";
 import type { Spender } from "@/core/lifecycle";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
@@ -50,6 +51,19 @@ describe("sample month", () => {
     const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
     const blocked = new Set(payments.filter((r) => r.outcome === "Stopped" || r.outcome === "Denied").map((r) => r.payee.trim().toLowerCase()));
     for (const key of Object.keys(SAMPLE_NETWORK)) expect(blocked).toContain(key);
+  });
+
+  it("gives the fair price widget a few made up price checks: some overpaying, a fair one and a fake shop caught", () => {
+    const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
+    const checked = payments.filter((r) => r.marketCheapest !== null);
+    expect(checked.length).toBeGreaterThanOrEqual(4);
+    expect(checked.every((r) => r.who === "Shopping agent" && r.marketShop.endsWith(".co.uk"))).toBe(true);
+    const f = fairPrice(
+      payments.map((r) => ({ ...r, sample: r.sample === "Yes" })),
+      NOW,
+    );
+    expect(f.headline).toBe("Your agent paid £8.50 more than the cheapest real shop this month");
+    expect(f.caught).toBe('Spotter caught a £24.99 "Pro wireless earbuds 2" that real shops sell for around £169');
   });
 
   it("is empty when the family has nobody to match", () => {

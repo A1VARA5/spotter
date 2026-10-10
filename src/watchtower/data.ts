@@ -28,6 +28,16 @@ export type PaymentRow = {
   paypalExpires: Date | null;
   /** PayPal's authorisation id (or order id before there is one). */
   paypalId: string;
+  /** The cheapest real retailer price Channel3 found for the item, in pounds. Null when there was no usable price check. */
+  marketCheapest: number | null;
+  /** The median real retailer price, in pounds. Null when there was no usable price check. */
+  marketMedian: number | null;
+  /** What was paid minus the cheapest real retailer: positive is overpaid, negative is saved. */
+  priceGap: number | null;
+  /** The cheapest retailer's domain. */
+  marketShop: string;
+  /** The item that was price checked. */
+  marketItem: string;
 };
 /** Spotter's own words about one payment, for the case file widget and the open_case_file tool. */
 export type CaseNote = { id: string; reasons: string[]; signs: Array<{ sign: string; severity: string; why: string }>; caseHeadline?: string; caseFindings?: string[] };
@@ -90,6 +100,9 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
     // Set by the PayPal reconciler once it has asked PayPal; older rows don't have the column at all.
     const expiresRaw = (p as Payment & { paypal_auth_expires_at?: string | Date | null }).paypal_auth_expires_at;
     const expires = outcome === "Waiting" && expiresRaw ? new Date(expiresRaw) : null;
+    // A price check only counts with a cheapest offer and a median, i.e. at least two real retailers.
+    const m = p.market?.cheapest && p.market.median ? p.market : null;
+    const cheapest = m ? pounds(m.cheapest!.price) : null;
     rows.push({
       id: p.id,
       when,
@@ -109,6 +122,11 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
       heldAtPayPal: outcome === "Waiting" ? amount : 0,
       paypalExpires: expires && Number.isFinite(expires.getTime()) ? expires : null,
       paypalId: p.paypal_authorization_id ?? p.paypal_order_id ?? "",
+      marketCheapest: cheapest,
+      marketMedian: m ? pounds(m.median!) : null,
+      priceGap: cheapest === null ? null : Math.round((amount - cheapest) * 100) / 100,
+      marketShop: m?.cheapest?.domain ?? "",
+      marketItem: m?.item ?? "",
     });
     for (const f of flags) {
       signs.push({ paymentId: p.id, when, who: who?.name ?? "Someone", payee: p.request.payee.name, sign: SIGN_LABEL[f.kind], severity: SEVERITY_LABEL[f.severity] });

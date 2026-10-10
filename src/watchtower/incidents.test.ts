@@ -24,6 +24,11 @@ const row = (over: Partial<PaymentRow>): PaymentRow => ({
   heldAtPayPal: 0,
   paypalExpires: null,
   paypalId: "",
+  marketCheapest: null,
+  marketMedian: null,
+  priceGap: null,
+  marketShop: "",
+  marketItem: "",
   ...over,
 });
 

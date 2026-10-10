@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { namesOf, pageTabs, removePage, withNames } from "./pages";
+import { addPage, namesOf, pageTabs, removePage, withNames } from "./pages";
 
 const state = (pages: Array<{ id: string; name?: string }>, selectedPageId = pages[0]!.id) => ({ pages: pages.map((p) => ({ ...p, widgets: {} })), selectedPageId }) as never;
 
@@ -59,3 +59,33 @@ describe("phone layout", () => {
     expect(JSON.stringify(s)).toBe(before);
   });
 });
+
+describe("addPage (the agents' add_page tool)", () => {
+  type P = { pages: Array<{ id: string; name?: string; widgets: object }>; selectedPageId: string };
+  it("adds an empty named page, selects it and returns its id", () => {
+    const { state, pageId } = addPage(state0(), "Week of 5 Oct 2026");
+    const s = state as unknown as P;
+    expect(pageId).toBe("page-week-of-5-oct-2026");
+    expect(s.pages.at(-1)).toEqual({ id: pageId, name: "Week of 5 Oct 2026", widgets: {}, widgetLayout: {} });
+    expect(s.selectedPageId).toBe(pageId);
+  });
+
+  it("reuses a page with the same name instead of making a second one", () => {
+    const once = addPage(state0(), "Week of 5 Oct 2026").state;
+    const again = addPage(once, " week of 5 oct 2026 ");
+    expect(again.pageId).toBe("page-week-of-5-oct-2026");
+    expect((again.state as unknown as P).pages).toHaveLength(2);
+  });
+
+  it("keeps names short and plain, and refuses an empty one", () => {
+    expect((addPage(state0(), "<img src=x> Report!!​" + "x".repeat(80)).state as unknown as P).pages.at(-1)!.name).toBe("img src x Report!!" + "x".repeat(22));
+    expect(() => addPage(state0(), "  <>  ")).toThrow(/name/);
+  });
+
+  it("gives different names different ids even when they slug the same", () => {
+    const a = addPage(state0(), "Fair price").state;
+    expect(addPage(a, "Fair price?").pageId).toBe("page-fair-price-2");
+  });
+});
+
+const state0 = () => state([{ id: "month", name: "This month" }]);

@@ -89,3 +89,80 @@ export function radarLines(rows: Array<{ payee: string; outcome: string }>, coun
     })
     .sort((a, b) => b.families - a.families || a.payee.localeCompare(b.payee));
 }
+
+// ---------- fair price ----------
+
+/** A payments row as the fair price widget reads it (prices in pounds, from Channel3's stored check). */
+export type PriceRow = {
+  id: string;
+  when: Date;
+  who: string;
+  kind: string;
+  payee: string;
+  amount: number;
+  outcome: string;
+  marketCheapest: number | null;
+  marketMedian: number | null;
+  priceGap: number | null;
+  marketShop: string;
+  marketItem: string;
+  sample: boolean;
+};
+export type PriceVerdict = "fake" | "over" | "under" | "fair";
+export type PriceItem = Omit<PriceRow, "when" | "kind" | "marketCheapest" | "marketMedian" | "priceGap"> & { cheapest: number; median: number; gap: number; verdict: PriceVerdict };
+export type FairPrice = { checked: number; overpaid: number; saved: number; headline: string; caught: string | null; items: PriceItem[] };
+
+/** Under 40% of the going rate is a fake shop tell, the same line the payment check uses. */
+const TOO_CHEAP = 0.4;
+const NOTICEABLE = 0.5;
+const MAX_ITEMS = 5;
+const STOPPED_IN = new Set(["Stopped", "Denied", "Waiting"]);
+
+/** £18, £3.50, £24.99: whole pounds without pence. */
+export const poundsShort = (n: number) => `£${Number.isInteger(round(n)) ? round(n).toLocaleString("en-GB") : round(n).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function verdictOf(amount: number, cheapest: number, median: number): PriceVerdict {
+  if (amount < median * TOO_CHEAP) return "fake";
+  if (amount - cheapest >= NOTICEABLE) return "over";
+  if (amount - cheapest <= -NOTICEABLE) return "under";
+  return "fair";
+}
+
+/**
+ * What the family paid against the cheapest real retailer this month (last 30 days), from the price
+ * checks Spotter stored when each payment was made. Only paid payments count towards overpaid or saved;
+ * a fake shop price Spotter stopped is called out on its own.
+ */
+export function fairPrice(rows: PriceRow[], now: Date): FairPrice {
+  const checked = rows.filter((r) => r.marketCheapest !== null && r.marketMedian !== null && now.getTime() - r.when.getTime() <= 30 * DAY);
+  if (!checked.length) return { checked: 0, overpaid: 0, saved: 0, headline: "", caught: null, items: [] };
+  const items: PriceItem[] = checked.map(({ when: _w, kind: _k, marketCheapest, marketMedian, priceGap, ...rest }) => {
+    const cheapest = marketCheapest!;
+    const gap = priceGap ?? round(rest.amount - cheapest);
+    return { ...rest, cheapest, median: marketMedian!, gap, verdict: verdictOf(rest.amount, cheapest, marketMedian!) };
+  });
+  const paid = items.filter((i) => i.outcome === "Paid");
+  const overpaid = round(paid.reduce((t, i) => t + Math.max(i.gap, 0), 0));
+  const saved = round(paid.reduce((t, i) => t + Math.max(-i.gap, 0), 0));
+
+  const payers = [...new Set(checked.filter((r) => r.outcome === "Paid").map((r) => r.who))];
+  const onlyKind = payers.length === 1 ? checked.find((r) => r.who === payers[0])!.kind : "";
+  const label = payers.length > 1 ? "Everyone together" : onlyKind === "AI agent" ? "Your agent" : (payers[0] ?? "");
+  const headline = !paid.length
+    ? "Nothing paid this month had a price check yet"
+    : overpaid >= NOTICEABLE
+      ? `${label} paid ${poundsShort(overpaid)} more than the cheapest real shop this month`
+      : `${label} paid fair prices this month: never more than the cheapest real shop`;
+
+  const stopped = items.filter((i) => STOPPED_IN.has(i.outcome)).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+  const fake = stopped.find((i) => i.verdict === "fake");
+  const dear = stopped.find((i) => i.verdict === "over");
+  const name = (i: PriceItem) => `"${i.marketItem || i.payee}"`;
+  const caught = fake
+    ? `Spotter caught a ${poundsShort(fake.amount)} ${name(fake)} that real shops sell for around ${poundsShort(fake.median)}`
+    : dear
+      ? `Spotter stopped ${poundsShort(dear.amount)} for ${name(dear)} that the cheapest real shop sells for ${poundsShort(dear.cheapest)}`
+      : null;
+
+  return { checked: checked.length, overpaid, saved, headline, caught, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, MAX_ITEMS) };
+}

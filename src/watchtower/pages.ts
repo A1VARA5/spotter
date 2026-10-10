@@ -31,6 +31,29 @@ export function removePage(s: AgReportState, id: string): AgReportState {
   return { ...s, pages: rest, selectedPageId: s.selectedPageId === id ? rest[0]!.id : s.selectedPageId } as unknown as AgReportState;
 }
 
+const MAX_NAME = 40;
+// Zero width and bidi marks vanish; anything else that isn't a letter, digit or plain punctuation becomes a space.
+const INVISIBLE = /[​-‏‪-‮⁠-⁤﻿]/g;
+const NOT_PLAIN = /[^\p{L}\p{N} £.,'!?:&-]/gu;
+
+/**
+ * A new empty page with a name an agent chose (the add_page tool), selected so the family sees it fill
+ * in. A page with the same name is reused, so a retried tool call doesn't leave two. Throws on an empty name.
+ */
+export function addPage(s: AgReportState, rawName: string): { state: AgReportState; pageId: string } {
+  const name = rawName.replace(INVISIBLE, "").replace(NOT_PLAIN, " ").replace(/\s+/g, " ").trim().slice(0, MAX_NAME).trim();
+  if (!/[\p{L}\p{N}]/u.test(name)) throw new Error("The page needs a name with letters or numbers in it.");
+  const pages = pagesIn(s);
+  const same = pages.find((p) => p.name?.trim().toLowerCase() === name.toLowerCase());
+  if (same) return { state: { ...s, selectedPageId: same.id } as AgReportState, pageId: same.id };
+  const slug = `page-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "new"}`;
+  const taken = new Set(pages.map((p) => p.id));
+  let pageId = slug;
+  for (let n = 2; taken.has(pageId); n++) pageId = `${slug}-${n}`;
+  const page = { id: pageId, name, widgets: {}, widgetLayout: {} };
+  return { state: { ...s, pages: [...pages, page], selectedPageId: pageId } as unknown as AgReportState, pageId };
+}
+
 type Box = { xTrack: number; yTrack: number; xSpan: number; ySpan: number };
 
 /** Phones get one widget per row, full width, in the order you'd read the desktop board. Never saved. */

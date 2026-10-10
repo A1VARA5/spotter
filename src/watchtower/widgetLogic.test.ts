@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, pickCase, radarLines, replayDays, shortId } from "./widgetLogic";
+import { countdown, fairPrice, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
 const h = (hours: number) => new Date(NOW.getTime() + hours * 3600_000);
@@ -81,5 +81,58 @@ describe("scam radar lines", () => {
       { payee: "Tax Refunds Team", families: 0, sample: false, text: "No other Spotter family has reported it yet" },
     ]);
     expect(radarLines([{ payee: "X", outcome: "Stopped" }], { x: { families: 1 } })[0]!.text).toBe("Stopped for 1 other family in the last 30 days");
+  });
+});
+
+describe("fair price", () => {
+  const pr = (over: Partial<PriceRow>): PriceRow => ({
+    id: "p",
+    when: h(-24),
+    who: "Shopping agent",
+    kind: "AI agent",
+    payee: "Homeware Hub",
+    amount: 20,
+    outcome: "Paid",
+    marketCheapest: 20,
+    marketMedian: 22,
+    priceGap: 0,
+    marketShop: "kettle-co.example",
+    marketItem: "Steel kettle",
+    sample: false,
+    ...over,
+  });
+
+  it("adds up what the agent paid over the cheapest real shop this month", () => {
+    const f = fairPrice([pr({ id: "a", amount: 38, marketCheapest: 30, priceGap: 8 }), pr({ id: "b", amount: 30, marketCheapest: 20, priceGap: 10 }), pr({ id: "c" })], NOW);
+    expect(f.overpaid).toBe(18);
+    expect(f.checked).toBe(3);
+    expect(f.headline).toBe("Your agent paid £18 more than the cheapest real shop this month");
+    expect(f.items.map((i) => i.id)).toEqual(["b", "a", "c"]);
+    expect(f.items[0]!.verdict).toBe("over");
+  });
+
+  it("calls out a fake shop price Spotter caught against what real shops charge", () => {
+    const f = fairPrice([pr({ id: "fake", amount: 24.99, outcome: "Stopped", marketCheapest: 159, marketMedian: 169, priceGap: -134.01, marketItem: "Pro wireless earbuds" })], NOW);
+    expect(f.caught).toBe('Spotter caught a £24.99 "Pro wireless earbuds" that real shops sell for around £169');
+    expect(f.items[0]!.verdict).toBe("fake");
+    // Nothing was paid, so nothing was overpaid.
+    expect(f.overpaid).toBe(0);
+  });
+
+  it("says when every paid price was fair, and names one person who isn't an agent", () => {
+    expect(fairPrice([pr({ who: "Gran", kind: "Person" })], NOW).headline).toBe("Gran paid fair prices this month: never more than the cheapest real shop");
+  });
+
+  it("speaks for everyone when several people paid, and ignores rows with no price check or older than 30 days", () => {
+    const f = fairPrice(
+      [pr({ id: "a", priceGap: 2.5, amount: 22.5 }), pr({ id: "b", who: "Gran", kind: "Person", priceGap: 1, amount: 21 }), pr({ id: "none", marketCheapest: null, marketMedian: null, priceGap: null }), pr({ id: "old", when: h(-24 * 40), priceGap: 50 })],
+      NOW,
+    );
+    expect(f.checked).toBe(2);
+    expect(f.headline).toBe("Everyone together paid £3.50 more than the cheapest real shop this month");
+  });
+
+  it("has nothing to say without a price check", () => {
+    expect(fairPrice([pr({ marketCheapest: null, marketMedian: null, priceGap: null })], NOW)).toMatchObject({ checked: 0, headline: "", caught: null, items: [] });
   });
 });

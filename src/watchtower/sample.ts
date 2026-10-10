@@ -19,6 +19,8 @@ type Entry = {
   isNew?: boolean;
   flags?: Flag[];
   reason?: string;
+  /** A made up price check, as Channel3 would have stored it: item, cheapest retailer and median, in pence. */
+  price?: { item: string; shop: string; cheapest: number; median: number; offers: number };
 };
 
 const f = (kind: Flag["kind"], severity: Flag["severity"], why: string): Flag => ({ kind, severity, quote: "", why });
@@ -27,11 +29,13 @@ const D = 24;
 const STORY: Entry[] = [
   // Shopping agent
   { who: "agent", hoursAgo: 26 * D, payee: "Corner Grocer", pence: 7240, category: "groceries", status: "captured" },
-  { who: "agent", hoursAgo: 22 * D, payee: "Clay & Kiln", pence: 2400, category: "gifts", status: "captured" },
+  { who: "agent", hoursAgo: 22 * D, payee: "Clay & Kiln", pence: 2400, category: "gifts", status: "captured", price: { item: "Hand thrown mug set", shop: "larkspur-gifts.co.uk", cheapest: 2400, median: 2650, offers: 3 } },
   { who: "agent", hoursAgo: 19 * D, payee: "Corner Grocer", pence: 6815, category: "groceries", status: "captured" },
-  { who: "agent", hoursAgo: 15 * D, payee: "earbuds-outlet.shop", pence: 21900, category: "electronics", status: "voided", isNew: true, flags: [f("price", "medium", "Real shops charge about £169 for these."), f("new_shop", "medium", "The shop's website is 6 days old.")], reason: "The price and the shop both looked wrong." },
+  { who: "agent", hoursAgo: 15 * D, payee: "earbuds-outlet.shop", pence: 21900, category: "electronics", status: "voided", isNew: true, flags: [f("price", "medium", "Real shops charge about £169 for these."), f("new_shop", "medium", "The shop's website is 6 days old.")], reason: "The price and the shop both looked wrong.", price: { item: "Pro wireless earbuds 2", shop: "harbourline-audio.co.uk", cheapest: 15900, median: 16900, offers: 5 } },
   { who: "agent", hoursAgo: 12 * D, payee: "Corner Grocer", pence: 7012, category: "groceries", status: "captured" },
-  { who: "agent", hoursAgo: 9 * D, payee: "Everything Store", pence: 1899, category: "household", status: "captured" },
+  { who: "agent", hoursAgo: 9 * D, payee: "Everything Store", pence: 1899, category: "household", status: "captured", price: { item: "Steel kettle 1.7L", shop: "copperpot-home.co.uk", cheapest: 1549, median: 1699, offers: 4 } },
+  { who: "agent", hoursAgo: 7 * D, payee: "sound-bargains.shop", pence: 2499, category: "electronics", status: "blocked", isNew: true, flags: [f("price", "high", "£24.99 is far below what real shops charge (around £169 across 5 retailers). Prices this low are a fake shop tell."), f("new_shop", "medium", "Nobody in the Spotter network has paid this shop before.")], reason: "The price was too good to be true.", price: { item: "Pro wireless earbuds 2", shop: "harbourline-audio.co.uk", cheapest: 15900, median: 16900, offers: 5 } },
+  { who: "agent", hoursAgo: 6 * D, payee: "Lampshade Lane", pence: 2999, category: "household", status: "captured", price: { item: "LED desk lamp", shop: "pennyworth-electrics.co.uk", cheapest: 2499, median: 2799, offers: 4 } },
   { who: "agent", hoursAgo: 5 * D, payee: "Corner Grocer", pence: 6630, category: "groceries", status: "captured" },
   { who: "agent", hoursAgo: 3 * D, payee: "Cheap-Electronix", pence: 24900, category: "electronics", status: "blocked", isNew: true, flags: [f("prompt_injection", "high", "The shop page hid text telling the agent to pay without asking."), f("new_shop", "medium", "Nobody in the Spotter network has paid this shop before.")], reason: "The shop tried to give your agent orders." },
   { who: "agent", hoursAgo: 2 * D, payee: "Supper Run", pence: 2350, category: "food", status: "captured" },
@@ -69,6 +73,7 @@ export const SAMPLE_NETWORK: Record<string, number> = {
   "free-blockcoins.gg": 3,
   "cheap-electronix": 2,
   "earbuds-outlet.shop": 1,
+  "sound-bargains.shop": 5,
 };
 
 export function sampleMonth(spenders: Spender[], now = new Date()): Payment[] {
@@ -93,10 +98,19 @@ export function sampleMonth(spenders: Spender[], now = new Date()): Payment[] {
           method: e.method ?? "paypal_order",
           context: "",
           createdAt: at,
+          ...(e.price ? { item: e.price.item } : {}),
         },
         decision: { outcome, reasons: [e.reason ?? "Within the rules."], flags },
         ai: null,
-        market: null,
+        market: e.price
+          ? {
+              item: e.price.item,
+              flag: flags.find((x) => x.kind === "price") ?? null,
+              median: e.price.median,
+              offers: e.price.offers,
+              cheapest: { title: e.price.item, domain: e.price.shop, price: e.price.cheapest, currency: "GBP", url: `https://${e.price.shop}/` },
+            }
+          : null,
         case_file: null,
         status: e.status,
         amount: e.pence,

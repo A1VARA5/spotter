@@ -37,7 +37,8 @@ function isAgRequest(v: unknown): v is AgLlmRequest {
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
-function cap(name: string, fallback: number): number {
+/** A daily cap from the environment, or the fallback when it's unset or not a number. */
+export function cap(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return fallback;
   const n = Number(raw);
