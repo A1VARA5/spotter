@@ -109,7 +109,9 @@ function isValidState(s: unknown): s is AgReportState {
   return !!s && typeof s === "object" && Array.isArray((s as { pages?: unknown }).pages) && (s as { pages: unknown[] }).pages.length > 0;
 }
 
-export default function Studio({ sources, initialState, store }: { sources: Sources; initialState: unknown; store: WatchStore }) {
+export default function Studio({ sources, initialState, store, notify }: { sources: Sources; initialState: unknown; store: WatchStore; notify: (text: string) => void }) {
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
   const hasPaypal = sources.paypal !== undefined;
   const data = useMemo(
     () => ({
@@ -214,9 +216,15 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
     const body = JSON.stringify({ state: withNames(api.getState(), names.current) });
     fetch("/api/watchtower/board", { method: "PUT", headers: { "content-type": "application/json" }, body, keepalive: keepalive && body.length < 60_000 })
       .then(async (res) => {
-        if (!res.ok) console.warn("[watchtower] board wasn't saved:", ((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status);
+        if (res.ok) return;
+        const why = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
+        console.warn("[watchtower] board wasn't saved:", why ?? res.status);
+        notifyRef.current(why ?? "Your board changes weren't saved. Try again in a minute.");
       })
-      .catch((e: unknown) => console.warn("[watchtower] board wasn't saved:", e));
+      .catch((e: unknown) => {
+        console.warn("[watchtower] board wasn't saved:", e);
+        notifyRef.current("Your board changes weren't saved. Check your connection.");
+      });
   }, []);
   const onStateUpdated = useCallback((e: { state: AgReportState }) => {
     Object.assign(names.current, namesOf(e.state));
@@ -266,12 +274,14 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
           resolve(x);
         });
       }));
-    if (!h) {
-      console.warn("[watchtower] the assistant didn't open, so the alert wasn't sent");
-      return;
+    try {
+      if (!h) throw new Error("the chat panel didn't build its harness within 5 seconds");
+      const session = await h.createFocusedThread({ agentId: "lead", title: `Look into: ${alert.who}` });
+      session.sendMessage(lookIntoPrompt(alert));
+    } catch (e) {
+      console.warn("[watchtower] the alert wasn't sent to the assistant:", e);
+      notifyRef.current("The assistant didn't open. Try Look into this again.");
     }
-    const session = await h.createFocusedThread({ agentId: "lead", title: `Look into: ${alert.who}` });
-    session.sendMessage(lookIntoPrompt(alert));
   }, []);
 
   const [context] = useState<WatchContext>(() => ({ store, lookInto: (a) => lookIntoRef.current(a) }));
@@ -382,7 +392,7 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
 
   const ai = useMemo<AgAiHarnessSetup>(() => {
     const adapter = spotterAdapter();
-    const history = serverHistory();
+    const history = serverHistory({ onProblem: (m) => notifyRef.current(m) });
     return ({ api }) => {
       const caseTool = api.defineAiTool({
         name: "open_case_file",

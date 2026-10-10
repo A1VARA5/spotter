@@ -28,10 +28,15 @@ export async function loadPaypal(db: Db, householdId: string): Promise<PaypalRow
     );
     return toPaypalRows(rows).sort((a, b) => b.when.getTime() - a.when.getTime());
   } catch (e) {
+    // Only a missing paypal_events table means "no PayPal source". Anything else is a real failure.
     const msg = e instanceof Error ? e.message : String(e);
-    if (/does not exist/i.test(msg)) missing.add(db);
-    console.warn("[watchtower] no PayPal source on the board:", msg);
-    return null;
+    const code = (e as { code?: string } | null)?.code;
+    if ((code === "42P01" || code === undefined) && /relation "paypal_events" does not exist/i.test(msg)) {
+      missing.add(db);
+      console.warn("[watchtower] no PayPal source on the board: there's no paypal_events table yet");
+      return null;
+    }
+    throw e;
   }
 }
 

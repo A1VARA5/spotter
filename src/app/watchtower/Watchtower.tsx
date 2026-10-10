@@ -3,7 +3,7 @@
 // 15 seconds while the tab is visible it asks the server what changed, refreshes Studio's data and shows
 // a quiet notice ("PayPal confirmed £24.99 released").
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CaseNote, WatchAlert } from "@/watchtower/data";
 import type { RadarCount } from "@/watchtower/widgetLogic";
 import { revive, type WireSources } from "@/watchtower/wire";
@@ -45,24 +45,37 @@ const snapshotOf = (b: Board, canAsk: boolean, version: number): WatchSnapshot =
 export function Watchtower({ board, initialState, since }: { board: Board; initialState: unknown; since: string }) {
   const [wire, setWire] = useState(board.sources);
   const [store] = useState(() => makeStore(snapshotOf(board, typeof window !== "undefined" && !window.matchMedia("(max-width: 760px)").matches, 0)));
-  const [notices, setNotices] = useState<Array<{ id: number; text: string }>>([]);
+  const [notices, setNotices] = useState<Array<{ id: number; text: string; tone: "news" | "problem" }>>([]);
   const hadPaypal = useRef(board.sources.paypal !== undefined);
   const sources = useMemo(() => revive(wire), [wire]);
+  const nextId = useRef(0);
+  const push = useCallback((texts: string[], tone: "news" | "problem") => {
+    if (texts.length) setNotices((old) => [...old, ...texts.map((text) => ({ id: ++nextId.current, text, tone }))].slice(-3));
+  }, []);
+  const notify = useCallback((text: string) => push([text], "problem"), [push]);
 
   useEffect(() => {
     let last = since;
     let busy = false;
-    let n = 0;
+    let failures = 0;
+    let stopped = false;
+    const failed = (why: unknown) => {
+      console.warn("[watchtower] live check failed:", why);
+      if (++failures === 3) notify("Watchtower can't reach Spotter right now, so the board may be out of date.");
+    };
     const check = async () => {
-      if (busy || document.hidden) return;
+      if (busy || stopped || document.hidden) return;
       busy = true;
       try {
         const res = await fetch(`/api/watchtower/live?since=${encodeURIComponent(last)}`, { cache: "no-store" });
         const body = (await res.json().catch(() => null)) as (Partial<Board> & { changed?: boolean; now?: string; notices?: string[]; error?: string }) | null;
-        if (!res.ok || !body?.now) {
-          console.warn("[watchtower] live check failed:", body?.error ?? res.status);
+        if (res.status === 401) {
+          stopped = true;
+          notify("You've been signed out, so Watchtower stopped updating. Refresh the page.");
           return;
         }
+        if (!res.ok || !body?.now) return failed(body?.error ?? res.status);
+        failures = 0;
         last = body.now;
         if (!body.changed || !body.sources) return;
         // Studio can't gain or lose a source after it loads, so the PayPal source keeps its first shape.
@@ -71,10 +84,9 @@ export function Watchtower({ board, initialState, since }: { board: Board; initi
         if (!hadPaypal.current) delete next.paypal;
         setWire(next);
         store.set({ ...snapshotOf(body as Board, store.get().canAsk, store.get().version + 1) });
-        const fresh = (body.notices ?? []).map((text) => ({ id: ++n, text }));
-        if (fresh.length) setNotices((old) => [...old, ...fresh].slice(-3));
+        push(body.notices ?? [], "news");
       } catch (e) {
-        console.warn("[watchtower] live check failed:", e);
+        failed(e);
       } finally {
         busy = false;
       }
@@ -88,7 +100,7 @@ export function Watchtower({ board, initialState, since }: { board: Board; initi
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [since, store]);
+  }, [since, store, push, notify]);
 
   useEffect(() => {
     if (!notices.length) return;
@@ -98,10 +110,10 @@ export function Watchtower({ board, initialState, since }: { board: Board; initi
 
   return (
     <div className="wt-frame">
-      <Studio sources={sources} initialState={initialState} store={store} />
+      <Studio sources={sources} initialState={initialState} store={store} notify={notify} />
       <ol className="wt-notices" role="status" aria-live="polite">
         {notices.map((x) => (
-          <li key={x.id} className="wt-notice">
+          <li key={x.id} className="wt-notice" data-tone={x.tone}>
             <span className="wt-notice-dot" aria-hidden="true" />
             {x.text}
           </li>

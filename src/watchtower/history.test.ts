@@ -45,8 +45,10 @@ describe("watchtower chat history store", () => {
   it("doesn't throw when a save is refused (too big), it warns", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const f = fakeFetch({ "PUT /api/watchtower/threads/t1": { status: 413, body: { error: "That's too big to save." } } });
-    await expect(serverHistory({ fetch: f.fn }).saveThread(thread)).resolves.toBeUndefined();
+    const told: string[] = [];
+    await expect(serverHistory({ fetch: f.fn, onProblem: (m) => told.push(m) }).saveThread(thread)).resolves.toBeUndefined();
     expect(String(warn.mock.calls[0]?.join(" "))).toMatch(/too big/);
+    expect(told).toEqual(["This chat is too long to keep. Start a new chat."]);
     warn.mockRestore();
   });
 

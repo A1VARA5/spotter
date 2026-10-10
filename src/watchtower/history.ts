@@ -2,7 +2,9 @@
 // A failed save or list is logged and never thrown: the chat on screen carries on, it just isn't kept.
 import type { AgAiHistoryStore, AgAiHistoryStoreEventListener, AgAiThread, AgAiThreadSummary } from "ag-studio";
 
-export function serverHistory(opts: { base?: string; fetch?: typeof fetch } = {}): AgAiHistoryStore {
+/** `onProblem` gets a sentence to show the family when a chat can't be kept or listed. */
+export function serverHistory(opts: { base?: string; fetch?: typeof fetch; onProblem?: (message: string) => void } = {}): AgAiHistoryStore {
+  const tell = (m: string) => opts.onProblem?.(m);
   const base = opts.base ?? "/api/watchtower/threads";
   const call = opts.fetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   const url = (id?: string) => (id === undefined ? base : `${base}/${encodeURIComponent(id)}`);
@@ -15,6 +17,7 @@ export function serverHistory(opts: { base?: string; fetch?: typeof fetch } = {}
         const res = await call(url());
         if (!res.ok) {
           console.warn("[watchtower] couldn't list saved chats:", await problem(res));
+          tell("Couldn't load your saved chats. Refresh the page to try again.");
           return [];
         }
         return ((await res.json()) as { threads: AgAiThreadSummary[] }).threads;
@@ -40,7 +43,10 @@ export function serverHistory(opts: { base?: string; fetch?: typeof fetch } = {}
     async saveThread(thread: AgAiThread): Promise<void> {
       try {
         const res = await call(url(thread.summary.threadId), { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(thread) });
-        if (!res.ok) console.warn(`[watchtower] chat ${thread.summary.threadId} wasn't saved:`, await problem(res));
+        if (!res.ok) {
+          console.warn(`[watchtower] chat ${thread.summary.threadId} wasn't saved:`, await problem(res));
+          tell(res.status === 413 ? "This chat is too long to keep. Start a new chat." : "This chat wasn't saved. It stays on screen until you leave.");
+        }
       } catch (e) {
         console.warn(`[watchtower] chat ${thread.summary.threadId} wasn't saved:`, e);
       }

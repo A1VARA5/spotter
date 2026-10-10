@@ -73,6 +73,11 @@ describe("watchtower live", () => {
     expect(j.notices).toEqual(expect.arrayContaining(["PayPal confirmed £10.00 paid to Corner Grocer", "Gran's £40.00 is waiting for you", "Spotter stopped £400.00 for Gran"]));
   });
 
+  it("fails loudly when the PayPal table is there but broken, so the page doesn't skip past events", async () => {
+    await db.query("create table paypal_events (id text primary key, created_at timestamptz default now())");
+    await expect(makeLive(db)(req(a, new Date().toISOString()))).rejects.toThrow(/payment_id/);
+  });
+
   it("includes PayPal's own events when the table exists", async () => {
     await db.query("create table paypal_events (id text primary key, payment_id text, event_type text, created_at timestamptz default now())");
     await pay(db, "pay_1", "sp_gran", "captured", 2499);

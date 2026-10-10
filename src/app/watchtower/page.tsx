@@ -18,9 +18,11 @@ export default async function WatchtowerPage() {
 
   // The family's saved board, or the starting one, plus a page for anything that needs them right now.
   const saved = await loadBoard(db, household.id);
-  const base = saved?.state && Array.isArray((saved.state as { pages?: unknown }).pages) ? saved.state : INITIAL;
+  const usable = !saved || Array.isArray((saved.state as { pages?: unknown } | null)?.pages);
+  if (!usable) console.error(`[spotter] saved Watchtower board for ${household.id} isn't a board; showing the starting board and leaving the saved one alone`);
+  const base = saved && usable ? saved.state : INITIAL;
   const { state, added } = withIncidents(base as typeof INITIAL, board.sources.payments, now, saved?.seen ?? []);
-  if (added.length) {
+  if (added.length && usable) {
     try {
       await markIncidentsSeen(db, household.id, state, added);
     } catch (e) {
