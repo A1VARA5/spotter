@@ -14,6 +14,12 @@
 .wt-page[data-current] .wt-page-btn, .wt-page[data-current] .wt-page-x { color: var(--chalk); }
 .wt-page-btn:active, .wt-page-x:active { transform: scale(0.97); }
 .wt-page-btn:focus-visible, .wt-page-x:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+/* Live update = remount (see Studio.tsx, until AG's real-time API): hide Studio's "Loading..." overlays
+   for that moment, as AG suggested, so the board doesn't flash. */
+.wt-studio[data-swapping] .ag-studio-root-loading,
+.wt-studio[data-swapping] .ag-studio-widget-loading,
+.wt-studio[data-swapping] .ag-studio-widget-loading-container,
+.wt-studio[data-swapping] .ag-studio-layout-widget-loading-overlay { visibility: hidden !important; }
 .wt-frame > .wt-studio { flex: 1; min-height: 0; height: auto; }
 .wt-studio > div { height: 100%; }
 .wt-reset { all: unset; box-sizing: border-box; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; transition: transform 160ms var(--ease-out); }
