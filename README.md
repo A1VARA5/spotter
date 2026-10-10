@@ -36,7 +36,7 @@ Open the shopping agent's page (People, Shopping agent). In the connect panel pi
 
 - Real: every PayPal call (orders, authorise, capture, void, webhooks), the Claude check and the case agent on payments you send, Channel3 prices, the KERNEL page visit, Telegram and Discord.
 - Example: the one hold your demo family starts with has a check and case file written earlier, labelled on the card. Network counts in the landing page mockups say "In this example". Watchtower's starting month for demo families is a sample, labelled Sample.
-- Tests: 512 passing (`npx vitest run`).
+- Tests: 542 passing (`npx vitest run`).
 
 ## What it does
 
