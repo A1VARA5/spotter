@@ -17,7 +17,7 @@ export type AgentPaymentInput = {
 export type AgentStatus = "paid" | "waiting_for_human" | "blocked" | "protected" | "denied" | "failed" | "in_progress" | "unknown";
 export type AgentReply = { status: AgentStatus; message: string; payment_id?: string };
 
-function reply(p: Payment, spotter: string): AgentReply {
+export function reply(p: Payment, spotter: string): AgentReply {
   const amount = formatMoney({ amount: Number(p.amount), currency: p.currency as "GBP" });
   const to = p.request.payee.name;
   const why = p.decision?.reasons.length ? ` Reasons: ${p.decision.reasons.join(" ")}` : "";
