@@ -4,6 +4,9 @@ import { BrandMark, HoldTrack } from "@/ui/components";
 import { ChannelGuide } from "./ChannelGuide";
 import { FAQ } from "./faq";
 import { NetworkField } from "@/app/landing/NetworkField";
+import { getDb } from "@/db";
+import { pageSession } from "@/server/page-session";
+import { NewDemo } from "./NewDemo";
 import "@/app/landing/motion.css";
 import "./how.css";
 
@@ -35,7 +38,13 @@ const WAITS = [
   },
 ] as const;
 
-export default function HowPage() {
+// The page reads the session so someone signed in sees their way back, not "Log in".
+export const dynamic = "force-dynamic";
+
+export default async function HowPage() {
+  const db = await getDb().catch(() => null);
+  const session = db ? await pageSession(db).catch(() => null) : null;
+  const who = session ? { name: session.household.spotter_name, demo: session.household.demo } : null;
   return (
     <main className="how">
       <section className="how-hero net-host">
@@ -49,9 +58,15 @@ export default function HowPage() {
             <nav className="lnav-links" aria-label="Main">
               <Link href="/">Home</Link>
               <a href="#faq">FAQ</a>
-              <a href="/api/auth/paypal/start" className="lnav-login">
-                Log in
-              </a>
+              {who ? (
+                <Link href="/dashboard" className="lnav-login">
+                  Dashboard
+                </Link>
+              ) : (
+                <a href="/api/auth/paypal/start" className="lnav-login">
+                  Log in
+                </a>
+              )}
             </nav>
           </header>
           <h1 className="how-h1">How Spotter works</h1>
@@ -203,16 +218,31 @@ export default function HowPage() {
 
       <section className="final">
         <div className="shell final-inner">
-          <h2 className="final-title">See it with the demo family.</h2>
-          <p className="final-lede">Gran, Leo and a shopping agent, already set up. No sign up, fake money.</p>
-          <div className="start">
-            <form action="/api/demo/start" method="post">
-              <button className="btn btn-hold">Try the demo family</button>
-            </form>
-            <a className="btn btn-ghost" href="/api/auth/paypal/start">
-              Log in with PayPal
-            </a>
-          </div>
+          {who ? (
+            <>
+              <h2 className="final-title">{who.demo ? "Try it on your demo family." : "Try it on your own family."}</h2>
+              <p className="final-lede">Everything on this page works there now: try a payment, then approve or deny it.</p>
+              <div className="start">
+                <Link className="btn btn-hold" href="/dashboard">
+                  {who.demo ? "Back to your demo family" : `Open your dashboard, ${who.name}`}
+                </Link>
+                <NewDemo demo={who.demo} />
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="final-title">See it with the demo family.</h2>
+              <p className="final-lede">Gran, Leo and a shopping agent, already set up. No sign up, fake money.</p>
+              <div className="start">
+                <form action="/api/demo/start" method="post">
+                  <button className="btn btn-hold">Try the demo family</button>
+                </form>
+                <a className="btn btn-ghost" href="/api/auth/paypal/start">
+                  Log in with PayPal
+                </a>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
