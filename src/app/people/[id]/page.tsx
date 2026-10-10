@@ -6,11 +6,10 @@ import { AppShell } from "@/ui/AppShell";
 import { money, STATE_LABEL, trackState } from "@/ui/format";
 import { Connect } from "./Connect";
 import { Hint } from "@/ui/Hint";
+import { labelsFor } from "@/ui/labels";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Person | Spotter" };
-
-const KIND: Record<string, string> = { person: "Relative", kid: "Kid", agent: "AI agent" };
 
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   const db = await getDb();
@@ -23,7 +22,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const recent = (await listPayments(db, household.id, 200)).filter((p) => p.spender_id === spender.id).slice(0, 8);
   return (
     <AppShell db={db} household={household} current={`person:${spender.id}`}>
-      <p className="person-crumb">{KIND[spender.kind] ?? spender.kind}</p>
+      <p className="person-crumb">{labelsFor(household.kind).kind[spender.kind] ?? spender.kind}</p>
       <h1 className="page-title">{spender.name}</h1>
       <dl className="allowance">
         <div>

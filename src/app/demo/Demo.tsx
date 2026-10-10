@@ -12,12 +12,13 @@ import { Confirm } from "@/ui/Confirm";
 
 export type SpenderLite = { id: string; name: string; kind: string };
 
-const KINDS = ["agent", "person", "kid"] as const;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; kind?: HouseholdKind }) {
   const labels = labelsFor(kind);
   const { main, extra } = scenariosFor(kind);
+  // One group per person, in the order the scenarios list them (families: agent, Gran, Leo; a business: staff first).
+  const groups = [...new Set(main.map((s) => s.spender))];
   const [round, setRound] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -59,10 +60,9 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
         )}
       </div>
       <div key={round}>
-        {KINDS.map((who) => {
+        {groups.map((who) => {
           const spender = spenders.find((p) => p.kind === who);
           const list = main.filter((s) => s.spender === who);
-          if (!list.length) return null;
           const fallback = cap(labels.addWho[who]);
           return (
             <section key={who} className="scen-group" aria-label={spender?.name ?? fallback}>
@@ -83,7 +83,7 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
             <p className="scen-group-note">
               Same Spotter, different people: staff paying suppliers and AI buying agents ordering stock. Here{" "}
               {spenders.find((p) => p.kind === "person")?.name ?? "your relative"} forwards the invoice and{" "}
-              {spenders.find((p) => p.kind === "agent")?.name.toLowerCase() ?? "your agent"} places the order.
+              the {spenders.find((p) => p.kind === "agent")?.name.toLowerCase() ?? "agent"} places the order.
             </p>
             <div className="scenarios">
               {extra.map((s) => (
