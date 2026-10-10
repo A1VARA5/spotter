@@ -53,11 +53,9 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
           confirmLabel="Clear payments"
           onConfirm={reset}
         />
-        {note && (
-          <span className="feed-meta" aria-live="polite">
-            {note}
-          </span>
-        )}
+        <span className="feed-meta" aria-live="polite">
+          {note ?? "Send them in any order. Payments you send use up this week's allowance, so after lots of sends, Start fresh fills it up again."}
+        </span>
       </div>
       <div key={round}>
         {groups.map((who) => {

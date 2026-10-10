@@ -1,4 +1,6 @@
 // The demo family: an AI shopping agent, Gran, and a kid. Amounts in pence. Ids are made per household.
+// Weekly allowances are big on purpose so every Try a payment scenario keeps its promised outcome in any order;
+// the ask me limits are the real presets, so every big payment still waits for the spotter.
 import type { NewSpender } from "@/core/lifecycle";
 
 type SpenderSeed = Omit<NewSpender, "id" | "householdId" | "spotterName">;
@@ -11,12 +13,12 @@ export const DEMO_SPENDERS: SpenderSeed[] = [
   {
     name: "Shopping agent",
     kind: "agent",
-    allowance: { weekly: gbp(40000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Greenway Grocers", "Clay & Kiln"], blockedPayees: [] },
+    allowance: { weekly: gbp(100000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Greenway Grocers", "Clay & Kiln"], blockedPayees: [] },
   },
   {
     name: "Gran",
     kind: "person",
-    allowance: { weekly: gbp(30000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Hillside Pharmacy"], blockedPayees: [] },
+    allowance: { weekly: gbp(100000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Hillside Pharmacy"], blockedPayees: [] },
   },
   {
     name: "Leo",
