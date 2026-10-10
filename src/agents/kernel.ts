@@ -7,7 +7,7 @@ import { z } from "zod";
 import { SEEN_VS_READ, judgeHidden, type HiddenFinding } from "./seen";
 
 export type PageAsks = { card: boolean; login: boolean; giftCard: boolean };
-export type PageSeen = { domChars: number; visibleChars: number; visibleSample: string; hidden: HiddenFinding[]; isolated: boolean };
+export type PageSeen = { domChars: number; visibleChars: number; visibleSample: string; hidden: HiddenFinding[]; isolated: boolean; truncated: boolean };
 export type PageVisit =
   | { ok: true; url: string; finalUrl: string; title: string; asks: PageAsks; screenshot?: string; seen?: PageSeen; replayUrl?: string }
   | { ok: false; url: string; error: string };
@@ -57,17 +57,19 @@ const facts = await page.evaluate(() => {
 });
 let seen = null;
 let isolated = false;
+let seenError = "";
 try {
   const cdp = await page.context().newCDPSession(page);
   const tree = await cdp.send("Page.getFrameTree");
   const world = await cdp.send("Page.createIsolatedWorld", { frameId: tree.frameTree.frame.id, worldName: "spotter-seen" });
   const out = await cdp.send("Runtime.evaluate", { expression: "(" + ${JSON.stringify(SEEN_VS_READ)} + ")()", contextId: world.executionContextId, returnByValue: true });
   if (out.result && out.result.value) { seen = out.result.value; isolated = true; }
+  else seenError = "isolated world: " + String((out.exceptionDetails && out.exceptionDetails.text) || "no result").slice(0, 200);
   await cdp.detach();
-} catch (e) {}
-if (!seen) { try { seen = await page.evaluate(${SEEN_VS_READ}); } catch (e) {} }
+} catch (e) { seenError = "isolated world: " + String((e && e.message) || e).slice(0, 200); }
+if (!seen) { try { seen = await page.evaluate(${SEEN_VS_READ}); } catch (e) { seenError += " page: " + String((e && e.message) || e).slice(0, 200); } }
 const shot = await page.screenshot({ type: "jpeg", quality: 40 });
-return { finalUrl: page.url(), title: (await page.title()).slice(0, 200), facts, seen, isolated, shot: shot.toString("base64") };
+return { finalUrl: page.url(), title: (await page.title()).slice(0, 200), facts, seen, isolated, seenError, shot: shot.toString("base64") };
 `;
 
 const Result = z.object({
@@ -80,12 +82,14 @@ const Result = z.object({
       visibleChars: z.number().int().nonnegative(),
       visibleSample: z.string().max(2000),
       hidden: z
-        .array(z.object({ text: z.string().max(2000), why: z.enum(["hidden_css", "transparent", "tiny_text", "zero_size", "off_screen", "clipped", "same_colour", "covered"]) }))
-        .max(60),
+        .array(z.object({ text: z.string().max(1300), why: z.enum(["hidden_css", "transparent", "tiny_text", "zero_size", "off_screen", "clipped", "same_colour", "covered"]) }))
+        .max(150),
+      truncated: z.boolean().optional(),
     })
     .nullable()
     .optional(),
   isolated: z.boolean().optional(),
+  seenError: z.string().max(500).optional(),
   shot: z.string().optional(),
 });
 
@@ -140,7 +144,9 @@ export async function visitInCloud(
       if (!r.success) return fail("The cloud browser sent back something unexpected.");
       // Stopped before the delete in finally, so KERNEL saves the video. A replay that didn't save just isn't shown.
       const replayUrl = replay && (await stopReplay(client, browser.session_id, replay.id)) ? replay.url : undefined;
-      const { finalUrl, title, facts, seen, isolated, shot } = r.data;
+      const { finalUrl, title, facts, seen, isolated, seenError, shot } = r.data;
+      // A check the page broke, or one that had to run where the page could fake it, is logged rather than hidden.
+      if (seenError) console.error(`[spotter] seen vs read on ${parsed.host}:${seenError}`);
       const small = shot && Buffer.byteLength(shot, "base64") <= MAX_SHOT_BYTES ? `data:image/jpeg;base64,${shot}` : undefined;
       return {
         ok: true,
@@ -157,6 +163,7 @@ export async function visitInCloud(
                 visibleSample: plainText(seen.visibleSample, 400),
                 hidden: judgeHidden(seen.hidden).slice(0, 8),
                 isolated: isolated === true,
+                truncated: seen.truncated === true,
               },
             }
           : {}),

@@ -19,7 +19,8 @@ export type HiddenWhy =
   | "covered";
 
 export type HiddenChunk = { text: string; why: HiddenWhy };
-export type SeenVsRead = { domChars: number; visibleChars: number; visibleSample: string; hidden: HiddenChunk[] };
+/** truncated: the page hid more text than was collected (too many pieces, or a piece too long to keep whole). */
+export type SeenVsRead = { domChars: number; visibleChars: number; visibleSample: string; hidden: HiddenChunk[]; truncated?: boolean };
 
 export const SEEN_VS_READ = String.raw`() => {
   const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "TITLE", "svg", "SVG"]);
@@ -119,7 +120,7 @@ export const SEEN_VS_READ = String.raw`() => {
       return n.nodeValue && n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
     },
   });
-  let domChars = 0, visibleChars = 0, sample = "";
+  let domChars = 0, visibleChars = 0, sample = "", truncated = false;
   const groups = [];
   let last = null;
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -133,10 +134,14 @@ export const SEEN_VS_READ = String.raw`() => {
       continue;
     }
     // One group per hidden element: text nodes inside the same hidden block read as one line.
-    if (last && last.why === why && last.el.contains(n.parentElement) && last.text.length < 600) last.text += " " + text;
-    else if (groups.length < 40) { last = { text, why, el: n.parentElement }; groups.push(last); }
+    if (last && last.why === why && last.el.contains(n.parentElement)) last.text += " " + text;
+    else if (groups.length < 150) { last = { text, why, el: n.parentElement }; groups.push(last); }
+    else { truncated = true; last = null; }
   }
-  return { domChars, visibleChars, visibleSample: sample.slice(0, 600), hidden: groups.map((g) => ({ text: g.text.slice(0, 600), why: g.why })) };
+  // Long hidden text keeps its start and its end, where a payload after filler would sit; cutting is reported.
+  const cut = (t) => { if (t.length <= 1200) return t; truncated = true; return t.slice(0, 400) + " ... " + t.slice(-800); };
+  const hidden = groups.map((g) => ({ text: cut(g.text), why: g.why }));
+  return { domChars, visibleChars, visibleSample: sample.slice(0, 600), hidden, truncated };
 }`;
 
 /** How each reason reads to a person. */
@@ -171,8 +176,18 @@ export type HiddenFinding = HiddenChunk & { instruction: boolean };
 export function judgeHidden(chunks: HiddenChunk[]): HiddenFinding[] {
   const seen = new Set<string>();
   return chunks
-    .map((c) => ({ why: c.why, text: c.text.replace(/[\u0000-\u001f\u007f<>"`[\]\\|*_~]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) }))
-    .filter((c) => c.text.length >= 3 && !seen.has(c.text) && (seen.add(c.text), true))
-    .map((c) => ({ ...c, instruction: looksLikeInstruction(c.text) }))
-    .sort((a, b) => Number(b.instruction) - Number(a.instruction));
+    .map((c) => ({ why: c.why, full: c.text.replace(/[\u0000-\u001f\u007f<>"`[\]\\|*_~]/g, " ").replace(/\s+/g, " ").trim() }))
+    .filter((c) => c.full.length >= 3 && !seen.has(c.full) && (seen.add(c.full), true))
+    // Judged on the whole text, so filler in front can't push the instruction past the cut; then cut for display,
+    // around the instruction when there is one.
+    .map((c) => ({ why: c.why, instruction: looksLikeInstruction(c.full), text: around(c.full) }))
+    .sort((a, b) => Number(b.instruction) - Number(a.instruction))
+    .map(({ text, why, instruction }) => ({ text, why, instruction }));
+}
+
+function around(text: string): string {
+  if (text.length <= 300) return text;
+  const at = INSTRUCTION.map((r) => text.search(r)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 0;
+  const start = Math.max(0, Math.min(at - 40, text.length - 300));
+  return `${start > 0 ? "... " : ""}${text.slice(start, start + 300).trim()}${start + 300 < text.length ? " ..." : ""}`;
 }

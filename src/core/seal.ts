@@ -16,12 +16,14 @@ export function seal(purpose: string, value: string): string {
   return [iv, c.getAuthTag(), body].map((b) => b.toString("base64url")).join(".");
 }
 
+/** null for a tampered or malformed value. A missing SESSION_SECRET throws: that's a setup error, not "nothing sealed". */
 export function open(purpose: string, sealed: string): string | null {
+  const k = key(purpose);
   const parts = sealed.split(".");
   if (parts.length !== 3) return null;
   try {
     const [iv, tag, body] = parts.map((p) => Buffer.from(p, "base64url")) as [Buffer, Buffer, Buffer];
-    const d = createDecipheriv("aes-256-gcm", key(purpose), iv);
+    const d = createDecipheriv("aes-256-gcm", k, iv);
     d.setAuthTag(tag);
     return Buffer.concat([d.update(body), d.final()]).toString("utf8");
   } catch {

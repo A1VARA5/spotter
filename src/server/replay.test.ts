@@ -109,6 +109,17 @@ describe("replayVideo", () => {
     expect(res.status).toBe(502);
   });
 
+  it("says recordings aren't set up when the server has no SESSION_SECRET, instead of 'no recording'", async () => {
+    await withReplay(KERNEL);
+    const saved = process.env.SESSION_SECRET;
+    delete process.env.SESSION_SECRET;
+    try {
+      expect((await replayVideo(db, hh, paymentId, req(), { fetch: storage() })).status).toBe(500);
+    } finally {
+      process.env.SESSION_SECRET = saved;
+    }
+  });
+
   it("404s when there's no recording, or the seal was tampered with", async () => {
     expect((await replayVideo(db, hh, paymentId, req(), { fetch: storage() })).status).toBe(404);
     await withReplay(KERNEL);

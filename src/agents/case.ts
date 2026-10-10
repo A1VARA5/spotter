@@ -129,7 +129,9 @@ export async function buildCase(ctx: CaseCtx, opts: CaseOpts = {}): Promise<Case
   // Hidden instructions on the page are proof made by code, so they are a finding whatever the model wrote,
   // sourced to the browser call that saw them, and a page that hides orders for AI agents is never "fine".
   const trap = ctx.page.seen?.hidden.find((h) => h.instruction);
-  const from = c.calls.findLast((x) => x.ok && (x.tool === "inspect_shop" || x.tool === "open_link"));
+  // Prefer a call that finished; a call that timed out but whose page still arrived is the source otherwise.
+  const browser = c.calls.filter((x) => x.tool === "inspect_shop" || x.tool === "open_link");
+  const from = browser.findLast((x) => x.ok) ?? browser.at(-1);
   if (!trap || !from) return { ...c, page: ctx.page };
   const finding: Finding = {
     kind: "prompt_injection",

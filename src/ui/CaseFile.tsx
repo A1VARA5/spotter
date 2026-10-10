@@ -120,26 +120,41 @@ export function CaseFile({
  */
 function OpenedPage({ page, paymentId }: { page: NonNullable<Case["page"]>; paymentId?: string }) {
   const [watching, setWatching] = useState(false);
+  const [replayFailed, setReplayFailed] = useState(false);
   const asks = [page.asks.card && "card details", page.asks.login && "a login", page.asks.giftCard && "a gift card code"].filter(Boolean) as string[];
   const shot = page.screenshot && SHOT.test(page.screenshot) ? page.screenshot : undefined;
   const trap = page.seen?.hidden.find((h) => h.instruction);
   const replayAt = page.replay ? new Date(page.replay.at).getTime() : NaN;
   const canWatch = !!paymentId && Date.now() - replayAt < REPLAY_FOR_MS;
 
-  const view = watching ? (
+  const view = watching && !replayFailed ? (
     // Our own route relays KERNEL's video; the browser never gets KERNEL's link.
-    <video className="case-page-video" src={`/api/payments/${encodeURIComponent(paymentId!)}/replay`} poster={shot} controls autoPlay muted playsInline width={320} height={240}>
+    <video className="case-page-video" src={`/api/payments/${encodeURIComponent(paymentId!)}/replay`} poster={shot} controls autoPlay muted playsInline width={320} height={240} onError={() => setReplayFailed(true)}>
       Your browser can&apos;t play the recording.
     </video>
   ) : shot ? (
     <img src={shot} alt={`What the page showed: ${page.title || host(page.finalUrl)}`} width={320} height={240} />
   ) : null;
 
-  const watch = canWatch && !watching && (
-    <button type="button" className="case-watch" onClick={() => setWatching(true)}>
-      <Play size={15} strokeWidth={2.2} aria-hidden="true" /> Watch Spotter open it
-    </button>
+  const watch = replayFailed ? (
+    <span className="case-note" role="status">
+      {" "}
+      The recording isn&apos;t available any more (they&apos;re kept for a day).
+    </span>
+  ) : (
+    canWatch &&
+    !watching && (
+      <button type="button" className="case-watch" onClick={() => setWatching(true)}>
+        <Play size={15} strokeWidth={2.2} aria-hidden="true" /> Watch Spotter open it
+      </button>
+    )
   );
+  // Said plainly, so a check that didn't run never reads as "nothing hidden".
+  const unchecked = !page.seen ? (
+    <> Spotter couldn&apos;t compare what a person sees with what an agent reads on this page.</>
+  ) : !trap && (page.seen.truncated || !page.seen.isolated) ? (
+    <> Only part of the page could be checked for hidden text.</>
+  ) : null;
 
   const where = (
     <>
@@ -184,7 +199,8 @@ function OpenedPage({ page, paymentId }: { page: NonNullable<Case["page"]>; paym
     <figure className="case-page">
       {view}
       <figcaption>
-        {where} {watch}
+        {where}
+        {unchecked} {watch}
       </figcaption>
     </figure>
   );

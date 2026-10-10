@@ -27,12 +27,25 @@ export async function replayVideo(
   const p = await getPayment(db, paymentId, householdId);
   const r = p?.case_file?.page?.replay;
   if (!p || !r) return fail(404, "There's no recording for this payment.");
-  if ((opts.now ?? Date.now()) - new Date(r.at).getTime() > REPLAY_TTL_MS) return fail(410, "The recording has expired (they're kept for a day).");
-  const url = open(REPLAY_SEAL, r.sealed);
-  if (!isReplayUrl(url)) return fail(404, "There's no recording for this payment.");
+  const at = new Date(r.at).getTime();
+  if (!Number.isFinite(at) || (opts.now ?? Date.now()) - at > REPLAY_TTL_MS) return fail(410, "The recording has expired (they're kept for a day).");
+  let url: string | null;
+  try {
+    url = open(REPLAY_SEAL, r.sealed);
+  } catch (e) {
+    console.error("[spotter] can't open sealed replay links:", e instanceof Error ? e.message : e);
+    return fail(500, "Recordings aren't set up on this server.");
+  }
+  if (!isReplayUrl(url)) {
+    console.error(`[spotter] replay for ${paymentId} didn't open to a KERNEL replay link (tampered or old key)`);
+    return fail(404, "There's no recording for this payment.");
+  }
 
   const get = opts.fetch ?? fetch;
-  const signal = AbortSignal.timeout(TIMEOUT_MS);
+  // The limit covers getting the answer started, not playing it: it is cleared once the video's headers arrive.
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(new Error("timed out")), TIMEOUT_MS);
+  const signal = abort.signal;
   try {
     const first = await get(url, { redirect: "manual", signal });
     const to = first.headers.get("location");
@@ -42,6 +55,7 @@ export async function replayVideo(
     }
     const range = request.headers.get("range");
     const video = await get(to, { redirect: "error", signal, ...(range && /^bytes=\d*-\d*$/.test(range) ? { headers: { range } } : {}) });
+    clearTimeout(timer);
     const size = Number(video.headers.get("content-length") ?? 0);
     if (!video.ok || !video.body || !/^video\/mp4\b/.test(video.headers.get("content-type") ?? "") || size > MAX_BYTES) {
       console.error(`[spotter] KERNEL replay for ${paymentId}: storage answered ${video.status} ${video.headers.get("content-type")} ${size} bytes`);
@@ -56,5 +70,7 @@ export async function replayVideo(
   } catch (e) {
     console.error(`[spotter] fetching the KERNEL replay for ${paymentId} failed:`, e instanceof Error ? e.message : e);
     return fail(502, "The recording isn't available right now.");
+  } finally {
+    clearTimeout(timer);
   }
 }

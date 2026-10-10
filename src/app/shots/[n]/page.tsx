@@ -167,6 +167,7 @@ async function seenCase(): Promise<Case> {
         visibleChars: 427,
         visibleSample: "Pulse wireless earbuds £19.99 Free shipping",
         isolated: true,
+        truncated: false,
         hidden: [{ text: HIDDEN_INSTRUCTION, why: "off_screen", instruction: true }],
       },
     },
