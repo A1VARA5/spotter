@@ -66,6 +66,42 @@ const scripted = (...turns: ModelTurn[]): CaseModel => {
   });
 };
 
+describe("buildCase with the cloud browser", () => {
+  it("keeps the page facts and screenshot in the case file, and offers open_link only when it's set up", async () => {
+    const visit = vi.fn(async (url: string) => ({
+      ok: true as const,
+      url,
+      finalUrl: "https://bargainpods.shop/pay",
+      title: "Pay now",
+      asks: { card: true, login: false, giftCard: false },
+      screenshot: "data:image/jpeg;base64,AAAA",
+    }));
+    let offered: string[] = [];
+    const model = vi.fn<CaseModel>(async (req) => {
+      offered = req.tools.map((t) => t.name);
+      const done = req.messages.length > 1;
+      return done
+        ? turn(use("f", "file_case", { verdict: "likely_scam", headline: "A fake shop asking for card details.", findings: [{ text: "The page asks for card details.", source: "o1" }], ask: [] }))
+        : turn(use("o1", "open_link", { url: "https://bargainpods.shop" }));
+    });
+    const c = await buildCase(ctx({ visit }), { model });
+    expect(offered).toContain("open_link");
+    expect(c.page).toMatchObject({ finalUrl: "https://bargainpods.shop/pay", asks: { card: true }, screenshot: "data:image/jpeg;base64,AAAA" });
+    expect(c.findings).toHaveLength(1);
+  });
+
+  it("never offers open_link without KERNEL", async () => {
+    let offered: string[] = [];
+    const model = vi.fn<CaseModel>(async (req) => {
+      offered = req.tools.map((t) => t.name);
+      return turn(use("f", "file_case", { verdict: "unclear", headline: "Not sure.", findings: [], ask: [] }));
+    });
+    const c = await buildCase(ctx(), { model });
+    expect(offered).not.toContain("open_link");
+    expect(c.page).toBeUndefined();
+  });
+});
+
 describe("buildCase", () => {
   it("keeps findings that cite a real tool call and drops the ones that don't", async () => {
     const model = scripted(

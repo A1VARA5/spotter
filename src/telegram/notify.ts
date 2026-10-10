@@ -35,6 +35,21 @@ export function makeTelegramNotify(db: Db, site: string, send: Send) {
   };
 }
 
+/** PayPal's own word (from its webhook) that a held payment was paid or released. */
+export function confirmedText(p: Payment, spender: Pick<Spender, "name">): string {
+  return p.status === "captured"
+    ? `PayPal confirmed: ${esc(amountOf(p))} paid to ${esc(p.request.payee.name)}.`
+    : `PayPal confirmed: ${esc(amountOf(p))} released back to ${esc(spender.name)}.`;
+}
+
+export function makeTelegramConfirmed(db: Db, send: Send) {
+  return async (p: Payment, spender: Spender) => {
+    const [hh] = await db.query<{ telegram_chat_id: string | null }>("select telegram_chat_id from households where id = $1", [spender.household_id]);
+    if (!hh?.telegram_chat_id) return;
+    await send(hh.telegram_chat_id, confirmedText(p, spender));
+  };
+}
+
 export function makeTelegramDecided(send: Send) {
   return async (p: Payment, spender: Spender) => {
     if (!spender.telegram_chat_id) return;

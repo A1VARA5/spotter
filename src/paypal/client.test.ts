@@ -5,6 +5,7 @@ import {
   PayPalError,
   resetTokenCache,
   toDecimal,
+  verifyWebhookSignature,
   voidAuthorization,
 } from "./client";
 import type { PaymentRequest } from "@/core/types";
@@ -117,5 +118,45 @@ describe("paypal client", () => {
     mockFetch([TOKEN, { status: 200, body: { id: "A1", status: "VOIDED" } }]);
     expect(await voidAuthorization("A1")).toEqual({ status: "VOIDED" });
     expect(calls[1]!.url).toContain("/v2/payments/authorizations/A1/void");
+  });
+});
+
+describe("webhook signature check", () => {
+  const headers = {
+    authAlgo: "SHA256withRSA",
+    certUrl: "https://api.sandbox.paypal.com/v1/notifications/certs/CERT-1",
+    transmissionId: "t1",
+    transmissionSig: "sig",
+    transmissionTime: "2026-10-10T12:00:00Z",
+  };
+  // The exact bytes PayPal sent, with a float that JSON.parse then JSON.stringify would rewrite (1.10 -> 1.1).
+  const raw = '{"id":"WH-1","event_type":"PAYMENT.CAPTURE.COMPLETED","resource":{"amount":{"value":1.10}}}';
+
+  it("accepts SUCCESS and sends PayPal the raw event with our webhook id", async () => {
+    mockFetch([TOKEN, { status: 200, body: { verification_status: "SUCCESS" } }]);
+    expect(await verifyWebhookSignature(headers, "WEBHOOK-1", raw)).toBe(true);
+    expect(calls[1]!.url).toBe("https://api-m.sandbox.paypal.com/v1/notifications/verify-webhook-signature");
+    const sent = String(calls[1]!.init.body);
+    expect(sent).toContain(`"webhook_event":${raw}`);
+    expect(JSON.parse(sent)).toMatchObject({
+      auth_algo: "SHA256withRSA",
+      cert_url: headers.certUrl,
+      transmission_id: "t1",
+      transmission_sig: "sig",
+      transmission_time: "2026-10-10T12:00:00Z",
+      webhook_id: "WEBHOOK-1",
+    });
+  });
+
+  it("rejects FAILURE or an answer without a status", async () => {
+    mockFetch([TOKEN, { status: 200, body: { verification_status: "FAILURE" } }]);
+    expect(await verifyWebhookSignature(headers, "WEBHOOK-1", raw)).toBe(false);
+    mockFetch([{ status: 200, body: {} }]);
+    expect(await verifyWebhookSignature(headers, "WEBHOOK-1", raw)).toBe(false);
+  });
+
+  it("throws when PayPal can't be asked, so the route can ask PayPal to retry", async () => {
+    mockFetch([TOKEN, { status: 500, body: { name: "INTERNAL_SERVICE_ERROR" } }]);
+    await expect(verifyWebhookSignature(headers, "WEBHOOK-1", raw)).rejects.toBeInstanceOf(PayPalError);
   });
 });

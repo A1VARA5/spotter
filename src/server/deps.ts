@@ -6,10 +6,11 @@ import type { Deps } from "@/core/lifecycle";
 import { makeMarket, searchProducts } from "@/market/channel3";
 import { after } from "next/server";
 import { buildCase } from "@/agents/case";
+import { visitInCloud } from "@/agents/kernel";
 import { sendHtml } from "@/telegram/api";
-import { makeTelegramDecided, makeTelegramNotify } from "@/telegram/notify";
+import { makeTelegramConfirmed, makeTelegramDecided, makeTelegramNotify } from "@/telegram/notify";
 import { sendDm } from "@/discord/api";
-import { makeDiscordDecided, makeDiscordNotify } from "@/discord/notify";
+import { makeDiscordConfirmed, makeDiscordDecided, makeDiscordNotify } from "@/discord/notify";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { makeNotify } from "@/email/alerts";
 
@@ -45,9 +46,21 @@ export function getDeps(): Promise<Deps> {
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramDecided(sendHtml) : null,
         process.env.DISCORD_BOT_TOKEN ? makeDiscordDecided(sendDm) : null,
       ]),
+      confirmed: allOf([
+        process.env.TELEGRAM_BOT_TOKEN ? makeTelegramConfirmed(db, sendHtml) : null,
+        process.env.DISCORD_BOT_TOKEN ? makeDiscordConfirmed(db, sendDm) : null,
+      ]),
       investigate: (payment, spender) =>
         buildCase(
-          { db, householdId: spender.household_id, payment, search: searchProducts, getAuthorization, offers: new Map() },
+          {
+            db,
+            householdId: spender.household_id,
+            payment,
+            search: searchProducts,
+            getAuthorization,
+            ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitInCloud(url) } : {}),
+            offers: new Map(),
+          },
           { who: { name: spender.name, kind: spender.kind } },
         ),
       defer: (task) => {

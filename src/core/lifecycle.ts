@@ -22,6 +22,8 @@ export type Deps = {
   investigate?: (payment: Payment, spender: Spender) => Promise<Case>;
   /** Tells the person who wanted to pay what their spotter decided. Failures are logged, never fatal. */
   decided?: (payment: Payment, spender: Spender) => Promise<void>;
+  /** Tells the spotter PayPal confirmed a held payment was paid or released (from a PayPal webhook). Optional. */
+  confirmed?: (payment: Payment, spender: Spender) => Promise<void>;
   /** Runs work after the response is sent (Next's after()). Without it, follow up work runs inline. */
   defer?: (task: () => Promise<void>) => void;
   paypal: {
@@ -61,6 +63,8 @@ export type Payment = {
   paypal_order_id: string | null;
   paypal_authorization_id: string | null;
   paypal_capture_id: string | null;
+  /** When PayPal drops the hold if nobody captures it. Optional so older rows and samples still type check. */
+  paypal_auth_expires_at?: string | Date | null;
   approve_url: string | null;
   error: string | null;
   decided_by: string | null;
@@ -333,6 +337,7 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest):
     paypal_order_id: hold.orderId,
     paypal_authorization_id: hold.authorizationId,
     approve_url: hold.approveUrl ?? null,
+    paypal_auth_expires_at: hold.expiresAt ?? null,
   });
   return decision.outcome === "allow" ? capture(deps, held.id, "authorised", "Spotter") : held;
 }
@@ -421,7 +426,11 @@ export async function swap(deps: Deps, id: string, by: string): Promise<{ from: 
     return { from, to: await fail(db, req.id, "authorise", e) };
   }
   if (!hold.authorizationId) return { from, to: await fail(db, req.id, "authorise", new Error("PayPal declined the card.")) };
-  await setStatus(db, req.id, "authorised", { paypal_order_id: hold.orderId, paypal_authorization_id: hold.authorizationId });
+  await setStatus(db, req.id, "authorised", {
+    paypal_order_id: hold.orderId,
+    paypal_authorization_id: hold.authorizationId,
+    paypal_auth_expires_at: hold.expiresAt ?? null,
+  });
   return { from, to: await capture(deps, req.id, "authorised", by) };
 }
 
@@ -463,6 +472,24 @@ export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
     }
   }
   return settled;
+}
+
+/** Records what PayPal says happened (from a webhook). One conditional UPDATE: it only moves a payment that is
+ * still in one of the expected statuses, so it can never fight an approve or deny tap. Never calls PayPal. */
+export async function settleFromPayPal(
+  db: Db,
+  id: string,
+  from: PaymentStatus[],
+  to: PaymentStatus,
+  extra: { paypal_capture_id?: string; error?: string } = {},
+): Promise<Payment | null> {
+  const rows = await db.query<Payment>(
+    // An old error (say a capture call that timed out) no longer applies once PayPal says how it really ended.
+    `update payments set status = $3, paypal_capture_id = coalesce($4, paypal_capture_id), error = $5, updated_at = now()
+     where id = $1 and status = any($2) returning *`,
+    [id, from, to, extra.paypal_capture_id ?? null, extra.error ?? null],
+  );
+  return rows[0] ?? null;
 }
 
 /** Clears a household's payments (and their events) so the allowances start fresh. */
