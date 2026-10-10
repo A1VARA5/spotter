@@ -3,6 +3,7 @@
 // change its allowance; only the human spotter can.
 import { getPayment, getSpender, submitPayment, weekSpend, type Deps, type Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
+import { offerSaferOption, paySaferOption, stopReason, type SaferOption } from "@/core/safer";
 
 export type AgentPaymentInput = {
   item?: string;
@@ -12,10 +13,22 @@ export type AgentPaymentInput = {
   category: string;
   what_for: string;
   page_text: string;
+  /** Only for the safer option Spotter suggested after stopping a payment. Checked against Spotter's own record. */
+  offer_id?: string;
 };
 
-export type AgentStatus = "paid" | "waiting_for_human" | "blocked" | "protected" | "denied" | "failed" | "in_progress" | "unknown";
-export type AgentReply = { status: AgentStatus; message: string; payment_id?: string };
+export type AgentStatus = "paid" | "waiting_for_human" | "blocked" | "protected" | "denied" | "failed" | "in_progress" | "refused" | "unknown";
+export type AgentReply = { status: AgentStatus; message: string; payment_id?: string; safer_option?: SaferOption };
+
+/** The safer option in words for request_payment, with every argument the agent has to send back. */
+export function saferText(o: SaferOption): string {
+  return (
+    ` Spotter found a safer option: ${o.title} for ${o.price_text} at ${o.retailer}, a real retailer (Channel3). ` +
+    `If the user still wants it, order this instead with request_payment using payee ${o.retailer} and offer_id ${o.offer_id} ` +
+    `(amount_pence ${o.price}, currency ${o.currency}, item "${o.title}", page_text empty). It is checked like any payment and may still need approval. ` +
+    `Otherwise tell the user.`
+  );
+}
 
 export function reply(p: Payment, spotter: string): AgentReply {
   const amount = formatMoney({ amount: Number(p.amount), currency: p.currency as "GBP" });
@@ -47,6 +60,20 @@ export function reply(p: Payment, spotter: string): AgentReply {
 export async function agentRequestPayment(deps: Deps, agentId: string, input: AgentPaymentInput): Promise<AgentReply> {
   const spender = await getSpender(deps.db, agentId);
   if (!spender) return { status: "unknown", message: "This agent isn't set up in Spotter any more. Ask the user to reconnect it." };
+  if (input.offer_id) {
+    const r = await paySaferOption(
+      deps,
+      agentId,
+      input.offer_id,
+      { payee: input.payee, amount: input.amount_pence, currency: input.currency, item: input.item },
+      {
+        category: input.category,
+        context: [`What the agent says this is for: ${input.what_for}`, input.page_text.trim() ? `The page it is buying from:\n${input.page_text}` : ""].filter(Boolean).join("\n\n"),
+      },
+    );
+    if ("error" in r) return { status: "refused", message: r.error };
+    return reply(r.payment, spender.spotter_name);
+  }
   const payment = await submitPayment(deps, {
     spenderId: agentId,
     money: { amount: input.amount_pence, currency: input.currency },
@@ -57,7 +84,10 @@ export async function agentRequestPayment(deps: Deps, agentId: string, input: Ag
     // Everything the agent saw is checked: its stated purpose and the page, verbatim.
     context: `What the agent says this is for: ${input.what_for}\n\nThe page it is buying from:\n${input.page_text}`,
   });
-  return reply(payment, spender.spotter_name);
+  const r = reply(payment, spender.spotter_name);
+  const reason = stopReason(payment);
+  const safer = reason ? await offerSaferOption(deps, payment, spender, reason) : null;
+  return safer ? { ...r, safer_option: safer, message: r.message + saferText(safer) } : r;
 }
 
 export async function agentPaymentStatus(deps: Deps, agentId: string, paymentId: string): Promise<AgentReply> {

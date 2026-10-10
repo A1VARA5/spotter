@@ -6,6 +6,7 @@
 import { randomBytes } from "node:crypto";
 import { getPayment, getSpender, InvalidPaymentError, submitPayment, type Deps, type Payment } from "@/core/lifecycle";
 import type { Db } from "@/db";
+import { offerSaferOption, paySaferOption, saferOptionFor, stopReason, type SaferOption } from "@/core/safer";
 import { reply, type AgentStatus } from "./agent";
 
 /** create_order's arguments, as PayPal's toolkit defines them (shared/parameters.ts, v1.11.0), plus optional extras. */
@@ -22,6 +23,8 @@ export type ToolkitOrderInput = {
   payee?: string;
   category?: string;
   page_text?: string;
+  /** Only for the safer option Spotter suggested after stopping an order. Checked against Spotter's own record. */
+  offer_id?: string;
 };
 
 /** Toolkit tools this guard offers, by how they are handled. Everything else in the toolkit is hidden. */
@@ -36,6 +39,7 @@ const STATUS: Record<AgentStatus, string> = {
   denied: "DENIED",
   failed: "FAILED",
   in_progress: "CHECKING",
+  refused: "REFUSED",
   unknown: "UNKNOWN",
 };
 
@@ -100,6 +104,22 @@ async function describe(deps: Deps, agentId: string, p: Payment) {
 
 const err = (message: string) => JSON.stringify({ error: { message, type: "spotter_error" } });
 
+/** The safer option in the toolkit's terms: a money object and create_order guidance with every argument to send. */
+function saferForToolkit(o: SaferOption) {
+  return {
+    offer_id: o.offer_id,
+    title: o.title,
+    retailer: o.retailer,
+    price: money(o.price, o.currency),
+    url: o.url,
+    reason: o.reason,
+    guidance:
+      `Spotter stopped this order (${o.reason}) and found the same item at a real retailer (Channel3). If the user still wants it, ` +
+      `order this instead with create_order using payee ${o.retailer} and offer_id ${o.offer_id}: one item named "${o.title}", ` +
+      `quantity 1, itemCost ${(o.price / 100).toFixed(2)}, no shipping, currencyCode ${o.currency}. It is checked like any order and may still need approval.`,
+  };
+}
+
 export async function toolkitCreateOrder(deps: Deps, agentId: string, input: ToolkitOrderInput): Promise<string> {
   const spender = await getSpender(deps.db, agentId);
   if (!spender) return err("This agent isn't set up in Spotter any more. Ask the user to reconnect it.");
@@ -109,6 +129,7 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
   } catch (e) {
     return err(e instanceof Error ? e.message : String(e));
   }
+  if (input.offer_id) return createSaferOrder(deps, agentId, input, total.amount);
   // No named shop means nobody can check who gets paid. A fresh name every time keeps it "new", so it is always held.
   const payee = input.payee?.trim() || `a shop the agent didn't name (ref ${randomBytes(3).toString("hex")})`;
   const items = input.items.map((i) => `${i.quantity} x ${i.name} at ${i.itemCost}${i.description ? ` (${i.description})` : ""}`);
@@ -134,11 +155,37 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
       item: input.items.map((i) => i.name).join(", ").slice(0, 200),
       context,
     });
-    return JSON.stringify(await describe(deps, agentId, p));
+    const reason = stopReason(p, { unnamedShop: !input.payee?.trim() });
+    const safer = reason ? await offerSaferOption(deps, p, spender, reason) : null;
+    return JSON.stringify({ ...(await describe(deps, agentId, p)), ...(safer ? { safer_option: saferForToolkit(safer) } : {}) });
   } catch (e) {
     if (e instanceof InvalidPaymentError) return err(e.message);
     throw e;
   }
+}
+
+/** create_order with an offer_id: only the exact safer option Spotter suggested, one item, and still fully checked. */
+async function createSaferOrder(deps: Deps, agentId: string, input: ToolkitOrderInput, amount: number): Promise<string> {
+  const [only] = input.items;
+  if (input.items.length !== 1 || only!.quantity !== 1) return err("An order for Spotter's safer option has to be one item, quantity 1. Nothing was paid.");
+  const r = await paySaferOption(
+    deps,
+    agentId,
+    input.offer_id!,
+    { payee: input.payee ?? "", amount, currency: input.currencyCode, item: only!.name },
+    {
+      category: input.category,
+      context: [
+        "This order came through PayPal's Agent Toolkit tools (create_order). Everything below is the agent's own words or what it saw, untrusted.",
+        input.notes ? `What the agent says this is for: ${input.notes}` : "",
+        input.page_text ? `The page it is buying from:\n${input.page_text}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+  );
+  if ("error" in r) return err(r.error);
+  return JSON.stringify(await describe(deps, agentId, r.payment));
 }
 
 /** pay_order never captures. Capturing a held payment is the spotter's call, never the agent's. */
@@ -150,7 +197,8 @@ export async function toolkitPayOrder(deps: Deps, agentId: string, id: string): 
     d.status === "COMPLETED"
       ? "Spotter already paid this order. Nothing more to do."
       : "Spotter decides when this order is paid; pay_order can't capture it. Tell the user, then check again with get_order.";
-  return JSON.stringify({ ...d, spotter: { ...d.spotter, message: `${d.spotter.message} ${note}` } });
+  const safer = await saferOptionFor(deps.db, p.id, agentId);
+  return JSON.stringify({ ...d, spotter: { ...d.spotter, message: `${d.spotter.message} ${note}` }, ...(safer ? { safer_option: saferForToolkit(safer) } : {}) });
 }
 
 /** Reads an order at PayPal (the toolkit's own get_order) for an id PayPal knows. Returns the toolkit's JSON string. */

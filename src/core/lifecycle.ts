@@ -80,6 +80,11 @@ export type PaymentInput = {
   method: PaymentMethod;
   context: string;
   item?: string;
+  /**
+   * Only set by core/safer.ts after it validated an offer Spotter itself suggested: the stopped payment this replaces
+   * and the retailer Channel3 vouched for. That retailer doesn't count as a new payee; every other check still runs.
+   */
+  saferFor?: { paymentId: string; offerId: string; domain: string; reason: string; fromPayee: string };
 };
 
 export class InvalidPaymentError extends Error {
@@ -233,7 +238,15 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
     throw new InvalidPaymentError("Amount must be a whole number of pence or cents above zero.");
   }
   const id = newId();
-  const req: PaymentRequest = { ...input, id, createdAt: new Date().toISOString() };
+  const { saferFor, ...rest } = input;
+  const req: PaymentRequest = {
+    ...rest,
+    id,
+    createdAt: new Date().toISOString(),
+    ...(saferFor
+      ? { swappedFrom: saferFor.paymentId, saferOption: { offer_id: saferFor.offerId, reason: saferFor.reason, from_payee: saferFor.fromPayee } }
+      : {}),
+  };
   await db.query(
     "insert into payments (id, spender_id, request, status, amount, currency) values ($1, $2, $3, 'checking', $4, $5)",
     [id, spender.id, JSON.stringify(req), input.money.amount, input.money.currency],
@@ -241,7 +254,7 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
   // From here on the row exists, so any crash must end as 'failed' with the reason, never stuck in 'checking'.
   let result: Payment;
   try {
-    result = await decideAndHold(deps, spender, req);
+    result = await decideAndHold(deps, spender, req, saferFor?.domain);
   } catch (e) {
     return fail(db, id, "check", e);
   }
@@ -286,13 +299,15 @@ async function investigateAndAlert(deps: Deps, payment: Payment, spender: Spende
   }
 }
 
-async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest): Promise<Payment> {
+/** knownRetailer: a retailer Spotter itself suggested (validated in core/safer.ts), so it isn't a "first time" payee. */
+async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, knownRetailer?: string): Promise<Payment> {
   const { db } = deps;
   const id = req.id;
-  await event(db, id, "requested", { amount: req.money.amount, payee: req.payee.name });
+  await event(db, id, "requested", { amount: req.money.amount, payee: req.payee.name, ...(req.swappedFrom ? { swappedFrom: req.swappedFrom } : {}) });
 
   const allowance: Allowance = {
     ...spender.allowance,
+    allowedPayees: knownRetailer ? [...spender.allowance.allowedPayees, knownRetailer] : spender.allowance.allowedPayees,
     spentThisWeek: { amount: await spentThisWeek(db, spender.id, spender.allowance.weekly.currency, id), currency: spender.allowance.weekly.currency },
   };
   req.payee = { ...req.payee, isNew: await isNewPayee(db, spender.id, req.payee.name, id) };
@@ -378,6 +393,24 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
   const done = await setStatus(db, id, "voided");
   await tellDecided(deps, done);
   return done;
+}
+
+/**
+ * The agent lets go of its own held payment (it chose the safer option Spotter suggested). Only ever releases money:
+ * the hold is voided, nothing is paid, and unlike a spotter's deny it says nothing to the Spotter network.
+ */
+export async function withdraw(deps: Deps, id: string, by: string): Promise<Payment> {
+  const { db } = deps;
+  const claimed = await transition(db, id, "needs_approval", "voiding", by);
+  if (!claimed) return (await getPayment(db, id))!;
+  await event(db, id, "withdrawn", { by });
+  try {
+    await deps.paypal.voidAuthorization(claimed.paypal_authorization_id!);
+  } catch (e) {
+    return fail(db, id, "void", e);
+  }
+  await event(db, id, "voided");
+  return setStatus(db, id, "voided");
 }
 
 /** A check that was cut off (the server stopped mid way) never finished. Nothing reached PayPal's capture, so it

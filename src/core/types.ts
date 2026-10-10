@@ -25,6 +25,8 @@ export type PaymentRequest = {
   createdAt: string;
   /** Set when the spotter swapped a held payment for a safer one: the payment this replaced. */
   swappedFrom?: string;
+  /** Set when an AI agent paid the safer option Spotter suggested after stopping it (see core/safer.ts). Written by code only. */
+  saferOption?: { offer_id: string; reason: string; from_payee: string };
 };
 
 export type Allowance = {
