@@ -45,6 +45,7 @@ A held payment doesn't just sit there. The case agent (Claude with five read onl
 - the Spotter network: did other Spotter families say no to this payee in the last 30 days. Families only share an HMAC of the payee, never names or messages, and your own family never counts towards your number
 - where every link in the message really goes: redirects, look alike domains, borrowed brand names and domain age
 - whether the same product is sold at a real shop, and the state of the PayPal hold
+- when a link asks for card details or a login, it opens that one link in a throwaway KERNEL cloud browser and reports where it really ends up, what the page asks for, and a small screenshot, so nobody in the family has to click it
 
 Every finding has to name the tool call it came from, or code drops it. The agent can't pay, approve or deny. If it found the same thing at a real shop, the spotter gets one button: deny this payment and buy it there instead (the safe swap). PayPal voids the risky hold and the new order goes through PayPal like any other.
 
@@ -114,6 +115,7 @@ Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to se
 - PayPal REST APIs and Log in with PayPal, sandbox
 - Claude (Anthropic) for the scam check and for reading requests out of emails
 - Channel3 for real retailer prices
+- KERNEL for the throwaway cloud browser that opens suspicious links
 - AG Grid Community for the Activity table, and AG Studio (trial licence) for Watchtower
 - Agentboxd for the spotter@homingbox.net inbox and its webhook
 - Neon Postgres and Vercel for hosting

@@ -4,6 +4,7 @@
 const STOPS = [
   { name: "Channels", does: "bring the ask in: email, Telegram, Discord" },
   { name: "Claude", does: "reads it and looks into it" },
+  { name: "KERNEL", does: "opens links safely, so nobody has to" },
   { name: "Channel3", does: "checks what real shops charge" },
   { name: "PayPal", does: "holds the money", clamp: true },
   { name: "AG Grid", does: "keeps every decision on record" },

@@ -1091,3 +1091,156 @@
     opacity: 1;
   }
 }
+
+/* ==========================================================================
+   Scene 2: the link Spotter opened in a throwaway browser. The case file's
+   real "Opened safely" figure, laid out side by side, with a small drawn
+   stand in for the screenshot (a made up parcel firm's card form).
+   ========================================================================== */
+.lap-card .case-page {
+  grid-template-columns: 176px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+}
+
+.lap-card .case-page figcaption {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.case-page figcaption > b:first-child {
+  color: var(--ink);
+  font-weight: 650;
+  margin-right: 4px;
+}
+
+.kshot {
+  width: 176px;
+  height: 110px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 7px;
+  line-height: 1.25;
+  color: #26313b;
+}
+
+.kshot-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  padding: 0 7px;
+  background: #1e5a66;
+  color: #fff;
+  font-weight: 700;
+}
+
+.kshot-logo {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: #ffd23f;
+}
+
+.kshot-body {
+  display: grid;
+  gap: 4px;
+  padding: 7px 9px;
+}
+
+.kshot-h {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.kshot-sub {
+  color: #6b7782;
+}
+
+.kshot-field {
+  display: block;
+  height: 13px;
+  padding: 0 4px;
+  border: 1px solid #cfd5da;
+  border-radius: 3px;
+  color: #98a2ab;
+  line-height: 11px;
+}
+
+.kshot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.kshot-btn {
+  display: block;
+  height: 14px;
+  border-radius: 3px;
+  background: #1e5a66;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  line-height: 14px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-scene="email"] .case-page {
+    animation: lap-row-in 380ms var(--ease-out) 2.5s both;
+  }
+}
+
+/* ==========================================================================
+   The ride with seven stops (KERNEL joined). Overrides the six stop layout
+   in globals.css: stop centres now sit at (2n + 1) / 14 of the track.
+   ========================================================================== */
+@media (min-width: 861px) {
+  .ride-stops {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .ride-line {
+    left: calc(100% / 14);
+    right: calc(100% / 14);
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1180px) {
+  .ride-chip {
+    padding: 0 11px;
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (min-width: 861px) {
+  .ride-token {
+    animation-name: ride-go-7;
+  }
+
+  .ride-stop:nth-child(1) { --d: 0.2s; }
+  .ride-stop:nth-child(2) { --d: 0.9s; }
+  .ride-stop:nth-child(3) { --d: 1.7s; }
+  .ride-stop:nth-child(4) { --d: 2.5s; }
+  .ride-stop:nth-child(6) { --d: 7.3s; }
+  .ride-stop:nth-child(7) { --d: 8.4s; }
+
+  .ride-stop[data-clamp] .ride-chip {
+    animation-delay: 3.3s;
+  }
+}
+
+@keyframes ride-go-7 {
+  0% { transform: translate(calc(100cqw / 14 - 50%), -50%); opacity: 0; }
+  4% { opacity: 1; }
+  9% { transform: translate(calc(100cqw * 3 / 14 - 50%), -50%); }
+  17% { transform: translate(calc(100cqw * 5 / 14 - 50%), -50%); }
+  25% { transform: translate(calc(100cqw * 7 / 14 - 50%), -50%); }
+  33%, 62% { transform: translate(calc(100cqw * 9 / 14 - 50%), -50%); background: #fff; }
+  35%, 60% { background: var(--hold); }
+  73% { transform: translate(calc(100cqw * 11 / 14 - 50%), -50%); background: #fff; }
+  84%, 94% { transform: translate(calc(100cqw * 13 / 14 - 50%), -50%); opacity: 1; }
+  100% { transform: translate(calc(100cqw * 13 / 14 - 50%), -50%); opacity: 0; }
+}
