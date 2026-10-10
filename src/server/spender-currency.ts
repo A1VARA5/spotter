@@ -1,7 +1,7 @@
 // PayPal's Agent Toolkit only makes orders in US dollars, so an AI agent's allowance can be set in dollars.
 // The numbers stay as they are; only the currency changes. People and kids stay in pounds.
 import type { Db } from "@/db";
-import { getSpender } from "@/core/lifecycle";
+import { getSpender, weekSpend } from "@/core/lifecycle";
 import { requireSpotter } from "./auth";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -18,5 +18,8 @@ export async function setAgentCurrency(db: Db, request: Request, spenderId: stri
   const a = spender.allowance;
   const allowance = { ...a, weekly: { ...a.weekly, currency }, askAbove: { ...a.askAbove, currency } };
   await db.query("update spenders set allowance = $2 where id = $1", [spenderId, JSON.stringify(allowance)]);
-  return json({ ok: true, currency });
+  // This week's spend is counted per currency, so say both: the page shows what's in the other one.
+  const other = currency === "GBP" ? "USD" : "GBP";
+  const [spentThisWeek, spentOther] = await Promise.all([weekSpend(db, spenderId, currency), weekSpend(db, spenderId, other)]);
+  return json({ ok: true, currency, spentThisWeek, spentOtherCurrency: { amount: spentOther, currency: other } });
 }

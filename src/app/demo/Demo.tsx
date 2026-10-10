@@ -7,7 +7,7 @@ import { scenariosFor, type Scenario } from "@/ui/scenarios";
 import { labelsFor, type Labels } from "@/ui/labels";
 import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
-import { readJson } from "@/ui/http";
+import { plainError, readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
 
 export type SpenderLite = { id: string; name: string; kind: string };
@@ -53,11 +53,9 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
           confirmLabel="Clear payments"
           onConfirm={reset}
         />
-        {note && (
-          <span className="feed-meta" aria-live="polite">
-            {note}
-          </span>
-        )}
+        <span className="feed-meta" aria-live="polite">
+          {note ?? "Send them in any order. Payments you send use up this week's allowance, so after lots of sends, Start fresh fills it up again."}
+        </span>
       </div>
       <div key={round}>
         {groups.map((who) => {
@@ -112,7 +110,7 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
       setResult(j.payment);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(plainError(e));
     } finally {
       setRunning(false);
     }

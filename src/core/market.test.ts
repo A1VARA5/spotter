@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceCheck, type Offer } from "./market";
+import { contradictsPrice, marketFacts, priceCheck, priceVerdict, type Offer } from "./market";
 
 const offer = (price: number, domain = "currys.co.uk", title = "Sony WF-1000XM5"): Offer => ({
   title,
@@ -46,5 +46,47 @@ describe("priceCheck", () => {
     const r = priceCheck(17900, "GBP", market);
     expect(r.median).toBe(18400);
     expect(r.offers).toBe(4);
+  });
+});
+
+describe("priceVerdict and contradictsPrice", () => {
+  it("reads the verdict from Spotter's own market result", () => {
+    expect(priceVerdict(priceCheck(24900, "GBP", market))).toBe("overpriced");
+    expect(priceVerdict(priceCheck(2499, "GBP", market))).toBe("too_cheap");
+    expect(priceVerdict(priceCheck(17999, "GBP", market))).toBe("normal");
+    expect(priceVerdict(priceCheck(17999, "GBP", [offer(17900)]))).toBeNull();
+    expect(priceVerdict(null)).toBeNull();
+  });
+
+  it("spots a sentence claiming a normal price when the market says otherwise", () => {
+    for (const t of ["The earbuds are at a normal price.", "The price looks fair for these.", "Priced in line with other shops.", "£249 is a reasonable price."]) {
+      expect(contradictsPrice(t, "overpriced")).toBe(true);
+      expect(contradictsPrice(t, "too_cheap")).toBe(true);
+      expect(contradictsPrice(t, "normal")).toBe(false);
+    }
+  });
+
+  it("and the other way round: overpriced or too cheap claims against a normal market", () => {
+    expect(contradictsPrice("That's well over what real shops charge.", "normal")).toBe(true);
+    expect(contradictsPrice("Suspiciously cheap for brand new earbuds.", "normal")).toBe(true);
+    expect(contradictsPrice("Suspiciously cheap for brand new earbuds.", "overpriced")).toBe(true);
+    expect(contradictsPrice("That's well over what real shops charge.", "too_cheap")).toBe(true);
+    expect(contradictsPrice("That's well over what real shops charge.", "overpriced")).toBe(false);
+  });
+
+  it("leaves sentences that aren't about the price alone", () => {
+    expect(contradictsPrice("The shop opened last week and has no reviews.", "overpriced")).toBe(false);
+    expect(contradictsPrice("Gran has paid this pharmacy 4 times before.", "normal")).toBe(false);
+    expect(contradictsPrice("anything", null)).toBe(false);
+  });
+
+  it("writes the market result as plain facts for the case agent", () => {
+    const m = { ...priceCheck(24900, "GBP", market), item: "earbuds" };
+    const f = marketFacts(m, 24900, "GBP")!;
+    expect(f).toMatch(/earbuds/);
+    expect(f).toMatch(/£249\.00/);
+    expect(f).toMatch(/overpriced/i);
+    expect(f).toMatch(/4 retailers/);
+    expect(marketFacts(null, 24900, "GBP")).toBeNull();
   });
 });

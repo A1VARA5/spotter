@@ -1,18 +1,42 @@
 # Spotter
 
-A second look before the money goes. Spotter sits between PayPal and the people you look out for (your gran, your kid, your AI shopping agent). When a payment looks wrong, PayPal holds the money and you get asked.
+PayPal holds the money until someone you trust says yes. Gran forwards the text she isn't sure about, and if it looks like a scam, PayPal holds her £250 and you get asked. Your kid and your AI shopping agent work the same way.
 
 Live: https://spotter-pay.vercel.app
 
 Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money moves.
 
-## Try it in 60 seconds
+## For judges
 
-1. Open https://spotter-pay.vercel.app and press **Try the demo family**. You get your own family (Gran, Leo and a shopping agent), nobody else sees it, and it's deleted after 48 hours. The PIN is `2468`.
-2. Go to **Try a payment** and send a few. The forwarded "Hi Mum" text gets held for you, the second hand seller asking for Friends and Family gets refused, the booby trapped shop gets stopped, and the birthday mug just goes through.
-3. Open **Waiting for you** and approve or deny. Approve and PayPal captures the money. Deny and PayPal releases it.
+No sign up and no PayPal account needed.
 
-To set up your own household instead, press **Log in with PayPal** and use a PayPal sandbox personal account (sandbox only, your real PayPal won't work there).
+1. Open https://spotter-pay.vercel.app and press **Try it on fake money**. You get your own private demo family (Gran, Leo and a shopping agent), deleted after 48 hours. The PIN is `2468`.
+2. The dashboard opens on one payment already waiting for you: Gran's forwarded "Hi Mum" text, £250. The PayPal part is real, a sandbox authorisation made the moment your family was created. The scam check and case file on it were written earlier and say "Example, checked earlier" on the card. Approve it (type `2468`) and PayPal captures the money, or deny it and PayPal voids the hold. If the sandbox didn't answer, the dashboard says so and the family starts without it.
+3. Go to **Try a payment** and send these. Each one is a live Claude check and a real sandbox hold, and they come out the same in any order:
+   - Gran forwards a "Hi Mum" text: held for you, with the warning signs quoted.
+   - Gran buys a tablet from a local listing: not sent, because Friends and Family has no buyer protection.
+   - Agent wants £249 earbuds: held, with the real shop price next to it.
+   - Agent lands on a booby trapped shop: stopped. The case file shows what a person sees next to the hidden line the agent read.
+   - Leo is offered cheap game credit: stopped, gift cards can't be undone.
+   - Agent buys Mum a birthday mug: goes straight through and gets paid.
+4. Open **Waiting for you** and decide the held ones. Every approval asks for the PIN.
+5. If a week's allowance ever runs low after lots of sends, **Start fresh** on the Try page clears it.
+
+### Testing an AI agent through PayPal's toolkit
+
+Open the shopping agent's page (People, Shopping agent). In the connect panel pick **PayPal's Agent Toolkit**, press **Set this agent's allowance in dollars** (the toolkit only makes USD orders), then **Make a key**. The panel gives a one line `claude mcp add` command for Claude Code and an `npx mcp-remote` config for Claude Desktop. Ask the agent to order something with PayPal: its `create_order` becomes a Spotter payment and anything over the ask me amount waits on your dashboard. **Set back to pounds** in the same panel undoes the switch. This week's spend is counted per currency.
+
+### Sandbox notes
+
+- The demo family needs nothing from you. Every payment is a real PayPal sandbox order with fake money.
+- **Log in with PayPal** uses the PayPal sandbox, so your real PayPal login won't work there. To try it, make a sandbox personal account at developer.paypal.com (Testing tools, Sandbox accounts) and log in with that.
+- To run your own copy, create a sandbox app at developer.paypal.com (Apps and Credentials, Sandbox) and put its client id and secret in `.env.local` (see Run it locally below).
+
+### What's real and what's an example
+
+- Real: every PayPal call (orders, authorise, capture, void, webhooks), the Claude check and the case agent on payments you send, Channel3 prices, the KERNEL page visit, Telegram and Discord.
+- Example: the one hold your demo family starts with has a check and case file written earlier, labelled on the card. Network counts in the landing page mockups say "In this example". Watchtower's starting month for demo families is a sample, labelled Sample.
+- Tests: 512 passing (`npx vitest run`).
 
 ## What it does
 
@@ -66,7 +90,7 @@ lead (AG Studio, kept)   all on Claude via our swapped in adapter
 
 The fair price widget shows what the shopping agent paid against the cheapest real shop this month, using the Channel3 check Spotter stored when each payment was made. On the demo family it says the agent paid £8.50 more than it had to, and that Spotter caught a £24.99 pair of earbuds that real shops sell for about £169.
 
-## Using PayPal's Agent Toolkit with Spotter
+## PayPal's agent tools, with Spotter in the middle
 
 PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, I pinned 1.11.0) that lets an AI agent create orders, capture them, send invoices, refund and so on. It has no spending limit and no approval step. If the agent calls `pay_order`, the money goes.
 
@@ -113,7 +137,7 @@ You need Node 22, a PayPal sandbox app (client id and secret) and an Anthropic A
 npm install
 cp .env.example .env.local   # fill in the keys
 npx next dev -p 3417
-npm test                      # 277 tests
+npx vitest run                # 512 tests
 ```
 
 Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to set up. Channel3 and Agentboxd are optional; without them the price check and email channel switch off.

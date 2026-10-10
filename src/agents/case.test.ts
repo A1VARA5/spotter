@@ -231,6 +231,67 @@ describe("buildCase", () => {
     expect(c.status).toBe("failed");
   });
 
+  describe("Spotter's own market check is trusted", () => {
+    const overpriced = () => ({
+      ...payment,
+      amount: 24900,
+      request: { ...payment.request, money: gbp(24900) },
+      market: {
+        item: "noise cancelling earbuds",
+        offers: 8,
+        median: 17900,
+        cheapest: { title: "Earbuds", domain: "shop.example", price: 5497, currency: "GBP" as const, url: "https://shop.example/e" },
+        flag: { kind: "price" as const, severity: "medium" as const, quote: "", why: "That's well over the going rate." },
+      },
+    });
+
+    it("gives the model the market result as trusted facts and tells it not to contradict them", async () => {
+      let system = "";
+      let brief = "";
+      const model = vi.fn<CaseModel>(async (req) => {
+        system = req.system;
+        brief = String(req.messages[0]!.content);
+        return turn(use("f", "file_case", { verdict: "unclear", headline: "Pricier than real shops.", findings: [], ask: [] }));
+      });
+      await buildCase(ctx({ payment: overpriced() }), { model });
+      expect(brief).toMatch(/Spotter's market check/);
+      expect(brief).toMatch(/overpriced/i);
+      expect(brief.indexOf("market check")).toBeLessThan(brief.indexOf("<message>"));
+      expect(system).toMatch(/never contradict/i);
+    });
+
+    it("drops a finding or headline that calls an overpriced payment a normal price", async () => {
+      const model = scripted(
+        turn(use("t1", "find_genuine_offer", { item: "noise cancelling earbuds" }), use("t2", "payee_history", { payee: "BargainPods" })),
+        turn(
+          use("f", "file_case", {
+            verdict: "unclear",
+            headline: "Earbuds at a normal price from a new shop.",
+            findings: [
+              { text: "The earbuds are at a normal price for this model.", source: "t1" },
+              { text: "Gran has never paid BargainPods.", source: "t2" },
+            ],
+            ask: [],
+          }),
+        ),
+      );
+      const c = await buildCase(ctx({ payment: overpriced() }), { model });
+      expect(c.findings.map((f) => f.text)).toEqual(["Gran has never paid BargainPods."]);
+      expect(c.dropped).toBe(1);
+      expect(c.headline).not.toMatch(/normal price/);
+    });
+
+    it("keeps price findings that agree with the market check", async () => {
+      const model = scripted(
+        turn(use("t1", "find_genuine_offer", { item: "noise cancelling earbuds" })),
+        turn(use("f", "file_case", { verdict: "unclear", headline: "Well over what real shops charge.", findings: [{ text: "That's well over what real shops charge.", source: "t1" }], ask: [] })),
+      );
+      const c = await buildCase(ctx({ payment: overpriced() }), { model });
+      expect(c.findings).toHaveLength(1);
+      expect(c.headline).toBe("Well over what real shops charge.");
+    });
+  });
+
   it("stops a model that never files a case", async () => {
     const model: CaseModel = vi.fn(async () => turn(use(`t${Math.random()}`, "payee_history", { payee: "BargainPods" })));
     const c = await buildCase(ctx(), { model });

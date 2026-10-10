@@ -22,7 +22,7 @@ import "./landing/story.css";
 type Who = { name: string; demo: boolean; agentId: string | null } | null;
 
 /** Signed in: one way back in. Signed out: the demo first, then PayPal. */
-function StartButtons({ onDark = false, who }: { onDark?: boolean; who: Who }) {
+function StartButtons({ onDark = false, who, label = "Try the demo family" }: { onDark?: boolean; who: Who; label?: string }) {
   if (who)
     return (
       <div className="start">
@@ -37,7 +37,7 @@ function StartButtons({ onDark = false, who }: { onDark?: boolean; who: Who }) {
   return (
     <div className="start">
       <form action="/api/demo/start" method="post">
-        <button className="btn btn-hold">Try the demo family</button>
+        <button className="btn btn-hold">{label}</button>
       </form>
       <a className={onDark ? "btn btn-ghost" : "btn btn-quiet"} href="/api/auth/paypal/start">
         Log in with PayPal
@@ -98,14 +98,17 @@ export default async function Home() {
 
           <div className="hero-grid">
             <div className="hero-copy">
-              <h1 className="hero-h1">A second look before the money goes.</h1>
+              <h1 className="hero-h1">PayPal holds the money until someone you trust says yes.</h1>
               <p className="hero-p">
-                Spotter sits between PayPal and the people you look out for: your gran, your kid, your AI shopping agent. When a
-                payment looks wrong, PayPal holds the money and you get asked.
+                Gran forwards the text she isn&apos;t sure about. If it looks like a scam, PayPal holds her &pound;250 and you get asked on Telegram,
+                Discord or your laptop. It works the same for your kid and your AI shopping agent.
               </p>
-              <StartButtons onDark who={who} />
+              <StartButtons onDark who={who} label="Try it on fake money" />
               {!who && (
-                <p className="hero-fine">No sign up for the demo: a family with Gran, Leo and a shopping agent, ready in ten seconds. Runs on the PayPal sandbox.</p>
+                <p className="hero-fine">
+                  No sign up. You get a family with Gran, Leo and a shopping agent on the PayPal sandbox, with one payment already waiting for you, so
+                  nothing real is spent.
+                </p>
               )}
             </div>
 
@@ -117,8 +120,8 @@ export default async function Home() {
       <section className="shell problem" aria-label="Why it's needed">
         <div className="problem-grid">
           <LitText
-            lead="Scams don't break in, they ask nicely."
-            rest="A text from a new number, a parcel fee, a seller who wants Friends and Family. Spotter can't stop the asking. It makes sure someone you trust gets one look before the money leaves."
+            lead="Nobody hacked Gran. She was asked, so the bank sees a normal payment."
+            rest="A text from a new number, a parcel fee, a seller who wants Friends and Family. Spotter can't stop the asking. It makes sure the money waits at PayPal until someone she trusts has looked."
           />
           <div className="problem-agent">
             <AgentArt />
@@ -131,6 +134,26 @@ export default async function Home() {
             </a>
           </div>
         </div>
+        <ul className="problem-stats" aria-label="How big the problem is">
+          <li>
+            <b className="num">&pound;576.4m</b>
+            <span>lost in the UK in 2025 to scams where people were talked into sending the money themselves, up 19% on 2024.</span>
+            <a href="https://www.ukfinance.org.uk/system/files/2026-06/UK%20Finance%20Fraud%20Report%202026.pdf" target="_blank" rel="noopener noreferrer">
+              UK Finance, Annual Fraud Report 2026
+            </a>
+          </li>
+          <li>
+            <b className="num">$15.9bn</b>
+            <span>reported lost to fraud by people in the US in 2025, from 3 million reports.</span>
+            <a
+              href="https://www.ftc.gov/news-events/news/press-releases/2026/03/ftc-testifies-joint-economic-committee-agencys-efforts-combat-fraud"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              FTC testimony, March 2026
+            </a>
+          </li>
+        </ul>
       </section>
 
       <Walkthrough cta={<DemoButton who={who} label="Try it on the demo family" />} />
@@ -189,7 +212,7 @@ export default async function Home() {
         </p>
       </section>
       <Final>
-        <StartButtons onDark who={who} />
+        <StartButtons onDark who={who} label="Try it on fake money" />
       </Final>
 
       <footer className="shell footer">

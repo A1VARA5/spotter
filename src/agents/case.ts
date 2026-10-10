@@ -7,6 +7,7 @@ import { z } from "zod";
 import { sanitizeContext } from "@/ai/sanitize";
 import type { Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
+import { contradictsPrice, marketFacts, priceVerdict } from "@/core/market";
 import { runTool, toolDefinitions, type CaseCtx, type CasePage, type ToolOutput } from "./tools";
 import { extractUrls } from "./links";
 import { WHY_LABEL } from "./seen";
@@ -51,6 +52,8 @@ export type Case = {
   ms: number;
   /** What the cloud browser saw (facts, a small screenshot, hidden text, the replay link), when it ran. */
   page?: CasePage;
+  /** Written earlier for the demo family's example hold, not checked live. The page labels it. */
+  example?: boolean;
 };
 
 export const CASE_SYSTEM = `You are Spotter's case worker. A payment by someone in a family (an older relative, a kid, or an AI shopping agent) was held or stopped by Spotter. Their spotter, the family member who looks out for them, will read your case and decide. Look into it with your tools, then call file_case once.
@@ -63,6 +66,7 @@ Rules:
 - headline: one calm sentence a grandparent would understand, saying what this most likely is.
 - ask: up to 3 concrete things the spotter can do before deciding (for example "Call James on the number you already have for him and ask if he sent this"). Never suggest paying by Friends and Family, bank transfer, gift cards or crypto.
 - swap_offer_id: only when the payment is for a product and find_genuine_offer returned the same product at a known retailer. Leave it out otherwise.
+- A <trusted> block holds facts Spotter worked out in code (its own market price check). Never contradict them: don't call the price normal or fair when it says overpriced or far below, and don't call it overpriced when it says normal. A product search result that looks different is probably a different product. Findings that contradict them are dropped.
 - verdict: likely_scam, unclear or looks_fine. Don't call it a scam without evidence, and don't call it fine when the evidence says otherwise.`;
 
 const FILE_CASE_TOOL: ToolDef = {
@@ -79,11 +83,13 @@ export function caseBrief(p: Payment, who?: { name: string; kind: string }): str
   const flags = p.ai?.flags.length
     ? p.ai.flags.map((f) => `- ${f.kind} (${f.severity}): ${f.why}${f.quote ? ` Quote: "${f.quote}"` : ""}`).join("\n")
     : "- none";
+  const facts = marketFacts(p.market, r.money.amount, r.money.currency);
   return [
     `Payment: ${formatMoney(r.money)} to "${r.payee.name}"${r.item ? ` for "${r.item}"` : ""}, category ${r.category}, method ${r.method}.`,
     who ? `Paying: ${who.name} (${who.kind === "agent" ? "an AI shopping agent" : who.kind === "kid" ? "a kid" : "a family member"}).` : "",
     `Spotter's decision so far: ${p.status}. Reasons:\n${reasons}`,
     `Warning signs the message check found:\n${flags}`,
+    facts ? `<trusted>\n${facts}\n</trusted>` : "",
     `<message>\n${clean}\n</message>`,
   ]
     .filter(Boolean)
@@ -213,6 +219,12 @@ ${out.summary}`, ...(out.ok ? {} : { is_error: true }) };
   return fallback(calls, started, "the model never filed a case");
 }
 
+const PRICE_HEADLINE = {
+  overpriced: "This costs well over what real shops charge for it.",
+  too_cheap: "This is far cheaper than real shops sell it for, which is a fake shop tell.",
+  normal: "The price is normal for what real shops charge, so the question is who is being paid.",
+} as const;
+
 function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number): Case {
   const parsed = FileCase.safeParse(input);
   if (!parsed.success) return fallback(calls, started, "the case didn't match the format");
@@ -220,17 +232,20 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
   // A source is a tool call id, or a tool's name (then its latest successful call). Anything else is dropped.
   const ok = calls.filter((x) => x.ok);
   const resolve = (src: string) => ok.find((x) => x.id === src.trim()) ?? ok.findLast((x) => x.tool === src.trim());
+  // Spotter's own market check is code, so a finding that argues with it about the price is dropped.
+  const price = priceVerdict(ctx.payment.market);
   const findings = c.findings.flatMap((f) => {
     const call = resolve(f.source);
-    return call ? [{ text: f.text, source: call.id, tool: call.tool }] : [];
+    return call && !contradictsPrice(f.text, price) ? [{ text: f.text, source: call.id, tool: call.tool }] : [];
   });
+  const headline = price && contradictsPrice(c.headline, price) ? PRICE_HEADLINE[price] : c.headline;
   const offer = c.swap_offer_id ? ctx.offers.get(c.swap_offer_id) : undefined;
   // A clean verdict needs support: if a check failed or no finding survived, the case is partial and never "fine".
   const shaky = calls.some((x) => !x.ok) || (findings.length === 0 && c.findings.length > 0);
   return {
     status: shaky ? "partial" : "done",
     verdict: shaky && c.verdict === "looks_fine" ? "unclear" : c.verdict,
-    headline: c.headline,
+    headline,
     findings,
     ask: c.ask,
     ...(offer && c.swap_offer_id

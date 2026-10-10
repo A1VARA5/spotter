@@ -42,6 +42,20 @@ describe("agent allowance currency", () => {
     expect((await setAgentCurrency(db, req({ currency: "USD" }, () => other), "sp_agent")).status).toBe(404);
   });
 
+  it("round trip: dollars and back to pounds brings back the same allowance and this week's pound spend", async () => {
+    await db.query(
+      "insert into payments (id, spender_id, request, status, amount, currency) values ('pay_1', 'sp_agent', '{}', 'captured', 24900, 'GBP')",
+    );
+    const toUsd = await setAgentCurrency(db, req({ currency: "USD" }), "sp_agent");
+    // Spend is counted per currency: no dollars spent yet, and the response says how much is in pounds.
+    expect(await toUsd.json()).toMatchObject({ ok: true, currency: "USD", spentThisWeek: 0, spentOtherCurrency: { amount: 24900, currency: "GBP" } });
+    const back = await setAgentCurrency(db, req({ currency: "GBP" }), "sp_agent");
+    expect(back.status).toBe(200);
+    expect(await back.json()).toMatchObject({ currency: "GBP", spentThisWeek: 24900, spentOtherCurrency: { amount: 0, currency: "USD" } });
+    const s = await getSpender(db, "sp_agent");
+    expect(s!.allowance).toEqual(allowance);
+  });
+
   it("accepts only pounds or dollars", async () => {
     expect((await setAgentCurrency(db, req({ currency: "EUR" }), "sp_agent")).status).toBe(400);
   });

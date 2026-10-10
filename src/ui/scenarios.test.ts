@@ -59,6 +59,35 @@ describe("scenarios", () => {
     expect(d.outcome).toBe("block");
   });
 
+  it("every demo scenario keeps its documented outcome whatever order a judge clicks them in", async () => {
+    // What each card promises, with a quiet model (the real check can only make things stricter).
+    const promised: Record<string, string> = {
+      "agent-gift": "allow", "agent-big": "ask", "agent-too-cheap": "ask", "agent-trap": "block",
+      "gran-hi-mum": "ask", "gran-seller": "protect", "gran-chemist": "allow", "leo-giftcard": "block",
+      "biz-invoice": "protect", "biz-paper": "ask",
+    };
+    const all = [...SCENARIOS, ...BUSINESS_SCENARIOS];
+    expect(Object.keys(promised).sort()).toEqual(all.map((s) => s.id).sort());
+    const counts = new Set(["allow", "ask"]); // paid or held money uses the allowance; protected and blocked don't
+    const orders = [all, [...all].reverse(), [...all.slice(5), ...all.slice(0, 5)]];
+    // Hi Mum and the earbuds are the ones a judge most often sends twice.
+    const twice = [...all, ...all.filter((s) => s.id === "gran-hi-mum" || s.id === "agent-big")];
+    const twiceFirst = [...twice.slice(all.length), ...all];
+    for (const order of [...orders, twice, twiceFirst]) {
+      // The demo family starts with the example hold (Gran, £250) already using some of her week.
+      const spent: Record<string, number> = { person: SCENARIOS.find((s) => s.id === "gran-hi-mum")!.body.amount };
+      for (const s of order) {
+        const seed = DEMO_SPENDERS.find((d) => d.kind === s.spender)!;
+        const req = request(s);
+        const ai = await aiCheck(req, noFlags);
+        const a = { ...seed.allowance, spentThisWeek: { amount: spent[s.spender] ?? 0, currency: "GBP" as const } };
+        const d = decide(checkRules(req, a), ai, { amount: req.money.amount, askAbove: a.askAbove.amount });
+        expect(`${s.id}: ${d.outcome}`).toBe(`${s.id}: ${promised[s.id]}`);
+        if (counts.has(d.outcome)) spent[s.spender] = (spent[s.spender] ?? 0) + req.money.amount;
+      }
+    }
+  });
+
   it("the buying agent's overpriced paper order is held, not stopped, for a business and for the demo family's agent", async () => {
     const paper = BUSINESS_SCENARIOS.find((s) => s.id === "biz-paper")!;
     expect(paper.body.context).toMatch(/usual/i);
