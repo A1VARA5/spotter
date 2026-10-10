@@ -11,12 +11,12 @@ export const DEMO_SPENDERS: SpenderSeed[] = [
   {
     name: "Shopping agent",
     kind: "agent",
-    allowance: { weekly: gbp(40000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Tesco", "Clay & Kiln (Etsy)"], blockedPayees: [] },
+    allowance: { weekly: gbp(40000), askAbove: gbp(3000), blockedCategories: ["gift_cards", "crypto", "gambling"], allowedPayees: ["Greenway Grocers", "Clay & Kiln"], blockedPayees: [] },
   },
   {
     name: "Gran",
     kind: "person",
-    allowance: { weekly: gbp(30000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Boots"], blockedPayees: [] },
+    allowance: { weekly: gbp(30000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Hillside Pharmacy"], blockedPayees: [] },
   },
   {
     name: "Leo",

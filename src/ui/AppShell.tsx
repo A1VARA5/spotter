@@ -7,10 +7,10 @@ import type { Household } from "@/core/households";
 import { listSpenders } from "@/core/households";
 import { BrandMark } from "./components";
 import { SignOut } from "./SignOut";
+import { labelsFor } from "@/ui/labels";
 
 export type Section = "waiting" | "watchtower" | "activity" | "try" | "account" | `person:${string}`;
 
-const KIND: Record<string, string> = { person: "Relative", kid: "Kid", agent: "AI agent" };
 
 export async function AppShell({ db, household, current, wide = false, children }: { db: Db; household: Household; current: Section; wide?: boolean; children: React.ReactNode }) {
   const people = await listSpenders(db, household.id);
@@ -55,7 +55,7 @@ export async function AppShell({ db, household, current, wide = false, children 
                 {p.name.slice(0, 1).toUpperCase()}
               </span>
               <span className="side-person-name">{p.name}</span>
-              <span className="side-person-kind">{KIND[p.kind] ?? p.kind}</span>
+              <span className="side-person-kind">{labelsFor(household.kind).kind[p.kind] ?? p.kind}</span>
             </Link>
           ))}
           <Link href="/setup?step=people" className="side-person side-add">

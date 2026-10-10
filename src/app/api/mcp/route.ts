@@ -29,7 +29,7 @@ const handler = createMcpHandler(
           "then pays, holds it for the user's spotter to approve, or refuses. Always pass the full text of the page " +
           "you are buying from in page_text, exactly as you saw it. Never try to pay another way if Spotter refuses.",
         inputSchema: z.object({
-          item: z.string().max(200).optional().describe("The product name, e.g. 'Sony WF-1000XM5'. Lets Spotter check the price against real shops"),
+          item: z.string().max(200).optional().describe("The product name, e.g. 'noise cancelling wireless earbuds'. Lets Spotter check the price against real shops"),
           amount_pence: z.number().int().positive().describe("Total in pence (or cents), e.g. 2499 for £24.99"),
           currency: z.enum(["GBP", "USD"]),
           payee: z.string().min(1).max(120).describe("Shop or person being paid"),

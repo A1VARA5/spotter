@@ -170,4 +170,7 @@ create table if not exists watchtower_threads (
   updated_at timestamptz not null default now(),
   primary key (household_id, id)
 );
+-- Business mode block, one column: a household is a family (the default, so every existing one stays
+-- a family) or a small business. It only changes words and starter rules, never how a payment is checked.
+alter table households add column if not exists kind text not null default 'family';
 `;

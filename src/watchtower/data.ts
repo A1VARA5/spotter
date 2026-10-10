@@ -45,6 +45,7 @@ export const SIGN_LABEL: Record<FlagKind, string> = {
   prompt_injection: "Hidden instructions for AI",
   price: "Price looks wrong",
   new_shop: "Brand new shop",
+  changed_bank_details: "Bank details changed",
   other: "Something else odd",
 };
 const SEVERITY_LABEL: Record<Severity, string> = { high: "High", medium: "Medium", low: "Low" };

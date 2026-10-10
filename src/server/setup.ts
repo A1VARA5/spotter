@@ -1,21 +1,24 @@
 // Setup: name the spotter, choose the PIN, add the people they look out for. Testable without Next.
 import { z } from "zod";
 import type { Db } from "@/db";
-import { getHousehold, newId } from "@/core/households";
+import { getHousehold, newId, HOUSEHOLD_KINDS, type HouseholdKind } from "@/core/households";
 import { createSpender, getSpender } from "@/core/lifecycle";
-import { PRESETS } from "@/core/presets";
+import { PRESETS, presetsFor, type PresetKey } from "@/core/presets";
 import { createPairingCode, issueAgentToken } from "@/core/pairing";
 import { checkPin, householdFrom, isUnlocked, InvalidPinError, setPin, unlockCookie } from "./auth";
 
 const json = (body: unknown, status = 200, headers?: HeadersInit) => Response.json(body, { status, headers });
 const issues = (e: z.ZodError) => e.issues.map((i) => i.message).join(" ");
 
-const NameBody = z.object({ spotterName: z.string().trim().min(1, "Enter a name.").max(40, "Keep it under 40 characters.") });
+const NameBody = z.object({
+  spotterName: z.string().trim().min(1, "Enter a name.").max(40, "Keep it under 40 characters."),
+  kind: z.enum(HOUSEHOLD_KINDS as [HouseholdKind, ...HouseholdKind[]], { message: "Pick a family or a small business." }).optional(),
+});
 const PinBody = z.object({ pin: z.string().trim(), confirm: z.string().trim() });
 const SpenderBody = z
   .object({
     name: z.string().trim().min(1, "Enter their name.").max(40, "Keep it under 40 characters."),
-    preset: z.enum(["relative", "kid", "agent"], { message: "Pick who they are." }),
+    preset: z.enum(Object.keys(PRESETS) as [PresetKey, ...PresetKey[]], { message: "Pick who they are." }),
     weeklyPence: z.number().int().positive().max(1_000_000).optional(),
     askAbovePence: z.number().int().nonnegative().max(1_000_000).optional(),
   })
@@ -47,7 +50,13 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
       if (s instanceof Response) return s;
       const b = await body(request, NameBody);
       if (b instanceof Response) return b;
-      await s.db.query("update households set spotter_name = $2, name = $3 where id = $1", [s.hh.id, b.spotterName, `${b.spotterName}'s household`]);
+      const kind = b.kind ?? s.hh.kind;
+      await s.db.query("update households set spotter_name = $2, name = $3, kind = $4 where id = $1", [
+        s.hh.id,
+        b.spotterName,
+        kind === "business" ? `${b.spotterName}'s business` : `${b.spotterName}'s household`,
+        kind,
+      ]);
       await s.db.query("update spenders set spotter_name = $2 where household_id = $1", [s.hh.id, b.spotterName]);
       return json({ ok: true });
     },
@@ -74,7 +83,8 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
       if (s instanceof Response) return s;
       const b = await body(request, SpenderBody);
       if (b instanceof Response) return b;
-      const preset = PRESETS[b.preset];
+      const preset = presetsFor(s.hh.kind)[b.preset];
+      if (!preset) return json({ error: "Pick who they are." }, 400);
       const allowance = {
         ...preset.allowance,
         weekly: { ...preset.allowance.weekly, amount: b.weeklyPence ?? preset.allowance.weekly.amount },

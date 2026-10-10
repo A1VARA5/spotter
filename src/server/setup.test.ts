@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { pgliteDb, type Db } from "@/db";
 import { createHousehold, getHousehold, listSpenders } from "@/core/households";
-import { PRESETS } from "@/core/presets";
+import { PRESETS, presetsFor } from "@/core/presets";
 import { HH_COOKIE, UNLOCK_COOKIE, householdCookie, unlockCookie, checkPin } from "./auth";
 import { makeSetupHandlers } from "./setup";
 
@@ -33,6 +33,12 @@ describe("presets", () => {
     expect(PRESETS.kid.kind).toBe("kid");
     expect(PRESETS.relative.kind).toBe("person");
   });
+
+  it("keeps families on the same three presets, and gives a business its own two", () => {
+    expect(Object.keys(presetsFor("family"))).toEqual(["relative", "kid", "agent"]);
+    expect(Object.keys(presetsFor("business"))).toEqual(["staff", "buyer"]);
+    expect(PRESETS.buyer.allowance).toMatchObject({ askAbove: { amount: 25000 }, blockedCategories: ["gift_cards", "crypto"] });
+  });
 });
 
 describe("setup", () => {
@@ -49,6 +55,16 @@ describe("setup", () => {
   it("says what is wrong with a PIN", async () => {
     expect((await (await h.pin(req({ pin: "12", confirm: "12" }))).json()).error).toMatch(/4 to 8 digits/);
     expect((await (await h.pin(req({ pin: "4821", confirm: "4822" }))).json()).error).toMatch(/don't match/);
+  });
+
+  it("first step can make the household a small business, and back", async () => {
+    expect((await h.name(req({ spotterName: "Priya", kind: "business" }))).status).toBe(200);
+    expect((await getHousehold(db, hh))?.kind).toBe("business");
+    expect((await h.name(req({ spotterName: "Priya" }))).status).toBe(200);
+    expect((await getHousehold(db, hh))?.kind).toBe("business");
+    expect((await h.name(req({ spotterName: "Priya", kind: "family" }))).status).toBe(200);
+    expect((await getHousehold(db, hh))?.kind).toBe("family");
+    expect((await h.name(req({ spotterName: "Priya", kind: "charity" }))).status).toBe(400);
   });
 
   it("needs a session", async () => {
@@ -77,6 +93,19 @@ describe("people", () => {
     expect((await ok.json()).spender.allowance).toMatchObject({ weekly: { amount: 2000 }, askAbove: { amount: 800 } });
     const bad = await h.addSpender(req({ name: "Leo", preset: "kid", weeklyPence: 500, askAbovePence: 800 }, { unlocked: true }));
     expect(bad.status).toBe(400);
+  });
+
+  it("gives a business staff and buying agent presets, with business sized rules", async () => {
+    await db.query("update households set kind = 'business' where id = $1", [hh]);
+    const staff = await h.addSpender(req({ name: "Tom", preset: "staff" }, { unlocked: true }));
+    expect(staff.status).toBe(201);
+    expect((await staff.json()).spender).toMatchObject({ kind: "person", allowance: { askAbove: { amount: 25000 }, blockedCategories: ["gift_cards", "crypto"] } });
+    const agent = await h.addSpender(req({ name: "Buying agent", preset: "buyer" }, { unlocked: true }));
+    expect((await agent.json()).spender).toMatchObject({ kind: "agent", allowance: { askAbove: { amount: 25000 } } });
+    // Family presets aren't offered to a business, and business ones aren't offered to a family.
+    expect((await h.addSpender(req({ name: "Leo", preset: "kid" }, { unlocked: true }))).status).toBe(400);
+    await db.query("update households set kind = 'family' where id = $1", [hh]);
+    expect((await h.addSpender(req({ name: "Tom", preset: "staff" }, { unlocked: true }))).status).toBe(400);
   });
 
   it("rejects an unknown preset or empty name", async () => {

@@ -4,6 +4,10 @@ import type { Db } from "@/db";
 import { createSpender, type Spender } from "./lifecycle";
 import { DEMO_SPENDERS, DEMO_SPOTTER } from "@/server/seed";
 
+/** A family (the main story) or a small business. Business only changes words and starter rules. */
+export type HouseholdKind = "family" | "business";
+export const HOUSEHOLD_KINDS: readonly HouseholdKind[] = ["family", "business"];
+
 export type Household = {
   id: string;
   name: string;
@@ -15,6 +19,7 @@ export type Household = {
   alert_email: string | null;
   pin_hash: string | null;
   demo: boolean;
+  kind: HouseholdKind;
   created_at: string;
 };
 
@@ -22,11 +27,11 @@ export const newId = (prefix: string) => `${prefix}_${randomBytes(9).toString("b
 
 export async function createHousehold(
   db: Db,
-  h: { name: string; spotterName: string; paypalUserId?: string; email?: string; demo?: boolean },
+  h: { name: string; spotterName: string; paypalUserId?: string; email?: string; demo?: boolean; kind?: HouseholdKind },
 ): Promise<Household> {
   const rows = await db.query<Household>(
-    "insert into households (id, name, spotter_name, paypal_user_id, email, demo) values ($1, $2, $3, $4, $5, $6) returning *",
-    [newId("hh"), h.name, h.spotterName, h.paypalUserId ?? null, h.email ?? null, h.demo ?? false],
+    "insert into households (id, name, spotter_name, paypal_user_id, email, demo, kind) values ($1, $2, $3, $4, $5, $6, $7) returning *",
+    [newId("hh"), h.name, h.spotterName, h.paypalUserId ?? null, h.email ?? null, h.demo ?? false, h.kind ?? "family"],
   );
   return rows[0]!;
 }

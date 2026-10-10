@@ -78,7 +78,7 @@ function helpFor(s: Spender) {
   return [
     `<b>You're connected to Spotter, ${esc(s.name)}.</b>`,
     "",
-    "When a text, WhatsApp or email asks you for money, forward it here or paste it in. I check it, and if anything looks off, PayPal holds the money until " +
+    "When a text, a message app or an email asks you for money, forward it here or paste it in. I check it, and if anything looks off, PayPal holds the money until " +
       `${esc(s.spotter_name)} says yes.`,
   ].join("\n");
 }

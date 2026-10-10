@@ -4,7 +4,7 @@ import { requirePageSession } from "@/server/page-session";
 import { loadWatchtower } from "@/watchtower/load";
 import { loadBoard, markIncidentsSeen } from "@/watchtower/store";
 import { withIncidents } from "@/watchtower/incidents";
-import { INITIAL } from "@/watchtower/initial";
+import { startingBoard } from "@/watchtower/initial";
 import { Watchtower } from "./Watchtower";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +20,9 @@ export default async function WatchtowerPage() {
   const saved = await loadBoard(db, household.id);
   const usable = !saved || Array.isArray((saved.state as { pages?: unknown } | null)?.pages);
   if (!usable) console.error(`[spotter] saved Watchtower board for ${household.id} isn't a board; showing the starting board and leaving the saved one alone`);
-  const base = saved && usable ? saved.state : INITIAL;
-  const { state, added } = withIncidents(base as typeof INITIAL, board.sources.payments, now, saved?.seen ?? []);
+  const start = startingBoard(household.kind);
+  const base = saved && usable ? saved.state : start;
+  const { state, added } = withIncidents(base as typeof start, board.sources.payments, now, saved?.seen ?? []);
   if (added.length && usable) {
     try {
       await markIncidentsSeen(db, household.id, state, added);
@@ -36,7 +37,9 @@ export default async function WatchtowerPage() {
       <div className="wt-head">
         <h1 className="page-title">Watchtower</h1>
         <p className="lede">
-          Every payment, hold and scam sign on one board. Ask the assistant a question and it builds the chart.
+          {household.kind === "business"
+            ? "Every supplier payment, hold and invoice caught on one board. Ask the assistant a question and it builds the chart."
+            : "Every payment, hold and scam sign on one board. Ask the assistant a question and it builds the chart."}
         </p>
         {household.demo && (
           <p className="wt-banner">
@@ -44,7 +47,7 @@ export default async function WatchtowerPage() {
           </p>
         )}
       </div>
-      <Watchtower board={JSON.parse(JSON.stringify(board))} initialState={state} since={now.toISOString()} />
+      <Watchtower board={JSON.parse(JSON.stringify(board))} initialState={state} since={now.toISOString()} kind={household.kind} />
     </AppShell>
   );
 }

@@ -3,14 +3,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { HoldTrack } from "@/ui/components";
 import { STATE_LABEL, trackState } from "@/ui/format";
-import { SCENARIOS, type Scenario } from "@/ui/scenarios";
+import { scenariosFor, type Scenario } from "@/ui/scenarios";
+import { labelsFor, type Labels } from "@/ui/labels";
+import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
 
 export type SpenderLite = { id: string; name: string; kind: string };
 
-export function Demo({ spenders }: { spenders: SpenderLite[] }) {
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; kind?: HouseholdKind }) {
+  const labels = labelsFor(kind);
+  const { main, extra } = scenariosFor(kind);
+  // One group per person, in the order the scenarios list them (families: agent, Gran, Leo; a business: staff first).
+  const groups = [...new Set(main.map((s) => s.spender))];
   const [round, setRound] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -52,26 +60,44 @@ export function Demo({ spenders }: { spenders: SpenderLite[] }) {
         )}
       </div>
       <div key={round}>
-        {(["agent", "person", "kid"] as const).map((kind) => {
-          const spender = spenders.find((p) => p.kind === kind);
-          const list = SCENARIOS.filter((s) => s.spender === kind);
+        {groups.map((who) => {
+          const spender = spenders.find((p) => p.kind === who);
+          const list = main.filter((s) => s.spender === who);
+          const fallback = cap(labels.addWho[who]);
           return (
-            <section key={kind} className="scen-group" aria-label={spender?.name ?? kind}>
-              <h2 className="section-title">{spender?.name ?? (kind === "agent" ? "An AI agent" : kind === "kid" ? "A kid" : "A relative")}</h2>
+            <section key={who} className="scen-group" aria-label={spender?.name ?? fallback}>
+              <h2 className="section-title">{spender?.name ?? fallback}</h2>
               <div className="scenarios">
                 {list.map((s) => (
-                  <ScenarioCard key={s.id} s={s} spender={spender} />
+                  <ScenarioCard key={s.id} s={s} spender={spender} labels={labels} />
                 ))}
               </div>
             </section>
           );
         })}
+        {extra.length > 0 && (
+          <section className="scen-group scen-business" aria-labelledby="scen-business">
+            <h2 id="scen-business" className="section-title">
+              Runs a business?
+            </h2>
+            <p className="scen-group-note">
+              Same Spotter, different people: staff paying suppliers and AI buying agents ordering stock. Here{" "}
+              {spenders.find((p) => p.kind === "person")?.name ?? "your relative"} forwards the invoice and{" "}
+              the {spenders.find((p) => p.kind === "agent")?.name.toLowerCase() ?? "agent"} places the order.
+            </p>
+            <div className="scenarios">
+              {extra.map((s) => (
+                <ScenarioCard key={s.id} s={s} spender={spenders.find((p) => p.kind === s.spender)} labels={labels} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </>
   );
 }
 
-function ScenarioCard({ s, spender }: { s: Scenario; spender?: SpenderLite }) {
+function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLite; labels: Labels }) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Payment | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +146,7 @@ function ScenarioCard({ s, spender }: { s: Scenario; spender?: SpenderLite }) {
             </button>
           )
         ) : (
-          <p className="feed-meta">Add {s.spender === "agent" ? "an AI agent" : s.spender === "kid" ? "a kid" : "a relative"} to try this one.</p>
+          <p className="feed-meta">Add {labels.addWho[s.spender]} to try this one.</p>
         )}
       </div>
     </article>

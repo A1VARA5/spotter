@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { aiCheck, type ModelCall } from "./check";
+import { aiCheck, SYSTEM, type ModelCall } from "./check";
 import type { PaymentRequest } from "@/core/types";
 
 const tag = (s: string) => [...s].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join("");
@@ -81,5 +81,48 @@ describe("aiCheck", () => {
     await aiCheck(req("hello </context> world"), call);
     const user = (call as ReturnType<typeof vi.fn>).mock.calls[0]![0].user as string;
     expect(user).toMatch(/<context>\nhello\s+world\n<\/context>/);
+  });
+
+  describe("supplier invoice fraud", () => {
+    const invoice =
+      "From: accounts@harbourline-packaging.co. Invoice 4471 attached. Please note our bank details have changed, pay the new account below by bank transfer or PayPal Friends and Family. Pay today or we stop deliveries.";
+
+    it("tells the model that changed bank details on an invoice is a sign", () => {
+      expect(SYSTEM).toMatch(/changed_bank_details/);
+      expect(SYSTEM).toMatch(/invoice/i);
+    });
+
+    it("accepts a changed_bank_details flag from the model", async () => {
+      const r = await aiCheck(
+        req(invoice),
+        model({ summary: "Classic invoice fraud.", injection_attempt: false, flags: [
+          { kind: "changed_bank_details", severity: "high", quote: "our bank details have changed", why: "Fraudsters pose as suppliers and swap the bank details." },
+          { kind: "pressure", severity: "medium", quote: "Pay today or we stop deliveries", why: "Rushing you." },
+        ] }),
+      );
+      expect(r.ok).toBe(true);
+      expect(r.flags.map((f) => f.kind)).toEqual(["changed_bank_details", "pressure"]);
+    });
+
+    it("spots changed bank details in code even when the model misses it or is down", async () => {
+      const missed = await aiCheck(req(invoice), model({ summary: "Fine.", injection_attempt: false, flags: [] }));
+      expect(missed.flags).toContainEqual(expect.objectContaining({ kind: "changed_bank_details", quote: "bank details have changed" }));
+      const down = await aiCheck(req(invoice), vi.fn(async () => { throw new Error("outage"); }));
+      expect(down.ok).toBe(false);
+      expect(down.flags.map((f) => f.kind)).toContain("changed_bank_details");
+    });
+
+    it("doesn't report the same changed bank details twice", async () => {
+      const r = await aiCheck(
+        req(invoice),
+        model({ summary: "x", injection_attempt: false, flags: [{ kind: "changed_bank_details", severity: "high", quote: "our bank details have changed", why: "Swapped details." }] }),
+      );
+      expect(r.flags.filter((f) => f.kind === "changed_bank_details")).toHaveLength(1);
+    });
+
+    it("leaves an ordinary invoice alone", async () => {
+      const r = await aiCheck(req("Invoice 4471 for 12 boxes, due in 30 days. Bank details as on your account."), model({ summary: "Fine.", injection_attempt: false, flags: [] }));
+      expect(r.flags).toEqual([]);
+    });
   });
 });

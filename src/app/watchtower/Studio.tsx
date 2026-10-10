@@ -9,8 +9,9 @@ import { Confirm } from "@/ui/Confirm";
 import { spotterAdapter } from "./adapter";
 import { CaseFileWidget, HoldTrackWidget, MoneyKeptWidget, MoneyMidAirWidget, ScamRadarWidget, WatchAlertsWidget, type SpotterRegistry, type WatchContext, type WatchStore } from "./widgets";
 import { ReplayWidget } from "./Replay";
-import { OUTCOME_ORDER, type PersonRow, type Sources, type WatchAlert } from "@/watchtower/data";
-import { INITIAL } from "@/watchtower/initial";
+import { OUTCOME_ORDER, type Sources, type WatchAlert } from "@/watchtower/data";
+import { promptStarters, startingBoard } from "@/watchtower/initial";
+import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
 import { namesOf, pageTabs, removePage, stackForPhone, withNames } from "@/watchtower/pages";
@@ -78,18 +79,6 @@ Rules:
 - Use open_case_file to explain why a payment was held or stopped, quoting Spotter's reasons. Use watch_alerts for what needs attention. Never invent reasons.
 - Write for a busy parent: short, plain sentences, money as £12.50, no jargon, no field ids or payment ids in replies (name the payee and the day instead).`;
 
-function starters(people: PersonRow[]) {
-  const kid = people.find((p) => p.kind === "Kid")?.name;
-  const relative = people.find((p) => p.kind === "Person")?.name;
-  const agent = people.find((p) => p.kind === "AI agent")?.name;
-  return [
-    ...(kid ? [{ label: `What did ${kid} spend on games?`, prompt: `What did ${kid} spend on games this month? Add a widget that shows it.` }] : []),
-    ...(relative ? [{ label: `Why was ${relative} stopped?`, prompt: `Why were ${relative}'s payments held or stopped this month? Open the case files and explain in a few sentences.` }] : []),
-    { label: "Build a scam report", prompt: "Add a new page called Scam report: scam signs by person and by kind, the scam radar, and a table of every stopped or denied payment." },
-    ...(agent ? [{ label: `Is the ${agent.toLowerCase()} behaving?`, prompt: `Show what the ${agent.toLowerCase()} spent by shop this month and tell me anything odd.` }] : []),
-  ];
-}
-
 // Built from Spotter's own words and ids only: alert titles can contain a payee's name, which a scammer
 // chooses, so they never go into a message the assistant reads as coming from the family.
 const ALERT_ASK: Record<WatchAlert["kind"], string> = {
@@ -98,6 +87,8 @@ const ALERT_ASK: Record<WatchAlert["kind"], string> = {
   waiting: "has a payment waiting for my approval",
   new_sign: "hit a kind of scam sign Spotter hadn't seen in our family for a month",
 };
+const BUSINESS_CONTEXT = `This account is a small business, not a family: the people are staff and AI buying agents, most payees are suppliers, and the spotter is the owner who approves. Say "approver", "staff" and "suppliers", and write for a busy owner instead of a parent.`;
+
 function lookIntoPrompt(a: WatchAlert): string {
   return [
     `Look into this watch alert: ${a.who} ${ALERT_ASK[a.kind]}.`,
@@ -111,7 +102,8 @@ function isValidState(s: unknown): s is AgReportState {
   return !!s && typeof s === "object" && Array.isArray((s as { pages?: unknown }).pages) && (s as { pages: unknown[] }).pages.length > 0;
 }
 
-export default function Studio({ sources, initialState, store, notify }: { sources: Sources; initialState: unknown; store: WatchStore; notify: (text: string) => void }) {
+export default function Studio({ sources, initialState, store, notify, kind }: { sources: Sources; initialState: unknown; store: WatchStore; notify: (text: string) => void; kind: HouseholdKind }) {
+  const start = startingBoard(kind);
   const notifyRef = useRef(notify);
   notifyRef.current = notify;
   const hasPaypal = sources.paypal !== undefined;
@@ -198,10 +190,10 @@ export default function Studio({ sources, initialState, store, notify }: { sourc
   const [phone] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const theme = useMemo(() => themeFor(new Set(sources.payments.map((r) => r.outcome))), [sources]);
   const [initial] = useState(() => {
-    const s = isValidState(initialState) ? initialState : INITIAL;
+    const s = isValidState(initialState) ? initialState : start;
     return phone ? stackForPhone(s as AgReportState) : s;
   });
-  const names = useRef<Record<string, string>>({ ...namesOf(INITIAL), ...namesOf(initial) });
+  const names = useRef<Record<string, string>>({ ...namesOf(start), ...namesOf(initial) });
   const [tabs, setTabs] = useState(() => pageTabs(initial, names.current));
 
   const apiRef = useRef<AgStudioApi | null>(null);
@@ -259,9 +251,9 @@ export default function Studio({ sources, initialState, store, notify }: { sourc
   const resetBoard = useCallback(() => {
     const api = apiRef.current;
     if (!api) return;
-    api.setState(INITIAL as never);
+    api.setState(start as never);
     saveNow();
-  }, [saveNow]);
+  }, [saveNow, start]);
 
   // ---------- "Look into this" on a watch alert ----------
   const lookInto = useCallback(async (alert: WatchAlert) => {
@@ -423,7 +415,7 @@ export default function Studio({ sources, initialState, store, notify }: { sourc
         type Def = (typeof builtIn)["lead"] & { instructions?: (c: never, p: never) => string; tools?: (c: never, p: never) => AgAiTool[] };
         const extend = (d: Def, extra: AgAiTool[]) => ({
           ...d,
-          instructions: (c: never, p: never) => [d.instructions?.(c, p), SPOTTER_CONTEXT].filter(Boolean).join("\n\n"),
+          instructions: (c: never, p: never) => [d.instructions?.(c, p), SPOTTER_CONTEXT, kind === "business" ? BUSINESS_CONTEXT : ""].filter(Boolean).join("\n\n"),
           tools: (c: never, p: never) => [...(d.tools?.(c, p) ?? []), ...extra],
         });
         const b = builtIn as unknown as Record<"lead" | "data" | "page" | "planning" | "widget", Def>;
@@ -432,7 +424,7 @@ export default function Studio({ sources, initialState, store, notify }: { sourc
           agents: defs.map((d) => directLlmRunner({ ...(d as object), adapter } as never)),
           primary: "lead",
           history,
-          promptStarters: starters(sources.people),
+          promptStarters: promptStarters(sources.people, kind),
         };
       });
       const h = focusable(inner);
