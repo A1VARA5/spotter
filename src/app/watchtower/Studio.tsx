@@ -202,7 +202,12 @@ export default function Studio({ sources, initialState, store, notify, kind }: {
   const theme = useMemo(() => themeFor(new Set(sources.payments.map((r) => r.outcome))), [sources]);
   const [initial] = useState(() => {
     const s = isValidState(initialState) ? initialState : start;
-    return phone ? stackForPhone(s as AgReportState) : s;
+    if (phone) return stackForPhone(s as AgReportState);
+    // On a laptop narrower than about 1360px the open chat panel sits on top of the widgets and cuts them
+    // off, so the board opens with it folded. One click (or "Look into this") opens it.
+    const st = s as AgReportState;
+    if (window.innerWidth < 1360 && st.panels?.ai?.collapsed === false) return { ...st, panels: { ...st.panels, ai: { ...st.panels.ai, collapsed: true } } };
+    return s;
   });
   const names = useRef<Record<string, string>>({ ...namesOf(start), ...namesOf(initial) });
   const [tabs, setTabs] = useState(() => pageTabs(initial, names.current));
@@ -213,6 +218,42 @@ export default function Studio({ sources, initialState, store, notify, kind }: {
   }, []);
   const harness = useRef<FocusableHarness | null>(null);
   const harnessWaiters = useRef<Array<(h: FocusableHarness) => void>>([]);
+
+  // ---------- live data ----------
+  // AG Studio 3.0 reads `data` once: passing new rows (or setProperty / reload) doesn't redraw the board.
+  // Until AG's real-time update ships (announced for about 28 Oct 2026), the only way is to remount
+  // <AgStudio> with a new key, carrying the board as it is now (selected page, panels, chat open).
+  // The live poll only hands us new sources when something changed, so this runs only then.
+  // TODO(AG Studio real-time release, ~28 Oct): swap the remount for the proper update API.
+  const [mount, setMount] = useState(() => ({ key: 0, state: initial }));
+  const [swapping, setSwapping] = useState(false);
+  const shownData = useRef(sources);
+  useEffect(() => {
+    if (shownData.current === sources) return;
+    // Never pull the board out from under someone: wait while the assistant is answering or a message is
+    // half typed, and try again shortly.
+    const busy = () => {
+      const h = harness.current;
+      const running = !!h?.threads.some((t) => ["running", "awaiting_input"].includes(h.getSession?.(t.threadId)?.status ?? "idle"));
+      const el = document.activeElement;
+      const typing = !!el?.closest(".wt-studio") && (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) && el.value.trim() !== "";
+      return running || typing;
+    };
+    let t: ReturnType<typeof setTimeout>;
+    const swap = () => {
+      if (busy()) {
+        t = setTimeout(swap, 3000);
+        return;
+      }
+      const api = apiRef.current;
+      shownData.current = sources;
+      setSwapping(true);
+      setMount((m) => ({ key: m.key + 1, state: api ? withNames(api.getState(), names.current) : m.state }));
+      t = setTimeout(() => setSwapping(false), 2500);
+    };
+    swap();
+    return () => clearTimeout(t);
+  }, [sources]);
 
   // ---------- saving the board ----------
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -542,14 +583,15 @@ export default function Studio({ sources, initialState, store, notify, kind }: {
           />
         )}
       </div>
-      <div className="wt-studio">
+      <div className="wt-studio" data-swapping={swapping || undefined}>
       <AgStudioProvider licenseKey={process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY} modules={MODULES}>
         <AgStudio<SpotterRegistry>
+          key={mount.key}
           data={data as never}
           mode={phone ? "view" : "edit"}
           theme={theme}
           layout={phone ? PHONE_LAYOUT : LAYOUT}
-          initialState={initial as never}
+          initialState={mount.state as never}
           widgets={widgets as never}
           context={context}
           ai={ai}

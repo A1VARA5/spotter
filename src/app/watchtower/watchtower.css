@@ -7,11 +7,19 @@
 .wt-page { flex: none; display: inline-flex; align-items: center; border-radius: 8px; }
 .wt-page[data-current] { background: var(--ink); }
 .wt-page-btn, .wt-page-x { all: unset; box-sizing: border-box; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; white-space: nowrap; transition: transform 160ms var(--ease-out); }
-.wt-page-x { padding: 6px 8px 6px 2px; font-size: 16px; line-height: 1; }
+/* At least 24x24 (WCAG 2.5.8), 44x44 on touch screens */
+.wt-page-x { display: inline-grid; place-items: center; min-width: 28px; min-height: 30px; padding: 0 6px 0 0; font-size: 16px; line-height: 1; }
+@media (pointer: coarse) { .wt-page-x, .wt-page-btn { min-height: 44px; } .wt-page-x { min-width: 44px; padding: 0; } }
 .wt-page:not([data-current]) .wt-page-btn:hover, .wt-page:not([data-current]) .wt-page-x:hover { color: var(--ink); background: var(--chalk); }
 .wt-page[data-current] .wt-page-btn, .wt-page[data-current] .wt-page-x { color: var(--chalk); }
 .wt-page-btn:active, .wt-page-x:active { transform: scale(0.97); }
 .wt-page-btn:focus-visible, .wt-page-x:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+/* Live update = remount (see Studio.tsx, until AG's real-time API): hide Studio's "Loading..." overlays
+   for that moment, as AG suggested, so the board doesn't flash. */
+.wt-studio[data-swapping] .ag-studio-root-loading,
+.wt-studio[data-swapping] .ag-studio-widget-loading,
+.wt-studio[data-swapping] .ag-studio-widget-loading-container,
+.wt-studio[data-swapping] .ag-studio-layout-widget-loading-overlay { visibility: hidden !important; }
 .wt-frame > .wt-studio { flex: 1; min-height: 0; height: auto; }
 .wt-studio > div { height: 100%; }
 .wt-reset { all: unset; box-sizing: border-box; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; transition: transform 160ms var(--ease-out); }
@@ -21,7 +29,7 @@
 
 /* live notices */
 .wt-notices { position: absolute; left: 16px; bottom: 16px; z-index: 5; list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; pointer-events: none; max-width: min(420px, calc(100% - 32px)); }
-.wt-notice { display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--chalk); font-size: 14px; font-weight: 500; padding: 10px 14px; border-radius: 12px; box-shadow: var(--raise); font-variant-numeric: tabular-nums; opacity: 1; transform: translateY(0); transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out); }
+.wt-notice { display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--chalk); font-size: 14px; font-weight: 500; padding: 10px 14px; border-radius: 12px; box-shadow: var(--raise); font-variant-numeric: lining-nums proportional-nums; opacity: 1; transform: translateY(0); transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out); }
 @starting-style { .wt-notice { opacity: 0; transform: translateY(8px); } }
 .wt-notice-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--go); box-shadow: 0 0 0 3px rgb(31 122 85 / 0.35); }
 
@@ -33,7 +41,7 @@
 .wt-look:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
 
 /* money in mid air */
-.wt-air { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: tabular-nums; container-type: inline-size; }
+.wt-air { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; container-type: inline-size; }
 .wt-air-empty { align-content: center; }
 .wt-air-total { font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .wt-air-sum { font-size: 25px; font-weight: 650; color: var(--ink); margin-right: 4px; }
@@ -61,7 +69,7 @@
 .wt-radar-row { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .wt-radar-row:last-child { border-bottom: 0; }
 .wt-radar-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-.wt-radar-payee { font-size: 15px; font-weight: 650; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.wt-radar-payee { font-size: 15px; font-weight: 650; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
 .wt-radar-marks { display: flex; align-items: center; gap: 4px; height: 14px; }
 .wt-radar-mark { width: 10px; height: 10px; border-radius: 3px; background: var(--stop); }
 .wt-radar-mark-none { background: transparent; border: 2px solid var(--line); }
@@ -71,14 +79,14 @@
 /* case file */
 .wt-case { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 10px; }
 .wt-case-empty { align-content: center; }
-.wt-case-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.wt-case-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 14px; color: var(--ink-2); font-variant-numeric: lining-nums proportional-nums; }
 .wt-case-payee { overflow-wrap: anywhere; color: var(--ink); font-weight: 600; }
 .wt-case-outcome { font-weight: 650; color: var(--ink); padding: 1px 8px; border-radius: 6px; background: var(--chalk); border: 1px solid var(--line); }
 .wt-case[data-outcome="Stopped"] .wt-case-outcome, .wt-case[data-outcome="Denied"] .wt-case-outcome { background: var(--stop); border-color: var(--stop); color: #fff; }
 .wt-case[data-outcome="Waiting"] .wt-case-outcome { background: var(--hold); border-color: var(--hold); }
 .wt-case[data-outcome="Protected"] .wt-case-outcome { background: var(--protect); border-color: var(--protect); color: #fff; }
 .wt-case-headline { font-size: 20px; line-height: 1.3; font-weight: 650; color: var(--ink); text-wrap: pretty; }
-.wt-case-part h4 { font-size: 13px; font-weight: 650; color: var(--ink-2); margin: 0 0 4px; }
+.wt-case-part h3 { font-size: 13px; font-weight: 650; color: var(--ink-2); margin: 0 0 4px; }
 .wt-case-part ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 15px; color: var(--ink); text-wrap: pretty; }
 .wt-case-signs { list-style: none; padding-left: 0 !important; }
 .wt-case-signs li { padding-left: 12px; border-left: 3px solid var(--hold); }
@@ -86,7 +94,7 @@
 .wt-case-sign { font-weight: 650; }
 
 /* the month without Spotter */
-.wt-rp { height: 100%; display: grid; align-content: start; gap: 12px; padding: 4px 6px; font-variant-numeric: tabular-nums; container-type: inline-size; overflow-x: hidden; overflow-y: auto; }
+.wt-rp { height: 100%; display: grid; align-content: start; gap: 8px; padding: 4px 6px; font-variant-numeric: lining-nums proportional-nums; container-type: inline-size; overflow-x: hidden; overflow-y: auto; }
 .wt-rp-empty { align-content: center; gap: 4px; }
 .wt-rp-title { font-size: 15px; font-weight: 650; }
 .wt-rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
@@ -105,12 +113,12 @@
 .wt-rp-track { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 10px; }
 .wt-rp-label { font-size: 13px; font-weight: 650; color: var(--ink); }
 .wt-rp-track[data-kind="ghost"] .wt-rp-label { color: var(--ink-2); font-weight: 500; }
-.wt-rp-lane { position: relative; height: 34px; margin: 0 36px 0 30px; display: flex; align-items: center; }
+.wt-rp-lane { position: relative; height: 44px; margin: 0 36px 0 30px; display: flex; align-items: center; }
 .wt-rp-line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--ink); }
 .wt-rp-track[data-kind="ghost"] .wt-rp-line { background: repeating-linear-gradient(90deg, var(--ink-2) 0 6px, transparent 6px 11px); opacity: 0.45; }
 .wt-rp-check { position: absolute; left: 50%; top: 50%; width: 14px; height: 22px; margin: -11px 0 0 -7px; border-radius: 4px; background: var(--hold); border: 2px solid var(--ink); }
-.wt-rp-end { position: absolute; top: -2px; font-size: 12px; color: var(--ink-2); line-height: 1; }
-.wt-rp-tally { position: absolute; bottom: -4px; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
+.wt-rp-end { position: absolute; top: 0; font-size: 12px; color: var(--ink-2); line-height: 1; }
+.wt-rp-tally { position: absolute; bottom: -2px; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
 .wt-rp-track[data-kind="real"] .wt-rp-tally { left: 50%; transform: translateX(-50%); color: var(--stop); }
 .wt-rp-track[data-kind="ghost"] .wt-rp-tally { right: 0; color: var(--ink-2); }
 .wt-rp-from { left: 0; }
@@ -165,7 +173,7 @@
 .wt-notice[data-tone="problem"] .wt-notice-dot { background: var(--hold); box-shadow: 0 0 0 3px rgb(242 183 5 / 0.35); }
 
 /* fair price */
-.wt-fair { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: tabular-nums; }
+.wt-fair { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; }
 .wt-fair-empty { align-content: center; }
 .wt-fair-label { font-size: 13px; font-weight: 650; color: var(--ink-2); }
 .wt-fair-headline { font-size: 18px; line-height: 1.3; font-weight: 650; color: var(--ink); text-wrap: pretty; }
@@ -189,3 +197,15 @@
 .wt-fair-note { font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
 .wt-fair-payee { overflow-wrap: anywhere; color: var(--ink); }
 .wt-fair-source { font-size: 12px; color: var(--ink-2); }
+
+/* Tiles whose text is longer than the tile scroll (useScrollBox in widgets.tsx). They are a tab stop then,
+   so they need a visible focus ring, and a soft edge shows there is more below or above. */
+[data-scroll]:focus-visible { outline: 3px solid var(--protect); outline-offset: -3px; border-radius: 8px; }
+[data-scroll] {
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--paper) 30%, rgb(255 255 255 / 0)) center top / 100% 28px no-repeat local,
+    linear-gradient(rgb(255 255 255 / 0), var(--paper) 70%) center bottom / 100% 28px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgb(23 33 43 / 0.14), transparent) center top / 100% 10px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgb(23 33 43 / 0.14), transparent) center bottom / 100% 10px no-repeat scroll;
+}

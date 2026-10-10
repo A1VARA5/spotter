@@ -173,17 +173,39 @@ export function ChannelGuide() {
   const [i, setI] = useState(0);
   const g = GUIDES[i]!;
   const Shot = SHOT[g.key]!;
+
+  // Tabs per the ARIA pattern (same as the landing ChannelHub): one tab stop, arrows move between tabs.
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const k = e.key;
+    if (k !== "ArrowRight" && k !== "ArrowLeft" && k !== "Home" && k !== "End") return;
+    e.preventDefault();
+    const n = GUIDES.length;
+    const next = k === "Home" ? 0 : k === "End" ? n - 1 : (i + (k === "ArrowRight" ? 1 : -1) + n) % n;
+    setI(next);
+    document.getElementById(`guide-tab-${GUIDES[next]!.key}`)?.focus();
+  };
+
   return (
     <div className="guide">
-      <div className="guide-tabs" role="tablist" aria-label="Ways to reach Spotter">
+      <div className="guide-tabs" role="tablist" aria-label="Ways to reach Spotter" onKeyDown={onKey}>
         {GUIDES.map((x, n) => (
-          <button key={x.key} role="tab" aria-selected={n === i} className="guide-tab" onClick={() => setI(n)}>
+          <button
+            key={x.key}
+            id={`guide-tab-${x.key}`}
+            type="button"
+            role="tab"
+            aria-selected={n === i}
+            aria-controls="guide-panel"
+            tabIndex={n === i ? 0 : -1}
+            className="guide-tab"
+            onClick={() => setI(n)}
+          >
             <x.icon size={17} strokeWidth={1.9} aria-hidden="true" />
             {x.name}
           </button>
         ))}
       </div>
-      <div className="guide-body" role="tabpanel" key={g.key}>
+      <div id="guide-panel" className="guide-body" role="tabpanel" aria-labelledby={`guide-tab-${g.key}`} tabIndex={0} key={g.key}>
         <div className="guide-text">
           <p className="guide-who">{g.who}</p>
           <div className="guide-cols">

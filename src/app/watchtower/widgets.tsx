@@ -46,6 +46,28 @@ export type WatchStore = { get(): WatchSnapshot; subscribe(fn: () => void): () =
 /** Studio's `context` is read once, so it carries a store the page updates rather than the values. */
 export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void> };
 
+/**
+ * Widgets scroll inside their tile when the text is longer than the tile. A scrolling box has to be
+ * reachable by keyboard (WCAG 2.1.1), so it becomes a tab stop, but only while it actually overflows:
+ * a tile that fits doesn't add a pointless stop. Also marks the box so CSS can show a scroll cue.
+ */
+export function useScrollBox<T extends HTMLElement>(given?: React.RefObject<T | null>) {
+  const own = useRef<T>(null);
+  const ref = given ?? own;
+  const [over, setOver] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOver(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    for (const c of Array.from(el.children)) ro.observe(c);
+    return () => ro.disconnect();
+  });
+  return { ref, tabIndex: over ? 0 : undefined, "data-scroll": over || undefined } as const;
+}
+
 const EMPTY: WatchSnapshot = { alerts: [], sampleIds: new Set(), notes: new Map(), radar: {}, version: 0, canAsk: false };
 export function useWatch(context: unknown): WatchSnapshot {
   const store = (context as WatchContext | undefined)?.store;
@@ -193,6 +215,7 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
   const ctx = context as WatchContext | undefined;
   const { alerts, sampleIds, canAsk } = useWatch(context);
   const [asking, setAsking] = useState<string | null>(null);
+  const scroll = useScrollBox<HTMLUListElement>();
   useEffect(() => {
     widgetApi.setDisplayState("displayed");
   }, [widgetApi]);
@@ -214,7 +237,7 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
     }
   };
   return (
-    <ul className="wt-alerts">
+    <ul className="wt-alerts" aria-label="Watch alerts" {...scroll}>
       {alerts.map((a) => (
         <li key={a.id} className="wt-alert" data-level={a.level}>
           <span className="wt-alert-pin" aria-hidden="true" />
@@ -324,6 +347,7 @@ export function MoneyMidAirWidget(p: AgWidgetParams<MoneyMidAirDef>) {
   const { version } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, AIR_FIELDS, version);
   const now = useTick(30_000);
+  const scroll = useScrollBox<HTMLDivElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t read what PayPal is holding. Reload the page.</p>;
   if (!rows) return null;
   const held = rows.filter((r) => r.outcome === "Waiting").sort((a, b) => (asDate(a.when)?.getTime() ?? 0) - (asDate(b.when)?.getTime() ?? 0));
@@ -340,7 +364,7 @@ export function MoneyMidAirWidget(p: AgWidgetParams<MoneyMidAirDef>) {
     );
   }
   return (
-    <div className="wt-air">
+    <div className="wt-air" role="region" aria-label="Money held at PayPal" {...scroll}>
       {held.length > 0 && (
         <p className="wt-air-total">
           <span className="wt-air-sum">{gbp.format(total)}</span> held at PayPal right now
@@ -403,6 +427,7 @@ export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
   const { context } = p;
   const { version, radar } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, RADAR_FIELDS, version);
+  const scroll = useScrollBox<HTMLUListElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t load the scam radar. Reload the page.</p>;
   if (!rows) return null;
   const lines = radarLines(rows.map((r) => ({ payee: asText(r.payee), outcome: asText(r.outcome) })), radar);
@@ -415,7 +440,7 @@ export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
     );
   }
   return (
-    <ul className="wt-radar">
+    <ul className="wt-radar" aria-label="Scam radar" {...scroll}>
       {lines.map((l) => (
         <li key={l.payee} className="wt-radar-row">
           <div className="wt-radar-head">
@@ -446,6 +471,7 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
   const { context } = p;
   const { version, notes, sampleIds } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, CASE_FIELDS, version);
+  const scroll = useScrollBox<HTMLElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t open the case file. Reload the page.</p>;
   if (!rows) return null;
   const id = pickCase(rows.map((r) => ({ id: asText(r.id), when: asDate(r.when) ?? new Date(0), outcome: asText(r.outcome) })));
@@ -461,7 +487,7 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
   }
   const outcome = asText(row.outcome);
   return (
-    <article className="wt-case" data-outcome={outcome}>
+    <article className="wt-case" data-outcome={outcome} role="region" aria-label={`Case file: ${asText(row.who)} to ${asText(row.payee)}`} {...scroll}>
       <p className="wt-case-meta">
         <span className="wt-case-outcome">{outcome === "Waiting" ? "Waiting for you" : outcome}</span>
         <span>
@@ -469,10 +495,10 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
         </span>
         {sampleIds.has(asText(row.id)) && <span className="wt-sample-tag">Sample</span>}
       </p>
-      <h3 className="wt-case-headline">{note.caseHeadline ?? note.reasons[0] ?? "Spotter checked this payment."}</h3>
+      <h2 className="wt-case-headline">{note.caseHeadline ?? note.reasons[0] ?? "Spotter checked this payment."}</h2>
       {note.reasons.length > 0 && (
         <section className="wt-case-part">
-          <h4>Why Spotter stepped in</h4>
+          <h3>Why Spotter stepped in</h3>
           <ul>
             {note.reasons.map((r, i) => (
               <li key={i}>{r}</li>
@@ -482,7 +508,7 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
       )}
       {note.signs.length > 0 && (
         <section className="wt-case-part">
-          <h4>Scam signs</h4>
+          <h3>Scam signs</h3>
           <ul className="wt-case-signs">
             {note.signs.map((s, i) => (
               <li key={i} data-severity={s.severity}>
@@ -494,7 +520,7 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
       )}
       {note.caseFindings && note.caseFindings.length > 0 && (
         <section className="wt-case-part">
-          <h4>What the case worker found</h4>
+          <h3>What the case worker found</h3>
           <ul>
             {note.caseFindings.map((f, i) => (
               <li key={i}>{f}</li>
@@ -532,6 +558,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   const { version } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, PRICE_FIELDS, version);
   const now = useTick(60_000);
+  const scroll = useScrollBox<HTMLDivElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price checks. Reload the page.</p>;
   if (!rows) return null;
   const f = fairPrice(
@@ -562,7 +589,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
     );
   }
   return (
-    <div className="wt-fair">
+    <div className="wt-fair" role="region" aria-label="Fair price" {...scroll}>
       <p className="wt-fair-label">Fair price</p>
       <p className="wt-fair-headline">{f.headline}</p>
       {f.caught && <p className="wt-fair-caught">{f.caught}</p>}

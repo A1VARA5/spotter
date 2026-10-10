@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HoldTrack } from "@/ui/components";
 import { STATE_LABEL, trackState } from "@/ui/format";
@@ -99,9 +99,17 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Payment | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped after each finished send, so focus moves to the new result even when the outcome is the same.
+  const [sent, setSent] = useState(0);
+  const next = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (sent) next.current?.focus();
+  }, [sent]);
 
   async function run() {
-    if (!spender) return;
+    // The button stays focusable while checking (aria-disabled), so ignore repeat presses here instead.
+    if (!spender || running) return;
     setRunning(true);
     setError(null);
     try {
@@ -109,6 +117,7 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
       setResult(j.payment);
+      setSent((n) => n + 1);
     } catch (e) {
       setError(plainError(e));
     } finally {
@@ -119,18 +128,22 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
   const state = result ? trackState(result.status) : running ? "checking" : null;
   return (
     <article className="scenario" aria-labelledby={`s-${s.id}`}>
-      <h2 id={`s-${s.id}`} className="scenario-title">
+      <h3 id={`s-${s.id}`} className="scenario-title">
         {s.title}
-      </h2>
+      </h3>
       <p className="scenario-body">{s.blurb}</p>
       {state && (
         <HoldTrack state={state} from={spender?.name ?? s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />
       )}
       {result ? (
-        <Outcome p={result} onAgain={run} running={running} />
+        <Outcome p={result} onAgain={run} running={running} nextRef={next} />
       ) : (
         <p className="scenario-body">Expected: {s.expect}</p>
       )}
+      {/* Always in the page, so screen readers hear the change when the text arrives. */}
+      <p className="sr-only" role="status">
+        {running ? `Checking ${s.title}.` : result ? outcomeLine(result) : ""}
+      </p>
       {error && (
         <p className="error-line" role="alert">
           {error}
@@ -139,7 +152,7 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
       <div>
         {spender ? (
           !result && (
-            <button className="btn btn-quiet" onClick={run} disabled={running}>
+            <button className="btn btn-quiet" onClick={run} aria-disabled={running || undefined}>
               {running ? "Checking" : "Send it"}
             </button>
           )
@@ -151,27 +164,33 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
   );
 }
 
+function outcomeLine(p: Payment) {
+  const s = trackState(p.status);
+  const why = (s === "failed" ? p.error : p.decision?.reasons[0]) ?? "Within the rules, and nothing looked wrong.";
+  return s === "held" ? "Waiting for you. PayPal is holding the money until you approve or deny it." : `${STATE_LABEL[s]}. ${why}`;
+}
+
 /** The outcome in one line, and the one sensible next step for it. */
-function Outcome({ p, onAgain, running }: { p: Payment; onAgain: () => void; running: boolean }) {
+function Outcome({ p, onAgain, running, nextRef }: { p: Payment; onAgain: () => void; running: boolean; nextRef: React.Ref<HTMLAnchorElement> }) {
   const s = trackState(p.status);
   const why = (s === "failed" ? p.error : p.decision?.reasons[0]) ?? "Within the rules, and nothing looked wrong.";
   const tone = s === "held" ? "held" : s === "paid" ? "paid" : "stop";
   return (
-    <div className="scen-result" data-tone={tone} aria-live="polite">
+    <div className="scen-result" data-tone={tone}>
       <p>
         <strong>{s === "held" ? "Waiting for you." : `${STATE_LABEL[s]}.`}</strong> {s === "held" ? "PayPal is holding the money until you approve or deny it." : why}
       </p>
       <div className="scen-next">
         {s === "held" ? (
-          <Link className="btn btn-primary" href="/dashboard">
+          <Link ref={nextRef} className="btn btn-primary" href="/dashboard">
             Review it now
           </Link>
         ) : (
-          <Link className="btn btn-quiet" href="/ledger">
+          <Link ref={nextRef} className="btn btn-quiet" href="/ledger">
             {s === "paid" ? "See it in Activity" : "See the full reasons"}
           </Link>
         )}
-        <button className="scen-again" onClick={onAgain} disabled={running}>
+        <button className="scen-again" onClick={onAgain} aria-disabled={running || undefined}>
           {running ? "Checking" : "Send it again"}
         </button>
       </div>

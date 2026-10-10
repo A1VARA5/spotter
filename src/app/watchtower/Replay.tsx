@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgWidgetParams } from "ag-studio";
 import { replayDays, type ReplayRow } from "@/watchtower/widgetLogic";
-import { usePaymentRows, useWatch, type ReplayDef } from "./widgets";
+import { usePaymentRows, useScrollBox, useWatch, type ReplayDef } from "./widgets";
 
 const FIELDS = ["when", "amount", "outcome", "who", "payee"] as const;
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -44,6 +44,7 @@ export function ReplayWidget(p: AgWidgetParams<ReplayDef>) {
   const [playing, setPlaying] = useState(false);
   const [onScreen, setOnScreen] = useState(true);
   const root = useRef<HTMLDivElement>(null);
+  const scroll = useScrollBox(root);
   const at = index ?? last;
 
   // Pause when scrolled away; carry on when back.
@@ -97,7 +98,7 @@ export function ReplayWidget(p: AgWidgetParams<ReplayDef>) {
   const heldBack = sofar.filter((e) => e.outcome !== "Protected").length;
 
   return (
-    <div className="wt-rp" ref={root} data-reduced={reduced || undefined}>
+    <div className="wt-rp" role="region" aria-label="The month with and without Spotter" {...scroll} data-reduced={reduced || undefined}>
       <div className="wt-rp-bar">
         {reduced ? (
           <div className="wt-rp-steps">

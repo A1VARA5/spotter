@@ -17,7 +17,12 @@ export function TelegramLogin({ bot }: { bot: string }) {
     s.setAttribute("data-auth-url", "/api/auth/telegram");
     s.setAttribute("data-request-access", "write");
     el.appendChild(s);
+    // Telegram's script adds an iframe with no title; screen readers then announce just "frame" (WCAG 4.1.2).
+    const name = () => el.querySelector("iframe:not([title])")?.setAttribute("title", "Log in with Telegram");
+    const mo = new MutationObserver(name);
+    mo.observe(el, { childList: true, subtree: true });
     return () => {
+      mo.disconnect();
       el.innerHTML = "";
     };
   }, [bot]);

@@ -1,7 +1,7 @@
 "use client";
 // A confirm step for things that can't be undone. Built on the native <dialog>, which handles focus,
 // Escape and the backdrop for us.
-import { useRef } from "react";
+import { useId, useRef } from "react";
 
 export function Confirm({
   trigger,
@@ -23,17 +23,20 @@ export function Confirm({
   disabled?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // One id per dialog: pages with Sign out plus another confirm used to name both dialogs after the first.
+  const titleId = useId();
+  const bodyId = useId();
   return (
     <>
       <button type="button" className={triggerClass} aria-label={triggerLabel} disabled={disabled} onClick={() => ref.current?.showModal()}>
         {trigger}
       </button>
-      <dialog ref={ref} className="confirm" aria-labelledby="confirm-title">
+      <dialog ref={ref} className="confirm" aria-labelledby={titleId} aria-describedby={bodyId}>
         <form method="dialog" className="confirm-box">
-          <h2 id="confirm-title" className="confirm-title">
+          <h2 id={titleId} className="confirm-title">
             {title}
           </h2>
-          <p className="confirm-body">{body}</p>
+          <p id={bodyId} className="confirm-body">{body}</p>
           <div className="confirm-actions">
             <button className="btn btn-quiet" value="cancel" autoFocus>
               Keep it

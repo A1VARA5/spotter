@@ -11,7 +11,45 @@ import type { HouseholdKind } from "@/core/households";
 import type { WatchSnapshot, WatchStore } from "./widgets";
 import "./watchtower.css";
 
-const Studio = dynamic(() => import("./Studio"), { ssr: false, loading: () => <div className="wt-loading">Opening Watchtower</div> });
+const Studio = dynamic(() => import("./Studio"), { ssr: false, loading: () => <Loading /> });
+
+/**
+ * While the board's code downloads (about 1.5 MB, 30 s or more on a slow phone connection): the shape of
+ * the board, what is happening, how long it has been, and a way to the same payments if it drags on.
+ */
+function Loading() {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSecs((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const slow = secs >= 8;
+  return (
+    <div className="wt-loading">
+      <div className="wt-loading-tabs" aria-hidden="true">
+        <span />
+        <span />
+      </div>
+      <div className="wt-loading-grid" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="wt-loading-note">
+        <p className="wt-loading-title">Opening Watchtower</p>
+        {/* Only the stage is announced; the ticking seconds would be read out every second. */}
+        <p role="status">{secs < 3 ? "Loading the board and this month's payments." : "Downloading the board tools (about 1.5 MB)."}</p>
+        {secs >= 3 && <p aria-hidden="true">{secs} seconds so far.</p>}
+        {slow && (
+          <p>
+            This connection is slow, so it can take up to a minute. The same payments are on <a href="/ledger">Activity</a>, which is much lighter.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const POLL_MS = 15_000;
 const NOTICE_MS = 6_000;
@@ -111,15 +149,19 @@ export function Watchtower({ board, initialState, since, kind }: { board: Board;
 
   return (
     <div className="wt-frame">
+      {/* The live region wraps the list (role="status" isn't allowed on an <ol>). It comes first and takes
+          no space, so Studio stays the frame's last child and keeps the rest of the height. */}
+      <div className="wt-live" role="status">
+        <ol className="wt-notices">
+          {notices.map((x) => (
+            <li key={x.id} className="wt-notice" data-tone={x.tone}>
+              <span className="wt-notice-dot" aria-hidden="true" />
+              {x.text}
+            </li>
+          ))}
+        </ol>
+      </div>
       <Studio sources={sources} initialState={initialState} store={store} notify={notify} kind={kind} />
-      <ol className="wt-notices" role="status" aria-live="polite">
-        {notices.map((x) => (
-          <li key={x.id} className="wt-notice" data-tone={x.tone}>
-            <span className="wt-notice-dot" aria-hidden="true" />
-            {x.text}
-          </li>
-        ))}
-      </ol>
     </div>
   );
 }
