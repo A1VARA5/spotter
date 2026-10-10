@@ -1633,6 +1633,16 @@ p {
   font-size: 15px;
 }
 
+/* Family or small business: two side by side where they fit, stacked on small phones. */
+.kind-group {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  margin-top: 4px;
+}
+
+.kind-group > legend {
+  margin-bottom: 8px;
+}
+
 .person-details {
   display: grid;
   gap: 8px;
@@ -2132,6 +2142,20 @@ p {
 }
 
 .app-main .feed-row { border-bottom: 0; }
+
+/* Try a payment, demo families: the business scenarios sit apart, under their own heading */
+.app-main .scen-business {
+  margin-top: 48px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.app-main .scen-group-note {
+  color: var(--ink-2);
+  font-size: 15px;
+  max-width: 64ch;
+  margin: -4px 0 12px;
+}
 
 /* Try a payment: one list per person, like an app list view */
 .app-main .scenarios {
@@ -6097,6 +6121,36 @@ p {
 @media (prefers-reduced-motion: no-preference) {
   .faq-item[open] p {
     animation: page-in 260ms var(--ease-out) both;
+  }
+}
+
+/* Runs a business? One quiet section: copy on the left, a held invoice card on the right. */
+.biz-sec {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: center;
+  padding-top: clamp(56px, 9vh, 112px);
+  padding-bottom: clamp(56px, 9vh, 112px);
+}
+
+.biz-copy {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+
+.biz-copy .sec-lede {
+  margin: 0;
+}
+
+.biz-card {
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .biz-sec {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -28,7 +28,7 @@ export default async function DemoPage() {
           <li>If it can go ahead, PayPal (sandbox) authorises the money. If it needs you, it waits on your dashboard. Nothing real moves.</li>
         </ol>
       </Hint>
-      <Demo spenders={spenders} />
+      <Demo spenders={spenders} kind={household.kind} />
     </AppShell>
   );
 }

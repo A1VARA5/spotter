@@ -45,7 +45,7 @@ function HeldOnPhone() {
             <li>Over the £30 ask me first limit.</li>
             <li>First time paying SoundDepot UK.</li>
           </ul>
-          <MarketNote market={{ item: "Sony WF-1000XM5", cheapest: { price: 17900, domain: "currys.ie", url: "#", title: "", currency: "GBP" }, median: 18950, offers: 8, flag: null } as never} currency="GBP" />
+          <MarketNote market={{ item: "these earbuds", cheapest: { price: 17900, domain: "soundhouse.ie", url: "#", title: "", currency: "GBP" }, median: 18950, offers: 8, flag: null } as never} currency="GBP" />
           <div className="mini-actions">
             <span className="btn btn-approve">Approve £249</span>
             <span className="btn btn-deny">Deny</span>
@@ -64,7 +64,7 @@ function HeldOnPhone() {
             <em data-state="blocked">Stopped</em>
           </li>
           <li>
-            <span>Gran to Boots</span>
+            <span>Gran to Hillside Pharmacy</span>
             <b className="num">£18.40</b>
             <em data-state="paid">Paid</em>
           </li>
@@ -90,7 +90,7 @@ function EmailOnPhone() {
             <b>Spotter</b> to Gran
           </p>
           <p>Not paid yet. £2.99 to RM Parcel Services is on hold until Sam says yes. The money is reserved, nothing has left.</p>
-          <p>Why: the payment link is not a Royal Mail address, and it rushes you with a 24 hour deadline.</p>
+          <p>Why: the payment link is not the delivery company&apos;s real address, and it rushes you with a 24 hour deadline.</p>
         </div>
         <div className="gmail-msg">
           <p className="gmail-from">
@@ -103,7 +103,8 @@ function EmailOnPhone() {
   );
 }
 
-// A real run (2026-10-10): Claude with Spotter's live MCP server, via the API's MCP connector.
+// Based on a real run (2026-10-10): Claude with Spotter's live MCP server, via the API's MCP connector.
+// Product and shop names are swapped for made up ones so no real brand shows in the gallery or video.
 function AgentChat() {
   return (
     <div className="claude-win">
@@ -116,17 +117,17 @@ function AgentChat() {
         <span>Claude, connected to Spotter</span>
       </div>
       <div className="claude-body">
-        <p className="claude-user">Buy me the Sony WF-1000XM5 earbuds at the best price you can find. Pay through Spotter.</p>
+        <p className="claude-user">Buy me the Auralis X5 earbuds at the best price you can find. Pay through Spotter.</p>
         <div className="claude-tool">
           <p className="claude-tool-name">spotter · find_products</p>
-          <p>£179.00 at currys.ie, £179.99 at johnlewis.com</p>
+          <p>£179.00 at soundhouse.ie, £179.99 at hartwell.co.uk</p>
         </div>
-        <p className="claude-ans">Currys.ie is £1 cheaper, but it&apos;s the Irish site and probably won&apos;t deliver to the UK, so I&apos;m going with John Lewis at £179.99.</p>
+        <p className="claude-ans">Soundhouse.ie is £1 cheaper, but it&apos;s an Irish site and probably won&apos;t deliver to the UK, so I&apos;m going with Hartwell at £179.99.</p>
         <div className="claude-tool claude-tool-result">
           <p className="claude-tool-name">spotter · request_payment</p>
-          <p>Held, not paid yet: Sam has to approve £179.99 to John Lewis. The money is reserved meanwhile. Reasons: Over the £30.00 &quot;ask me first&quot; limit. First time paying John Lewis.</p>
+          <p>Held, not paid yet: Sam has to approve £179.99 to Hartwell. The money is reserved meanwhile. Reasons: Over the £30.00 &quot;ask me first&quot; limit. First time paying Hartwell.</p>
         </div>
-        <p className="claude-ans">I&apos;ve asked to buy them from John Lewis for £179.99, but it isn&apos;t paid yet. Sam needs to approve it first.</p>
+        <p className="claude-ans">I&apos;ve asked to buy them from Hartwell for £179.99, but it isn&apos;t paid yet. Sam needs to approve it first.</p>
       </div>
     </div>
   );

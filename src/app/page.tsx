@@ -7,6 +7,7 @@ import { ScrollStory } from "./landing/ScrollStory";
 import { Inspector } from "./landing/Inspector";
 import { LitText } from "./landing/LitText";
 import { Final, Hub } from "./landing/Sections";
+import { Business } from "./landing/Business";
 import { FAQ } from "./how/faq";
 import { LoopPauser } from "@/ui/LoopPauser";
 import { getDb } from "@/db";
@@ -110,6 +111,11 @@ export default async function Home() {
       </section>
 
       <Hub />
+
+      <Business
+        href={who ? "/setup?step=name" : "/api/auth/paypal/start"}
+        cta={who ? "Set up Spotter for a business" : "Log in with PayPal to set up a business"}
+      />
 
       <section className="shell how-sec land-faq" aria-labelledby="faq-title">
         <h2 id="faq-title" className="sec-title reveal">

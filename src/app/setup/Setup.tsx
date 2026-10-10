@@ -2,10 +2,12 @@
 // First run setup. One question per screen; the server decides where to resume, so leaving halfway is fine.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, HeartHandshake, Smile, X } from "lucide-react";
+import { Bot, BriefcaseBusiness, HeartHandshake, House, Smile, Store, X } from "lucide-react";
 import { money } from "@/ui/format";
 import { readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
+import { labelsFor, type Labels } from "@/ui/labels";
+import type { HouseholdKind } from "@/core/households";
 
 export type SetupStep = "name" | "pin" | "people" | "connect";
 type Person = { id: string; name: string; kind: string };
@@ -16,8 +18,13 @@ const PRESET_ICON: Record<string, React.ReactNode> = {
   relative: <HeartHandshake size={22} strokeWidth={1.75} aria-hidden="true" />,
   kid: <Smile size={22} strokeWidth={1.75} aria-hidden="true" />,
   agent: <Bot size={22} strokeWidth={1.75} aria-hidden="true" />,
+  staff: <BriefcaseBusiness size={22} strokeWidth={1.75} aria-hidden="true" />,
+  buyer: <Bot size={22} strokeWidth={1.75} aria-hidden="true" />,
 };
-const KIND_LABEL: Record<string, string> = { person: "Relative", kid: "Kid", agent: "AI agent" };
+const HOUSEHOLD_CHOICES: Array<{ kind: HouseholdKind; label: string; hint: string; icon: React.ReactNode }> = [
+  { kind: "family", label: "My family", hint: "Gran, the kids, a shopping agent.", icon: <House size={22} strokeWidth={1.75} aria-hidden="true" /> },
+  { kind: "business", label: "My small business", hint: "Staff and AI buying agents paying suppliers.", icon: <Store size={22} strokeWidth={1.75} aria-hidden="true" /> },
+];
 
 async function post(url: string, body: unknown) {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -26,7 +33,8 @@ async function post(url: string, body: unknown) {
   return j;
 }
 
-export function Setup(props: { step: SetupStep; spotterName: string; pinSet: boolean; people: Person[]; presets: PresetView[] }) {
+export function Setup(props: { step: SetupStep; spotterName: string; pinSet: boolean; people: Person[]; presets: PresetView[]; kind: HouseholdKind }) {
+  const labels = labelsFor(props.kind);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), [props.step]);
   const n = ORDER.indexOf(props.step) + 1;
@@ -42,8 +50,8 @@ export function Setup(props: { step: SetupStep; spotterName: string; pinSet: boo
       </ol>
       {props.step === "name" && <NameStep {...props} heading={heading} />}
       {props.step === "pin" && <PinStep heading={heading} />}
-      {props.step === "people" && <PeopleStep {...props} heading={heading} />}
-      {props.step === "connect" && <ConnectStep {...props} heading={heading} />}
+      {props.step === "people" && <PeopleStep {...props} labels={labels} heading={heading} />}
+      {props.step === "connect" && <ConnectStep {...props} labels={labels} heading={heading} />}
     </section>
   );
 }
@@ -91,12 +99,14 @@ function FieldError({ id, error }: { id: string; error: string | null }) {
   );
 }
 
-function NameStep({ heading, spotterName, pinSet }: H & { spotterName: string; pinSet: boolean }) {
+function NameStep({ heading, spotterName, pinSet, kind: savedKind }: H & { spotterName: string; pinSet: boolean; kind: HouseholdKind }) {
   const [name, setName] = useState(spotterName === "You" ? "" : spotterName);
+  const [kind, setKind] = useState<HouseholdKind>(savedKind);
+
   const { busy, error, run } = useSubmit();
   return (
-    <form className="setup-form" onSubmit={(e) => (e.preventDefault(), run(() => post("/api/setup/name", { spotterName: name }), pinSet ? "people" : "pin"))}>
-      <Question heading={heading} sub="This is the name your people see when a payment waits for you.">
+    <form className="setup-form" onSubmit={(e) => (e.preventDefault(), run(() => post("/api/setup/name", { spotterName: name, kind }), pinSet ? "people" : "pin"))}>
+      <Question heading={heading} sub={labelsFor(kind).nameSub}>
         What should we call you?
       </Question>
       <label className="field-label" htmlFor="spotter-name">
@@ -113,6 +123,19 @@ function NameStep({ heading, spotterName, pinSet }: H & { spotterName: string; p
         aria-describedby={error ? "name-error" : undefined}
         required
       />
+      <fieldset className="preset-group kind-group">
+        <legend className="field-label">Spotter is for</legend>
+        {HOUSEHOLD_CHOICES.map((c) => (
+          <label key={c.kind} className="preset" data-checked={kind === c.kind}>
+            <input type="radio" name="household-kind" value={c.kind} checked={kind === c.kind} onChange={() => setKind(c.kind)} className="sr-only" />
+            <span className="preset-icon">{c.icon}</span>
+            <span className="preset-text">
+              <span className="preset-label">{c.label}</span>
+              <span className="preset-hint">{c.hint}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       <FieldError id="name-error" error={error} />
       <div className="setup-actions">
         <button className="btn btn-primary" disabled={busy || !name.trim()}>
@@ -174,7 +197,7 @@ function PinStep({ heading }: H) {
   );
 }
 
-function PeopleStep({ heading, people, presets }: H & { people: Person[]; presets: PresetView[] }) {
+function PeopleStep({ heading, people, presets, labels }: H & { people: Person[]; presets: PresetView[]; labels: Labels }) {
   const [preset, setPreset] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [weekly, setWeekly] = useState("");
@@ -189,7 +212,9 @@ function PeopleStep({ heading, people, presets }: H & { people: Person[]; preset
     setPreset(key);
     setWeekly(String(p.weekly / 100));
     setAskAbove(String(p.askAbove / 100));
-    if (key === "agent" && !name) setName("Shopping agent");
+    if (p.key === "agent" || p.key === "buyer") {
+      if (!name) setName(labels.agentName);
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -201,8 +226,8 @@ function PeopleStep({ heading, people, presets }: H & { people: Person[]; preset
 
   return (
     <div className="setup-form">
-      <Question heading={heading} sub="Add everyone whose payments you'd like a second look at. You can add more later.">
-        Who are you looking out for?
+      <Question heading={heading} sub={labels.peopleSub}>
+        {labels.peopleQ}
       </Question>
 
       {people.length > 0 && (
@@ -210,7 +235,7 @@ function PeopleStep({ heading, people, presets }: H & { people: Person[]; preset
           {people.map((p) => (
             <li key={p.id} className="person-row">
               <span className="person-name">{p.name}</span>
-              <span className="person-kind">{KIND_LABEL[p.kind] ?? p.kind}</span>
+              <span className="person-kind">{labels.kind[p.kind] ?? p.kind}</span>
               <Confirm
                 trigger={<X size={18} strokeWidth={1.75} aria-hidden="true" />}
                 triggerClass="icon-btn"
@@ -249,7 +274,7 @@ function PeopleStep({ heading, people, presets }: H & { people: Person[]; preset
         {chosen && (
           <div className="person-details">
             <label className="field-label" htmlFor="person-name">
-              {chosen.key === "agent" ? "What should we call this agent?" : "Their name"}
+              {chosen.key === "agent" || chosen.key === "buyer" ? "What should we call this agent?" : "Their name"}
             </label>
             <input id="person-name" className="field" autoFocus value={name} maxLength={40} autoComplete="off" onChange={(e) => setName(e.target.value)} required />
             <div className="money-pair">
@@ -298,7 +323,7 @@ function PeopleStep({ heading, people, presets }: H & { people: Person[]; preset
   );
 }
 
-function ConnectStep({ heading, people }: H & { people: Person[] }) {
+function ConnectStep({ heading, people, labels }: H & { people: Person[]; labels: Labels }) {
   return (
     <div className="setup-form">
       <Question heading={heading} sub="Each person connects once, from their own phone, email or agent. You can do this now or any time from their page.">
@@ -308,7 +333,7 @@ function ConnectStep({ heading, people }: H & { people: Person[] }) {
         {people.map((p) => (
           <li key={p.id} className="person-row">
             <span className="person-name">{p.name}</span>
-            <span className="person-kind">{KIND_LABEL[p.kind] ?? p.kind}</span>
+            <span className="person-kind">{labels.kind[p.kind] ?? p.kind}</span>
             <a className="btn btn-quiet person-connect" href={`/people/${p.id}`}>
               Connect
             </a>

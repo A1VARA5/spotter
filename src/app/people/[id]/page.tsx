@@ -45,7 +45,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       {spender.kind === "agent" ? (
         <Hint q="What's an AI agent, and how does it connect?">
           <p>
-            An AI agent is an assistant that does tasks for you, like Claude or ChatGPT shopping on your behalf. Agents can already open shop pages and pay. Spotter
+            An AI agent is an assistant that does tasks for you, like Claude shopping on your behalf. Agents can already open shop pages and pay. Spotter
             makes sure they pay through a checkpoint you control.
           </p>
           <p>

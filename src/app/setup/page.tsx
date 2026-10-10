@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { requirePageSession } from "@/server/page-session";
 import { listSpenders } from "@/core/households";
-import { PRESETS } from "@/core/presets";
+import { presetsFor } from "@/core/presets";
 import { BrandMark } from "@/ui/components";
 import { Setup, type SetupStep } from "./Setup";
 import { Preview } from "./Preview";
@@ -33,10 +33,11 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         spotterName={household.spotter_name}
         pinSet={Boolean(household.pin_hash)}
         people={people}
-        presets={Object.entries(PRESETS).map(([key, p]) => ({ key, label: p.label, hint: p.hint, weekly: p.allowance.weekly.amount, askAbove: p.allowance.askAbove.amount }))}
+        kind={household.kind}
+        presets={Object.entries(presetsFor(household.kind)).map(([key, p]) => ({ key, label: p!.label, hint: p!.hint, weekly: p!.allowance.weekly.amount, askAbove: p!.allowance.askAbove.amount }))}
       />
       </div>
-      <Preview step={step} spotterName={household.spotter_name} people={people} />
+      <Preview step={step} spotterName={household.spotter_name} people={people} kind={household.kind} />
     </main>
   );
 }
