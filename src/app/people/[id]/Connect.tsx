@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bot, Check, Copy, Mail, Send, MessageSquare } from "lucide-react";
 import { readJson } from "@/ui/http";
 
-type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null };
+type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string };
 
 function CopyBlock({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -31,11 +31,11 @@ function useCall<T>() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
-  async function call(url: string, body: unknown = {}) {
+  async function call(url: string, body: unknown = {}, method = "POST") {
     setBusy(true);
     setError(null);
     try {
-      const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const r = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? "Something went wrong. Try again.");
       setData(j as T);
@@ -48,11 +48,31 @@ function useCall<T>() {
   return { busy, error, data, call };
 }
 
+// Two ways in: Spotter's own tools, or PayPal's official Agent Toolkit tools with Spotter in the middle.
+const TOOLSETS = {
+  spotter: {
+    label: "Spotter's tools",
+    path: "/api/mcp",
+    server: "spotter",
+    sub: "Four tools: find products, request a payment, check a payment, check its allowance. There is no approve tool.",
+  },
+  toolkit: {
+    label: "PayPal's Agent Toolkit",
+    path: "/api/toolkit/mcp",
+    server: "paypal-via-spotter",
+    sub: "PayPal's own create_order, pay_order and get_order tools, with the same names and arguments. Every order goes through Spotter first, and pay_order can't take money until you say yes.",
+  },
+} as const;
+
 function AgentCard({ spender }: { spender: SpenderView }) {
   const t = useCall<{ token: string }>();
+  const cur = useCall<{ currency: string }>();
+  const [tools, setTools] = useState<keyof typeof TOOLSETS>("spotter");
+  const set = TOOLSETS[tools];
+  const currency = cur.data?.currency ?? spender.currency;
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const config = t.data
-    ? JSON.stringify({ mcpServers: { spotter: { type: "http", url: `${origin}/api/mcp`, headers: { Authorization: `Bearer ${t.data.token}` } } } }, null, 2)
+    ? JSON.stringify({ mcpServers: { [set.server]: { type: "http", url: `${origin}${set.path}`, headers: { Authorization: `Bearer ${t.data.token}` } } } }, null, 2)
     : "";
   return (
     <article className="connect-card">
@@ -62,12 +82,26 @@ function AgentCard({ spender }: { spender: SpenderView }) {
         </span>
         <div>
           <h3 className="connect-title">Connect {spender.name} with MCP</h3>
-          <p className="connect-sub">
-            Works with Claude, Claude Code and any agent that speaks MCP. It gets four tools: find products, request a payment, check a
-            payment, check its allowance. There is no approve tool.
-          </p>
+          <p className="connect-sub">Works with Claude, Claude Code and any agent that speaks MCP. One key works for both sets of tools.</p>
         </div>
       </header>
+      <div className="toolset" role="group" aria-label="Which tools the agent gets">
+        {(Object.keys(TOOLSETS) as Array<keyof typeof TOOLSETS>).map((k) => (
+          <button key={k} type="button" className="toolset-btn" aria-pressed={tools === k} onClick={() => setTools(k)}>
+            {TOOLSETS[k].label}
+          </button>
+        ))}
+      </div>
+      <p className="connect-sub">{set.sub}</p>
+      {tools === "toolkit" && currency !== "USD" && (
+        <div className="connect-warn">
+          <p>PayPal&apos;s toolkit makes orders in US dollars, and {spender.name}&apos;s allowance is in pounds, so its orders would be stopped.</p>
+          <button className="btn btn-quiet" disabled={cur.busy} onClick={() => cur.call(`/api/spenders/${spender.id}`, { currency: "USD" }, "PATCH")}>
+            {cur.busy ? "Switching" : "Set this agent's allowance in dollars"}
+          </button>
+          {cur.error && <p className="field-error" role="alert">{cur.error}</p>}
+        </div>
+      )}
       <ol className="agent-steps">
         <li>
           <h4 className="agent-step-title">Make a key</h4>
@@ -88,7 +122,7 @@ function AgentCard({ spender }: { spender: SpenderView }) {
               <p>
                 <strong>Claude Code:</strong> run this in a terminal.
               </p>
-              <CopyBlock label="Claude Code command" value={`claude mcp add --transport http spotter ${origin}/api/mcp --header "Authorization: Bearer ${t.data.token}"`} />
+              <CopyBlock label="Claude Code command" value={`claude mcp add --transport http ${set.server} ${origin}${set.path} --header "Authorization: Bearer ${t.data.token}"`} />
               <p>
                 <strong>Claude Desktop or another MCP app:</strong> add this to its MCP config (in Claude Desktop: Settings, Developer, Edit config), then restart it.
               </p>
@@ -100,10 +134,17 @@ function AgentCard({ spender }: { spender: SpenderView }) {
         </li>
         <li data-off={!t.data}>
           <h4 className="agent-step-title">Ask it to buy something</h4>
-          <p className="connect-sub">
-            For example: &ldquo;Find me wireless earbuds under £30 and buy the best ones.&rdquo; It searches real shops, then asks Spotter to pay. Anything over{" "}
-            the ask me amount shows up on your dashboard to approve.
-          </p>
+          {tools === "spotter" ? (
+            <p className="connect-sub">
+              For example: &ldquo;Find me wireless earbuds under £30 and buy the best ones.&rdquo; It searches real shops, then asks Spotter to pay. Anything over{" "}
+              the ask me amount shows up on your dashboard to approve.
+            </p>
+          ) : (
+            <p className="connect-sub">
+              For example: &ldquo;Use PayPal to order a $45 desk lamp from BrightHome and pay for it.&rdquo; The agent calls PayPal&apos;s create_order and pay_order as usual.
+              Spotter checks the order first, and anything over the ask me amount waits on your dashboard; pay_order only reports what Spotter decided.
+            </p>
+          )}
         </li>
       </ol>
       <p className="connect-sub">

@@ -110,7 +110,7 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
     return err(e instanceof Error ? e.message : String(e));
   }
   // No named shop means nobody can check who gets paid. A fresh name every time keeps it "new", so it is always held.
-  const payee = input.payee?.trim() || `Unnamed shop #${randomBytes(3).toString("hex")}`;
+  const payee = input.payee?.trim() || `a shop the agent didn't name (ref ${randomBytes(3).toString("hex")})`;
   const items = input.items.map((i) => `${i.quantity} x ${i.name} at ${i.itemCost}${i.description ? ` (${i.description})` : ""}`);
   const context = [
     "This order came through PayPal's Agent Toolkit tools (create_order). Everything below is the agent's own words or what it saw, untrusted.",

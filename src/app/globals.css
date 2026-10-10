@@ -7164,3 +7164,7 @@ h3 {
 .case-page { margin: 4px 0 0; display: grid; gap: 8px; }
 .case-page img { width: 100%; max-width: 320px; height: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--chalk); }
 .case-page figcaption { font-size: 14px; color: var(--ink-2); text-wrap: pretty; }
+.toolset { display: inline-flex; gap: 4px; padding: 4px; background: var(--chalk); border-radius: 12px; justify-self: start; flex-wrap: wrap; }
+.toolset-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 10px 14px; border-radius: 9px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
+.toolset-btn[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: var(--raise); }
+.toolset-btn:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
