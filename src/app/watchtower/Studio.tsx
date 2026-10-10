@@ -13,7 +13,7 @@ import { OUTCOME_ORDER, type PersonRow, type Sources, type WatchAlert } from "@/
 import { INITIAL } from "@/watchtower/initial";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
-import { namesOf, pageTabs, removePage, withNames } from "@/watchtower/pages";
+import { namesOf, pageTabs, removePage, stackForPhone, withNames } from "@/watchtower/pages";
 
 type Shape = { object(p: Record<string, unknown>): unknown; string(o?: { description?: string }): unknown };
 type FormParams = { createDefaults(o: { dataMappingItems: Array<{ key: string; label: string }> }): unknown };
@@ -62,12 +62,14 @@ const money = { format: "currencyFormat" as const, formatOptions: { format: "£#
 const when = { format: "dateTimeFormat" as const, formatOptions: { format: "dd mmm yyyy, hh:mm" } };
 
 const LAYOUT = { minWidth: 560 };
-const PHONE_LAYOUT = { minWidth: 320 };
+const PHONE_LAYOUT = { minWidth: 250 };
+// No side panels on phones: the board needs every pixel, and filtering on a phone is rare.
+const PHONE_PANELS = { view: { right: [] } };
 const SAVE_AFTER_MS = 1500;
 const MODULES = [AgStudioAiModule];
 const PANELS: AgPanelConfig = { edit: { left: ["data"], right: ["ai", "edit", "filters"] }, view: { right: ["filters"] } };
 
-const SPOTTER_CONTEXT = `You work inside Watchtower, the dashboard of Spotter. Spotter is a checkpoint between the people a family looks out for (an older relative, a kid, an AI shopping agent) and PayPal: it pays what's fine, holds what looks off for the family's spotter to approve or deny, stops scams, and switches unsafe payment methods to protected PayPal payments.
+const SPOTTER_CONTEXT = `You work inside Watchtower, the dashboard of Spotter. Spotter is a checkpoint between the people a family looks out for (an older relative, a kid, an AI shopping agent) and PayPal: it pays what's fine, holds what looks off for the family's spotter to approve or deny, stops scams, and refuses unsafe payment methods (Friends and Family, gift cards, crypto), telling the person to pay with a protected PayPal payment instead.
 Data: "payments" has one row per payment (amount and moneyKept in pounds; outcome is Paid, Protected, Waiting, Denied, Stopped, Checking, Paying or Failed; moneyKept is the amount of a stopped or denied payment; heldAtPayPal is money sitting in a PayPal authorisation right now, paypalExpires is when PayPal lets it go; sample = Yes marks the labelled sample month that demo families get). "signs" has one row per scam sign Spotter found. "people" has each person's weekly allowance and what they paid in the last 7 days. "paypal", when present, has one row per thing PayPal confirmed (captured, released, refunded) with the payment it belongs to.
 Spotter widgets: money-kept, hold-track, watch-alerts, money-mid-air (money held at PayPal with PayPal's countdown), replay (the month replayed with and without Spotter), scam-radar (how many other Spotter families stopped the same payee), case-file (one payment's reasons and scam signs). The last four take no data mapping: focus one on a payment or a person with a widget filter (payments.id, payments.who or payments.payee equals ...).
 Rules:
@@ -195,7 +197,10 @@ export default function Studio({ sources, initialState, store, notify }: { sourc
   // Phones get the board to read, not to build: AG's edit panels need room the screen doesn't have.
   const [phone] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const theme = useMemo(() => themeFor(new Set(sources.payments.map((r) => r.outcome))), [sources]);
-  const [initial] = useState(() => (isValidState(initialState) ? initialState : INITIAL));
+  const [initial] = useState(() => {
+    const s = isValidState(initialState) ? initialState : INITIAL;
+    return phone ? stackForPhone(s as AgReportState) : s;
+  });
   const names = useRef<Record<string, string>>({ ...namesOf(INITIAL), ...namesOf(initial) });
   const [tabs, setTabs] = useState(() => pageTabs(initial, names.current));
 
@@ -487,7 +492,7 @@ export default function Studio({ sources, initialState, store, notify }: { sourc
           ai={ai}
           onApiReady={onApiReady}
           onStateUpdated={onStateUpdated}
-          panels={PANELS}
+          panels={phone ? PHONE_PANELS : PANELS}
         />
       </AgStudioProvider>
       </div>

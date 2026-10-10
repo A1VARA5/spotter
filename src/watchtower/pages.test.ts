@@ -31,3 +31,31 @@ describe("page tabs", () => {
     expect(removePage(only, "month")).toBe(only);
   });
 });
+
+describe("phone layout", () => {
+  it("stacks every widget full width, one per row, in reading order, without touching the saved state", async () => {
+    const { stackForPhone } = await import("./pages");
+    const s = {
+      pages: [
+        {
+          id: "p",
+          widgets: {},
+          widgetLayout: {
+            right: { xTrack: 12, yTrack: 0, xSpan: 12, ySpan: 8 },
+            left: { xTrack: 0, yTrack: 0, xSpan: 12, ySpan: 6 },
+            below: { xTrack: 0, yTrack: 8, xSpan: 24, ySpan: 10 },
+          },
+        },
+      ],
+      selectedPageId: "p",
+    } as never;
+    const before = JSON.stringify(s);
+    const out = stackForPhone(s) as unknown as { pages: Array<{ widgetLayout: Record<string, { xTrack: number; yTrack: number; xSpan: number; ySpan: number }> }> };
+    expect(out.pages[0]!.widgetLayout).toEqual({
+      left: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 6 },
+      right: { xTrack: 0, yTrack: 6, xSpan: 24, ySpan: 8 },
+      below: { xTrack: 0, yTrack: 14, xSpan: 24, ySpan: 10 },
+    });
+    expect(JSON.stringify(s)).toBe(before);
+  });
+});

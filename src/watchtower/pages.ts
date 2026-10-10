@@ -30,3 +30,20 @@ export function removePage(s: AgReportState, id: string): AgReportState {
   const rest = pages.filter((p) => p.id !== id);
   return { ...s, pages: rest, selectedPageId: s.selectedPageId === id ? rest[0]!.id : s.selectedPageId } as unknown as AgReportState;
 }
+
+type Box = { xTrack: number; yTrack: number; xSpan: number; ySpan: number };
+
+/** Phones get one widget per row, full width, in the order you'd read the desktop board. Never saved. */
+export function stackForPhone(s: AgReportState): AgReportState {
+  const pages = (s.pages as unknown as Array<{ widgetLayout?: Record<string, Box> }>).map((p) => {
+    const boxes = Object.entries(p.widgetLayout ?? {}).sort(([, a], [, b]) => a.yTrack - b.yTrack || a.xTrack - b.xTrack);
+    let y = 0;
+    const widgetLayout: Record<string, Box> = {};
+    for (const [id, b] of boxes) {
+      widgetLayout[id] = { xTrack: 0, yTrack: y, xSpan: 24, ySpan: b.ySpan };
+      y += b.ySpan;
+    }
+    return { ...p, widgetLayout };
+  });
+  return { ...s, pages } as unknown as AgReportState;
+}

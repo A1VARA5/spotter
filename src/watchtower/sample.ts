@@ -42,7 +42,7 @@ const STORY: Entry[] = [
   { who: "person", hoursAgo: 18 * D, payee: "Tax Refunds Team", pence: 4999, category: "tax", status: "blocked", isNew: true, flags: [f("impersonation", "high", "The tax office never asks for a fee to send a refund.")], reason: "A stranger was pretending to be the tax office." },
   { who: "person", hoursAgo: 14 * D, payee: "FreshCrate", pence: 5880, category: "groceries", status: "captured" },
   { who: "person", hoursAgo: 11 * D, payee: "High Street Chemist", pence: 899, category: "health", status: "captured" },
-  { who: "person", hoursAgo: 10 * D, payee: "Dave (local marketplace)", pence: 8500, category: "furniture", status: "protected", method: "friends_and_family", isNew: true, flags: [f("friends_and_family", "high", "The seller asked for Friends and Family, which has no buyer protection.")], reason: "Switched to a protected Goods and Services payment." },
+  { who: "person", hoursAgo: 10 * D, payee: "Dave (local marketplace)", pence: 8500, category: "furniture", status: "protected", method: "friends_and_family", isNew: true, flags: [f("friends_and_family", "high", "The seller asked for Friends and Family, which has no buyer protection.")], reason: "Not sent as Friends and Family. Told to pay with Goods and Services, which has buyer protection." },
   { who: "person", hoursAgo: 7 * D, payee: "FreshCrate", pence: 6105, category: "groceries", status: "captured" },
   { who: "person", hoursAgo: 3 * D, payee: "Market Hall", pence: 3100, category: "groceries", status: "captured" },
   { who: "person", hoursAgo: 2 * D, payee: "High Street Chemist", pence: 1475, category: "health", status: "captured" },

@@ -35,7 +35,7 @@ export const STATE_LABEL: Record<TrackState, string> = {
   held: "Waiting for you",
   paid: "Paid",
   blocked: "Stopped",
-  protected: "Switched to a protected payment",
+  protected: "Not sent, pay with protection instead",
   returned: "Denied, money released",
   failed: "PayPal said no",
 };

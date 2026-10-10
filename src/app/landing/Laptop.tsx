@@ -154,7 +154,7 @@ const CONSOLE_CASE: Case = {
   ms: 0,
 };
 
-/** Scene 3: a Friends and Family ask checked from Discord, switched to a protected payment, with a safer shop. */
+/** Scene 3: a Friends and Family ask checked from Discord, not sent, with a protected way to pay and a safer shop. */
 export function ProtectScreen() {
   return (
     <AppShell active="waiting" count={1}>
