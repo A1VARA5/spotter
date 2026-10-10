@@ -82,7 +82,21 @@ function AgentCard({ spender }: { spender: SpenderView }) {
   const currency = cur.data?.currency ?? spender.currency;
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const config = t.data
-    ? JSON.stringify({ mcpServers: { [set.server]: { type: "http", url: `${origin}${set.path}`, headers: { Authorization: `Bearer ${t.data.token}` } } } }, null, 2)
+    ? // Claude Desktop's config starts local servers, so mcp-remote bridges to Spotter's URL. The header has no space
+      // after the colon and the key sits in env, the form mcp-remote's README gives because Windows mangles spaces in args.
+      JSON.stringify(
+        {
+          mcpServers: {
+            [set.server]: {
+              command: "npx",
+              args: ["mcp-remote", `${origin}${set.path}`, "--header", "Authorization:${AUTH_HEADER}"],
+              env: { AUTH_HEADER: `Bearer ${t.data.token}` },
+            },
+          },
+        },
+        null,
+        2,
+      )
     : "";
   return (
     <article className="connect-card">
@@ -162,7 +176,8 @@ function AgentCard({ spender }: { spender: SpenderView }) {
               </p>
               <CopyBlock label="Claude Code command" value={`claude mcp add --transport http ${set.server} ${origin}${set.path} --header "Authorization: Bearer ${t.data.token}"`} />
               <p>
-                <strong>Claude Desktop or another MCP app:</strong> add this to its MCP config (in Claude Desktop: Settings, Developer, Edit config), then restart it.
+                <strong>Claude Desktop:</strong> add this to its config (Settings, Developer, Edit config), then restart it. It needs Node.js, because
+                mcp-remote connects the desktop app to Spotter.
               </p>
               <CopyBlock label="MCP config" value={config} />
             </>
