@@ -7161,3 +7161,6 @@ h3 {
 .wt-frame { display: flex; flex-direction: column; }
 .wt-frame > div:last-child { flex: 1; min-height: 0; height: auto; }
 .wt-widget-error { font-size: 15px; color: var(--stop); padding: 8px 6px; }
+.case-page { margin: 4px 0 0; display: grid; gap: 8px; }
+.case-page img { width: 100%; max-width: 320px; height: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--chalk); }
+.case-page figcaption { font-size: 14px; color: var(--ink-2); text-wrap: pretty; }
