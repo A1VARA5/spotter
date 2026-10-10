@@ -230,8 +230,8 @@
 }
 
 /* While paused, everything in the scene holds its frame, and so does the clock. */
-.hs[data-paused] .hs-duo-inner *,
-.hs[data-paused] .hs-duo-inner,
+/* Pausing (hover, focus, the pause button) only stops the move to the next scene. The scene itself keeps
+   drawing: freezing its entrance animation would leave it stuck at the first, invisible frame. */
 .hs[data-paused] .hs-bar i {
   animation-play-state: paused !important;
 }
