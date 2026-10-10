@@ -7218,6 +7218,29 @@ h3 {
 .case-page { margin: 4px 0 0; display: grid; gap: 8px; }
 .case-page img { width: 100%; max-width: 320px; height: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--chalk); }
 .case-page figcaption { font-size: 14px; color: var(--ink-2); text-wrap: pretty; }
+.case-page-video { display: block; width: 100%; max-width: 320px; height: auto; aspect-ratio: 4 / 3; border-radius: 10px; border: 1px solid var(--line); background: var(--ink); }
+.case-findings li[data-severity="high"] svg { color: var(--stop); }
+
+/* What a person sees vs what the agent read: the screenshot next to the hidden line, highlighted. */
+.case-seen { margin: 4px 0 0; display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--paper); border: 1px solid #e3e7e3; }
+.case-seen-title { font-size: 15px; font-weight: 650; color: var(--ink); }
+.case-seen-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.case-seen-side { display: grid; gap: 8px; min-width: 0; }
+.case-seen-label { font-size: 12.5px; font-weight: 650; letter-spacing: 0.02em; color: var(--ink-2); }
+.case-seen-side img, .case-seen-side .case-page-video { width: 100%; max-width: none; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--chalk); }
+.case-seen-sample { font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.case-seen-hidden blockquote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--stop); border-radius: 0 8px 8px 0; background: var(--stop-soft); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.case-seen-hidden mark { background: color-mix(in srgb, var(--stop) 18%, transparent); color: var(--ink); padding: 1px 2px; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.case-seen-why { font-size: 13.5px; color: var(--ink-2); text-wrap: pretty; }
+.case-seen figcaption { font-size: 14px; color: var(--ink-2); text-wrap: pretty; }
+.case-watch { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-top: 6px; padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--chalk); border: 1px solid var(--line); }
+.case-watch:hover { background: #e9ece8; }
+.case-watch:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+@media (max-width: 560px) { .case-seen-grid { grid-template-columns: 1fr; } }
+.feed-case { grid-column: 1 / -1; }
+.feed-case > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 4px 0; width: max-content; }
+.feed-case > summary:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
+.feed-case[open] > summary { margin-bottom: 8px; }
 .toolset { display: inline-flex; gap: 4px; padding: 4px; background: var(--chalk); border-radius: 12px; justify-self: start; flex-wrap: wrap; }
 .toolset-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 10px 14px; border-radius: 9px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .toolset-btn[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: var(--raise); }

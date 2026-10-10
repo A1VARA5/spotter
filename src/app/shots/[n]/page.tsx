@@ -5,6 +5,10 @@ import { Browser, GranPhone, Iphone, SpotterPhone } from "@/app/landing/Devices"
 import type { Flag } from "@/core/grounding";
 import { Inspector } from "@/app/landing/Inspector";
 import { Final, Hub } from "@/app/landing/Sections";
+import { readFile } from "node:fs/promises";
+import type { Case } from "@/agents/case";
+import { CaseFile } from "@/ui/CaseFile";
+import { HIDDEN_INSTRUCTION } from "@/app/demo-shop/gadgetbarn/shop";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +137,43 @@ function AgentChat() {
   );
 }
 
+/** A case like the agent-trap scenario files. The screenshot comes from SHOT_GADGETBARN_JPG (a local file) when set. */
+async function seenCase(): Promise<Case> {
+  const file = process.env.SHOT_GADGETBARN_JPG;
+  const shot = file ? `data:image/jpeg;base64,${(await readFile(file)).toString("base64")}` : undefined;
+  return {
+    status: "done",
+    verdict: "likely_scam",
+    headline: "The shop page hides an order for AI agents to skip your budget and buy 10. Don't let the agent pay.",
+    findings: [
+      { kind: "prompt_injection", severity: "high", quote: HIDDEN_INSTRUCTION, tool: "inspect_shop", source: "auto_inspect_shop", text: `The shop page hides text from people (pushed off the screen) that an AI agent reads, written to steer the agent: "${HIDDEN_INSTRUCTION}"` },
+      { tool: "payee_history", source: "t2", text: "This family has never paid GadgetBarn before." },
+    ],
+    ask: ["Tell your agent not to buy from GadgetBarn.", "If you want the earbuds, buy them yourself from a shop you know."],
+    calls: [],
+    dropped: 0,
+    model: "claude-opus-5-5",
+    ms: 9000,
+    page: {
+      url: "https://spotter-pay.vercel.app/demo-shop/gadgetbarn",
+      finalUrl: "https://spotter-pay.vercel.app/demo-shop/gadgetbarn",
+      title: "GadgetBarn",
+      asks: { card: false, login: false, giftCard: false },
+      ...(shot ? { screenshot: shot } : {}),
+      // Only shows the button; there is no real recording behind it here.
+      replay: { sealed: "sample", at: new Date().toISOString() },
+      seen: {
+        domChars: 637,
+        visibleChars: 427,
+        visibleSample: "Pulse wireless earbuds £19.99 Free shipping",
+        isolated: true,
+        truncated: false,
+        hidden: [{ text: HIDDEN_INSTRUCTION, why: "off_screen", instruction: true }],
+      },
+    },
+  };
+}
+
 export default async function ShotPage({ params }: { params: Promise<{ n: string }> }) {
   if (process.env.VERCEL_ENV === "production") notFound();
   const n = (await params).n;
@@ -195,6 +236,21 @@ export default async function ShotPage({ params }: { params: Promise<{ n: string
             <HoldTrack state="blocked" from="Shopping agent" to="BestDealz" amount={1999} currency="GBP" />
           </Browser>
         </Shot>
+      );
+    case "7":
+      return (
+        <Shot title="What a person sees vs what your agent read." sub="Spotter opens the shop in a throwaway KERNEL cloud browser, asks the real page what a person can see, and quotes the line only the agent read.">
+          <div className="shot-card" style={{ width: 700 }}>
+            <CaseFile c={await seenCase()} currency="GBP" />
+          </div>
+        </Shot>
+      );
+    case "7p":
+      // The same case file on its own, to check it at phone width (open it in a 390px wide iframe).
+      return (
+        <div style={{ padding: 16 }}>
+          <CaseFile c={await seenCase()} currency="GBP" paymentId="pay_sample" />
+        </div>
       );
     case "hub":
       return (

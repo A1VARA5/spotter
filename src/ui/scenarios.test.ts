@@ -51,6 +51,14 @@ describe("scenarios", () => {
     }
   });
 
+  it("the booby trapped shop links the live GadgetBarn demo page (for the cloud browser) and is still stopped by code alone", async () => {
+    const trap = SCENARIOS.find((s) => s.id === "agent-trap")!;
+    expect(trap.body.context).toContain("https://spotter-pay.vercel.app/demo-shop/gadgetbarn");
+    expect(trap.spender).toBe("agent");
+    const d = await outcome(trap, DEMO_SPENDERS.find((s) => s.kind === "agent")!.allowance);
+    expect(d.outcome).toBe("block");
+  });
+
   it("the buying agent's overpriced paper order is held, not stopped, for a business and for the demo family's agent", async () => {
     const paper = BUSINESS_SCENARIOS.find((s) => s.id === "biz-paper")!;
     expect(paper.body.context).toMatch(/usual/i);

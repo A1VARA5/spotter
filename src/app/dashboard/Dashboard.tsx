@@ -182,7 +182,7 @@ function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; on
       <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
 
       {p.case_file ? (
-        <CaseFile c={p.case_file} currency={p.currency} busy={busy === "swap"} onSwap={busy ? undefined : () => act("swap")} />
+        <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} busy={busy === "swap"} onSwap={busy ? undefined : () => act("swap")} />
       ) : (
         <CasePending createdAt={p.created_at} />
       )}
@@ -245,6 +245,13 @@ function FeedRow({ p, who }: { p: Payment; who: string }) {
         {Icon && <Icon size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 4 }} />}
         {STATE_LABEL[s]}
       </span>
+      {p.case_file && (
+        // Stopped payments have a case file too; one that caught hidden orders for an AI agent starts open.
+        <details className="feed-case" open={p.case_file.findings.some((f) => f.kind === "prompt_injection")}>
+          <summary>What Spotter found</summary>
+          <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} />
+        </details>
+      )}
     </li>
   );
 }
