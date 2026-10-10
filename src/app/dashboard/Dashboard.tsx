@@ -10,7 +10,7 @@ import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 
 
-export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean }) {
+export function Dashboard({ initial, names, unlocked, demo = false }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean; demo?: boolean }) {
   const [payments, setPayments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(!unlocked);
@@ -62,7 +62,7 @@ export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; na
             </div>
           )}
           {waiting.map((p) => (
-            <HeldCard key={p.id} p={p} who={names[p.spender_id] ?? "Someone"} onSettled={refresh} onLocked={() => setLocked(true)} />
+            <HeldCard key={p.id} p={p} who={names[p.spender_id] ?? "Someone"} demo={demo} onSettled={refresh} onLocked={() => setLocked(true)} />
           ))}
         </div>
         {error && (
@@ -140,25 +140,46 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
   );
 }
 
-function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; onSettled: () => void; onLocked: () => void }) {
+/** The case agent has up to 45 seconds; until its case file lands (or that time passes) nobody approves blind. */
+const CASE_WAIT_MS = 50_000;
+
+function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: string; demo: boolean; onSettled: () => void; onLocked: () => void }) {
   const [busy, setBusy] = useState<"approve" | "deny" | "swap" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [pin, setPin] = useState("");
+  const [now, setNow] = useState(() => Date.now());
   const flags = p.ai?.flags ?? [];
+  const pending = !p.case_file && now - new Date(p.created_at).getTime() < CASE_WAIT_MS;
+  // When Spotter thinks it's a scam, saying no is the main action and saying yes takes a deliberate step.
+  const scamLike = p.case_file?.verdict === "likely_scam" || flags.some((f) => f.severity === "high");
+
+  useEffect(() => {
+    if (!pending) return;
+    const t = setInterval(() => setNow(Date.now()), 3000);
+    return () => clearInterval(t);
+  }, [pending]);
 
   async function act(action: "approve" | "deny" | "swap") {
     setBusy(action);
     setError(null);
     try {
-      const r = await fetch(`/api/payments/${p.id}/${action}`, { method: "POST" });
+      const r = await fetch(`/api/payments/${p.id}/${action}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(action === "approve" ? { pin } : {}),
+      });
       const j = await readJson(r);
       if (r.status === 401) {
         onLocked();
         setBusy(null);
         return;
       }
-      if (!r.ok && r.status !== 409) throw new Error(j.error ?? `PayPal step failed (${r.status}).`);
+      // Wrong PIN, still being checked, or someone already decided it in another tab: say so, don't pretend.
+      if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
       setState(trackState(j.payment.status));
+      setConfirming(false);
       setTimeout(onSettled, 700);
     } catch (e) {
       setError(e instanceof Error ? e.message : "That didn't go through. Try again.");
@@ -208,14 +229,64 @@ function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; on
 
       {p.request.context && <Evidence text={p.request.context} flags={flags} />}
 
-      <div className="held-actions">
-        <button className="btn btn-approve" disabled={busy !== null} onClick={() => act("approve")}>
-          {busy === "approve" ? "Paying" : `Approve ${money(p.amount, p.currency)}`}
-        </button>
-        <button className="btn btn-deny" disabled={busy !== null} onClick={() => act("deny")}>
-          {busy === "deny" ? "Releasing" : "Deny"}
-        </button>
-      </div>
+      {confirming ? (
+        <form
+          className="held-confirm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (pin) act("approve");
+          }}
+        >
+          <p className="held-confirm-title">
+            Pay {money(p.amount, p.currency)} to {p.request.payee.name}?
+          </p>
+          {scamLike && <p className="held-confirm-warn">Spotter thinks this is likely a scam. Once PayPal pays, it can&apos;t be pulled back.</p>}
+          <label className="field-label" htmlFor={`pin-${p.id}`}>
+            Your PIN{demo ? " (the demo family's PIN is 2468)" : ""}
+          </label>
+          <input
+            id={`pin-${p.id}`}
+            className="pin-input num"
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          />
+          <div className="held-actions">
+            <button type="submit" className={scamLike ? "btn btn-deny" : "btn btn-approve"} disabled={busy !== null || !pin}>
+              {busy === "approve" ? "Paying" : `Pay ${money(p.amount, p.currency)}`}
+            </button>
+            <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="held-actions" data-scam={scamLike || undefined}>
+          {scamLike ? (
+            <>
+              <button className="btn btn-stop" disabled={busy !== null} onClick={() => act("deny")}>
+                {busy === "deny" ? "Releasing" : "Deny"}
+              </button>
+              <button className="btn btn-quiet" disabled={busy !== null || pending} onClick={() => setConfirming(true)}>
+                {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)} anyway`}
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-approve" disabled={busy !== null || pending} onClick={() => setConfirming(true)}>
+                {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)}`}
+              </button>
+              <button className="btn btn-deny" disabled={busy !== null} onClick={() => act("deny")}>
+                {busy === "deny" ? "Releasing" : "Deny"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {pending && !confirming && <p className="held-wait">Approve opens once Spotter has finished looking into it (a few seconds). Deny works now.</p>}
       {error && (
         <p className="error-line" role="alert">
           {error}

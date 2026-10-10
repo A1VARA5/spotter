@@ -70,7 +70,7 @@ export default async function DashboardPage() {
           </Link>
         </nav>
       )}
-      <Dashboard names={names} unlocked={unlocked} initial={JSON.parse(JSON.stringify(payments))} />
+      <Dashboard names={names} unlocked={unlocked} demo={household.demo} initial={JSON.parse(JSON.stringify(payments))} />
     </AppShell>
   );
 }

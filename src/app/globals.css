@@ -7245,3 +7245,10 @@ h3 {
 .toolset-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 10px 14px; border-radius: 9px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .toolset-btn[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: var(--raise); }
 .toolset-btn:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.btn-stop { background: var(--stop); color: #fff; }
+.btn-stop:hover:not(:disabled) { background: #a32a21; }
+.held-confirm { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--chalk); border: 1px solid var(--line); }
+.held-confirm-title { font-size: 18px; font-weight: 650; }
+.held-confirm-warn { font-size: 15px; color: var(--stop); font-weight: 600; }
+.held-confirm .pin-input { max-width: 200px; }
+.held-wait { font-size: 14px; color: var(--ink-2); }
