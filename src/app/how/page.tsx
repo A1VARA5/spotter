@@ -3,7 +3,7 @@ import { Check, FileCheck, Link2, ShoppingBag, Users, X } from "lucide-react";
 import { BrandMark, HoldTrack } from "@/ui/components";
 import { ChannelGuide } from "./ChannelGuide";
 import { FAQ } from "./faq";
-import { MoneyPaths } from "@/app/landing/MoneyPaths";
+import { NetworkField } from "@/app/landing/NetworkField";
 import "@/app/landing/motion.css";
 import "./how.css";
 
@@ -38,8 +38,8 @@ const WAITS = [
 export default function HowPage() {
   return (
     <main className="how">
-      <section className="how-hero mpaths-host">
-        <MoneyPaths quiet checkpoint={0.62} />
+      <section className="how-hero net-host">
+        <NetworkField quiet fx={0.84} fy={0.22} calm=".how-h1, .how-lede" avoid=".role, .how-track, .lnav" />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
@@ -117,6 +117,11 @@ export default function HowPage() {
               While the money waits
             </h2>
             <p className="sec-lede">A held payment isn&apos;t just parked. Spotter&apos;s case agent looks into it, usually before you&apos;ve opened the alert.</p>
+            <p className="waits-kernel">
+              When a message has a link that wants card details or a login, I don&apos;t want Gran clicking it to find out. So the case agent opens that one link in a
+              throwaway KERNEL cloud browser, notes where it really ends up and what the page asks for, takes a small screenshot, and the browser gets deleted. It
+              only looks. It never types, clicks or submits anything.
+            </p>
           </div>
           <ul className="waits-list">
             {WAITS.map(({ icon: Icon, title, text }) => (

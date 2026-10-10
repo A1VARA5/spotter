@@ -116,23 +116,50 @@ const PARCEL_CASE: Case = {
   findings: [
     { tool: "check_links", source: "c1", text: "The Pay now button goes to parcel-redelivery.top, a site registered 4 days ago. It isn't a delivery company." },
     { tool: "network_reports", source: "c2", text: "9 other Spotter families said no to this payee in the last 30 days." },
-    { tool: "payee_history", source: "c3", text: "Gran has never paid this payee before." },
   ],
   ask: ["If Gran is expecting a parcel, look it up on the courier's own site, not through this email."],
+  page: {
+    url: "https://parcel-redelivery.top/pay",
+    finalUrl: "https://parcel-redelivery.example/checkout",
+    title: "Redelivery fee",
+    asks: { card: true, login: false, giftCard: false },
+  },
   calls: [],
   dropped: 0,
   model: "",
   ms: 0,
 };
 
-/** Scene 2: the case agent's file on a forwarded parcel fee email. */
+/** What the throwaway browser saw: a made up parcel firm's card form, drawn small like the real screenshot. */
+function ParcelPageShot() {
+  return (
+    <div className="kshot" role="img" aria-label="What the link showed: a parcel redelivery page asking for card details">
+      <p className="kshot-bar">
+        <span className="kshot-logo" aria-hidden="true" />
+        ParcelDrop Redelivery
+      </p>
+      <div className="kshot-body">
+        <p className="kshot-h">Pay your £2.99 redelivery fee</p>
+        <p className="kshot-sub">Your parcel is held at our depot.</p>
+        <span className="kshot-field">Card number</span>
+        <span className="kshot-row">
+          <span className="kshot-field">MM / YY</span>
+          <span className="kshot-field">CVV</span>
+        </span>
+        <span className="kshot-btn">Pay £2.99</span>
+      </div>
+    </div>
+  );
+}
+
+/** Scene 2: the case agent's file on a forwarded parcel fee email, with the link opened in a throwaway browser. */
 export function CaseScreen() {
   return (
     <AppShell active="waiting" count={1}>
       <h3 className="lap-title">Waiting for you</h3>
       <article className="lap-card scn-case">
         <CardHead who="Gran" kind="person" ask="Gran wants to pay £2.99" to="To parcel-redelivery.top, forwarded by email" pill="On hold at PayPal" done="Denied" />
-        <CaseFile c={PARCEL_CASE} currency="GBP" />
+        <CaseFile c={PARCEL_CASE} currency="GBP" pageShot={<ParcelPageShot />} />
       </article>
     </AppShell>
   );

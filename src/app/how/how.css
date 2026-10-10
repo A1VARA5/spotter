@@ -47,6 +47,15 @@
   text-wrap: pretty;
 }
 
+.waits-kernel {
+  margin-top: 18px;
+  padding-left: 14px;
+  border-left: 2px solid var(--line);
+  color: var(--ink-2);
+  max-width: 52ch;
+  text-wrap: pretty;
+}
+
 /* The Discord guide shot as a generic dark chat, not the app's own colours */
 .dshot {
   background: #1c2129;

@@ -42,11 +42,14 @@ export function CaseFile({
   currency,
   onSwap,
   busy,
+  pageShot,
 }: {
   c: Case;
   currency: string;
   onSwap?: () => void;
   busy?: boolean;
+  /** Drawn in place of the page screenshot when there isn't a real one (the landing page's made up example). */
+  pageShot?: React.ReactNode;
 }) {
   return (
     <section className="case" data-verdict={c.verdict} aria-label="What Spotter found">
@@ -69,7 +72,7 @@ export function CaseFile({
         </ul>
       )}
 
-      {c.page && <OpenedPage page={c.page} />}
+      {c.page && <OpenedPage page={c.page} shot={pageShot} />}
 
       {c.status !== "done" && (
         <p className="case-note">
@@ -106,13 +109,17 @@ export function CaseFile({
 }
 
 /** What Spotter saw when it opened the link in a throwaway cloud browser, so nobody in the family had to. */
-function OpenedPage({ page }: { page: NonNullable<Case["page"]> }) {
+function OpenedPage({ page, shot }: { page: NonNullable<Case["page"]>; shot?: React.ReactNode }) {
   const asks = [page.asks.card && "card details", page.asks.login && "a login", page.asks.giftCard && "a gift card code"].filter(Boolean) as string[];
   return (
     <figure className="case-page">
-      {page.screenshot && SHOT.test(page.screenshot) && <img src={page.screenshot} alt={`What the link showed: ${page.title || host(page.finalUrl)}`} width={320} height={200} />}
+      {page.screenshot && SHOT.test(page.screenshot) ? (
+        <img src={page.screenshot} alt={`What the link showed: ${page.title || host(page.finalUrl)}`} width={320} height={200} />
+      ) : (
+        shot
+      )}
       <figcaption>
-        Spotter opened the link in a throwaway browser so nobody had to. It ended up at <b>{host(page.finalUrl)}</b>
+        <b>Opened safely</b> Spotter opened the link in a throwaway browser so nobody had to. It ended up at <b>{host(page.finalUrl)}</b>
         {asks.length ? (
           <>
             {" "}
