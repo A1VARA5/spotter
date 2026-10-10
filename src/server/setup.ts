@@ -130,7 +130,7 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
     async pairingCode(request: Request, spenderId: string | null) {
       const s = await session(request, "always");
       if (s instanceof Response) return s;
-      const b = await body(request, z.object({ channel: z.enum(["email", "telegram"], { message: "Pick email or Telegram." }) }));
+      const b = await body(request, z.object({ channel: z.enum(["email", "telegram", "discord"], { message: "Pick email, Telegram or Discord." }) }));
       if (b instanceof Response) return b;
       if (spenderId) {
         const spender = await getSpender(s.db, spenderId);

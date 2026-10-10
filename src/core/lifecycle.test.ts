@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb, type Db } from "@/db";
-import { approve, createSpender, deny, reconcileStuck, sweepStale, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
+import { approve, createSpender, deny, swap, reconcileStuck, sweepStale, getPayment, InvalidPaymentError, listEvents, listPayments, submitPayment, type Deps } from "./lifecycle";
 import type { AiCheckResult } from "@/ai/check";
 import { PayPalError } from "@/paypal/client";
 import type { Allowance } from "./types";
+import { networkCount } from "./network";
+import type { Case } from "@/agents/case";
 
 const gbp = (amount: number) => ({ amount, currency: "GBP" as const });
 const allowance: Omit<Allowance, "spentThisWeek"> = {
@@ -254,5 +256,135 @@ describe("payment lifecycle", () => {
     expect((await getPayment(db, "pay_void"))?.status).toBe("voided");
     expect((await getPayment(db, "pay_live"))?.status).toBe("needs_approval");
     expect((await getPayment(db, "pay_err"))?.status).toBe("capturing");
+  });
+});
+
+describe("Spotter network reports", () => {
+  beforeEach(() => {
+    process.env.SESSION_SECRET = "test-secret-at-least-32-characters-long";
+  });
+  const others = async () => (await createHousehold(db, { name: "Other", spotterName: "Sam" })).id;
+
+  it("a denied payee is reported to other families", async () => {
+    const p = await submitPayment(deps, input(2500, { payee: { name: "jamie.k1994@gmail.com", isNew: true } }));
+    await deny(deps, p.id, "Aivaras");
+    expect((await networkCount(db, "jamie.k1994@gmail.com", await others())).families).toBe(1);
+  });
+
+  it("a block on a strong scam sign is reported, a plain budget block is not", async () => {
+    deps.check = vi.fn<Deps["check"]>(async () => ({ ...cleanAi(), flags: [{ kind: "impersonation" as const, severity: "high" as const, quote: "Hi mum", why: "Pretends to be family." }] }));
+    await submitPayment(deps, input(1500, { category: "gift_cards", payee: { name: "scammer@x.com", isNew: true }, context: "Hi mum" }));
+    deps.check = vi.fn<Deps["check"]>(async () => cleanAi());
+    await submitPayment(deps, input(1500, { category: "gift_cards", payee: { name: "Argos", isNew: true } }));
+    const hh = await others();
+    expect((await networkCount(db, "scammer@x.com", hh)).families).toBe(1);
+    expect((await networkCount(db, "Argos", hh)).families).toBe(0);
+  });
+
+  it("a report failure never breaks the deny", async () => {
+    const p = await submitPayment(deps, input(2500));
+    delete process.env.SESSION_SECRET;
+    expect((await deny(deps, p.id, "Aivaras")).status).toBe("voided");
+  });
+});
+
+describe("case agent hook", () => {
+  const fakeCase: Case = { status: "done", verdict: "likely_scam", headline: "Looks like the Hi Mum scam.", findings: [], ask: [], calls: [], dropped: 0, model: "m", ms: 1 };
+
+  it("builds the case for a held payment and alerts with it", async () => {
+    const notify = vi.fn<NonNullable<Deps["notify"]>>(async () => {});
+    deps = { ...deps, notify, investigate: vi.fn(async () => ({ ...fakeCase })) };
+    const p = await submitPayment(deps, input(2500));
+    const saved = (await getPayment(db, p.id))!;
+    expect(saved.case_file?.headline).toBe("Looks like the Hi Mum scam.");
+    expect(notify.mock.calls[0]![0].case_file?.headline).toBe("Looks like the Hi Mum scam.");
+  });
+
+  it("doesn't investigate payments that just went through", async () => {
+    const investigate = vi.fn(async () => ({ ...fakeCase }));
+    deps = { ...deps, investigate };
+    await submitPayment(deps, input(1500));
+    expect(investigate).not.toHaveBeenCalled();
+  });
+
+  it("a failed investigation still alerts and leaves the hold alone", async () => {
+    const notify = vi.fn<NonNullable<Deps["notify"]>>(async () => {});
+    deps = { ...deps, notify, investigate: vi.fn(async () => Promise.reject(new Error("boom"))) };
+    const p = await submitPayment(deps, input(2500));
+    expect(p.status).toBe("needs_approval");
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect((await listEvents(db, p.id)).map((e) => e.type)).toContain("case_failed");
+  });
+
+  it("runs after the response when the app can defer work", async () => {
+    const tasks: Array<() => Promise<void>> = [];
+    const investigate = vi.fn(async () => ({ ...fakeCase }));
+    deps = { ...deps, investigate, defer: (t) => tasks.push(t) };
+    const p = await submitPayment(deps, input(2500));
+    expect(investigate).not.toHaveBeenCalled();
+    await Promise.all(tasks.map((t) => t()));
+    expect((await getPayment(db, p.id))!.case_file?.verdict).toBe("likely_scam");
+  });
+});
+
+describe("safe swap", () => {
+  const withSwap: Case = {
+    status: "done", verdict: "likely_scam", headline: "Fake shop.", findings: [], ask: [], calls: [], dropped: 0, model: "m", ms: 1,
+    swap: { offer_id: "offer_1", title: "AirPods Pro 3", domain: "apple.com", price: 21900, currency: "GBP", url: "https://apple.com/x" },
+  };
+
+  async function held(c: Case | null) {
+    deps = { ...deps, investigate: c ? vi.fn(async () => c) : undefined };
+    allowanceBig();
+    return submitPayment(deps, input(2499, { payee: { name: "BargainPods", isNew: true }, item: "AirPods Pro 3" }));
+  }
+  const allowanceBig = () => db.query("update spenders set allowance = jsonb_set(allowance, '{weekly,amount}', '100000')");
+
+  it("voids the scam hold and pays the real shop instead, linked both ways", async () => {
+    const p = await held(withSwap);
+    expect(p.status).toBe("needs_approval");
+    const { from, to } = await swap(deps, p.id, "Aivaras");
+    expect(from.status).toBe("voided");
+    expect(to?.status).toBe("captured");
+    expect(to?.request.payee.name).toBe("apple.com");
+    expect(to?.request.swappedFrom).toBe(p.id);
+    expect(Number(to?.amount)).toBe(21900);
+    expect(paypal.void).toHaveBeenCalledTimes(1);
+    expect(paypal.capture).toHaveBeenCalledTimes(1);
+    expect((await listEvents(db, p.id)).map((e) => e.type)).toContain("swapped");
+  });
+
+  it("refuses without a swap in the case, or once the payment is decided", async () => {
+    const none = await held(null);
+    await expect(swap(deps, none.id, "Aivaras")).rejects.toThrow(/no safer option/i);
+    const p = await held(withSwap);
+    await deny(deps, p.id, "Aivaras");
+    await expect(swap(deps, p.id, "Aivaras")).rejects.toThrow(/already/i);
+    expect(paypal.capture).not.toHaveBeenCalled();
+  });
+
+  it("when the void fails, nothing new is paid", async () => {
+    const p = await held(withSwap);
+    paypal.void.mockRejectedValueOnce(new PayPalError("nope", 500, "INTERNAL"));
+    const { from, to } = await swap(deps, p.id, "Aivaras");
+    expect(from.status).toBe("failed");
+    expect(to).toBeNull();
+    expect(paypal.capture).not.toHaveBeenCalled();
+  });
+});
+
+describe("telling the person when the spotter decides", () => {
+  it("runs the decided hook after an approve and after a deny, and a failing hook changes nothing", async () => {
+    const decided = vi.fn<NonNullable<Deps["decided"]>>(async () => {});
+    deps = { ...deps, decided };
+    const a = await submitPayment(deps, input(2500));
+    await approve(deps, a.id, "Aivaras");
+    const d = await submitPayment(deps, input(2500));
+    await deny(deps, d.id, "Aivaras");
+    expect(decided.mock.calls.map((c) => c[0].status)).toEqual(["captured", "voided"]);
+
+    deps = { ...deps, decided: vi.fn(async () => Promise.reject(new Error("telegram down"))) };
+    const e = await submitPayment(deps, input(2500));
+    expect((await deny(deps, e.id, "Aivaras")).status).toBe("voided");
   });
 });

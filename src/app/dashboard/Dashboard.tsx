@@ -7,6 +7,7 @@ import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
 import { Hint } from "@/ui/Hint";
+import { CaseFile, CasePending } from "@/ui/CaseFile";
 
 
 export function Dashboard({ initial, names, unlocked }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean }) {
@@ -140,12 +141,12 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
 }
 
 function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; onSettled: () => void; onLocked: () => void }) {
-  const [busy, setBusy] = useState<"approve" | "deny" | null>(null);
+  const [busy, setBusy] = useState<"approve" | "deny" | "swap" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
   const flags = p.ai?.flags ?? [];
 
-  async function act(action: "approve" | "deny") {
+  async function act(action: "approve" | "deny" | "swap") {
     setBusy(action);
     setError(null);
     try {
@@ -179,6 +180,12 @@ function HeldCard({ p, who, onSettled, onLocked }: { p: Payment; who: string; on
       </div>
 
       <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
+
+      {p.case_file ? (
+        <CaseFile c={p.case_file} currency={p.currency} busy={busy === "swap"} onSwap={busy ? undefined : () => act("swap")} />
+      ) : (
+        <CasePending createdAt={p.created_at} />
+      )}
 
       {p.ai?.summary && (
         <p className="held-summary">

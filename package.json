@@ -21,12 +21,15 @@
     "@neondatabase/serverless": "^1.2.0",
     "ag-grid-community": "^36.2.0",
     "ag-grid-react": "^36.2.0",
+    "ag-studio": "^3.0.0",
+    "ag-studio-react": "^3.0.0",
     "lucide-react": "^1.54.0",
     "mcp-handler": "^2.3.0",
     "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tldts": "^7.4.18",
+    "undici": "^6.29.0",
     "zod": "^4.6.5"
   },
   "scripts": {

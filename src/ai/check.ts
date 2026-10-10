@@ -69,7 +69,9 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
   }
 
   const user = [
-    `Payment: ${(req.money.amount / 100).toFixed(2)} ${req.money.currency} to "${req.payee.name}" (${req.payee.isNew ? "first time" : "paid before"}), category ${req.category}, method ${req.method}.`,
+    req.money.amount === 0
+      ? "No payment has been asked for yet. Someone forwarded this message to ask whether it is safe. Report anything that is setting them up to pay or hand over details later."
+      : `Payment: ${(req.money.amount / 100).toFixed(2)} ${req.money.currency} to "${req.payee.name}" (${req.payee.isNew ? "first time" : "paid before"}), category ${req.category}, method ${req.method}.`,
     `<context>\n${clean.text}\n</context>`,
   ].join("\n\n");
 

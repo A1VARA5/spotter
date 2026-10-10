@@ -34,6 +34,14 @@ Then PayPal:
 
 Every status change is a single conditional update in Postgres, so a double tap can't capture twice, and a capture cut off halfway is settled later by asking PayPal for the authorisation's real status.
 
+## Watchtower
+
+Watchtower is the family's dashboard, built on AG Studio. Every payment, hold and scam sign sits on one board, and you can just ask it things. "What did Leo spend on games this month?" goes to AG's agent team running on Claude, which queries the data and adds the widget itself. I tried exactly that question and got the right answer (two Roblox payments, £9.98) plus a new widget.
+
+Three widgets are Spotter's own: money kept, the hold track (click a stop and the whole board filters to it) and watch alerts. The alerts come from code, not the model: a run of holds for one person in a day, the same payee going after two people, a payment left waiting, a new kind of scam this week.
+
+The assistant can only read and rearrange the board. It never sees the scam messages, only names, amounts and Spotter's findings, and image and text widgets are switched off so a scammer's payee name can't become a link on the family's dashboard. Each family gets 60 assistant turns a day. Demo families get a sample month, marked Sample, so the board isn't empty on day one.
+
 ## Where to look in the code
 
 | What | Where |
@@ -47,6 +55,7 @@ Every status change is a single conditional update in Postgres, so a double tap 
 | MCP server for agents | `src/app/api/mcp/route.ts`, `src/server/agent.ts` |
 | Households, sessions, PIN, pairing codes, agent keys | `src/core/households.ts`, `src/server/auth.ts`, `src/core/pairing.ts` |
 | Activity table (AG Grid) | `src/app/ledger/Ledger.tsx` |
+| Watchtower (AG Studio widgets, Claude adapter, alerts, sample month) | `src/app/watchtower/`, `src/watchtower/` |
 
 ## Run it locally
 
@@ -56,7 +65,7 @@ You need Node 22, a PayPal sandbox app (client id and secret) and an Anthropic A
 npm install
 cp .env.example .env.local   # fill in the keys
 npx next dev -p 3417
-npm test                      # 184 tests
+npm test                      # 277 tests
 ```
 
 Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to set up. Channel3 and Agentboxd are optional; without them the price check and email channel switch off.
@@ -74,7 +83,7 @@ Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to se
 - PayPal REST APIs and Log in with PayPal, sandbox
 - Claude (Anthropic) for the scam check and for reading requests out of emails
 - Channel3 for real retailer prices
-- AG Grid Community for the Activity table
+- AG Grid Community for the Activity table, and AG Studio (trial licence) for Watchtower
 - Agentboxd for the spotter@homingbox.net inbox and its webhook
 - Neon Postgres and Vercel for hosting
 - The email sender checks and webhook verification come from my earlier project, Red Flag (github.com/A1VARA5/redflag), reused and credited here

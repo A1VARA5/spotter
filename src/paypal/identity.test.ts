@@ -94,4 +94,15 @@ describe("log in with PayPal", () => {
     const r = await h.callback(callback("error=access_denied&state=S1", "S1"));
     expect(r.headers.get("location")).toMatch(/\/\?login=cancelled$/);
   });
+
+  it("coming back with no code is logged with the parameter names, never their values", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await h.callback(callback("scope=openid&secret_thing=XYZ123&state=S1", "S1"));
+    expect(r.headers.get("location")).toMatch(/\/\?login=failed$/);
+    const line = log.mock.calls.map((c) => c.join(" ")).join(" | ");
+    expect(line).toContain("no code");
+    expect(line).toContain("secret_thing");
+    expect(line).not.toContain("XYZ123");
+    log.mockRestore();
+  });
 });

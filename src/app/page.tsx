@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { BrandMark } from "@/ui/components";
-import { GranPhone, SpotterPhone } from "./landing/Devices";
+import { GranPhone } from "./landing/Devices";
+import { Laptop } from "./landing/Laptop";
+import { PathBar } from "./landing/PathBar";
 import { HeroStage } from "./landing/HeroStage";
 import { ScrollStory } from "./landing/ScrollStory";
 import { Inspector } from "./landing/Inspector";
@@ -8,8 +10,24 @@ import { LitText } from "./landing/LitText";
 import { Final, Hub } from "./landing/Sections";
 import { FAQ } from "./how/faq";
 import { LoopPauser } from "@/ui/LoopPauser";
+import { getDb } from "@/db";
+import { pageSession } from "@/server/page-session";
 
-function StartButtons({ onDark = false }: { onDark?: boolean }) {
+type Who = { name: string; demo: boolean } | null;
+
+/** Signed in: one way back in. Signed out: the demo first, then PayPal. */
+function StartButtons({ onDark = false, who }: { onDark?: boolean; who: Who }) {
+  if (who)
+    return (
+      <div className="start">
+        <Link className="btn btn-hold" href="/dashboard">
+          {who.demo ? "Back to your demo family" : `Open your dashboard, ${who.name}`}
+        </Link>
+        <Link className={onDark ? "btn btn-ghost" : "btn btn-quiet"} href="/how">
+          How Spotter works
+        </Link>
+      </div>
+    );
   return (
     <div className="start">
       <form action="/api/demo/start" method="post">
@@ -22,8 +40,11 @@ function StartButtons({ onDark = false }: { onDark?: boolean }) {
   );
 }
 
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  const session = await pageSession(await getDb()).catch(() => null);
+  const who: Who = session ? { name: session.household.spotter_name, demo: session.household.demo } : null;
   return (
     <main>
       <LoopPauser />
@@ -37,9 +58,15 @@ export default function Home() {
             <nav className="lnav-links" aria-label="Main">
               <a href="/how">How it works</a>
               <a href="/how#faq">FAQ</a>
-              <a href="/api/auth/paypal/start" className="lnav-login">
-                Log in
-              </a>
+              {who ? (
+                <Link href="/dashboard" className="lnav-login">
+                  Dashboard
+                </Link>
+              ) : (
+                <a href="/api/auth/paypal/start" className="lnav-login">
+                  Log in
+                </a>
+              )}
             </nav>
           </header>
 
@@ -50,29 +77,27 @@ export default function Home() {
                 Spotter sits between PayPal and the people you look out for: your gran, your kid, your AI shopping agent. When a
                 payment looks wrong, PayPal holds the money and you get asked.
               </p>
-              <StartButtons onDark />
-              <p className="hero-fine">No sign up for the demo: a family with Gran, Leo and a shopping agent, ready in ten seconds. Runs on the PayPal sandbox.</p>
+              <StartButtons onDark who={who} />
+              {!who && (
+                <p className="hero-fine">No sign up for the demo: a family with Gran, Leo and a shopping agent, ready in ten seconds. Runs on the PayPal sandbox.</p>
+              )}
             </div>
 
-            <HeroStage label="Gran gets a scam text asking for £250. Spotter holds the payment at PayPal and asks you.">
-              <GranPhone scale={0.68} />
-
-              <SpotterPhone scale={0.68} />
+            <HeroStage label="Gran forwards a scam asking for £250. Spotter holds the payment at PayPal, looks into it, and you deny it from your laptop.">
+              <div className="hero-duo">
+                <div className="hero-duo-inner">
+                  <Laptop />
+                  <div className="hero-gran">
+                    <GranPhone scale={0.5} />
+                  </div>
+                </div>
+              </div>
             </HeroStage>
           </div>
         </div>
       </section>
 
-      <section className="runs" aria-label="What Spotter runs on">
-        <div className="shell runs-inner reveal-kids">
-          <span className="runs-label">Runs on</span>
-          <span>PayPal</span>
-          <span>Claude</span>
-          <span>Channel3</span>
-          <span>Agentboxd</span>
-          <span>AG Grid</span>
-        </div>
-      </section>
+      <PathBar />
 
       <ScrollStory />
 
@@ -110,7 +135,7 @@ export default function Home() {
         </p>
       </section>
       <Final>
-        <StartButtons onDark />
+        <StartButtons onDark who={who} />
       </Final>
 
       <footer className="shell footer">

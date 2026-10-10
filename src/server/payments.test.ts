@@ -114,4 +114,12 @@ describe("payments API", () => {
     expect((await h.deny(otherHh, id, "Other")).status).toBe(404);
     expect(capture).not.toHaveBeenCalled();
   });
+
+  it("swap: 404 for another household, 409 when there's nothing safer to buy", async () => {
+    const id = (await (await h.submit(hhId, post(valid))).json()).payment.id;
+    expect((await h.swap(otherHh, id, "Other")).status).toBe(404);
+    const r = await h.swap(hhId, id, "Aivaras");
+    expect(r.status).toBe(409);
+    expect((await r.json()).error).toMatch(/no safer option/i);
+  });
 });

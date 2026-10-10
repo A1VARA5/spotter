@@ -23,6 +23,8 @@ export type PaymentRequest = {
   /** What the spender saw: the agent's cart and page, or the message Gran got. Untrusted. */
   context: string;
   createdAt: string;
+  /** Set when the spotter swapped a held payment for a safer one: the payment this replaced. */
+  swappedFrom?: string;
 };
 
 export type Allowance = {

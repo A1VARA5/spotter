@@ -12,7 +12,9 @@ const stricter = (a: Outcome, b: Outcome) => (STRICTNESS[b] > STRICTNESS[a] ? b 
 function flagOutcome(f: Flag): Outcome {
   if (f.kind === "friends_and_family") return "protect";
   if (f.severity === "high") {
-    if (f.kind === "prompt_injection" || f.kind === "impersonation" || f.kind === "gift_card_or_crypto") return "block";
+    // Impersonation holds instead of blocking: the ask might really be from family, and a hold gives the
+    // spotter time to ring them. Injection and gift cards or crypto are never right, so they block.
+    if (f.kind === "prompt_injection" || f.kind === "gift_card_or_crypto") return "block";
     return "ask";
   }
   return f.severity === "medium" ? "ask" : "allow";

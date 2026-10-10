@@ -1,0 +1,2172 @@
+[
+ {
+  "brand": "Barclays",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "barclays.co.uk",
+   "barclays.com",
+   "home.barclays"
+  ],
+  "keywords": [
+   "barclays",
+   "barclay"
+  ]
+ },
+ {
+  "brand": "HSBC",
+  "category": "bank",
+  "regions": [
+   "UK",
+   "global"
+  ],
+  "domains": [
+   "hsbc.co.uk",
+   "hsbc.com"
+  ],
+  "keywords": [
+   "hsbc"
+  ]
+ },
+ {
+  "brand": "Lloyds Bank",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "lloydsbank.com",
+   "lloydsbank.co.uk"
+  ],
+  "keywords": [
+   "lloyds",
+   "lloydsbank",
+   "lloyds-bank"
+  ]
+ },
+ {
+  "brand": "Halifax",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "halifax.co.uk"
+  ],
+  "keywords": [
+   "halifax"
+  ]
+ },
+ {
+  "brand": "NatWest",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "natwest.com"
+  ],
+  "keywords": [
+   "natwest",
+   "nat-west"
+  ]
+ },
+ {
+  "brand": "Royal Bank of Scotland",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "rbs.co.uk"
+  ],
+  "keywords": [
+   "rbs",
+   "royalbankofscotland"
+  ]
+ },
+ {
+  "brand": "Santander UK",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "santander.co.uk"
+  ],
+  "keywords": [
+   "santander"
+  ]
+ },
+ {
+  "brand": "Nationwide Building Society",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "nationwide.co.uk"
+  ],
+  "keywords": [
+   "nationwide"
+  ]
+ },
+ {
+  "brand": "TSB",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "tsb.co.uk"
+  ],
+  "keywords": [
+   "tsb"
+  ]
+ },
+ {
+  "brand": "Monzo",
+  "category": "bank",
+  "regions": [
+   "UK",
+   "US"
+  ],
+  "domains": [
+   "monzo.com",
+   "monzo.me"
+  ],
+  "keywords": [
+   "monzo"
+  ]
+ },
+ {
+  "brand": "Revolut",
+  "category": "bank",
+  "regions": [
+   "UK",
+   "EU",
+   "US"
+  ],
+  "domains": [
+   "revolut.com",
+   "revolut.me"
+  ],
+  "keywords": [
+   "revolut"
+  ]
+ },
+ {
+  "brand": "Starling Bank",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "starlingbank.com"
+  ],
+  "keywords": [
+   "starling",
+   "starlingbank"
+  ]
+ },
+ {
+  "brand": "Chase (UK)",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "chase.co.uk"
+  ],
+  "keywords": [
+   "chase"
+  ]
+ },
+ {
+  "brand": "Chase (US)",
+  "category": "bank",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "chase.com",
+   "jpmorganchase.com"
+  ],
+  "keywords": [
+   "chase",
+   "jpmorgan"
+  ]
+ },
+ {
+  "brand": "Bank of America",
+  "category": "bank",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "bankofamerica.com",
+   "bofa.com"
+  ],
+  "keywords": [
+   "bankofamerica",
+   "bank-of-america",
+   "bofa"
+  ]
+ },
+ {
+  "brand": "Wells Fargo",
+  "category": "bank",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "wellsfargo.com"
+  ],
+  "keywords": [
+   "wellsfargo",
+   "wells-fargo",
+   "wellsfargo"
+  ]
+ },
+ {
+  "brand": "Capital One",
+  "category": "bank",
+  "regions": [
+   "US",
+   "UK"
+  ],
+  "domains": [
+   "capitalone.com",
+   "capitalone.co.uk"
+  ],
+  "keywords": [
+   "capitalone",
+   "capital-one"
+  ]
+ },
+ {
+  "brand": "PayPal",
+  "category": "payments",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "paypal.com",
+   "paypal.me"
+  ],
+  "keywords": [
+   "paypal",
+   "paypai",
+   "pay-pal"
+  ]
+ },
+ {
+  "brand": "Zelle",
+  "category": "payments",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "zelle.com",
+   "zellepay.com"
+  ],
+  "keywords": [
+   "zelle"
+  ]
+ },
+ {
+  "brand": "Venmo",
+  "category": "payments",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "venmo.com"
+  ],
+  "keywords": [
+   "venmo"
+  ]
+ },
+ {
+  "brand": "Cash App",
+  "category": "payments",
+  "regions": [
+   "US",
+   "UK"
+  ],
+  "domains": [
+   "cash.app"
+  ],
+  "keywords": [
+   "cashapp",
+   "cash-app"
+  ]
+ },
+ {
+  "brand": "Royal Mail",
+  "category": "delivery",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "royalmail.com",
+   "royalmailgroup.com",
+   "parcelforce.com"
+  ],
+  "keywords": [
+   "royalmail",
+   "royal-mail",
+   "parcelforce"
+  ]
+ },
+ {
+  "brand": "Evri",
+  "category": "delivery",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "evri.com",
+   "evri.link"
+  ],
+  "keywords": [
+   "evri",
+   "myhermes"
+  ]
+ },
+ {
+  "brand": "DPD",
+  "category": "delivery",
+  "regions": [
+   "UK",
+   "EU"
+  ],
+  "domains": [
+   "dpd.co.uk",
+   "dpdlocal.co.uk",
+   "dpdgroup.co.uk",
+   "dpd.uk",
+   "dpd.com",
+   "dpd.de",
+   "dpd.fr",
+   "dpd.nl",
+   "dpd.be",
+   "dpd.ie",
+   "dpd.at",
+   "dpd.pl",
+   "dpd.lt"
+  ],
+  "keywords": [
+   "dpd",
+   "dpdlocal",
+   "dpdgroup"
+  ]
+ },
+ {
+  "brand": "USPS",
+  "category": "delivery",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "usps.com",
+   "uspis.gov"
+  ],
+  "keywords": [
+   "usps",
+   "uspostal",
+   "postalservice"
+  ]
+ },
+ {
+  "brand": "UPS",
+  "category": "delivery",
+  "regions": [
+   "US",
+   "UK",
+   "EU"
+  ],
+  "domains": [
+   "ups.com"
+  ],
+  "keywords": [
+   "ups"
+  ]
+ },
+ {
+  "brand": "FedEx",
+  "category": "delivery",
+  "regions": [
+   "US",
+   "UK",
+   "EU"
+  ],
+  "domains": [
+   "fedex.com"
+  ],
+  "keywords": [
+   "fedex",
+   "fed-ex"
+  ]
+ },
+ {
+  "brand": "DHL",
+  "category": "delivery",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "dhl.com"
+  ],
+  "keywords": [
+   "dhl"
+  ]
+ },
+ {
+  "brand": "Amazon",
+  "category": "retail",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "amazon.com",
+   "amazon.co.uk",
+   "amazon.de",
+   "amazon.fr",
+   "amazon.es",
+   "amazon.it",
+   "amazon.nl",
+   "aboutamazon.com"
+  ],
+  "keywords": [
+   "amazon",
+   "amaz0n",
+   "amzn"
+  ]
+ },
+ {
+  "brand": "eBay",
+  "category": "marketplace",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "ebay.com",
+   "ebay.co.uk"
+  ],
+  "keywords": [
+   "ebay"
+  ]
+ },
+ {
+  "brand": "Vinted",
+  "category": "marketplace",
+  "regions": [
+   "UK",
+   "EU",
+   "US"
+  ],
+  "domains": [
+   "vinted.com",
+   "vinted.co.uk",
+   "vinted.fr",
+   "vinted.de"
+  ],
+  "keywords": [
+   "vinted"
+  ]
+ },
+ {
+  "brand": "Facebook / Meta",
+  "category": "social",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "facebook.com",
+   "fb.com",
+   "fb.me",
+   "meta.com",
+   "messenger.com"
+  ],
+  "keywords": [
+   "facebook",
+   "meta",
+   "fbmarketplace",
+   "messenger"
+  ]
+ },
+ {
+  "brand": "Instagram",
+  "category": "social",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "instagram.com",
+   "ig.me"
+  ],
+  "keywords": [
+   "instagram",
+   "insta",
+   "lnstagram"
+  ]
+ },
+ {
+  "brand": "WhatsApp",
+  "category": "social",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "whatsapp.com",
+   "wa.me",
+   "whatsapp.net"
+  ],
+  "keywords": [
+   "whatsapp",
+   "whats-app"
+  ]
+ },
+ {
+  "brand": "TikTok",
+  "category": "social",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "tiktok.com"
+  ],
+  "keywords": [
+   "tiktok",
+   "tik-tok"
+  ]
+ },
+ {
+  "brand": "Snapchat",
+  "category": "social",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "snapchat.com"
+  ],
+  "keywords": [
+   "snapchat"
+  ]
+ },
+ {
+  "brand": "Telegram",
+  "category": "social",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "telegram.org",
+   "t.me"
+  ],
+  "keywords": [
+   "telegram"
+  ]
+ },
+ {
+  "brand": "Discord",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "discord.com",
+   "discord.gg",
+   "discordapp.com",
+   "discord.new",
+   "discordapp.net"
+  ],
+  "keywords": [
+   "discord",
+   "dlscord",
+   "disc0rd",
+   "discordnitro",
+   "discord-gift",
+   "nitro"
+  ]
+ },
+ {
+  "brand": "Steam / Valve",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "steampowered.com",
+   "steamcommunity.com",
+   "s.team"
+  ],
+  "keywords": [
+   "steam",
+   "steampowered",
+   "steamcommunity",
+   "stearncommunity",
+   "steamcommunlty"
+  ]
+ },
+ {
+  "brand": "Roblox",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "roblox.com"
+  ],
+  "keywords": [
+   "roblox",
+   "robux",
+   "rblx"
+  ]
+ },
+ {
+  "brand": "Epic Games / Fortnite",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "epicgames.com",
+   "fortnite.com",
+   "unrealengine.com"
+  ],
+  "keywords": [
+   "epicgames",
+   "epic-games",
+   "fortnite",
+   "vbucks",
+   "v-bucks"
+  ]
+ },
+ {
+  "brand": "PlayStation",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "playstation.com"
+  ],
+  "keywords": [
+   "playstation",
+   "psn"
+  ]
+ },
+ {
+  "brand": "Xbox",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "xbox.com"
+  ],
+  "keywords": [
+   "xbox"
+  ]
+ },
+ {
+  "brand": "Nintendo",
+  "category": "gaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "nintendo.com",
+   "nintendo.co.uk"
+  ],
+  "keywords": [
+   "nintendo"
+  ]
+ },
+ {
+  "brand": "Microsoft",
+  "category": "tech",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "microsoft.com",
+   "live.com",
+   "outlook.com",
+   "office.com",
+   "microsoftonline.com",
+   "microsoft365.com"
+  ],
+  "keywords": [
+   "microsoft",
+   "micros0ft",
+   "office365",
+   "outlook",
+   "windows-defender"
+  ]
+ },
+ {
+  "brand": "Apple",
+  "category": "tech",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "apple.com",
+   "icloud.com"
+  ],
+  "keywords": [
+   "apple",
+   "icloud",
+   "appleid",
+   "apple-id"
+  ]
+ },
+ {
+  "brand": "Google",
+  "category": "tech",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "google.com",
+   "google.co.uk",
+   "gmail.com",
+   "youtube.com"
+  ],
+  "keywords": [
+   "google",
+   "gmail",
+   "youtube"
+  ]
+ },
+ {
+  "brand": "Netflix",
+  "category": "streaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "netflix.com"
+  ],
+  "keywords": [
+   "netflix",
+   "netf1ix"
+  ]
+ },
+ {
+  "brand": "Spotify",
+  "category": "streaming",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "spotify.com"
+  ],
+  "keywords": [
+   "spotify"
+  ]
+ },
+ {
+  "brand": "Norton",
+  "category": "tech",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "norton.com"
+  ],
+  "keywords": [
+   "norton",
+   "nortonlifelock"
+  ]
+ },
+ {
+  "brand": "Geek Squad / Best Buy",
+  "category": "tech",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "bestbuy.com",
+   "geeksquad.com"
+  ],
+  "keywords": [
+   "geeksquad",
+   "geek-squad",
+   "bestbuy"
+  ]
+ },
+ {
+  "brand": "Coinbase",
+  "category": "crypto",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "coinbase.com"
+  ],
+  "keywords": [
+   "coinbase"
+  ]
+ },
+ {
+  "brand": "Binance",
+  "category": "crypto",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "binance.com"
+  ],
+  "keywords": [
+   "binance"
+  ]
+ },
+ {
+  "brand": "Ticketmaster",
+  "category": "tickets",
+  "regions": [
+   "UK",
+   "US",
+   "EU"
+  ],
+  "domains": [
+   "ticketmaster.com",
+   "ticketmaster.co.uk"
+  ],
+  "keywords": [
+   "ticketmaster"
+  ]
+ },
+ {
+  "brand": "GOV.UK",
+  "category": "government",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "gov.uk"
+  ],
+  "keywords": [
+   "gov-uk",
+   "govuk",
+   "dvla",
+   "gov.uk"
+  ]
+ },
+ {
+  "brand": "HMRC",
+  "category": "government",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "gov.uk",
+   "hmrc.gov.uk"
+  ],
+  "keywords": [
+   "hmrc",
+   "taxrefund",
+   "tax-refund"
+  ]
+ },
+ {
+  "brand": "Ofgem",
+  "category": "government",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "ofgem.gov.uk"
+  ],
+  "keywords": [
+   "ofgem",
+   "energy-rebate"
+  ]
+ },
+ {
+  "brand": "IRS",
+  "category": "government",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "irs.gov"
+  ],
+  "keywords": [
+   "irs",
+   "irs-gov",
+   "taxrefund"
+  ]
+ },
+ {
+  "brand": "E-ZPass",
+  "category": "government",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "e-zpassiag.com",
+   "e-zpassgroup.org",
+   "e-zpassny.com"
+  ],
+  "keywords": [
+   "ezpass",
+   "e-zpass",
+   "tollservice",
+   "toll"
+  ]
+ },
+ {
+  "brand": "SunPass",
+  "category": "government",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "sunpass.com"
+  ],
+  "keywords": [
+   "sunpass"
+  ]
+ },
+ {
+  "brand": "ING",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "ing.com",
+   "ing.nl",
+   "ing.de",
+   "ing-diba.de",
+   "ing.be",
+   "ing.es",
+   "ing.it",
+   "ing.pl",
+   "ing.ro",
+   "ing.lu"
+  ],
+  "keywords": [
+   "ing",
+   "ingbank",
+   "mijning"
+  ]
+ },
+ {
+  "brand": "ABN AMRO",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "abnamro.nl",
+   "abnamro.com"
+  ],
+  "keywords": [
+   "abnamro",
+   "abn-amro"
+  ]
+ },
+ {
+  "brand": "Rabobank",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "rabobank.nl",
+   "rabobank.com"
+  ],
+  "keywords": [
+   "rabobank",
+   "rabo-bank"
+  ]
+ },
+ {
+  "brand": "bunq",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "bunq.com",
+   "bunq.me"
+  ],
+  "keywords": [
+   "bunq"
+  ]
+ },
+ {
+  "brand": "N26",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "n26.com",
+   "n26.de"
+  ],
+  "keywords": [
+   "n26",
+   "n26bank"
+  ]
+ },
+ {
+  "brand": "Deutsche Bank",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "deutsche-bank.de",
+   "db.com"
+  ],
+  "keywords": [
+   "deutschebank",
+   "deutsche-bank"
+  ]
+ },
+ {
+  "brand": "Sparkasse",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "sparkasse.de"
+  ],
+  "keywords": []
+ },
+ {
+  "brand": "Commerzbank",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "commerzbank.de",
+   "commerzbank.com"
+  ],
+  "keywords": [
+   "commerzbank"
+  ]
+ },
+ {
+  "brand": "BNP Paribas",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "mabanque.bnpparibas",
+   "group.bnpparibas",
+   "bnpparibas.com",
+   "bnpparibas.fr"
+  ],
+  "keywords": [
+   "bnpparibas",
+   "bnp-paribas"
+  ]
+ },
+ {
+  "brand": "Société Générale",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "societegenerale.fr",
+   "societegenerale.com",
+   "sg.fr"
+  ],
+  "keywords": [
+   "societegenerale",
+   "societe-generale"
+  ]
+ },
+ {
+  "brand": "Crédit Agricole",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "credit-agricole.fr",
+   "credit-agricole.com"
+  ],
+  "keywords": [
+   "creditagricole",
+   "credit-agricole"
+  ]
+ },
+ {
+  "brand": "La Banque Postale",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "labanquepostale.fr"
+  ],
+  "keywords": [
+   "labanquepostale",
+   "banquepostale"
+  ]
+ },
+ {
+  "brand": "Santander (Spain / Europe)",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "santander.es",
+   "bancosantander.es",
+   "santander.com",
+   "santander.pt",
+   "santander.de",
+   "santander.pl"
+  ],
+  "keywords": [
+   "bancosantander"
+  ]
+ },
+ {
+  "brand": "BBVA",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "bbva.es",
+   "bbva.com"
+  ],
+  "keywords": [
+   "bbva"
+  ]
+ },
+ {
+  "brand": "CaixaBank",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "caixabank.es",
+   "caixabank.com"
+  ],
+  "keywords": [
+   "caixabank",
+   "caixa-bank"
+  ]
+ },
+ {
+  "brand": "Intesa Sanpaolo",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "intesasanpaolo.com"
+  ],
+  "keywords": [
+   "intesasanpaolo",
+   "intesa-sanpaolo"
+  ]
+ },
+ {
+  "brand": "UniCredit",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "unicredit.it",
+   "unicredit.eu",
+   "unicreditgroup.eu"
+  ],
+  "keywords": [
+   "unicredit"
+  ]
+ },
+ {
+  "brand": "AIB",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "aib.ie"
+  ],
+  "keywords": [
+   "aib",
+   "aibireland"
+  ]
+ },
+ {
+  "brand": "Bank of Ireland",
+  "category": "bank",
+  "regions": [
+   "EU",
+   "UK"
+  ],
+  "domains": [
+   "bankofireland.com",
+   "boi.com"
+  ],
+  "keywords": [
+   "bankofireland",
+   "bank-of-ireland"
+  ]
+ },
+ {
+  "brand": "Swedbank",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "swedbank.se",
+   "swedbank.lt",
+   "swedbank.ee",
+   "swedbank.lv",
+   "swedbank.com"
+  ],
+  "keywords": [
+   "swedbank"
+  ]
+ },
+ {
+  "brand": "SEB",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "seb.se",
+   "seb.lt",
+   "seb.ee",
+   "seb.lv"
+  ],
+  "keywords": [
+   "sebbank",
+   "seb-bank"
+  ]
+ },
+ {
+  "brand": "Luminor",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "luminor.lt",
+   "luminor.ee",
+   "luminor.lv",
+   "luminor.com"
+  ],
+  "keywords": [
+   "luminor"
+  ]
+ },
+ {
+  "brand": "Šiaulių bankas (now Artea)",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "sb.lt"
+  ],
+  "keywords": [
+   "siauliubankas",
+   "siauliu-bankas"
+  ]
+ },
+ {
+  "brand": "PKO Bank Polski",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "pkobp.pl",
+   "ipko.pl"
+  ],
+  "keywords": [
+   "pkobp",
+   "pko-bp",
+   "ipko"
+  ]
+ },
+ {
+  "brand": "mBank",
+  "category": "bank",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "mbank.pl"
+  ],
+  "keywords": [
+   "mbank"
+  ]
+ },
+ {
+  "brand": "Wise",
+  "category": "payments",
+  "regions": [
+   "UK",
+   "EU",
+   "US"
+  ],
+  "domains": [
+   "wise.com",
+   "transferwise.com"
+  ],
+  "keywords": [
+   "transferwise",
+   "wisetransfer",
+   "wise-transfer"
+  ]
+ },
+ {
+  "brand": "Klarna",
+  "category": "payments",
+  "regions": [
+   "EU",
+   "UK",
+   "US"
+  ],
+  "domains": [
+   "klarna.com"
+  ],
+  "keywords": [
+   "klarna"
+  ]
+ },
+ {
+  "brand": "Deutsche Post / DHL Germany",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "deutschepost.de",
+   "dhl.de"
+  ],
+  "keywords": [
+   "deutschepost",
+   "deutsche-post"
+  ]
+ },
+ {
+  "brand": "Hermes Germany",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "myhermes.de",
+   "hermesworld.com"
+  ],
+  "keywords": [
+   "hermesworld"
+  ]
+ },
+ {
+  "brand": "GLS",
+  "category": "delivery",
+  "regions": [
+   "EU",
+   "UK"
+  ],
+  "domains": [
+   "gls-pakete.de"
+  ],
+  "keywords": [
+   "glspakete",
+   "gls-pakete"
+  ]
+ },
+ {
+  "brand": "La Poste / Colissimo",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "laposte.fr",
+   "colissimo.fr"
+  ],
+  "keywords": [
+   "laposte",
+   "la-poste",
+   "colissimo"
+  ]
+ },
+ {
+  "brand": "Chronopost",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "chronopost.fr"
+  ],
+  "keywords": [
+   "chronopost"
+  ]
+ },
+ {
+  "brand": "Correos",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "correos.es",
+   "correos.com"
+  ],
+  "keywords": [
+   "correos"
+  ]
+ },
+ {
+  "brand": "Poste Italiane",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "posteitaliane.it"
+  ],
+  "keywords": [
+   "posteitaliane",
+   "poste-italiane"
+  ]
+ },
+ {
+  "brand": "An Post",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "anpost.com",
+   "anpost.ie"
+  ],
+  "keywords": [
+   "anpost",
+   "an-post"
+  ]
+ },
+ {
+  "brand": "bpost",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "bpost.be"
+  ],
+  "keywords": [
+   "bpost"
+  ]
+ },
+ {
+  "brand": "Omniva",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "omniva.lt",
+   "omniva.ee",
+   "omniva.lv"
+  ],
+  "keywords": [
+   "omniva"
+  ]
+ },
+ {
+  "brand": "Lietuvos paštas / LP Express",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "post.lt",
+   "lpexpress.lt"
+  ],
+  "keywords": [
+   "lietuvospastas",
+   "lpexpress",
+   "lp-express"
+  ]
+ },
+ {
+  "brand": "InPost",
+  "category": "delivery",
+  "regions": [
+   "EU",
+   "UK"
+  ],
+  "domains": [
+   "inpost.pl",
+   "inpost.eu",
+   "inpost.co.uk"
+  ],
+  "keywords": [
+   "inpost"
+  ]
+ },
+ {
+  "brand": "PostNL",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "postnl.nl",
+   "postnl.com",
+   "postnl.be"
+  ],
+  "keywords": [
+   "postnl"
+  ]
+ },
+ {
+  "brand": "Swiss Post",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "post.ch"
+  ],
+  "keywords": [
+   "swisspost"
+  ]
+ },
+ {
+  "brand": "Austrian Post",
+  "category": "delivery",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "post.at"
+  ],
+  "keywords": [
+   "austrianpost"
+  ]
+ },
+ {
+  "brand": "Bol",
+  "category": "marketplace",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "bol.com"
+  ],
+  "keywords": []
+ },
+ {
+  "brand": "Zalando",
+  "category": "retail",
+  "regions": [
+   "EU",
+   "UK"
+  ],
+  "domains": [
+   "zalando.com",
+   "zalando.de",
+   "zalando.fr",
+   "zalando.nl",
+   "zalando.it",
+   "zalando.es",
+   "zalando.pl",
+   "zalando.be",
+   "zalando.at",
+   "zalando.ch",
+   "zalando.se",
+   "zalando.dk",
+   "zalando.fi",
+   "zalando.no",
+   "zalando.co.uk",
+   "zalando.ie",
+   "zalando.cz"
+  ],
+  "keywords": [
+   "zalando"
+  ]
+ },
+ {
+  "brand": "Booking.com",
+  "category": "travel",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "booking.com"
+  ],
+  "keywords": [
+   "bookingcom",
+   "booking-com"
+  ]
+ },
+ {
+  "brand": "Airbnb",
+  "category": "travel",
+  "regions": [
+   "global"
+  ],
+  "domains": [
+   "airbnb.com",
+   "airbnb.co.uk",
+   "airbnb.ie",
+   "airbnb.de",
+   "airbnb.fr",
+   "airbnb.es",
+   "airbnb.it",
+   "airbnb.nl",
+   "airbnb.be",
+   "airbnb.at",
+   "airbnb.pt",
+   "airbnb.pl",
+   "airbnb.se",
+   "airbnb.dk",
+   "airbnb.fi",
+   "airbnb.ch"
+  ],
+  "keywords": [
+   "airbnb",
+   "air-bnb"
+  ]
+ },
+ {
+  "brand": "Allegro",
+  "category": "marketplace",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "allegro.pl",
+   "allegro.cz",
+   "allegro.sk",
+   "allegro.hu"
+  ],
+  "keywords": [
+   "allegro"
+  ]
+ },
+ {
+  "brand": "Wallapop",
+  "category": "marketplace",
+  "regions": [
+   "EU",
+   "UK"
+  ],
+  "domains": [
+   "wallapop.com"
+  ],
+  "keywords": [
+   "wallapop"
+  ]
+ },
+ {
+  "brand": "Leboncoin",
+  "category": "marketplace",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "leboncoin.fr"
+  ],
+  "keywords": [
+   "leboncoin",
+   "le-bon-coin"
+  ]
+ },
+ {
+  "brand": "Marktplaats",
+  "category": "marketplace",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "marktplaats.nl"
+  ],
+  "keywords": [
+   "marktplaats"
+  ]
+ },
+ {
+  "brand": "Kleinanzeigen",
+  "category": "marketplace",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "kleinanzeigen.de"
+  ],
+  "keywords": []
+ },
+ {
+  "brand": "OLX",
+  "category": "marketplace",
+  "regions": [
+   "EU",
+   "global"
+  ],
+  "domains": [
+   "olx.pl",
+   "olx.pt",
+   "olx.ro",
+   "olx.bg",
+   "olx.com",
+   "olx.ua",
+   "olx.uz",
+   "olx.com.br",
+   "olx.in",
+   "olxgroup.com"
+  ],
+  "keywords": [
+   "olx"
+  ]
+ },
+ {
+  "brand": "Revenue (Ireland) / gov.ie",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "revenue.ie",
+   "gov.ie"
+  ],
+  "keywords": [
+   "revenueie",
+   "revenue-ie"
+  ]
+ },
+ {
+  "brand": "impots.gouv.fr (DGFiP)",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "impots.gouv.fr"
+  ],
+  "keywords": [
+   "impotsgouv",
+   "impots-gouv",
+   "impot-gouv"
+  ]
+ },
+ {
+  "brand": "Belastingdienst",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "belastingdienst.nl"
+  ],
+  "keywords": [
+   "belastingdienst",
+   "belasting-dienst"
+  ]
+ },
+ {
+  "brand": "ELSTER (Finanzamt)",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "elster.de"
+  ],
+  "keywords": [
+   "elsterde",
+   "mein-elster",
+   "elsteronline"
+  ]
+ },
+ {
+  "brand": "Agencia Tributaria",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "agenciatributaria.es",
+   "agenciatributaria.gob.es"
+  ],
+  "keywords": [
+   "agenciatributaria",
+   "agencia-tributaria"
+  ]
+ },
+ {
+  "brand": "Agenzia delle Entrate",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "agenziaentrate.gov.it"
+  ],
+  "keywords": [
+   "agenziaentrate",
+   "agenzia-entrate"
+  ]
+ },
+ {
+  "brand": "VMI (Lithuanian tax)",
+  "category": "government",
+  "regions": [
+   "EU"
+  ],
+  "domains": [
+   "vmi.lt"
+  ],
+  "keywords": []
+ },
+ {
+  "brand": "Citi",
+  "category": "bank",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "citi.com",
+   "citibank.com"
+  ],
+  "keywords": [
+   "citi",
+   "citibank"
+  ]
+ },
+ {
+  "brand": "U.S. Bank",
+  "category": "bank",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "usbank.com"
+  ],
+  "keywords": [
+   "usbank",
+   "us-bank"
+  ]
+ },
+ {
+  "brand": "Discover",
+  "category": "bank",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "discovercard.com"
+  ],
+  "keywords": [
+   "discovercard",
+   "discover-card"
+  ]
+ },
+ {
+  "brand": "American Express",
+  "category": "payments",
+  "regions": [
+   "US",
+   "UK",
+   "EU"
+  ],
+  "domains": [
+   "americanexpress.com"
+  ],
+  "keywords": [
+   "americanexpress",
+   "american-express",
+   "amex"
+  ]
+ },
+ {
+  "brand": "Barclaycard",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "barclaycard.co.uk",
+   "barclaycard.com"
+  ],
+  "keywords": [
+   "barclaycard"
+  ]
+ },
+ {
+  "brand": "Virgin Money",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "virginmoney.com"
+  ],
+  "keywords": [
+   "virginmoney",
+   "virgin-money"
+  ]
+ },
+ {
+  "brand": "Co-operative Bank",
+  "category": "bank",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "co-operativebank.co.uk"
+  ],
+  "keywords": [
+   "co-operativebank",
+   "cooperativebank",
+   "coopbank"
+  ]
+ },
+ {
+  "brand": "BT",
+  "category": "telecom",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "bt.com"
+  ],
+  "keywords": [
+   "btbroadband",
+   "btbilling",
+   "btmobile"
+  ]
+ },
+ {
+  "brand": "Vodafone",
+  "category": "telecom",
+  "regions": [
+   "UK",
+   "EU"
+  ],
+  "domains": [
+   "vodafone.co.uk",
+   "vodafone.com",
+   "vodafone.de",
+   "vodafone.ie",
+   "vodafone.es",
+   "vodafone.it",
+   "vodafone.nl",
+   "vodafone.pt"
+  ],
+  "keywords": [
+   "vodafone"
+  ]
+ },
+ {
+  "brand": "EE",
+  "category": "telecom",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "ee.co.uk"
+  ],
+  "keywords": [
+   "eemobile",
+   "eebilling"
+  ]
+ },
+ {
+  "brand": "O2 / Virgin Media O2",
+  "category": "telecom",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "o2.co.uk",
+   "virginmediao2.co.uk"
+  ],
+  "keywords": [
+   "o2uk",
+   "o2billing",
+   "virginmediao2"
+  ]
+ },
+ {
+  "brand": "Sky",
+  "category": "telecom",
+  "regions": [
+   "UK",
+   "EU"
+  ],
+  "domains": [
+   "sky.com"
+  ],
+  "keywords": [
+   "skybroadband",
+   "skymobile",
+   "skybilling"
+  ]
+ },
+ {
+  "brand": "Verizon",
+  "category": "telecom",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "verizon.com"
+  ],
+  "keywords": [
+   "verizon"
+  ]
+ },
+ {
+  "brand": "AT&T",
+  "category": "telecom",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "att.com",
+   "att.net"
+  ],
+  "keywords": [
+   "attwireless",
+   "att-wireless"
+  ]
+ },
+ {
+  "brand": "T-Mobile",
+  "category": "telecom",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "t-mobile.com"
+  ],
+  "keywords": [
+   "t-mobile",
+   "tmobile"
+  ]
+ },
+ {
+  "brand": "Xfinity / Comcast",
+  "category": "telecom",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "xfinity.com",
+   "comcast.com",
+   "comcast.net"
+  ],
+  "keywords": [
+   "xfinity",
+   "comcast"
+  ]
+ },
+ {
+  "brand": "Medicare",
+  "category": "government",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "medicare.gov"
+  ],
+  "keywords": [
+   "medicaregov",
+   "medicare-gov"
+  ]
+ },
+ {
+  "brand": "Medicaid",
+  "category": "government",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "medicaid.gov"
+  ],
+  "keywords": []
+ },
+ {
+  "brand": "Social Security Administration",
+  "category": "government",
+  "regions": [
+   "US"
+  ],
+  "domains": [
+   "ssa.gov"
+  ],
+  "keywords": [
+   "socialsecurity",
+   "ssagov",
+   "ssa-gov"
+  ]
+ },
+ {
+  "brand": "TV Licensing",
+  "category": "government",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "tvlicensing.co.uk"
+  ],
+  "keywords": [
+   "tvlicensing",
+   "tvlicence",
+   "tv-licence"
+  ]
+ },
+ {
+  "brand": "NHS",
+  "category": "government",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "nhs.uk",
+   "nhs.net",
+   "nhs.scot"
+  ],
+  "keywords": [
+   "nhs"
+  ]
+ },
+ {
+  "brand": "Yodel",
+  "category": "delivery",
+  "regions": [
+   "UK"
+  ],
+  "domains": [
+   "yodel.co.uk"
+  ],
+  "keywords": [
+   "yodel"
+  ]
+ }
+]

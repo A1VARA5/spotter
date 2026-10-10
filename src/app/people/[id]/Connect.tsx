@@ -1,10 +1,10 @@
 "use client";
 // Connection cards for one person. Agents get a token shown once; people pair by sending a code.
 import { useState } from "react";
-import { Bot, Check, Copy, Mail, Send } from "lucide-react";
+import { Bot, Check, Copy, Mail, Send, MessageSquare } from "lucide-react";
 import { readJson } from "@/ui/http";
 
-type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null };
+type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null };
 
 function CopyBlock({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -118,10 +118,11 @@ function AgentCard({ spender }: { spender: SpenderView }) {
   );
 }
 
-function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; channel: "email" | "telegram"; inbox: string | null; bot: string | null }) {
+function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; channel: "email" | "telegram" | "discord"; inbox: string | null; bot: string | null }) {
   const c = useCall<{ code: string }>();
-  const connected = channel === "email" ? spender.email : spender.telegram;
-  const Icon = channel === "email" ? Mail : Send;
+  const connected = channel === "email" ? spender.email : channel === "telegram" ? spender.telegram : spender.discord;
+  const Icon = channel === "email" ? Mail : channel === "telegram" ? Send : MessageSquare;
+  const title = { email: "Email", telegram: "Telegram", discord: "Discord" }[channel];
   return (
     <article className="connect-card">
       <header className="connect-head">
@@ -129,11 +130,13 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
           <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
         </span>
         <div>
-          <h3 className="connect-title">{channel === "email" ? "Email" : "Telegram"}</h3>
+          <h3 className="connect-title">{title}</h3>
           <p className="connect-sub">
             {channel === "email"
               ? `${spender.name} forwards any email that asks for money to ${inbox}. Spotter checks it and replies in the same thread.`
-              : `${spender.name} sends or forwards payment requests to the Spotter bot on Telegram.`}
+              : channel === "telegram"
+                ? `${spender.name} sends or forwards payment requests to the Spotter bot on Telegram.`
+                : `${spender.name} right clicks a message on Discord and picks Check with Spotter.`}
           </p>
         </div>
         <span className="connect-status" data-on={Boolean(connected)}>
@@ -149,6 +152,19 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
             <CopyBlock label="Pairing code" value={c.data.code} />
             <p>2. Spotter replies to confirm. The code works once and lasts 24 hours.</p>
           </div>
+        ) : channel === "discord" ? (
+          <div className="connect-steps">
+            <p>
+              1. {spender.name} adds Spotter to their Discord account:{" "}
+              <a href={`https://discord.com/oauth2/authorize?client_id=${bot}`} target="_blank" rel="noopener noreferrer">
+                add the app
+              </a>
+              .
+            </p>
+            <p>2. In any chat, they type this and press enter:</p>
+            <CopyBlock label="Discord command" value={`/spotter connect code:${c.data.code}`} />
+            <p>3. That&apos;s it. The code works once and lasts 24 hours.</p>
+          </div>
         ) : (
           <div className="connect-steps">
             <p>1. Open this link on {spender.name}&apos;s phone and tap Start:</p>
@@ -159,7 +175,7 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
       ) : (
         <div>
           <button className="btn btn-quiet" disabled={c.busy} onClick={() => c.call(`/api/spenders/${spender.id}/pair`, { channel })}>
-            {c.busy ? "Making a code" : connected ? "Connect a different one" : `Connect ${channel === "email" ? "email" : "Telegram"}`}
+            {c.busy ? "Making a code" : connected ? "Connect a different one" : `Connect ${channel === "email" ? "email" : title}`}
           </button>
         </div>
       )}
@@ -172,7 +188,7 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
   );
 }
 
-export function Connect({ spender, inbox, telegramBot }: { spender: SpenderView; inbox: string | null; telegramBot: string | null }) {
+export function Connect({ spender, inbox, telegramBot, discordApp }: { spender: SpenderView; inbox: string | null; telegramBot: string | null; discordApp: string | null }) {
   if (spender.kind === "agent")
     return (
       <div className="connect-grid">
@@ -183,7 +199,8 @@ export function Connect({ spender, inbox, telegramBot }: { spender: SpenderView;
     <div className="connect-grid">
       {inbox && <CodeCard spender={spender} channel="email" inbox={inbox} bot={telegramBot} />}
       {telegramBot && <CodeCard spender={spender} channel="telegram" inbox={inbox} bot={telegramBot} />}
-      {!inbox && !telegramBot && <p className="lede">No channels are switched on for this Spotter yet.</p>}
+      {discordApp && <CodeCard spender={spender} channel="discord" inbox={inbox} bot={discordApp} />}
+      {!inbox && !telegramBot && !discordApp && <p className="lede">No channels are switched on for this Spotter yet.</p>}
     </div>
   );
 }

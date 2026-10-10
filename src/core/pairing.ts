@@ -5,7 +5,7 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto
 import type { Db } from "@/db";
 import { getSpender, type Spender } from "./lifecycle";
 
-export type Channel = "email" | "telegram";
+export type Channel = "email" | "telegram" | "discord";
 export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 const CODE_HOURS = 24;
 const MAX_FAILURES_PER_HOUR = 10;
@@ -54,7 +54,7 @@ export async function redeemPairingCode(
     await db.query("insert into pairing_failures (identity) values ($1)", [identity]);
     return null;
   }
-  const column = channel === "email" ? "email" : "telegram_chat_id";
+  const column = channel === "email" ? "email" : channel === "telegram" ? "telegram_chat_id" : "discord_user_id";
   if (hit.spender_id) {
     // An address or chat belongs to one person at a time: pairing it here unpairs it anywhere else.
     await db.query(`update spenders set ${column} = null where lower(${column}) = lower($1)`, [value]);
@@ -62,7 +62,7 @@ export async function redeemPairingCode(
     return { householdId: hit.household_id, spender: await getSpender(db, hit.spender_id) };
   }
   // The spotter's own email is where alerts go, so it lives in its own column (PayPal's email may be a sandbox one).
-  const hhColumn = channel === "email" ? "alert_email" : "telegram_chat_id";
+  const hhColumn = channel === "email" ? "alert_email" : channel === "telegram" ? "telegram_chat_id" : "discord_user_id";
   await db.query(`update households set ${hhColumn} = $2 where id = $1`, [hit.household_id, value]);
   return { householdId: hit.household_id, spender: null };
 }

@@ -23,9 +23,12 @@ describe("decide", () => {
     expect(decide(rules(hit("allowance", "block")), ai(), small).outcome).toBe("block");
   });
 
-  it("blocks on a high prompt injection or impersonation flag", () => {
+  it("blocks on a high prompt injection flag", () => {
     expect(decide(rules(), ai([flag("prompt_injection", "high")]), small).outcome).toBe("block");
-    expect(decide(rules(), ai([flag("impersonation", "high")]), small).outcome).toBe("block");
+  });
+
+  it("holds on high impersonation: it might really be family, so the spotter checks before it's paid", () => {
+    expect(decide(rules(), ai([flag("impersonation", "high")]), small).outcome).toBe("ask");
   });
 
   it("protects on a Friends & Family rule or flag", () => {

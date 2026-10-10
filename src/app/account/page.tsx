@@ -17,7 +17,16 @@ export default async function AccountPage() {
       <p className="lede" style={{ margin: "8px 0 8px" }}>
         {household.demo ? "This is a demo family. It's yours alone and is deleted after 48 hours." : "You signed in with PayPal (sandbox)."}
       </p>
-      <Account spotterName={household.spotter_name} alertEmail={household.alert_email} inbox={process.env.AGENTBOXD_INBOX_ADDRESS ?? null} demo={household.demo} />
+      <Account
+        spotterName={household.spotter_name}
+        alertEmail={household.alert_email}
+        inbox={process.env.AGENTBOXD_INBOX_ADDRESS ?? null}
+        demo={household.demo}
+        telegramBot={process.env.TELEGRAM_BOT_USERNAME ?? null}
+        telegramConnected={Boolean(household.telegram_chat_id)}
+        discordApp={process.env.DISCORD_BOT_TOKEN ? (process.env.DISCORD_APPLICATION_ID ?? null) : null}
+        discordConnected={Boolean(household.discord_user_id)}
+      />
     </AppShell>
   );
 }

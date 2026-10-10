@@ -1,14 +1,14 @@
 // The signed in app frame: a sidebar with the household, navigation with live counts and the people, like a
 // real product app. On phones the sidebar becomes a bottom tab bar.
 import Link from "next/link";
-import { Activity, FlaskConical, Inbox, Plus, UserRound } from "lucide-react";
+import { Activity, Binoculars, FlaskConical, Inbox, Plus, UserRound } from "lucide-react";
 import type { Db } from "@/db";
 import type { Household } from "@/core/households";
 import { listSpenders } from "@/core/households";
 import { BrandMark } from "./components";
 import { SignOut } from "./SignOut";
 
-export type Section = "waiting" | "activity" | "try" | "account" | `person:${string}`;
+export type Section = "waiting" | "watchtower" | "activity" | "try" | "account" | `person:${string}`;
 
 const KIND: Record<string, string> = { person: "Relative", kid: "Kid", agent: "AI agent" };
 
@@ -21,6 +21,7 @@ export async function AppShell({ db, household, current, wide = false, children 
   const waiting = Number(w?.n ?? 0);
   const nav = [
     { key: "waiting", href: "/dashboard", label: "Waiting for you", icon: Inbox, count: waiting },
+    { key: "watchtower", href: "/watchtower", label: "Watchtower", icon: Binoculars },
     { key: "activity", href: "/ledger", label: "Activity", icon: Activity },
     { key: "try", href: "/demo", label: "Try a payment", icon: FlaskConical },
     { key: "account", href: "/account", label: "Account", icon: UserRound },
@@ -76,7 +77,7 @@ export async function AppShell({ db, household, current, wide = false, children 
         {nav.map((n) => (
           <Link key={n.key} href={n.href} className="tab" aria-current={current === n.key ? "page" : undefined}>
             <n.icon size={20} strokeWidth={1.8} aria-hidden="true" />
-            <span>{n.label.replace("Waiting for you", "Waiting").replace("Try a payment", "Try")}</span>
+            <span>{n.label.replace("Waiting for you", "Waiting").replace("Try a payment", "Try").replace("Watchtower", "Watch")}</span>
             {"count" in n && n.count > 0 && <span className="tab-count num">{n.count}</span>}
           </Link>
         ))}

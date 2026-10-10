@@ -8,6 +8,8 @@ import { checkRules, normName } from "./rules";
 import { decide, type Decision } from "./decide";
 import type { Allowance, Currency, Money, PaymentMethod, PaymentRequest } from "./types";
 import { priceCheck, type MarketResult, type Offer } from "./market";
+import { fileReport } from "./network";
+import type { Case } from "@/agents/case";
 
 export type Deps = {
   db: Db;
@@ -16,12 +18,18 @@ export type Deps = {
   market?: (item: string, currency: Currency) => Promise<Offer[] | null>;
   /** Tells the spotter about a payment that needs them or was stopped. Failures are logged, never fatal. */
   notify?: (payment: Payment, spender: Spender) => Promise<void>;
+  /** Looks into a held or stopped payment and files a case for the spotter (the case agent). Optional. */
+  investigate?: (payment: Payment, spender: Spender) => Promise<Case>;
+  /** Tells the person who wanted to pay what their spotter decided. Failures are logged, never fatal. */
+  decided?: (payment: Payment, spender: Spender) => Promise<void>;
+  /** Runs work after the response is sent (Next's after()). Without it, follow up work runs inline. */
+  defer?: (task: () => Promise<void>) => void;
   paypal: {
     createAuthorizeOrder: typeof createAuthorizeOrder;
     captureAuthorization: typeof captureAuthorization;
     voidAuthorization: typeof voidAuthorization;
     /** Looks up an authorisation's status at PayPal. Optional: only reconciliation needs it. */
-    getAuthorization?: (authorizationId: string) => Promise<{ status: string }>;
+    getAuthorization?: (authorizationId: string) => Promise<{ status: string; expiresAt?: string }>;
   };
 };
 
@@ -34,6 +42,7 @@ export type Spender = {
   spotter_name: string;
   email: string | null;
   telegram_chat_id: string | null;
+  discord_user_id: string | null;
   allowance: Omit<Allowance, "spentThisWeek">;
 };
 export type NewSpender = { id: string; householdId: string; name: string; kind: SpenderKind; spotterName: string; allowance: Omit<Allowance, "spentThisWeek"> };
@@ -45,6 +54,7 @@ export type Payment = {
   decision: Decision | null;
   ai: AiCheckResult | null;
   market: (MarketResult & { item: string }) | null;
+  case_file: Case | null;
   status: PaymentStatus;
   amount: string | number;
   currency: string;
@@ -178,6 +188,30 @@ const errText = (e: unknown) => {
     .join(" ");
 };
 
+/** Lets the person know the spotter's answer. Best effort: the decision already stands. */
+async function tellDecided(deps: Deps, p: Payment) {
+  if (!deps.decided) return;
+  try {
+    const spender = await getSpender(deps.db, p.spender_id);
+    if (spender) await deps.decided(p, spender);
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    console.error(`[spotter] telling the payer about ${p.id} failed: ${error}`);
+    await event(deps.db, p.id, "tell_failed", { error }).catch(() => {});
+  }
+}
+
+/** Tell the Spotter network about a payee a family said no to. Best effort: it never changes the payment. */
+async function report(db: Db, paymentId: string, householdId: string, identifier: string, kind: "denied" | "blocked") {
+  try {
+    await fileReport(db, { householdId, identifier, kind });
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    console.error(`[spotter] network report for ${paymentId} failed: ${error}`);
+    await event(db, paymentId, "report_failed", { error }).catch(() => {});
+  }
+}
+
 /** Record a failure on a payment. Never throws: the original error matters more than a logging hiccup. */
 async function fail(db: Db, id: string, step: string, e: unknown, extra: Record<string, unknown> = {}): Promise<Payment> {
   const error = errText(e);
@@ -207,14 +241,45 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
   } catch (e) {
     return fail(db, id, "check", e);
   }
-  if (deps.notify && ["needs_approval", "blocked", "protected"].includes(result.status)) {
-    await deps.notify(result, spender).catch(async (e) => {
+  if (["needs_approval", "blocked", "protected"].includes(result.status)) {
+    const followUp = () => investigateAndAlert(deps, result, spender);
+    if (deps.defer) deps.defer(followUp);
+    else await followUp();
+  }
+  return result;
+}
+
+const CASE_CAP_MS = 45_000;
+
+/** The case first (so the alert can carry it), then the alert. Neither can change the payment's status. */
+async function investigateAndAlert(deps: Deps, payment: Payment, spender: Spender): Promise<void> {
+  const { db } = deps;
+  const id = payment.id;
+  let current = payment;
+  if (deps.investigate) {
+    try {
+      // Hard cap on top of the agent's own budget, so a stuck case can never hold back the alert for long.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const c = await Promise.race([
+        deps.investigate(payment, spender),
+        new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("the case took too long")), CASE_CAP_MS))),
+      ]).finally(() => clearTimeout(timer));
+      const rows = await db.query<Payment>("update payments set case_file = $2 where id = $1 returning *", [id, JSON.stringify(c)]);
+      current = rows[0] ?? current;
+      await event(db, id, "case_built", { status: c.status, verdict: c.verdict, calls: c.calls.length, ms: c.ms, ...(c.error ? { error: c.error } : {}) });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      console.error(`[spotter] case for ${id} failed: ${error}`);
+      await event(db, id, "case_failed", { error }).catch(() => {});
+    }
+  }
+  if (deps.notify) {
+    await deps.notify(current, spender).catch(async (e) => {
       const error = e instanceof Error ? e.message : String(e);
       console.error(`[spotter] alert for ${id} failed:`, error);
       await event(db, id, "alert_failed", { error }).catch(() => {});
     });
   }
-  return result;
 }
 
 async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest): Promise<Payment> {
@@ -241,7 +306,11 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest):
   const decision = decide(rules, ai, { amount: req.money.amount, askAbove: allowance.askAbove.amount });
   await event(db, id, "decided", { outcome: decision.outcome });
 
-  if (decision.outcome === "block") return setStatus(db, id, "blocked", { decision, ai });
+  if (decision.outcome === "block") {
+    // Only strong scam signs go to the network; an over budget block says nothing about the payee.
+    if (ai.flags.some((f) => f.severity === "high")) await report(db, id, spender.household_id, req.payee.name, "blocked");
+    return setStatus(db, id, "blocked", { decision, ai });
+  }
   if (decision.outcome === "protect") return setStatus(db, id, "protected", { decision, ai });
 
   let hold;
@@ -281,7 +350,9 @@ async function capture(deps: Deps, id: string, from: PaymentStatus, by: string):
     return fail(db, id, "capture", e);
   }
   await event(db, id, "captured", { captureId: c.captureId });
-  return setStatus(db, id, "captured", { paypal_capture_id: c.captureId });
+  const done = await setStatus(db, id, "captured", { paypal_capture_id: c.captureId });
+  if (from === "needs_approval") await tellDecided(deps, done);
+  return done;
 }
 
 export const approve = (deps: Deps, id: string, by: string) => capture(deps, id, "needs_approval", by);
@@ -297,11 +368,63 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
     return fail(db, id, "void", e);
   }
   await event(db, id, "voided");
-  return setStatus(db, id, "voided");
+  const spender = await getSpender(db, claimed.spender_id);
+  if (spender) await report(db, id, spender.household_id, claimed.request.payee.name, "denied");
+  const done = await setStatus(db, id, "voided");
+  await tellDecided(deps, done);
+  return done;
 }
 
 /** A check that was cut off (the server stopped mid way) never finished. Nothing reached PayPal's capture, so it
  * is marked failed and stops counting against the allowance. Holds stuck mid capture are left for a person. */
+/**
+ * The safe swap: the spotter turns down a held payment and pays the genuine shop the case agent found instead.
+ * The old hold is voided first; only when that worked is the new payment made, already approved by the spotter.
+ */
+export async function swap(deps: Deps, id: string, by: string): Promise<{ from: Payment; to: Payment | null }> {
+  const { db } = deps;
+  const before = await getPayment(db, id);
+  if (!before) throw new Error("No such payment.");
+  if (before.status !== "needs_approval") throw new Error(`This payment is already ${before.status}.`);
+  const offer = before.case_file?.swap;
+  if (!offer) throw new Error("Spotter found no safer option for this payment.");
+
+  const from = await deny(deps, id, by);
+  if (from.status !== "voided") return { from, to: null };
+
+  const spender = (await getSpender(db, before.spender_id))!;
+  const newIdValue = newId();
+  const req: PaymentRequest = {
+    id: newIdValue,
+    spenderId: spender.id,
+    money: { amount: offer.price, currency: offer.currency as Currency },
+    payee: { name: offer.domain, isNew: true },
+    category: before.request.category,
+    method: "paypal_order",
+    item: offer.title,
+    context: `${by} chose ${offer.title} from ${offer.domain} (${offer.url}) instead of paying ${before.request.payee.name}.`,
+    createdAt: new Date().toISOString(),
+    swappedFrom: id,
+  };
+  const decision: Decision = { outcome: "allow", reasons: [`${by} chose this instead of ${before.request.payee.name}.`], flags: [] };
+  await db.query(
+    "insert into payments (id, spender_id, request, status, amount, currency, decision) values ($1, $2, $3, 'authorised', $4, $5, $6)",
+    [req.id, spender.id, JSON.stringify(req), offer.price, offer.currency, JSON.stringify(decision)],
+  );
+  await event(db, id, "swapped", { to: req.id, shop: offer.domain, price: offer.price });
+  await event(db, req.id, "requested", { amount: offer.price, payee: offer.domain, swappedFrom: id });
+
+  let hold;
+  try {
+    hold = await deps.paypal.createAuthorizeOrder(req, { source: "card" });
+  } catch (e) {
+    return { from, to: await fail(db, req.id, "authorise", e) };
+  }
+  if (!hold.authorizationId) return { from, to: await fail(db, req.id, "authorise", new Error("PayPal declined the card.")) };
+  await setStatus(db, req.id, "authorised", { paypal_order_id: hold.orderId, paypal_authorization_id: hold.authorizationId });
+  return { from, to: await capture(deps, req.id, "authorised", by) };
+}
+
 export async function sweepStale(db: Db, minutes = 5): Promise<number> {
   const rows = await db.query<{ id: string }>(
     `update payments set status = 'failed', error = 'Spotter stopped before finishing this check. Nothing was paid.', updated_at = now()

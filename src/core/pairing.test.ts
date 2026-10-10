@@ -96,3 +96,15 @@ it("a spotter email code sets where alerts go", async () => {
   expect((await getHousehold(db, hh))?.alert_email).toBe("me@gmail.com");
 });
 });
+
+it("a Discord code pairs a person's Discord account, and a spotter code pairs the household", async () => {
+  const db = await pgliteDb();
+  const hh = (await createHousehold(db, { name: "D", spotterName: "Sam" })).id;
+  await createSpender(db, { id: "leo", householdId: hh, name: "Leo", kind: "kid", spotterName: "Sam", allowance: { weekly: { amount: 1000, currency: "GBP" }, askAbove: { amount: 500, currency: "GBP" }, blockedCategories: [], allowedPayees: [], blockedPayees: [] } });
+  const kid = await createPairingCode(db, { householdId: hh, spenderId: "leo", channel: "discord" });
+  expect((await redeemPairingCode(db, kid, "discord", "1001"))?.spender?.name).toBe("Leo");
+  expect((await getSpender(db, "leo"))?.discord_user_id).toBe("1001");
+  const mine = await createPairingCode(db, { householdId: hh, spenderId: null, channel: "discord" });
+  await redeemPairingCode(db, mine, "discord", "2002");
+  expect((await getHousehold(db, hh))?.discord_user_id).toBe("2002");
+});

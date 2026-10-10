@@ -8,6 +8,7 @@ import {
   InvalidPaymentError,
   listPayments,
   submitPayment,
+  swap,
   type Deps,
 } from "@/core/lifecycle";
 
@@ -81,6 +82,17 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
     approve: (householdId: string, id: string, by: string) => guarded("approve", async () => settle(await getDeps(), householdId, id, by, approve)),
 
     deny: (householdId: string, id: string, by: string) => guarded("deny", async () => settle(await getDeps(), householdId, id, by, deny)),
+
+    swap: (householdId: string, id: string, by: string) =>
+      guarded("swap", async () => {
+        const deps = await getDeps();
+        const before = await getPayment(deps.db, id, householdId);
+        if (!before) return json({ error: "No such payment." }, 404);
+        if (before.status !== "needs_approval") return json({ error: `Already ${before.status}.`, payment: before }, 409);
+        if (!before.case_file?.swap) return json({ error: "Spotter found no safer option for this payment." }, 409);
+        const { from, to } = await swap(deps, id, by);
+        return json({ payment: from, swapped: to });
+      }),
   };
 }
 

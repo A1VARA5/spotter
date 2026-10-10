@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { readJson } from "@/ui/http";
 import { SignOut } from "@/ui/SignOut";
+import { TelegramLogin } from "./TelegramLogin";
+import { DiscordAlerts } from "./DiscordAlerts";
 
 async function post(url: string, body: unknown) {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -49,7 +51,25 @@ function Status({ error, done }: { error: string | null; done: string | null }) 
 
 const PIN_LABEL = { current: "Current PIN", pin: "New PIN (4 to 8 digits)", confirm: "New PIN again" } as const;
 
-export function Account({ spotterName, alertEmail, inbox, demo }: { spotterName: string; alertEmail: string | null; inbox: string | null; demo: boolean }) {
+export function Account({
+  spotterName,
+  alertEmail,
+  inbox,
+  demo,
+  telegramBot,
+  telegramConnected,
+  discordApp,
+  discordConnected,
+}: {
+  spotterName: string;
+  alertEmail: string | null;
+  inbox: string | null;
+  demo: boolean;
+  telegramBot: string | null;
+  telegramConnected: boolean;
+  discordApp: string | null;
+  discordConnected: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState(spotterName);
   const nameForm = useForm();
@@ -57,6 +77,7 @@ export function Account({ spotterName, alertEmail, inbox, demo }: { spotterName:
   const alertForm = useForm();
   const [pin, setPin] = useState({ current: "", pin: "", confirm: "" });
   const pinForm = useForm();
+  const [switchTelegram, setSwitchTelegram] = useState(false);
   const digits = (v: string) => v.replace(/\D/g, "").slice(0, 8);
 
   return (
@@ -96,6 +117,29 @@ export function Account({ spotterName, alertEmail, inbox, demo }: { spotterName:
         )}
         <Status error={alertForm.error} done={null} />
       </section>
+
+      {telegramBot && (
+        <section className="account-card" aria-labelledby="a-tg">
+          <h2 id="a-tg" className="account-title">
+            Telegram alerts
+          </h2>
+          <p className="account-sub">
+            Get each held payment in Telegram, with what Spotter found and a button to deny it on the spot. Approving still happens here, with your PIN.
+          </p>
+          {telegramConnected && <p className="field-ok">✓ Connected. Alerts go to your Telegram.</p>}
+          {telegramConnected && !switchTelegram ? (
+            <div>
+              <button className="btn btn-quiet" onClick={() => setSwitchTelegram(true)}>
+                Use a different Telegram
+              </button>
+            </div>
+          ) : (
+            <TelegramLogin bot={telegramBot} />
+          )}
+        </section>
+      )}
+
+      {discordApp && <DiscordAlerts appId={discordApp} connected={discordConnected} />}
 
       <form
         className="account-card"

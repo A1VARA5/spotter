@@ -118,4 +118,27 @@ create table if not exists inbound (
   primary key (provider, message_id)
 );
 create index if not exists inbound_sender_idx on inbound (sender, received_at);
+
+alter table payments add column if not exists case_file jsonb;
+alter table spenders add column if not exists discord_user_id text;
+alter table households add column if not exists discord_user_id text;
+create unique index if not exists spenders_discord_idx on spenders (discord_user_id) where discord_user_id is not null;
+alter table pairing_codes drop constraint if exists pairing_codes_channel_check;
+alter table pairing_codes add constraint pairing_codes_channel_check check (channel in ('email', 'telegram', 'discord'));
+
+create table if not exists reports (
+  key text not null,
+  household_id text not null references households(id) on delete cascade,
+  kind text not null,
+  at timestamptz not null default now(),
+  primary key (key, household_id)
+);
+create index if not exists reports_key_idx on reports (key, at);
+
+create table if not exists llm_turns (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists llm_turns_at_idx on llm_turns (at);
+create index if not exists llm_turns_household_idx on llm_turns (household_id, at);
 `;

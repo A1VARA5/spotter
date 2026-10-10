@@ -112,7 +112,11 @@ export function makeLoginHandlers(deps: { db: Db; fetch?: typeof fetch }) {
       }
       if (url.searchParams.get("error")) return redirect(`${origin}/?login=cancelled`, [clearState()]);
       const code = url.searchParams.get("code");
-      if (!code) return redirect(`${origin}/?login=failed`, [clearState()]);
+      if (!code) {
+        // Names only: values can carry codes or personal data, and the names are enough to see what PayPal sent.
+        console.error(`[spotter] PayPal login came back with no code. Parameters: ${[...url.searchParams.keys()].join(", ") || "none"}`);
+        return redirect(`${origin}/?login=failed`, [clearState()]);
+      }
       try {
         const user = await userInfo(f, await exchangeCode(f, code));
         const hh = await findOrCreate(deps.db, user);

@@ -7,7 +7,7 @@ import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPaym
 import { verifyAgentToken } from "@/core/pairing";
 import { searchProducts } from "@/market/channel3";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
 
