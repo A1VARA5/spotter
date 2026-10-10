@@ -1,6 +1,6 @@
 "use client";
 // Connection cards for one person. Agents get a token shown once; people pair by sending a code.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, Check, Copy, Mail, Send, MessageSquare } from "lucide-react";
 import { readJson } from "@/ui/http";
 
@@ -23,8 +23,21 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
       >
         {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />} {copied ? "Copied" : "Copy"}
       </button>
+      {/* "Copied" is otherwise only a visual change; this says it out loud. */}
+      <span className="sr-only" role="status">
+        {copied ? `${label} copied` : ""}
+      </span>
     </div>
   );
+}
+
+/** Focus moves to what a button just made (the key, the code) instead of dropping to the page when the button goes. */
+function useFocusWhen<T extends HTMLElement>(ready: unknown) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    if (ready) ref.current?.focus();
+  }, [ready]);
+  return ref;
 }
 
 function useCall<T>() {
@@ -32,6 +45,8 @@ function useCall<T>() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
   async function call(url: string, body: unknown = {}, method = "POST") {
+    // Busy buttons stay focusable (aria-disabled), so ignore repeat presses here.
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -67,6 +82,7 @@ const TOOLSETS = {
 function AgentCard({ spender }: { spender: SpenderView }) {
   const t = useCall<{ token: string }>();
   const cur = useCall<{ currency: string }>();
+  const done = useFocusWhen<HTMLParagraphElement>(t.data);
   const [tools, setTools] = useState<keyof typeof TOOLSETS>("spotter");
   const set = TOOLSETS[tools];
   const currency = cur.data?.currency ?? spender.currency;
@@ -96,7 +112,7 @@ function AgentCard({ spender }: { spender: SpenderView }) {
       {tools === "toolkit" && currency !== "USD" && (
         <div className="connect-warn">
           <p>PayPal&apos;s toolkit makes orders in US dollars, and {spender.name}&apos;s allowance is in pounds, so its orders would be stopped.</p>
-          <button className="btn btn-quiet" disabled={cur.busy} onClick={() => cur.call(`/api/spenders/${spender.id}`, { currency: "USD" }, "PATCH")}>
+          <button className="btn btn-quiet" aria-disabled={cur.busy || undefined} onClick={() => cur.call(`/api/spenders/${spender.id}`, { currency: "USD" }, "PATCH")}>
             {cur.busy ? "Switching" : "Set this agent's allowance in dollars"}
           </button>
           {cur.error && <p className="field-error" role="alert">{cur.error}</p>}
@@ -106,10 +122,10 @@ function AgentCard({ spender }: { spender: SpenderView }) {
         <li>
           <h4 className="agent-step-title">Make a key</h4>
           {t.data ? (
-            <p className="connect-warn">Done. This key is shown once, so copy it in the next step now. Making a new one switches this one off.</p>
+            <p ref={done} tabIndex={-1} className="connect-warn">Done. This key is shown once, so copy it in the next step now. Making a new one switches this one off.</p>
           ) : (
             <div>
-              <button className="btn btn-primary" disabled={t.busy} onClick={() => t.call(`/api/spenders/${spender.id}/token`)}>
+              <button className="btn btn-primary" aria-disabled={t.busy || undefined} onClick={() => t.call(`/api/spenders/${spender.id}/token`)}>
                 {t.busy ? "Making a key" : "Make a key for this agent"}
               </button>
             </div>
@@ -161,6 +177,7 @@ function AgentCard({ spender }: { spender: SpenderView }) {
 
 function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; channel: "email" | "telegram" | "discord"; inbox: string | null; bot: string | null }) {
   const c = useCall<{ code: string }>();
+  const steps = useFocusWhen<HTMLDivElement>(c.data);
   const connected = channel === "email" ? spender.email : channel === "telegram" ? spender.telegram : spender.discord;
   const Icon = channel === "email" ? Mail : channel === "telegram" ? Send : MessageSquare;
   const title = { email: "Email", telegram: "Telegram", discord: "Discord" }[channel];
@@ -186,7 +203,7 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
       </header>
       {c.data ? (
         channel === "email" ? (
-          <div className="connect-steps">
+          <div ref={steps} tabIndex={-1} className="connect-steps">
             <p>
               1. From the email address {spender.name} uses, send a new email to <strong>{inbox}</strong> with this code in the subject:
             </p>
@@ -194,7 +211,7 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
             <p>2. Spotter replies to confirm. The code works once and lasts 24 hours.</p>
           </div>
         ) : channel === "discord" ? (
-          <div className="connect-steps">
+          <div ref={steps} tabIndex={-1} className="connect-steps">
             <p>
               1. {spender.name} adds Spotter to their Discord account:{" "}
               <a href={`https://discord.com/oauth2/authorize?client_id=${bot}`} target="_blank" rel="noopener noreferrer">
@@ -207,7 +224,7 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
             <p>3. That&apos;s it. The code works once and lasts 24 hours.</p>
           </div>
         ) : (
-          <div className="connect-steps">
+          <div ref={steps} tabIndex={-1} className="connect-steps">
             <p>1. Open this link on {spender.name}&apos;s phone and tap Start:</p>
             <CopyBlock label="Telegram link" value={`https://t.me/${bot}?start=${c.data.code}`} />
             <p>2. That&apos;s it. The link works once and lasts 24 hours.</p>
@@ -215,7 +232,7 @@ function CodeCard({ spender, channel, inbox, bot }: { spender: SpenderView; chan
         )
       ) : (
         <div>
-          <button className="btn btn-quiet" disabled={c.busy} onClick={() => c.call(`/api/spenders/${spender.id}/pair`, { channel })}>
+          <button className="btn btn-quiet" aria-disabled={c.busy || undefined} onClick={() => c.call(`/api/spenders/${spender.id}/pair`, { channel })}>
             {c.busy ? "Making a code" : connected ? "Connect a different one" : `Connect ${channel === "email" ? "email" : title}`}
           </button>
         </div>

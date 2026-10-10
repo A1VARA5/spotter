@@ -150,7 +150,10 @@ p {
   transform: scale(0.98);
 }
 
-.btn:disabled {
+/* aria-disabled: busy buttons stay focusable so keyboard focus isn't dropped to the page while a request runs */
+.btn:disabled,
+.btn[aria-disabled="true"],
+.scen-again[aria-disabled="true"] {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
@@ -567,6 +570,18 @@ p {
 .stack {
   display: grid;
   gap: 16px;
+}
+
+/* What a decision just did: sits where the card was, takes focus so the result is read out */
+.dash-notice {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--ink);
+  font-weight: 600;
+  max-width: 60ch;
 }
 
 .empty {
