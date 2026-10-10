@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Bot, Check, Copy, Mail, Send, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { readJson } from "@/ui/http";
+import { plainError, readJson } from "@/ui/http";
+import { Confirm } from "@/ui/Confirm";
 import { money } from "@/ui/format";
 
-type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string };
+type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string; hasKey?: boolean };
 
 function CopyBlock({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -43,7 +44,7 @@ function useCall<T>() {
       setData(j as T);
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(plainError(e));
       return false;
     } finally {
       setBusy(false);
@@ -131,9 +132,24 @@ function AgentCard({ spender }: { spender: SpenderView }) {
             <p className="connect-warn">Done. This key is shown once, so copy it in the next step now. Making a new one switches this one off.</p>
           ) : (
             <div>
-              <button className="btn btn-primary" disabled={t.busy} onClick={() => t.call(`/api/spenders/${spender.id}/token`)}>
-                {t.busy ? "Making a key" : "Make a key for this agent"}
-              </button>
+              {spender.hasKey ? (
+                <>
+                  <p className="connect-sub">{spender.name} already has a working key. Spotter can&apos;t show it again, so a new one replaces it.</p>
+                  <Confirm
+                    trigger={t.busy ? "Making a key" : "Make a new key"}
+                    triggerClass="btn btn-primary"
+                    disabled={t.busy}
+                    title="Make a new key?"
+                    body={`This switches off the key your agent uses now. ${spender.name} stops working until you give it the new one.`}
+                    confirmLabel="Make a new key"
+                    onConfirm={() => t.call(`/api/spenders/${spender.id}/token`)}
+                  />
+                </>
+              ) : (
+                <button className="btn btn-primary" disabled={t.busy} onClick={() => t.call(`/api/spenders/${spender.id}/token`)}>
+                  {t.busy ? "Making a key" : "Make a key for this agent"}
+                </button>
+              )}
             </div>
           )}
         </li>

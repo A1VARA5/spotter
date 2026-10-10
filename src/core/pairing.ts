@@ -78,6 +78,12 @@ export async function issueAgentToken(db: Db, spenderId: string): Promise<string
   return token;
 }
 
+/** True when the agent has a key that still works (making a new one switches it off). */
+export async function hasAgentToken(db: Db, spenderId: string): Promise<boolean> {
+  const rows = await db.query("select 1 from agent_tokens where spender_id = $1 and revoked_at is null limit 1", [spenderId]);
+  return rows.length > 0;
+}
+
 export async function verifyAgentToken(db: Db, bearer: string | undefined): Promise<{ spenderId: string; householdId: string } | null> {
   if (!bearer || !/^spt_[A-Za-z0-9_-]{20,100}$/.test(bearer)) return null;
   const hash = hashToken(bearer);

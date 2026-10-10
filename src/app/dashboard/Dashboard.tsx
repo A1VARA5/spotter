@@ -5,7 +5,7 @@ import { Hand, ShieldCheck, Ban, Info } from "lucide-react";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
-import { readJson } from "@/ui/http";
+import { plainError, readJson } from "@/ui/http";
 import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 
@@ -182,7 +182,7 @@ function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: stri
       setConfirming(false);
       setTimeout(onSettled, 700);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "That didn't go through. Try again.");
+      setError(plainError(e));
       setBusy(null);
     }
   }

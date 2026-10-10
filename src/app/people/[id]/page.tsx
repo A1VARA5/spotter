@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { requirePageSession } from "@/server/page-session";
 import { getSpender, listPayments, weekSpend } from "@/core/lifecycle";
+import { hasAgentToken } from "@/core/pairing";
 import { AppShell } from "@/ui/AppShell";
 import { money, STATE_LABEL, trackState } from "@/ui/format";
 import { Connect } from "./Connect";
@@ -62,7 +63,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </Hint>
       )}
       <Connect
-        spender={{ id: spender.id, name: spender.name, kind: spender.kind, email: spender.email, telegram: spender.telegram_chat_id, discord: spender.discord_user_id, currency: spender.allowance.weekly.currency }}
+        spender={{ id: spender.id, name: spender.name, kind: spender.kind, email: spender.email, telegram: spender.telegram_chat_id, discord: spender.discord_user_id, currency: spender.allowance.weekly.currency, hasKey: spender.kind === "agent" && (await hasAgentToken(db, spender.id)) }}
         inbox={process.env.AGENTBOXD_INBOX_ADDRESS ?? null}
         telegramBot={process.env.TELEGRAM_BOT_USERNAME ?? null}
         discordApp={process.env.DISCORD_BOT_TOKEN ? (process.env.DISCORD_APPLICATION_ID ?? null) : null}

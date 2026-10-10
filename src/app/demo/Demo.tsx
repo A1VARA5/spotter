@@ -7,7 +7,7 @@ import { scenariosFor, type Scenario } from "@/ui/scenarios";
 import { labelsFor, type Labels } from "@/ui/labels";
 import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
-import { readJson } from "@/ui/http";
+import { plainError, readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
 
 export type SpenderLite = { id: string; name: string; kind: string };
@@ -110,7 +110,7 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
       setResult(j.payment);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(plainError(e));
     } finally {
       setRunning(false);
     }

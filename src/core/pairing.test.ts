@@ -3,7 +3,7 @@ import { pgliteDb, type Db } from "@/db";
 import { createHousehold, getHousehold, newId } from "./households";
 import { createSpender, getSpender } from "./lifecycle";
 import { PRESETS } from "./presets";
-import { createPairingCode, findCode, issueAgentToken, redeemPairingCode, verifyAgentToken, CODE_ALPHABET } from "./pairing";
+import { createPairingCode, findCode, hasAgentToken, issueAgentToken, redeemPairingCode, verifyAgentToken, CODE_ALPHABET } from "./pairing";
 
 let db: Db;
 let hh: string;
@@ -69,6 +69,14 @@ describe("pairing codes", () => {
 });
 
 describe("agent tokens", () => {
+  it("say whether the agent already has a working key, so the page can warn before switching it off", async () => {
+    expect(await hasAgentToken(db, agent)).toBe(false);
+    await issueAgentToken(db, agent);
+    expect(await hasAgentToken(db, agent)).toBe(true);
+    await db.query("update agent_tokens set revoked_at = now()");
+    expect(await hasAgentToken(db, agent)).toBe(false);
+  });
+
   it("are shown once, stored hashed, and identify the agent", async () => {
     const token = await issueAgentToken(db, agent);
     expect(token).toMatch(/^spt_[A-Za-z0-9_-]{40,}$/);
