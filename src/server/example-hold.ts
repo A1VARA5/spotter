@@ -14,7 +14,8 @@ import type { Case } from "@/agents/case";
 import { SCENARIOS } from "@/ui/scenarios";
 
 export const EXAMPLE_LABEL = "Example, checked earlier";
-const PAYPAL_WAIT_MS = 5000;
+// A cold start (OAuth token, then the order) took about 3.5 s against the sandbox on 2026-10-10.
+const PAYPAL_WAIT_MS = 8000;
 
 const hiMum = SCENARIOS.find((s) => s.id === "gran-hi-mum")!;
 
