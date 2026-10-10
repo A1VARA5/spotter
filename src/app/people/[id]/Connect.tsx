@@ -2,7 +2,9 @@
 // Connection cards for one person. Agents get a token shown once; people pair by sending a code.
 import { useState } from "react";
 import { Bot, Check, Copy, Mail, Send, MessageSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { readJson } from "@/ui/http";
+import { money } from "@/ui/format";
 
 type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string };
 
@@ -31,7 +33,7 @@ function useCall<T>() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
-  async function call(url: string, body: unknown = {}, method = "POST") {
+  async function call(url: string, body: unknown = {}, method = "POST"): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
@@ -39,8 +41,10 @@ function useCall<T>() {
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? "Something went wrong. Try again.");
       setData(j as T);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -66,7 +70,12 @@ const TOOLSETS = {
 
 function AgentCard({ spender }: { spender: SpenderView }) {
   const t = useCall<{ token: string }>();
-  const cur = useCall<{ currency: string }>();
+  const cur = useCall<{ currency: string; spentOtherCurrency?: { amount: number; currency: string } }>();
+  const router = useRouter();
+  // Refresh the server rendered "Spent this week" so it shows the new currency's tally straight away.
+  const switchTo = async (currency: "GBP" | "USD") => {
+    if (await cur.call(`/api/spenders/${spender.id}`, { currency }, "PATCH")) router.refresh();
+  };
   const [tools, setTools] = useState<keyof typeof TOOLSETS>("spotter");
   const set = TOOLSETS[tools];
   const currency = cur.data?.currency ?? spender.currency;
@@ -96,8 +105,21 @@ function AgentCard({ spender }: { spender: SpenderView }) {
       {tools === "toolkit" && currency !== "USD" && (
         <div className="connect-warn">
           <p>PayPal&apos;s toolkit makes orders in US dollars, and {spender.name}&apos;s allowance is in pounds, so its orders would be stopped.</p>
-          <button className="btn btn-quiet" disabled={cur.busy} onClick={() => cur.call(`/api/spenders/${spender.id}`, { currency: "USD" }, "PATCH")}>
+          <p>This week&apos;s spend is counted per currency, so after the switch the dollar tally starts at nothing and the pounds already spent stay on the pound tally.</p>
+          <button className="btn btn-quiet" disabled={cur.busy} onClick={() => switchTo("USD")}>
             {cur.busy ? "Switching" : "Set this agent's allowance in dollars"}
+          </button>
+          {cur.error && <p className="field-error" role="alert">{cur.error}</p>}
+        </div>
+      )}
+      {currency === "USD" && (
+        <div className="connect-warn">
+          <p>
+            {spender.name}&apos;s allowance is in US dollars, so pound payments are stopped. This week&apos;s spend is counted per currency
+            {cur.data?.spentOtherCurrency?.amount ? `: ${money(cur.data.spentOtherCurrency.amount, cur.data.spentOtherCurrency.currency)} spent in pounds this week isn't in the dollar tally.` : "."}
+          </p>
+          <button className="btn btn-quiet" disabled={cur.busy} onClick={() => switchTo("GBP")}>
+            {cur.busy ? "Switching" : "Set back to pounds"}
           </button>
           {cur.error && <p className="field-error" role="alert">{cur.error}</p>}
         </div>
