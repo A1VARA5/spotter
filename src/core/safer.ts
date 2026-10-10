@@ -77,6 +77,16 @@ function median(xs: number[]): number {
  * returns it. Null when there's no item, Channel3 has nothing good, or it can't be reached: no guess beats a bad one.
  */
 export async function offerSaferOption(deps: Deps, p: Payment, spender: Spender, reason: StopReason): Promise<SaferOption | null> {
+  // The payment already exists and the agent must get its answer: a failed suggestion is logged, never thrown.
+  try {
+    return await findAndStore(deps, p, spender, reason);
+  } catch (e) {
+    console.error(`[spotter] safer option for ${p.id} failed:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+async function findAndStore(deps: Deps, p: Payment, spender: Spender, reason: StopReason): Promise<SaferOption | null> {
   const item = p.request.item?.trim();
   const currency = p.currency as Currency;
   if (!item || !deps.market) return null;
@@ -169,14 +179,21 @@ export async function paySaferOption(
   if (!claimed.length) return { error: "That offer_id was already used. Nothing more was paid." };
 
   if (from.status === "needs_approval") {
-    const released = await withdraw(deps, from.id, "the agent (chose Spotter's safer option)");
-    if (released.status !== "voided") {
-      await db.query("update safer_options set used_at = null where id = $1", [offerId]);
+    let released: Payment | null = null;
+    try {
+      released = await withdraw(deps, from.id, "the agent (chose Spotter's safer option)");
+    } catch (e) {
+      console.error(`[spotter] releasing ${from.id} for the safer option failed:`, e instanceof Error ? e.message : e);
+    }
+    if (released?.status !== "voided") {
+      await db.query("update safer_options set used_at = null where id = $1", [offerId]).catch(() => {});
       return { error: `Spotter couldn't release the first hold to ${from.request.payee.name}, so nothing new was ordered. Tell the user.` };
     }
   }
 
-  const payment = await submitPayment(deps, {
+  let payment: Payment;
+  try {
+    payment = await submitPayment(deps, {
     spenderId: agentId,
     money: { amount: o.price, currency: o.currency },
     payee: { name: o.domain, isNew: true },
@@ -190,11 +207,23 @@ export async function paySaferOption(
       .filter(Boolean)
       .join("\n\n"),
     saferFor: { paymentId: from.id, offerId, domain: o.domain, reason: r.reason, fromPayee: from.request.payee.name },
-  });
-  await db.query("update safer_options set used_by = $2 where id = $1", [offerId, payment.id]);
-  await db.query("insert into events (payment_id, type, data) values ($1, 'replaced', $2)", [
-    from.id,
-    JSON.stringify({ to: payment.id, shop: o.domain, price: o.price, by: "agent" }),
-  ]);
+    });
+  } catch (e) {
+    // The first hold may already be let go, so the offer stays used; the trace goes on the first payment's timeline.
+    const error = e instanceof Error ? e.message : String(e);
+    console.error(`[spotter] safer option ${offerId} for ${from.id} couldn't be ordered: ${error}`);
+    await db.query("insert into events (payment_id, type, data) values ($1, 'replace_failed', $2)", [from.id, JSON.stringify({ offer_id: offerId, error })]).catch(() => {});
+    return { error: "Spotter couldn't place the new order, so nothing new was paid. Tell the user." };
+  }
+  // The new payment exists and the agent needs its id: the link records are best effort.
+  try {
+    await db.query("update safer_options set used_by = $2 where id = $1", [offerId, payment.id]);
+    await db.query("insert into events (payment_id, type, data) values ($1, 'replaced', $2)", [
+      from.id,
+      JSON.stringify({ to: payment.id, shop: o.domain, price: o.price, by: "agent" }),
+    ]);
+  } catch (e) {
+    console.error(`[spotter] linking ${payment.id} to ${from.id} failed:`, e instanceof Error ? e.message : e);
+  }
   return { payment };
 }

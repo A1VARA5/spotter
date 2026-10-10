@@ -203,6 +203,26 @@ describe("paySaferOption", () => {
     expect(deps.paypal.createAuthorizeOrder).toHaveBeenCalledTimes(1);
   });
 
+  it("a database failure while suggesting never turns the agent's answer into an error", async () => {
+    const stopped = await gadgetBarn();
+    const real = db.query.bind(db);
+    deps.db = { query: async (sql: string, params?: unknown[]) => (sql.includes("insert into safer_options") ? Promise.reject(new Error("db down")) : real(sql, params)) } as Db;
+    expect(await offerSaferOption(deps, stopped, (await getSpender(db, "agent"))!, "hidden instructions")).toBeNull();
+  });
+
+  it("says so plainly, and records it, if the new order can't be placed after the first hold was let go", async () => {
+    check.mockImplementation(async (req) =>
+      req.payee.name === "NewBuds" ? { ...clean(), flags: [{ kind: "new_shop", severity: "medium", quote: "x", why: "New." }] } : clean(),
+    );
+    const held = await gadgetBarn({ payee: { name: "NewBuds", isNew: true } });
+    const opt = await offerSaferOption(deps, held, (await getSpender(db, "agent"))!, stopReason(held)!);
+    const real = db.query.bind(db);
+    deps.db = { query: async (sql: string, params?: unknown[]) => (sql.startsWith("insert into payments") ? Promise.reject(new Error("db down")) : real(sql, params)) } as Db;
+    const r = await claim(opt!.offer_id);
+    expect(r).toEqual({ error: expect.stringMatching(/couldn't place the new order/) });
+    expect((await listEvents(db, held.id)).map((e) => e.type)).toContain("replace_failed");
+  });
+
   it("refuses an offer older than an hour", async () => {
     const { offerId } = await stoppedWithOption();
     await db.query("update safer_options set created_at = now() - interval '61 minutes' where id = $1", [offerId]);
