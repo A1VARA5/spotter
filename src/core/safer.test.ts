@@ -109,6 +109,17 @@ describe("offerSaferOption", () => {
     expect((await listEvents(db, stopped.id)).map((e) => e.type)).toContain("safer_option_offered");
   });
 
+  it("prefers a listing with every word of the item over a cheaper near match", async () => {
+    deps.market = vi.fn(async () => [
+      offer("oasisfashion.com", 7995, "ATH-CKS30TW+ Wireless Earbuds"),
+      offer("johnlewis.com", 15499, "Sony PS5 PULSE Explore Wireless Earbuds"),
+      offer("currys.ie", 15400, "PULSE Explore Wireless Gaming Earbuds"),
+    ]);
+    const stopped = await gadgetBarn({ item: "Pulse wireless earbuds" });
+    const opt = await offerSaferOption(deps, stopped, (await getSpender(db, "agent"))!, "hidden instructions");
+    expect(opt).toMatchObject({ retailer: "currys.ie", price: 15400 });
+  });
+
   it("offers nothing over the agent's remaining allowance", async () => {
     await createSpender(db, { householdId: (await getSpender(db, "agent"))!.household_id, id: "agent", name: "Shopping agent", kind: "agent", spotterName: "Sam", allowance: { ...allowance, weekly: gbp(10000) } });
     const stopped = await gadgetBarn();

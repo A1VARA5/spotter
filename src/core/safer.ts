@@ -32,7 +32,8 @@ const FRESH_MINUTES = 60;
 const TOO_CHEAP = 0.4; // same line as the price check: under 40% of the going rate is a fake shop tell
 const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/;
 
-const priceText = (o: Offer) => formatMoney({ amount: o.price, currency: o.currency });
+const tokens = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const priceText =(o: Offer) => formatMoney({ amount: o.price, currency: o.currency });
 
 /** "https://www.Currys.co.uk/x" and "currys.co.uk" are the same retailer. */
 export const normDomain = (s: string) =>
@@ -97,9 +98,12 @@ export async function offerSaferOption(deps: Deps, p: Payment, spender: Spender,
   // The held payment's own reservation is let go when the agent switches, so it doesn't count against the replacement.
   const used = (await weekSpend(deps.db, spender.id, currency)) - (p.status === "needs_approval" ? Number(p.amount) : 0);
   const left = spender.allowance.weekly.amount - used;
+  // Channel3's match lets one word of the item go missing; a listing with every word is the same item more surely.
+  const words = tokens(item);
+  const exact = (o: Offer) => (words.every((w) => tokens(o.title).includes(w)) ? 0 : 1);
   const pick = real
     .filter((o) => o.price >= going * TOO_CHEAP && o.price <= left)
-    .sort((a, b) => a.price - b.price)[0];
+    .sort((a, b) => exact(a) - exact(b) || a.price - b.price)[0];
   if (!pick) return null;
 
   const offer: Offer = { ...pick, domain: normDomain(pick.domain) };
