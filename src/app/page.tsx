@@ -22,7 +22,7 @@ import "./landing/story.css";
 type Who = { name: string; demo: boolean; agentId: string | null } | null;
 
 /** Signed in: one way back in. Signed out: the demo first, then PayPal. */
-function StartButtons({ onDark = false, who }: { onDark?: boolean; who: Who }) {
+function StartButtons({ onDark = false, who, label = "Try the demo family" }: { onDark?: boolean; who: Who; label?: string }) {
   if (who)
     return (
       <div className="start">
@@ -37,7 +37,7 @@ function StartButtons({ onDark = false, who }: { onDark?: boolean; who: Who }) {
   return (
     <div className="start">
       <form action="/api/demo/start" method="post">
-        <button className="btn btn-hold">Try the demo family</button>
+        <button className="btn btn-hold">{label}</button>
       </form>
       <a className={onDark ? "btn btn-ghost" : "btn btn-quiet"} href="/api/auth/paypal/start">
         Log in with PayPal
@@ -98,14 +98,17 @@ export default async function Home() {
 
           <div className="hero-grid">
             <div className="hero-copy">
-              <h1 className="hero-h1">A second look before the money goes.</h1>
+              <h1 className="hero-h1">PayPal holds the money until someone you trust says yes.</h1>
               <p className="hero-p">
-                Spotter sits between PayPal and the people you look out for: your gran, your kid, your AI shopping agent. When a
-                payment looks wrong, PayPal holds the money and you get asked.
+                Gran forwards the text she isn&apos;t sure about. If it looks like a scam, PayPal holds her &pound;250 and you get asked on Telegram,
+                Discord or your laptop. It works the same for your kid and your AI shopping agent.
               </p>
-              <StartButtons onDark who={who} />
+              <StartButtons onDark who={who} label="Try it on fake money" />
               {!who && (
-                <p className="hero-fine">No sign up for the demo: a family with Gran, Leo and a shopping agent, ready in ten seconds. Runs on the PayPal sandbox.</p>
+                <p className="hero-fine">
+                  No sign up. You get a family with Gran, Leo and a shopping agent on the PayPal sandbox, with one payment already waiting for you, so
+                  nothing real is spent.
+                </p>
               )}
             </div>
 
@@ -189,7 +192,7 @@ export default async function Home() {
         </p>
       </section>
       <Final>
-        <StartButtons onDark who={who} />
+        <StartButtons onDark who={who} label="Try it on fake money" />
       </Final>
 
       <footer className="shell footer">
