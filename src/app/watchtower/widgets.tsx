@@ -2,32 +2,63 @@
 // Spotter's own Studio widgets. Each one draws a piece of the hold track, Spotter's one visual idea:
 // money travelling from the spender to the payee, paused at a checkpoint when something looks off.
 // They read data through Studio, so page filters, cross filters and the AI agents all work on them.
-import { useEffect, useRef, useState } from "react";
-import type { AgBaseRegistry, AgBaseWidgetDefinition, AgWidgetDataFormat, AgWidgetFieldReference, AgWidgetParams } from "ag-studio";
-import type { WatchAlert } from "@/watchtower/data";
+// Payee names come from outside the family: they are only ever rendered as plain text.
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { AgBaseRegistry, AgBaseWidgetDefinition, AgWidgetApi, AgWidgetDataFormat, AgWidgetField, AgWidgetFieldReference, AgWidgetParams } from "ag-studio";
+import type { CaseNote, WatchAlert } from "@/watchtower/data";
+import { countdown, pickCase, radarLines, shortId, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
-export type WatchAlertsDef = { type: "watch-alerts"; dataMapping: Record<string, never>; format?: AgWidgetDataFormat<unknown> };
+type NoMapping<T extends string> = { type: T; dataMapping: Record<string, never>; format?: AgWidgetDataFormat<unknown> };
+export type WatchAlertsDef = NoMapping<"watch-alerts">;
+export type MoneyMidAirDef = NoMapping<"money-mid-air">;
+export type ReplayDef = NoMapping<"replay">;
+export type ScamRadarDef = NoMapping<"scam-radar">;
+export type CaseFileDef = NoMapping<"case-file">;
 
 export interface SpotterRegistry extends AgBaseRegistry {
   widgets: readonly (
     | AgBaseWidgetDefinition<"money-kept", MoneyKeptDef>
     | AgBaseWidgetDefinition<"hold-track", HoldTrackDef>
     | AgBaseWidgetDefinition<"watch-alerts", WatchAlertsDef>
+    | AgBaseWidgetDefinition<"money-mid-air", MoneyMidAirDef>
+    | AgBaseWidgetDefinition<"replay", ReplayDef>
+    | AgBaseWidgetDefinition<"scam-radar", ScamRadarDef>
+    | AgBaseWidgetDefinition<"case-file", CaseFileDef>
   )[];
 }
 
-export type WatchContext = { alerts: WatchAlert[]; sampleIds: Set<string> };
+/** What the page knows that isn't in Studio's data: code made alerts, case notes, network counts. */
+export type WatchSnapshot = {
+  alerts: WatchAlert[];
+  sampleIds: Set<string>;
+  notes: Map<string, CaseNote>;
+  radar: Record<string, RadarCount>;
+  /** Bumped when the live poll brings new data, so widgets fetch again. */
+  version: number;
+  /** False on phones (view mode has no AI panel). */
+  canAsk: boolean;
+};
+export type WatchStore = { get(): WatchSnapshot; subscribe(fn: () => void): () => void };
+/** Studio's `context` is read once, so it carries a store the page updates rather than the values. */
+export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void> };
+
+const EMPTY: WatchSnapshot = { alerts: [], sampleIds: new Set(), notes: new Map(), radar: {}, version: 0, canAsk: false };
+export function useWatch(context: unknown): WatchSnapshot {
+  const store = (context as WatchContext | undefined)?.store;
+  return useSyncExternalStore(store?.subscribe ?? (() => () => {}), store?.get ?? (() => EMPTY), () => EMPTY);
+}
 
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
 type Field = { key: string };
 
-export function MoneyKeptWidget({ dataMapping, widgetApi }: AgWidgetParams<MoneyKeptDef>) {
+export function MoneyKeptWidget({ dataMapping, widgetApi, context }: AgWidgetParams<MoneyKeptDef>) {
   const [value, setValue] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const loaded = useRef(false);
+  const { version } = useWatch(context);
   useEffect(() => {
     let live = true;
     const field = dataMapping.value?.at(0) as (AgWidgetFieldReference & Field) | undefined;
@@ -59,7 +90,7 @@ export function MoneyKeptWidget({ dataMapping, widgetApi }: AgWidgetParams<Money
     return () => {
       live = false;
     };
-  }, [dataMapping, widgetApi]);
+  }, [dataMapping, widgetApi, version]);
 
   return (
     <div className="wt-kept">
@@ -86,9 +117,10 @@ const STOPS: Array<{ outcome: string; label: string; tone: string }> = [
 
 const KNOWN = new Set(STOPS.map((s) => s.outcome));
 
-export function HoldTrackWidget({ dataMapping, widgetApi }: AgWidgetParams<HoldTrackDef>) {
+export function HoldTrackWidget({ dataMapping, widgetApi, context }: AgWidgetParams<HoldTrackDef>) {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [failed, setFailed] = useState(false);
+  const { version } = useWatch(context);
   const cat = dataMapping.category?.at(0) as (AgWidgetFieldReference & Field) | undefined;
   useEffect(() => {
     let live = true;
@@ -125,7 +157,7 @@ export function HoldTrackWidget({ dataMapping, widgetApi }: AgWidgetParams<HoldT
     };
     // counts is read only for the first spinner
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataMapping, widgetApi]);
+  }, [dataMapping, widgetApi, version]);
 
   const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : 0;
   if (failed) return <p className="wt-widget-error">Couldn&apos;t load the hold track. Reload the page.</p>;
@@ -157,7 +189,8 @@ export function HoldTrackWidget({ dataMapping, widgetApi }: AgWidgetParams<HoldT
 
 export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAlertsDef>) {
   const ctx = context as WatchContext | undefined;
-  const alerts = ctx?.alerts ?? [];
+  const { alerts, sampleIds, canAsk } = useWatch(context);
+  const [asking, setAsking] = useState<string | null>(null);
   useEffect(() => {
     widgetApi.setDisplayState("displayed");
   }, [widgetApi]);
@@ -169,6 +202,15 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
       </div>
     );
   }
+  const ask = async (a: WatchAlert) => {
+    if (!ctx) return;
+    setAsking(a.id);
+    try {
+      await ctx.lookInto(a);
+    } finally {
+      setAsking(null);
+    }
+  };
   return (
     <ul className="wt-alerts">
       {alerts.map((a) => (
@@ -177,12 +219,287 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
           <div>
             <p className="wt-alerts-title">
               {a.title}
-              {a.paymentIds.every((id) => ctx?.sampleIds.has(id)) && <span className="wt-sample-tag">Sample</span>}
+              {a.paymentIds.every((id) => sampleIds.has(id)) && <span className="wt-sample-tag">Sample</span>}
             </p>
             <p className="wt-alerts-detail">{a.detail}</p>
+            {canAsk && (
+              <button type="button" className="wt-look" onClick={() => void ask(a)} disabled={asking !== null}>
+                {asking === a.id ? "Opening the assistant" : "Look into this"}
+              </button>
+            )}
           </div>
         </li>
       ))}
     </ul>
+  );
+}
+
+// ---------- reading Spotter's fields without a data mapping ----------
+
+/** The schema's own field objects for `table.<id>`, so getData accepts them. Null if any is missing. */
+function fieldsOf(widgetApi: AgWidgetApi, table: string, ids: readonly string[]): Record<string, AgWidgetField> | null {
+  const t = widgetApi.getSchema().find((s) => s.id === table);
+  if (!t) return null;
+  const out: Record<string, AgWidgetField> = {};
+  for (const id of ids) {
+    const f = t.fields.find((x) => x.fieldId === `${table}.${id}` || x.fieldId === id || x.key === id);
+    if (!f) return null;
+    out[id] = f;
+  }
+  return out;
+}
+
+type Row = Record<string, unknown>;
+
+/**
+ * Rows of the payments table with the given fields, with the page's filters, this widget's filters and
+ * any cross filter applied by Studio. Values come back keyed by our own field ids. Studio hands a widget
+ * new params whenever a filter changes, so the params object itself is what triggers a fresh query.
+ */
+export function usePaymentRows(params: AgWidgetParams<never>, ids: readonly string[], version: number): { rows: Row[] | null; failed: boolean } {
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const shown = useRef(false);
+  const key = ids.join(",");
+  useEffect(() => {
+    let live = true;
+    const { widgetApi } = params;
+    const show = () => {
+      if (shown.current) return;
+      shown.current = true;
+      widgetApi.setDisplayState("displayed");
+    };
+    const fields = fieldsOf(widgetApi, "payments", key.split(","));
+    if (!fields) {
+      console.error(`[watchtower] payments table is missing one of ${key}`);
+      setFailed(true);
+      show();
+      return;
+    }
+    widgetApi
+      .getData({ fields: Object.values(fields) })
+      .then((res) => {
+        if (!live) return;
+        setRows(res.results.rows.map((r) => Object.fromEntries(Object.entries(fields).map(([id, f]) => [id, r[f.key]]))));
+        setFailed(false);
+        show();
+      })
+      .catch((e: unknown) => {
+        if (!live) return;
+        console.error("[watchtower] couldn't read payments:", e);
+        setFailed(true);
+        show();
+      });
+    return () => {
+      live = false;
+    };
+  }, [params, key, version]);
+  return { rows, failed };
+}
+
+const asDate = (v: unknown) => (v instanceof Date ? v : v == null || v === "" ? null : new Date(v as string));
+const asNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const asText = (v: unknown) => (v == null ? "" : String(v));
+
+/** Re-renders every `ms` while the tab is visible, for countdowns. */
+function useTick(ms: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!document.hidden) setNow(Date.now());
+    }, ms);
+    return () => clearInterval(id);
+  }, [ms]);
+  return now;
+}
+
+// ---------- money in mid air ----------
+
+const AIR_FIELDS = ["id", "when", "who", "payee", "amount", "outcome", "heldAtPayPal", "paypalExpires", "paypalId", "sample"] as const;
+
+export function MoneyMidAirWidget(p: AgWidgetParams<MoneyMidAirDef>) {
+  const { context } = p;
+  const { version } = useWatch(context);
+  const { rows, failed } = usePaymentRows(p as never, AIR_FIELDS, version);
+  const now = useTick(30_000);
+  if (failed) return <p className="wt-widget-error">Couldn&apos;t read what PayPal is holding. Reload the page.</p>;
+  if (!rows) return null;
+  const held = rows.filter((r) => r.outcome === "Waiting").sort((a, b) => (asDate(a.when)?.getTime() ?? 0) - (asDate(b.when)?.getTime() ?? 0));
+  // Filtered to one stopped payment (an incident page): show that it never left.
+  const turnedBack = !held.length && rows.length <= 3 ? rows.filter((r) => r.outcome === "Stopped" || r.outcome === "Denied") : [];
+  const total = held.reduce((t, r) => t + asNum(r.heldAtPayPal), 0);
+
+  if (!held.length && !turnedBack.length) {
+    return (
+      <div className="wt-air wt-air-empty">
+        <p className="wt-air-total">Nothing held at PayPal right now</p>
+        <p className="wt-air-note">When Spotter holds a payment for you, the money waits here inside PayPal, with PayPal&apos;s own countdown.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="wt-air">
+      {held.length > 0 && (
+        <p className="wt-air-total">
+          <span className="wt-air-sum">{gbp.format(total)}</span> held at PayPal right now
+        </p>
+      )}
+      <ul className="wt-air-list">
+        {held.map((r) => {
+          const c = countdown(asDate(r.paypalExpires), asDate(r.when) ?? new Date(now), new Date(now));
+          return (
+            <li key={asText(r.id)} className="wt-air-item">
+              <p className="wt-air-who">
+                <span>{asText(r.who)}</span>
+                <span className="wt-air-arrow" aria-hidden="true">
+                  {" "}
+                  to{" "}
+                </span>
+                <span className="wt-air-payee">{asText(r.payee)}</span>
+                {r.sample === "Yes" && <span className="wt-sample-tag">Sample</span>}
+              </p>
+              <div className="wt-air-track" aria-hidden="true">
+                <span className="wt-air-line" />
+                <span className="wt-air-clamp">{gbp.format(asNum(r.amount))}</span>
+                <span className="wt-air-line wt-air-line-ahead" />
+              </div>
+              <div className="wt-air-clock" aria-hidden="true">
+                <span className="wt-air-clock-fill" style={{ transform: `scaleX(${c.elapsed})` }} />
+              </div>
+              <p className="wt-air-note" data-expired={c.expired || undefined}>
+                {c.expired ? c.text : `Held at PayPal, ${c.text}`}
+                {r.paypalId ? <span className="wt-air-id"> · Authorisation {shortId(asText(r.paypalId))}</span> : null}
+              </p>
+            </li>
+          );
+        })}
+        {turnedBack.map((r) => (
+          <li key={asText(r.id)} className="wt-air-item" data-turned="back">
+            <p className="wt-air-who">
+              <span>{asText(r.who)}</span> to <span className="wt-air-payee">{asText(r.payee)}</span>
+            </p>
+            <div className="wt-air-track" aria-hidden="true">
+              <span className="wt-air-line" />
+              <span className="wt-air-stop" />
+              <span className="wt-air-line wt-air-line-dead" />
+            </div>
+            <p className="wt-air-note">
+              {gbp.format(asNum(r.amount))} turned back at the checkpoint. {r.outcome === "Denied" ? "PayPal released the hold." : "It never reached PayPal's payee."}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ---------- scam radar ----------
+
+const RADAR_FIELDS = ["payee", "outcome"] as const;
+
+export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
+  const { context } = p;
+  const { version, radar } = useWatch(context);
+  const { rows, failed } = usePaymentRows(p as never, RADAR_FIELDS, version);
+  if (failed) return <p className="wt-widget-error">Couldn&apos;t load the scam radar. Reload the page.</p>;
+  if (!rows) return null;
+  const lines = radarLines(rows.map((r) => ({ payee: asText(r.payee), outcome: asText(r.outcome) })), radar);
+  if (!lines.length) {
+    return (
+      <div className="wt-radar wt-radar-empty">
+        <p className="wt-radar-payee">Nobody stopped here yet</p>
+        <p className="wt-radar-text">When Spotter stops a payee for your family, this shows how many other Spotter families stopped them too.</p>
+      </div>
+    );
+  }
+  return (
+    <ul className="wt-radar">
+      {lines.map((l) => (
+        <li key={l.payee} className="wt-radar-row">
+          <div className="wt-radar-head">
+            <p className="wt-radar-payee" title={l.payee}>
+              {l.payee}
+            </p>
+            {l.sample && <span className="wt-sample-tag">Sample</span>}
+          </div>
+          <div className="wt-radar-marks" aria-hidden="true">
+            {Array.from({ length: Math.min(l.families, 8) }, (_, i) => (
+              <span key={i} className="wt-radar-mark" />
+            ))}
+            {l.families > 8 && <span className="wt-radar-more">+{l.families - 8}</span>}
+            {l.families === 0 && <span className="wt-radar-mark wt-radar-mark-none" />}
+          </div>
+          <p className="wt-radar-text">{l.text}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ---------- case file ----------
+
+const CASE_FIELDS = ["id", "when", "who", "payee", "amount", "outcome"] as const;
+
+export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
+  const { context } = p;
+  const { version, notes, sampleIds } = useWatch(context);
+  const { rows, failed } = usePaymentRows(p as never, CASE_FIELDS, version);
+  if (failed) return <p className="wt-widget-error">Couldn&apos;t open the case file. Reload the page.</p>;
+  if (!rows) return null;
+  const id = pickCase(rows.map((r) => ({ id: asText(r.id), when: asDate(r.when) ?? new Date(0), outcome: asText(r.outcome) })));
+  const row = rows.find((r) => r.id === id);
+  const note = id ? notes.get(id) : undefined;
+  if (!row || !note) {
+    return (
+      <div className="wt-case wt-case-empty">
+        <p className="wt-case-headline">No case to show</p>
+        <p className="wt-case-meta">Filter this widget to one payment to see Spotter&apos;s reasons and the scam signs it found.</p>
+      </div>
+    );
+  }
+  const outcome = asText(row.outcome);
+  return (
+    <article className="wt-case" data-outcome={outcome}>
+      <p className="wt-case-meta">
+        <span className="wt-case-outcome">{outcome === "Waiting" ? "Waiting for you" : outcome}</span>
+        <span>
+          {asText(row.who)} to <span className="wt-case-payee">{asText(row.payee)}</span>, {gbp.format(asNum(row.amount))}
+        </span>
+        {sampleIds.has(asText(row.id)) && <span className="wt-sample-tag">Sample</span>}
+      </p>
+      <h3 className="wt-case-headline">{note.caseHeadline ?? note.reasons[0] ?? "Spotter checked this payment."}</h3>
+      {note.reasons.length > 0 && (
+        <section className="wt-case-part">
+          <h4>Why Spotter stepped in</h4>
+          <ul>
+            {note.reasons.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {note.signs.length > 0 && (
+        <section className="wt-case-part">
+          <h4>Scam signs</h4>
+          <ul className="wt-case-signs">
+            {note.signs.map((s, i) => (
+              <li key={i} data-severity={s.severity}>
+                <span className="wt-case-sign">{s.sign}</span> {s.why}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {note.caseFindings && note.caseFindings.length > 0 && (
+        <section className="wt-case-part">
+          <h4>What the case worker found</h4>
+          <ul>
+            {note.caseFindings.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </article>
   );
 }

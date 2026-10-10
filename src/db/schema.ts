@@ -155,4 +155,19 @@ create index if not exists paypal_events_payment_idx on paypal_events (payment_i
 create index if not exists payments_paypal_capture_idx on payments (paypal_capture_id) where paypal_capture_id is not null;
 create index if not exists payments_paypal_auth_idx on payments (paypal_authorization_id) where paypal_authorization_id is not null;
 create index if not exists payments_paypal_order_idx on payments (paypal_order_id) where paypal_order_id is not null;
+-- Watchtower block (board + chat persistence), two tables: each family's saved AG Studio board with
+-- the incident pages it has already been given, and its AI chat threads. Ends after watchtower_threads.
+create table if not exists watchtower_boards (
+  household_id text primary key references households(id) on delete cascade,
+  state jsonb not null,
+  seen_incidents jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+create table if not exists watchtower_threads (
+  id text not null,
+  household_id text not null references households(id) on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (household_id, id)
+);
 `;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toSources, watchAlerts, type PaymentRow } from "./data";
+import { toPaypalRows, toSources, watchAlerts, type PaymentRow } from "./data";
 import type { Payment, Spender } from "@/core/lifecycle";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
@@ -117,6 +117,57 @@ describe("watchtower sources", () => {
   });
 });
 
+describe("money held at PayPal", () => {
+  it("shows a waiting payment as held at PayPal with its authorisation id and expiry", () => {
+    const held = payment({
+      id: "pay_h",
+      spender_id: "sp_gran",
+      status: "needs_approval",
+      amount: "2499",
+      paypal_authorization_id: "3XK12345AB678901C",
+      paypal_order_id: "5O190127TN364715T",
+      ...({ paypal_auth_expires_at: "2026-10-12T16:00:00Z" } as object),
+    });
+    const r = toSources([held], [gran], NOW).payments[0]!;
+    expect(r).toMatchObject({ outcome: "Waiting", heldAtPayPal: 24.99, paypalId: "3XK12345AB678901C" });
+    expect(r.paypalExpires).toEqual(new Date("2026-10-12T16:00:00Z"));
+  });
+
+  it("leaves the expiry empty when PayPal's expiry isn't known yet, and falls back to the order id", () => {
+    const held = payment({ id: "pay_h", spender_id: "sp_gran", status: "needs_approval", paypal_order_id: "5O190127TN364715T" });
+    const r = toSources([held], [gran], NOW).payments[0]!;
+    expect(r).toMatchObject({ heldAtPayPal: 25, paypalExpires: null, paypalId: "5O190127TN364715T" });
+  });
+
+  it("counts nothing as held once the money has moved on", () => {
+    const paid = payment({ id: "pay_p", spender_id: "sp_gran", status: "captured", paypal_authorization_id: "AUTH1", ...({ paypal_auth_expires_at: "2026-10-12T16:00:00Z" } as object) });
+    const r = toSources([paid], [gran], NOW).payments[0]!;
+    expect(r).toMatchObject({ heldAtPayPal: 0, paypalExpires: null, paypalId: "AUTH1" });
+  });
+});
+
+describe("paypal rows", () => {
+  it("labels PayPal's events in plain words and reads the amount from the event", () => {
+    const rows = toPaypalRows([
+      { id: 7, payment_id: "pay_a", event_type: "PAYMENT.CAPTURE.COMPLETED", created_at: "2026-10-10T11:00:00Z", resource: { amount: { value: "24.99", currency_code: "GBP" } }, payment_amount: "2499" },
+      { id: "WH-2", payment_id: "pay_b", event_type: "PAYMENT.AUTHORIZATION.VOIDED", received_at: "2026-10-10T10:00:00Z", payment_amount: "40000" },
+      { id: "WH-3", payment_id: null, event_type: "SOMETHING.NEW_HAPPENED", created_at: "2026-10-10T09:00:00Z" },
+    ]);
+    expect(rows[0]).toEqual({ id: "7", when: new Date("2026-10-10T11:00:00Z"), eventType: "PAYMENT.CAPTURE.COMPLETED", label: "PayPal captured", paymentId: "pay_a", amount: 24.99 });
+    expect(rows[1]).toMatchObject({ label: "PayPal released the hold", amount: 400, when: new Date("2026-10-10T10:00:00Z") });
+    expect(rows[2]).toMatchObject({ label: "PayPal: something new happened", paymentId: "", amount: 0 });
+  });
+
+  it("skips rows it can't date", () => {
+    expect(toPaypalRows([{ id: 1, event_type: "PAYMENT.CAPTURE.COMPLETED" }])).toEqual([]);
+  });
+
+  it("reads the amount the webhook stores in summary, as the real paypal_events rows have it", () => {
+    const [row] = toPaypalRows([{ id: "WH-1", event_type: "PAYMENT.AUTHORIZATION.VOIDED", payment_id: "pay_1", summary: { status: "VOIDED", amount: "249.00", currency: "GBP" }, received_at: "2026-10-10T17:28:43Z", payment_amount: "1" }]);
+    expect(row).toMatchObject({ id: "WH-1", paymentId: "pay_1", amount: 249 });
+  });
+});
+
 describe("watch alerts", () => {
   const row = (over: Partial<PaymentRow>): PaymentRow => ({
     id: "pay_x",
@@ -134,6 +185,9 @@ describe("watch alerts", () => {
     verdict: "None",
     newPayee: "No",
     sample: "No",
+    heldAtPayPal: 0,
+    paypalExpires: null,
+    paypalId: "",
     ...over,
   });
 

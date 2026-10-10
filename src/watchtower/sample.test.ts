@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sampleMonth } from "./sample";
+import { SAMPLE_NETWORK, sampleMonth } from "./sample";
 import { SAMPLE_PREFIX, toSources, watchAlerts } from "./data";
 import type { Spender } from "@/core/lifecycle";
 
@@ -37,6 +37,19 @@ describe("sample month", () => {
   it("tells a story the watch alerts pick up", () => {
     const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
     expect(watchAlerts(payments, NOW).map((a) => a.kind).sort()).toEqual(["new_sign", "repeat_payee", "spike"]);
+  });
+
+  it("uses made up names, not real brands, so the demo video shows no trademarks", () => {
+    const text = JSON.stringify(sampleMonth(family, NOW));
+    for (const brand of ["Tesco", "Roblox", "Steam", "Spotify", "Boots", "Ocado", "Waitrose", "Amazon", "Uber", "HMRC", "Royal Mail", "Facebook", "Etsy", "Robux", "airpods", "rm-redelivery"]) {
+      expect(text.toLowerCase()).not.toContain(brand.toLowerCase());
+    }
+  });
+
+  it("gives the scam radar a count only for sample payees that were stopped or denied", () => {
+    const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
+    const blocked = new Set(payments.filter((r) => r.outcome === "Stopped" || r.outcome === "Denied").map((r) => r.payee.trim().toLowerCase()));
+    for (const key of Object.keys(SAMPLE_NETWORK)) expect(blocked).toContain(key);
   });
 
   it("is empty when the family has nobody to match", () => {
