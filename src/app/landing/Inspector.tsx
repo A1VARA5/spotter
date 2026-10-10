@@ -29,7 +29,7 @@ function Marked({ text, quotes }: { text: string; quotes: Q[] }) {
 }
 
 const EMAIL = "We were unable to deliver your parcel due to an unpaid shipping fee of £2.99. Pay within 24 hours or it will be returned to the sender.";
-const LEO = "selling 2000 robux for £8!! pay with a £8 steam gift card, send me the code in dms, trusted seller 100%";
+const LEO = "selling 2000 BlockWorld coins for £8!! pay with a £8 gift card, send me the code in dms, trusted seller 100%";
 
 const MOMENTS = [
   {
@@ -38,17 +38,17 @@ const MOMENTS = [
     who: "Gran",
     title: "Gran forwards an email she isn't sure about.",
     line: "She forwards it to spotter@homingbox.net and gets a plain answer in the same thread.",
-    verdict: { tone: "held", label: "On hold", amount: "£2.99", to: "RM Parcel Services" },
-    reply: { from: "Spotter replied to Gran", text: "Held, not paid. The payment link isn't a Royal Mail address. Sam has been asked to decide." },
+    verdict: { tone: "held", label: "On hold", amount: "£2.99", to: "Parcel Delivery" },
+    reply: { from: "Spotter replied to Gran", text: "Held, not paid. The payment link isn't a delivery company's site. Sam has been asked to decide." },
   },
   {
     key: "market",
     icon: ShoppingBag,
     who: "Gran",
-    title: "Gran finds a cheap iPad on Marketplace.",
+    title: "Gran finds a cheap tablet on a selling app.",
     line: "The seller can't meet, will post it today, and wants PayPal Friends and Family to \"save the fees\".",
-    verdict: { tone: "protect", label: "Not sent", amount: "£180", to: "dan.reeves.88@outlook.com" },
-    reply: { from: "Spotter replied to Gran", text: "Not sent. Friends and Family has no buyer protection, so if the iPad never arrives the money is gone. If it's genuine, pay with Goods and Services." },
+    verdict: { tone: "protect", label: "Not sent", amount: "£180", to: "dan.reeves.88@inbox.example" },
+    reply: { from: "Spotter replied to Gran", text: "Not sent. Friends and Family has no buyer protection, so if the tablet never arrives the money is gone. If it's genuine, pay with Goods and Services." },
   },
   {
     key: "agent",
@@ -77,12 +77,12 @@ function EmailArt() {
         <p className="mail-ios-subj">Fwd: Your parcel is waiting</p>
         <div className="mail-ios-from">
           <span className="mail-ios-av" aria-hidden="true">
-            R
+            P
           </span>
           <span>
-            <b>Royal Mail</b>
+            <b>Parcel Delivery</b>
             <i>
-              <Marked text="notice@rm-parcel-redelivery.top" quotes={[{ quote: "rm-parcel-redelivery.top", sev: "high" }]} />
+              <Marked text="notice@parcel-redelivery.top" quotes={[{ quote: "parcel-redelivery.top", sev: "high" }]} />
             </i>
           </span>
         </div>
@@ -129,7 +129,7 @@ function LeoArt() {
               xX_cheapcoins_Xx <span>Today at 16:02</span>
             </p>
             <p>
-              <Marked text={LEO} quotes={[{ quote: "pay with a £8 steam gift card", sev: "high" }, { quote: "send me the code in dms", sev: "medium" }]} />
+              <Marked text={LEO} quotes={[{ quote: "pay with a £8 gift card", sev: "high" }, { quote: "send me the code in dms", sev: "medium" }]} />
             </p>
           </div>
         </div>
@@ -155,13 +155,13 @@ function MarketArt() {
           <span className="msgr-av" aria-hidden="true" />
           <span>
             <b>Dan Reeves</b>
-            <i>Marketplace</i>
+            <i>Swapshop</i>
           </span>
         </div>
         <div className="msgr-item">
           <span className="msgr-thumb" aria-hidden="true" />
           <span>
-            <b>iPad 9th gen 64GB, boxed</b>
+            <b>Tablet 10.2 inch 64GB, boxed</b>
             <i>£180 · Leicester</i>
           </span>
         </div>
@@ -174,7 +174,7 @@ function MarketArt() {
           <p className="msgr-msg">
             <Marked text="Pay me on PayPal as friends and family so we don't lose the fees" quotes={[{ quote: "friends and family so we don't lose the fees", sev: "high" }]} />
           </p>
-          <p className="msgr-msg">dan.reeves.88@outlook.com</p>
+          <p className="msgr-msg">dan.reeves.88@inbox.example</p>
         </div>
       </div>
     </Iphone>

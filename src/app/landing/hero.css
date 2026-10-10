@@ -1,0 +1,1093 @@
+/* ==========================================================================
+   Landing hero scenes (HeroScenes.tsx, HeroPhones.tsx, Laptop.tsx).
+   One phone and one laptop, five scenes. Builds on the .lap-* laptop and
+   .device phone styles in globals.css.
+   ========================================================================== */
+
+.hs {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+
+.hs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hs-stage {
+  perspective: 1600px;
+}
+
+.hs-tilt {
+  transform-style: preserve-3d;
+  transition: transform 900ms var(--ease-out);
+}
+
+.hs-duo {
+  --s: 1;
+  position: relative;
+  width: calc(700px * var(--s));
+  height: calc(520px * var(--s));
+}
+
+.hs-duo-inner {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 700px;
+  height: 520px;
+  transform: scale(var(--s));
+  transform-origin: top left;
+}
+
+.hs-duo-inner .lap {
+  position: absolute;
+  right: 0;
+  top: 18px;
+}
+
+.hs-phone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+}
+
+@media (max-width: 1279px) {
+  .hs-duo { --s: 0.86; }
+}
+
+@media (max-width: 1079px) {
+  .hs-duo { --s: 0.9; }
+}
+
+@media (max-width: 720px) {
+  .hs-duo { --s: 0.62; }
+}
+
+@media (max-width: 460px) {
+  .hs-duo { --s: 0.5; }
+}
+
+@media (max-width: 380px) {
+  .hs-duo { --s: 0.46; }
+}
+
+/* Controls: the scene tabs with their progress bars, and pause */
+.hs-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.hs-tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hs-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.hs-tab {
+  position: relative;
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #9aa7b2;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 550;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.hs-tab[aria-selected="true"] {
+  color: #fff;
+}
+
+.hs-tab:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hs-tab:hover {
+    color: #fff;
+    background: rgb(255 255 255 / 0.05);
+  }
+}
+
+.hs-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.12);
+  overflow: hidden;
+}
+
+.hs-tab[aria-selected="true"] .hs-bar {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.hs-bar i {
+  position: absolute;
+  inset: 0;
+  background: var(--hold);
+  transform-origin: left;
+  animation: hs-progress linear both;
+}
+
+@keyframes hs-progress {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-tab[aria-selected="true"] .hs-bar {
+    background: var(--hold);
+  }
+}
+
+.hs-pause {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: transparent;
+  color: #dfe5ea;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 160ms ease, transform 160ms ease-out;
+}
+
+.hs-pause:active {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hs-pause:hover {
+    border-color: rgb(255 255 255 / 0.5);
+  }
+}
+
+.hs-short {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .hs-long {
+    display: none;
+  }
+
+  .hs-short {
+    display: inline;
+  }
+
+  .hs-tabs {
+    gap: 0;
+  }
+
+  .hs-tab {
+    padding: 0 6px;
+    font-size: 14px;
+  }
+
+  .hs-bar {
+    left: 6px;
+    right: 6px;
+  }
+}
+
+.hs-caption {
+  max-width: 54ch;
+  min-height: 3em;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #aeb9c3;
+  text-wrap: pretty;
+}
+
+/* While paused, everything in the scene holds its frame, and so does the clock. */
+.hs[data-paused] .hs-duo-inner *,
+.hs[data-paused] .hs-duo-inner,
+.hs[data-paused] .hs-bar i {
+  animation-play-state: paused !important;
+}
+
+/* ---------- laptop screens ---------- */
+.lap-term {
+  width: 1024px;
+  height: 640px;
+  transform: scale(0.584);
+  transform-origin: top left;
+  background: #0d141c;
+  color: #d6dde4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.lap-term-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: #18212c;
+  color: #7f8c98;
+  font-size: 16px;
+}
+
+.lap-term-bar i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #3a4652;
+}
+
+.lap-term-bar span {
+  margin-left: 10px;
+}
+
+/* Starts right of where the phone overlaps the screen, so no line hides behind it. */
+.lap-term-body {
+  display: grid;
+  gap: 12px;
+  padding: 26px 34px 26px 250px;
+}
+
+.lap-term-me {
+  color: #fff;
+}
+
+.lap-term-tool {
+  color: #9fb8ff;
+  margin-right: 10px;
+}
+
+.lap-term-stop {
+  color: #ffb4ab;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgb(190 51 40 / 0.18);
+}
+
+.lap-term-dim {
+  color: #8a97a3;
+}
+
+.lap-term-say {
+  color: #7ee2a8;
+}
+
+.lap-protect {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--protect-soft);
+  color: #1f3f99;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.lap-protect svg {
+  margin-top: 1px;
+}
+
+.scn-protect .lap-pill-hold {
+  background: #e6e9e6;
+  color: var(--ink-2);
+}
+
+.scn-protect .lap-pill-done {
+  background: var(--protect);
+  color: #fff;
+}
+
+.lap-card .case-swap .btn {
+  min-height: 0;
+  padding: 8px 14px;
+  font-size: 15px;
+}
+
+/* Watchtower, drawn in Spotter's own style */
+.lw-ask {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 18px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1px solid #d9dfda;
+  box-shadow: var(--sh-1);
+  font-size: 18px;
+}
+
+.lw-ask-text {
+  white-space: nowrap;
+}
+
+.lw-board {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 16px;
+}
+
+.lw-tile {
+  background: var(--paper);
+  border: 1px solid #e3e7e3;
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.lw-tile-label {
+  font-size: 15px;
+  color: var(--ink-2);
+  font-weight: 550;
+}
+
+.lw-tile-big {
+  font-size: 40px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: var(--go);
+}
+
+.lw-tile-note {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.lw-bars {
+  display: grid;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.lw-bar-row {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 4px 12px;
+  align-items: center;
+  font-size: 15px;
+}
+
+.lw-bar-name {
+  font-weight: 600;
+}
+
+.lw-bar-track {
+  height: 22px;
+}
+
+.lw-bar {
+  display: block;
+  height: 100%;
+  width: calc(var(--w) * 100%);
+  border-radius: 6px;
+  background: var(--go);
+  transform-origin: left;
+}
+
+.lw-bar[data-tone="stop"] {
+  background: var(--stop);
+}
+
+.lw-bar-note {
+  grid-column: 2;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.lw-answer {
+  grid-column: 1 / -1;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1px solid #e3e7e3;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.lw-answer b {
+  font-weight: 650;
+}
+
+/* ---------- phone screens (iOS points) ---------- */
+.hp-channel {
+  position: absolute;
+  top: 58px;
+  right: 16px;
+  z-index: 3;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7782;
+  background: rgb(255 255 255 / 0.85);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.hp-dc .hp-channel {
+  color: #aab4bd;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.hp-mark {
+  color: inherit;
+  background: rgb(190 51 40 / 0.16);
+  box-shadow: inset 0 -2px 0 var(--stop);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.hp-mark[data-sev="medium"] {
+  background: rgb(242 183 5 / 0.3);
+  box-shadow: inset 0 -2px 0 #c99700;
+}
+
+.hp-reply {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  color: #17212b;
+  font-size: 15px;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 10px 24px -12px rgb(0 0 0 / 0.35);
+  border: 1px solid #e3e7e3;
+}
+
+.hp-reply-mark .brand-mark {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+.hp-reply b {
+  font-weight: 650;
+}
+
+.hp-reply[data-tone="hold"] {
+  box-shadow: inset 0 0 0 1.5px var(--hold), 0 10px 24px -12px rgb(0 0 0 / 0.35);
+}
+
+.hp-reply[data-tone="stop"] b {
+  color: var(--stop);
+}
+
+.hp-reply[data-tone="protect"] b {
+  color: var(--protect);
+}
+
+/* Email */
+.hp-mail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 20px 40px;
+  background: #fff;
+}
+
+.hp-mail-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--protect);
+  font-size: 17px;
+  padding: 6px 0 2px;
+}
+
+.hp-mail-subj {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.hp-mail-from {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  align-items: center;
+  line-height: 1.25;
+}
+
+.hp-mail-from b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.hp-mail-from i {
+  font-style: normal;
+  font-size: 14px;
+  color: #6b7782;
+}
+
+.hp-av {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #c7663a;
+  color: #fff;
+  font-weight: 700;
+}
+
+.hp-mail-body {
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.hp-mail-btn {
+  justify-self: start;
+  align-self: start;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #c7663a;
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.hp-mail-fwd {
+  font-size: 13px;
+  color: #6b7782;
+  border-top: 0.5px solid rgb(0 0 0 / 0.15);
+  padding-top: 12px;
+}
+
+/* A generic dark chat server */
+.hp-dc {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 14px 40px;
+  background: #1c2129;
+  color: #e3e7eb;
+}
+
+.hp-dc-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 17px;
+  padding: 6px 2px 10px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.hp-dc-msg {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.hp-dc-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #6d5bd0;
+}
+
+.hp-dc-user {
+  font-weight: 650;
+  color: #fff;
+}
+
+.hp-dc-user span {
+  font-weight: 400;
+  font-size: 12px;
+  color: #8b96a1;
+  margin-left: 4px;
+}
+
+.hp-dc .hp-mark {
+  background: rgb(242 183 5 / 0.22);
+  box-shadow: inset 0 -2px 0 var(--hold);
+}
+
+.hp-dc-menu {
+  position: relative;
+  align-self: flex-start;
+  margin-left: 50px;
+  display: grid;
+  width: 200px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #11151b;
+  box-shadow: 0 12px 30px -8px rgb(0 0 0 / 0.6);
+  font-size: 15px;
+}
+
+.hp-dc-menu > span {
+  padding: 9px 10px;
+  border-radius: 8px;
+}
+
+.hp-dc-apps {
+  position: relative;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.hp-dc-sub {
+  position: absolute;
+  left: 70px;
+  top: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #2c55c9;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 12px 30px -8px rgb(0 0 0 / 0.6);
+}
+
+.hp-dc-sub .brand-mark {
+  width: 20px;
+  height: 20px;
+}
+
+.hp-dc-eph {
+  display: grid;
+  gap: 6px;
+}
+
+.hp-dc-only {
+  font-size: 12px;
+  color: #8b96a1;
+}
+
+/* A phone browser */
+.hp-web {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #f6f7f8;
+}
+
+.hp-web-url {
+  margin: 4px 14px 10px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: #e6e9ec;
+  font-size: 15px;
+  color: #3d4852;
+  text-align: center;
+}
+
+.hp-web-page {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 40px;
+  background: #fff;
+}
+
+.hp-shop-name {
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: #0f6b5c;
+}
+
+.hp-shop-img {
+  height: 150px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 38% 52%, #fdfdfd 0 22px, #d7dce1 23px 30px, transparent 31px),
+    radial-gradient(circle at 62% 48%, #fdfdfd 0 22px, #d7dce1 23px 30px, transparent 31px),
+    #eef1f3;
+}
+
+.hp-shop-title {
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.hp-shop-cost {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.hp-shop-buy,
+.hp-coins-btn {
+  align-self: stretch;
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f6b5c;
+  color: #fff;
+  font-weight: 650;
+}
+
+.hp-ghost {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--stop);
+  background: #fff6f5;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: #3d4852;
+}
+
+.hp-ghost-tag {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--stop);
+  margin-bottom: 4px;
+}
+
+.hp-coins {
+  display: grid;
+  gap: 12px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: #3b2b8f;
+  color: #fff;
+}
+
+.hp-coins-big {
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.hp-coins-sub {
+  font-size: 15px;
+  color: #d8d2ff;
+}
+
+.hp-coins-field {
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: #17212b;
+  font-size: 15px;
+}
+
+.hp-coins-btn {
+  background: #f2b705;
+  color: #17212b;
+}
+
+/* Telegram and the older story chats, made generic: plain light wall, Spotter's own bubble colours. */
+.tg-chat {
+  background: #e9edf0;
+}
+
+.tg-me {
+  background: #dfe7f8;
+}
+
+.tg-me i {
+  color: #5d6b78;
+}
+
+.tg-fwd-from {
+  color: var(--protect);
+}
+
+.tg-mail {
+  color: var(--protect);
+}
+
+.wa-chat {
+  background: #eceeea;
+}
+
+.wa-me {
+  background: #dfe7f8;
+}
+
+/* The hub and inspector snippets lose their chat app colours too */
+.hub-tg {
+  background: #e9edf0;
+}
+
+.hub-tg-out {
+  background: #dfe7f8;
+}
+
+.hub-dc,
+.chat-ios {
+  background: #1c2129;
+}
+
+.hub-dc-menu b {
+  background: var(--protect);
+}
+
+.chat-ios-av-leo {
+  background: var(--go);
+}
+
+/* ---------- the scenes' timelines ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  /* Scene 1: held, checked, denied */
+  [data-scene="text"] .lap-card {
+    animation: lap-card-in 520ms var(--ease-out) 1.5s both;
+  }
+
+  [data-scene="text"] .lap-spin {
+    animation:
+      lap-spin 700ms linear infinite,
+      lap-fade-out 200ms ease 3.3s both;
+  }
+
+  [data-scene="text"] .lap-checks li {
+    animation: lap-row-in 380ms var(--ease-out) both;
+  }
+
+  [data-scene="text"] .lap-checks li:nth-child(1) { animation-delay: 2.1s; }
+  [data-scene="text"] .lap-checks li:nth-child(2) { animation-delay: 2.5s; }
+  [data-scene="text"] .lap-checks li:nth-child(3) { animation-delay: 2.9s; }
+
+  [data-scene="text"] .lap-verdict {
+    animation: lap-row-in 420ms var(--ease-out) 3.3s both;
+  }
+
+  [data-scene="text"] .lap-cursor {
+    animation: lap-cursor 900ms cubic-bezier(0.77, 0, 0.175, 1) 3.5s both;
+  }
+
+  [data-scene="text"] .lap-deny {
+    animation:
+      lap-press 200ms ease 4.4s both,
+      lap-fade-out 220ms ease 4.65s both;
+  }
+
+  [data-scene="text"] .lap-btn:not(.lap-deny) {
+    animation: lap-fade-out 220ms ease 4.65s both;
+  }
+
+  [data-scene="text"] .lap-done {
+    animation: lap-fade-in 380ms var(--ease-out) 4.8s both;
+  }
+
+  [data-scene="text"] .lap-pill-hold,
+  [data-scene="email"] .lap-pill-hold,
+  [data-scene="discord"] .lap-pill-hold {
+    animation: lap-fade-out 240ms ease var(--done, 4.75s) both;
+  }
+
+  [data-scene="text"] .lap-pill-done,
+  [data-scene="email"] .lap-pill-done,
+  [data-scene="discord"] .lap-pill-done {
+    animation: lap-fade-in 240ms ease var(--done, 4.75s) both;
+  }
+
+  /* Scene 2: the case file fills in */
+  [data-scene="email"] {
+    --done: 4.6s;
+  }
+
+  [data-scene="email"] .lap-card {
+    animation: lap-card-in 520ms var(--ease-out) 0.7s both;
+  }
+
+  [data-scene="email"] .case,
+  [data-scene="discord"] .case {
+    animation: none;
+  }
+
+  [data-scene="email"] .case-headline,
+  [data-scene="email"] .case-findings li,
+  [data-scene="email"] .case-ask {
+    animation: lap-row-in 380ms var(--ease-out) both;
+  }
+
+  [data-scene="email"] .case-findings li:nth-child(1) { animation-delay: 1.5s; }
+  [data-scene="email"] .case-findings li:nth-child(2) { animation-delay: 2s; }
+  [data-scene="email"] .case-findings li:nth-child(3) { animation-delay: 2.5s; }
+  [data-scene="email"] .case-headline { animation-delay: 3s; }
+  [data-scene="email"] .case-ask { animation-delay: 3.5s; }
+
+  [data-scene="email"] .hp-reply {
+    animation: bubble-in 420ms var(--ease-out) 2.2s both;
+  }
+
+  /* Scene 3: right click, Apps, Check with Spotter, then the protected switch */
+  [data-scene="discord"] {
+    --done: 4.4s;
+  }
+
+  [data-scene="discord"] .hp-dc-menu {
+    animation:
+      hs-pop 260ms var(--ease-out) 0.6s both,
+      lap-fade-out 200ms ease 2s both;
+    transform-origin: top left;
+  }
+
+  [data-scene="discord"] .hp-dc-sub {
+    animation: hs-pop 220ms var(--ease-out) 1.1s both;
+    transform-origin: top left;
+  }
+
+  [data-scene="discord"] .hp-dc-eph {
+    animation: bubble-in 420ms var(--ease-out) 2.2s both;
+  }
+
+  [data-scene="discord"] .lap-card {
+    animation: lap-card-in 520ms var(--ease-out) 2s both;
+  }
+
+  [data-scene="discord"] .lap-protect,
+  [data-scene="discord"] .case-verdict,
+  [data-scene="discord"] .case-headline,
+  [data-scene="discord"] .case-findings li,
+  [data-scene="discord"] .case-swap {
+    animation: lap-row-in 380ms var(--ease-out) both;
+  }
+
+  [data-scene="discord"] .lap-protect { animation-delay: 2.6s; }
+  [data-scene="discord"] .case-verdict,
+  [data-scene="discord"] .case-headline { animation-delay: 3s; }
+  [data-scene="discord"] .case-findings li { animation-delay: 3.3s; }
+  [data-scene="discord"] .case-swap { animation-delay: 3.8s; }
+
+  /* Scene 4: the hidden line gets found, the terminal shows the stop */
+  [data-scene="agent"] .hp-ghost {
+    animation: hs-wipe 700ms var(--ease-out) 1s both;
+  }
+
+  [data-scene="agent"] .lap-term-body p {
+    animation: lap-row-in 320ms var(--ease-out) both;
+  }
+
+  [data-scene="agent"] .lap-term-body p:nth-child(1) { animation-delay: 0.2s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(2) { animation-delay: 0.7s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(3) { animation-delay: 1.1s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(4) { animation-delay: 1.8s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(5) { animation-delay: 2.5s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(6) { animation-delay: 3.2s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(7) { animation-delay: 3.9s; }
+
+  /* Scene 5: stopped on the phone, then Watchtower answers the question */
+  [data-scene="gift"] .hp-reply {
+    animation: bubble-in 420ms var(--ease-out) 1.2s both;
+  }
+
+  [data-scene="gift"] .lw-ask-text {
+    animation: hs-type 1300ms steps(35, end) 0.5s both;
+  }
+
+  [data-scene="gift"] .lw-tile,
+  [data-scene="gift"] .lw-answer {
+    animation: lap-row-in 420ms var(--ease-out) both;
+  }
+
+  [data-scene="gift"] .lw-tile:nth-child(1) { animation-delay: 2.1s; }
+  [data-scene="gift"] .lw-tile:nth-child(2) { animation-delay: 2.3s; }
+  [data-scene="gift"] .lw-answer { animation-delay: 3.4s; }
+
+  [data-scene="gift"] .lw-bar {
+    animation: hs-grow 700ms var(--ease-out) both;
+  }
+
+  [data-scene="gift"] .lw-bar-row:nth-child(1) .lw-bar { animation-delay: 2.6s; }
+  [data-scene="gift"] .lw-bar-row:nth-child(2) .lw-bar { animation-delay: 2.85s; }
+
+  /* Each new scene settles in rather than cutting */
+  .hs-duo-inner {
+    animation: hs-scene-in 420ms var(--ease-out) both;
+  }
+}
+
+@keyframes hs-scene-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hs-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes hs-wipe {
+  from {
+    clip-path: inset(0 100% 0 0 round 12px);
+    opacity: 0.4;
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 12px);
+  }
+}
+
+@keyframes hs-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes hs-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Reduced motion: every scene shows how it ends. */
+@media (prefers-reduced-motion: reduce) {
+  [data-scene] .lap-spin,
+  [data-scene="text"] .lap-btn,
+  [data-scene] .lap-pill-hold,
+  [data-scene="discord"] .hp-dc-menu {
+    opacity: 0;
+  }
+
+  [data-scene="text"] .lap-done,
+  [data-scene] .lap-pill-done {
+    opacity: 1;
+  }
+}

@@ -9,7 +9,7 @@ Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no 
 ## Try it in 60 seconds
 
 1. Open https://spotter-pay.vercel.app and press **Try the demo family**. You get your own family (Gran, Leo and a shopping agent), nobody else sees it, and it's deleted after 48 hours. The PIN is `2468`.
-2. Go to **Try a payment** and send a few. The forwarded "Hi Mum" WhatsApp gets held for you, the Marketplace iPad seller asking for Friends and Family gets refused, the booby trapped shop gets stopped, and the birthday mug just goes through.
+2. Go to **Try a payment** and send a few. The forwarded "Hi Mum" text gets held for you, the second hand seller asking for Friends and Family gets refused, the booby trapped shop gets stopped, and the birthday mug just goes through.
 3. Open **Waiting for you** and approve or deny. Approve and PayPal captures the money. Deny and PayPal releases it.
 
 To set up your own household instead, press **Log in with PayPal** and use a PayPal sandbox personal account (sandbox only, your real PayPal won't work there).
@@ -21,10 +21,13 @@ One person, the spotter, signs in with PayPal and adds the people they look out 
 Those people don't get accounts. Each connects once, then sends Spotter anything that asks them for money:
 
 - Email: they forward it to spotter@homingbox.net. Spotter checks who really sent it (aligned DKIM, SPF or DMARC), reads the request and replies in the same thread. Pairing is one email with a `SPOT-` code.
+- Telegram: they open a pairing link from their page and press Start, then forward anything to @spotter_scam_bot. Spotter answers in the same chat ("On hold, nothing has left your account") and tells them later what the spotter decided.
+- Discord: they add the Spotter app to their own account, then right click any message, Apps, Check with Spotter. Only they see the answer. Handy for Leo, because game chats are where the gift card scams live.
 - AI agents: each agent gets its own key and four MCP tools (find products, request a payment, check a payment, check its allowance). There is no approve tool. The agent can ask to pay, and that's all it can do.
-- Telegram and Discord are designed and shown on the site, but not built yet. They're next.
 
-For every request Spotter runs the person's rules, then Claude reads the message as untrusted text and has to quote the exact words that worried it. Code throws out any warning it can't find in the message, and hidden text (invisible Unicode tags, fake delimiters) is decoded and flagged. For shopping, Channel3 compares the price with real retailers, so "AirPods Pro for £24.99" or "£249 when Currys sells it for £179" shows up as evidence.
+The spotter gets the alert by email, Telegram or a Discord DM, and the Telegram and Discord ones have a one tap Deny. Approving needs the PIN on the dashboard, so nobody can say yes for you.
+
+For every request Spotter runs the person's rules, then Claude reads the message as untrusted text and has to quote the exact words that worried it. Code throws out any warning it can't find in the message, and hidden text (invisible Unicode tags, fake delimiters) is decoded and flagged. For shopping, Channel3 compares the price with real retailers, so earbuds for £24.99 that cost £179 everywhere else show up as evidence.
 
 Then PayPal:
 
@@ -34,13 +37,22 @@ Then PayPal:
 
 Every status change is a single conditional update in Postgres, so a double tap can't capture twice, and a capture cut off halfway is settled later by asking PayPal for the authorisation's real status.
 
+## While the money waits
+
+A held payment doesn't just sit there. The case agent (Claude with five read only tools) looks into it, usually before the spotter has opened the alert:
+
+- has anyone in the family paid this payee before
+- the Spotter network: did other Spotter families say no to this payee in the last 30 days. Families only share an HMAC of the payee, never names or messages, and your own family never counts towards your number
+- where every link in the message really goes: redirects, look alike domains, borrowed brand names and domain age
+- whether the same product is sold at a real shop, and the state of the PayPal hold
+
+Every finding has to name the tool call it came from, or code drops it. The agent can't pay, approve or deny. If it found the same thing at a real shop, the spotter gets one button: deny this payment and buy it there instead (the safe swap). PayPal voids the risky hold and the new order goes through PayPal like any other.
+
+The case file shows up on the held card, in the Telegram alert and in the Discord DM. A case costs about 5p in model calls, and there's a 45 second hard cap so a slow site can't keep a payment waiting.
+
 ## Watchtower
 
-Watchtower is the family's dashboard, built on AG Studio. Every payment, hold and scam sign sits on one board, and you can just ask it things. "What did Leo spend on games this month?" goes to AG's agent team running on Claude, which queries the data and adds the widget itself. I tried exactly that question and got the right answer (two Roblox payments, £9.98) plus a new widget.
-
-Three widgets are Spotter's own: money kept, the hold track (click a stop and the whole board filters to it) and watch alerts. The alerts come from code, not the model: a run of holds for one person in a day, the same payee going after two people, a payment left waiting, a new kind of scam this week.
-
-The assistant can only read and rearrange the board. It never sees the scam messages, only names, amounts and Spotter's findings, and image and text widgets are switched off so a scammer's payee name can't become a link on the family's dashboard. Each family gets 60 assistant turns a day. Demo families get a sample month, marked Sample, so the board isn't empty on day one.
+Watchtower is the family's dashboard, built on AG Studio. Every payment, hold and scam sign sits on one board, and you can ask it things in plain words. I asked "What did Leo spend on games this month?" and AG's agent team, running on Claude, got the right answer (£9.98) and built the widget for it. The assistant can only read and rearrange the board, it never sees the scam messages, and the watch alerts come from code, not the model.
 
 ## Where to look in the code
 
@@ -50,6 +62,9 @@ The assistant can only read and rearrange the board. It never sees the scam mess
 | Rules and the decision | `src/core/rules.ts`, `src/core/decide.ts` |
 | The AI check, grounding and hidden text | `src/ai/check.ts`, `src/core/grounding.ts`, `src/ai/sanitize.ts` |
 | Reading a payment out of a forwarded email | `src/ai/extract.ts`, `src/email/inbound.ts` |
+| Telegram and Discord (pairing, forwards, Check with Spotter, alerts with Deny) | `src/telegram/`, `src/discord/`, `src/app/api/telegram/route.ts`, `src/app/api/discord/route.ts` |
+| The case agent, its tools and link checks | `src/agents/case.ts`, `src/agents/tools.ts`, `src/agents/links.ts`, `src/ui/CaseFile.tsx` |
+| The Spotter network | `src/core/network.ts` |
 | PayPal (orders, authorise, capture, void, Log in with PayPal) | `src/paypal/client.ts`, `src/paypal/identity.ts` |
 | PayPal webhooks (verified, deduped, settle stuck payments, never move money) | `src/app/api/paypal/webhook/route.ts`, `src/paypal/webhook.ts` |
 | Opening a suspicious link in a throwaway KERNEL cloud browser (read only, one per case) | `src/agents/kernel.ts`, `open_link` in `src/agents/tools.ts` |
@@ -74,8 +89,8 @@ Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to se
 
 ## What doesn't work yet
 
-- Telegram and Discord. The flows are designed and on the site; the bots aren't built.
-- Spotter can't read texts or WhatsApp by itself, and nothing should. People forward or screenshot what asks them for money. Screenshot reading isn't built yet either.
+- Spotter can't read texts or chat apps by itself, and nothing should. People forward what asks them for money. It can't read screenshots yet: send one on Telegram and it asks for the words instead.
+- Discord DM alerts to the spotter work in code but I haven't seen one land yet. Discord only lets an app DM you if you share a server with it or allow it in your settings.
 - It can't stop someone paying directly in the PayPal app. For people it's a habit, like ringing a sensible friend. For AI agents it is enforced, because the agent only has Spotter's tools.
 - In the sandbox, Spotter pays with a sandbox card. A live version would have Gran link her own PayPal once so Spotter can pay on her behalf after the check.
 - The AI check can be wrong. When it can't run or isn't sure, the payment waits for a person instead of going through.

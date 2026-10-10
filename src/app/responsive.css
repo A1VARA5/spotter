@@ -1,0 +1,44 @@
+/* ==========================================================================
+   Touch targets and small screen fixes from the 360 to 1920 audit
+   (2026-10-10). On touch screens and narrow windows, everything you can
+   tap is at least 44px tall; inline links get a taller hit area without
+   moving the text around them.
+   ========================================================================== */
+@media (pointer: coarse), (max-width: 767px) {
+  .brand,
+  .lnav-links a,
+  .nav-link,
+  .footer a,
+  .start-steps a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .footer a {
+    padding-inline: 6px;
+  }
+
+  .hint summary,
+  .stage-tab {
+    min-height: 44px;
+  }
+
+  .stage-tab {
+    min-width: 44px;
+  }
+
+  .feed-meta a,
+  .land-faq-more a,
+  .connect-sub a,
+  .lede a {
+    padding-block: 13px;
+  }
+}
+
+/* Activity (AG Grid): on phones the paging row is wider than the grid, so the page size picker goes. */
+@media (max-width: 480px) {
+  .ledger .ag-paging-page-size {
+    display: none;
+  }
+}

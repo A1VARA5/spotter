@@ -147,7 +147,7 @@ export function SpotterPhone({ scale }: { scale?: number }) {
   return (
     <Iphone dark scale={scale} className="iphone-you" label="Your phone: a Spotter notification saying Gran wants to pay £250, with Approve and Deny">
       <LockScreen>
-        <IosNotification title="Gran wants to pay £250" body="To jamie.k1994@gmail.com, a first time payee. It looks like the Hi Mum scam. The money is on hold." />
+        <IosNotification title="Gran wants to pay £250" body="To jamie.k1994@inbox.example, a first time payee. It looks like the Hi Mum scam. The money is on hold." />
         <IosActions items={[{ label: "Approve £250" }, { label: "Deny", tone: "danger" }, { label: "Open Spotter" }]} />
       </LockScreen>
     </Iphone>
@@ -171,14 +171,14 @@ export function Browser({ url, children }: { url: string; children: React.ReactN
 }
 
 export const SCAM = {
-  sms: "Hi mum I'm texting you off a friends phone I've smashed mine. WhatsApp my new number please x",
+  sms: "Hi mum I'm texting you off a friends phone I've smashed mine. Message me on my new number please x",
   number: "+44 7700 900461",
-  whatsapp: [
+  chat: [
     { me: false, text: "Hi mum its me, new number 🙂", at: "09:31" },
     { me: true, text: "Hello love, are you ok?", at: "09:33" },
     { me: false, text: "Not really, phones dead and I cant get into my banking on this one", at: "09:34" },
     { me: false, text: "I've got a bill that has to be paid today or I get a late fee. Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow", at: "09:34" },
-    { me: false, text: "jamie.k1994@gmail.com", at: "09:35" },
+    { me: false, text: "jamie.k1994@inbox.example", at: "09:35" },
     { me: false, text: "Please hurry mum x", at: "09:35" },
   ],
 } as const;
@@ -186,7 +186,7 @@ export const SCAM = {
 function WaTick() {
   return (
     <svg width="16" height="11" viewBox="0 0 16 11" aria-hidden="true">
-      <path d="M1 6l3 3 6-7M6 9l1 1 6-8" fill="none" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1 6l3 3 6-7M6 9l1 1 6-8" fill="none" stroke="#5d6b78" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -218,8 +218,8 @@ export function SmsScreen() {
   );
 }
 
-/** WhatsApp: the "new number" asks for the money and names who to pay. */
-export function WhatsAppScreen({ upto = SCAM.whatsapp.length }: { upto?: number }) {
+/** A chat app: the "new number" asks for the money and names who to pay. */
+export function ChatScreen({ upto = SCAM.chat.length }: { upto?: number }) {
   return (
     <div className="wa">
       <div className="wa-bar">
@@ -232,7 +232,7 @@ export function WhatsAppScreen({ upto = SCAM.whatsapp.length }: { upto?: number 
       </div>
       <div className="wa-chat">
         <p className="wa-day">Today</p>
-        {SCAM.whatsapp.slice(0, upto).map((m, i) => (
+        {SCAM.chat.slice(0, upto).map((m, i) => (
           <p key={i} className={m.me ? "wa-msg wa-me" : "wa-msg"}>
             <span>{m.text}</span>
             <i>
@@ -265,8 +265,8 @@ export function TelegramScreen({ step }: { step: TgStep }) {
       <div className="tg-chat">
         <div className="tg-msg tg-me tg-fwd">
           <span className="tg-fwd-from">Forwarded from {SCAM.number}</span>
-          <span>{SCAM.whatsapp[3].text}</span>
-          <span className="tg-mail">{SCAM.whatsapp[4].text}</span>
+          <span>{SCAM.chat[3].text}</span>
+          <span className="tg-mail">{SCAM.chat[4].text}</span>
           <i>09:36 ✓✓</i>
         </div>
         <div className="tg-msg tg-me">
@@ -285,7 +285,7 @@ export function TelegramScreen({ step }: { step: TgStep }) {
         {(step === "held" || step === "denied") && (
           <div className="tg-msg tg-bot">
             <span>
-              <b>On hold, nothing has left your account.</b> £250 to jamie.k1994@gmail.com is waiting for Sam. This looks like the &ldquo;Hi Mum&rdquo; scam: a new number, can&apos;t use their bank, pay a friend instead.
+              <b>On hold, nothing has left your account.</b> £250 to jamie.k1994@inbox.example is waiting for Sam. This looks like the &ldquo;Hi Mum&rdquo; scam: a new number, can&apos;t use their bank, pay a friend instead.
             </span>
             <i>09:36</i>
           </div>

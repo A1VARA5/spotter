@@ -27,12 +27,12 @@ export function Hub() {
                 <span className="hub-tg-out">/start SPOT-7KQ2XM</span>
                 <span className="hub-tg-in">Paired. Send me anything that asks Gran for money.</span>
               </div>
-              <p className="hub-note">One tap pairs Gran&apos;s phone. You get Approve and Deny in yours.</p>
+              <p className="hub-note">One tap pairs Gran&apos;s phone. You get a one tap Deny in yours.</p>
             </div>
             <div className="hub-card reveal">
                 <p className="hub-label">Discord</p>
                 <div className="hub-snip hub-dc">
-                  <span className="hub-dc-msg">selling 2000 robux for £8!! pay with a steam gift card</span>
+                  <span className="hub-dc-msg">selling 2000 BlockWorld coins for £8!! pay with a gift card</span>
                   <span className="hub-dc-menu">
                     Apps <i>›</i> <b>Check with Spotter</b>
                   </span>
@@ -43,7 +43,7 @@ export function Hub() {
               <p className="hub-label">AI agents</p>
               <div className="hub-snip hub-term">
                 <span>
-                  <i>$</i> claude mcp add spotter …/api/mcp
+                  <i>+</i> MCP server: spotter …/api/mcp
                 </span>
                 <span className="hub-term-ok">4 tools: find products, request payment, payment status, my allowance</span>
               </div>
