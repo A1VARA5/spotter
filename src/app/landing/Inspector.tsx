@@ -96,7 +96,7 @@ function EmailArt() {
   );
 }
 
-function AgentArt() {
+export function AgentArt() {
   return (
     <Browser url="bestdealz.shop/wireless-earbuds">
       <div className="shop">
