@@ -120,8 +120,8 @@ export default async function Home() {
       <section className="shell problem" aria-label="Why it's needed">
         <div className="problem-grid">
           <LitText
-            lead="Scams don't break in, they ask nicely."
-            rest="A text from a new number, a parcel fee, a seller who wants Friends and Family. Spotter can't stop the asking. It makes sure someone you trust gets one look before the money leaves."
+            lead="Nobody hacked Gran. She was asked, so the bank sees a normal payment."
+            rest="A text from a new number, a parcel fee, a seller who wants Friends and Family. Spotter can't stop the asking. It makes sure the money waits at PayPal until someone she trusts has looked."
           />
           <div className="problem-agent">
             <AgentArt />
