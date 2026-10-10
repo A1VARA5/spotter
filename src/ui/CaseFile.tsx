@@ -1,8 +1,10 @@
 "use client";
 // The case agent's write up on a held payment: what it most likely is, what each check found (every line names
 // the check it came from), what to do before deciding, and a safer way to buy the same thing when there is one.
-import { CircleAlert, Globe, Hand, Link2, ShoppingBag, Users } from "lucide-react";
+import { useState } from "react";
+import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
 import type { Case } from "@/agents/case";
+import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
@@ -12,7 +14,11 @@ const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   find_genuine_offer: { label: "Real shops", Icon: ShoppingBag },
   paypal_hold: { label: "PayPal", Icon: Hand },
   open_link: { label: "Opened safely", Icon: Globe },
+  inspect_shop: { label: "Shop page", Icon: ScanEye },
 };
+
+// KERNEL keeps a recording for about a day; after that the button would only lead to "expired".
+const REPLAY_FOR_MS = 23 * 60 * 60 * 1000;
 
 // Only a JPEG data URL we made ourselves is ever put in an img src.
 const SHOT = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
@@ -40,11 +46,14 @@ export function CasePending({ createdAt }: { createdAt: string }) {
 export function CaseFile({
   c,
   currency,
+  paymentId,
   onSwap,
   busy,
 }: {
   c: Case;
   currency: string;
+  /** Needed to play KERNEL's recording of the page visit (/api/payments/[id]/replay). */
+  paymentId?: string;
   onSwap?: () => void;
   busy?: boolean;
 }) {
@@ -58,7 +67,7 @@ export function CaseFile({
           {c.findings.map((f) => {
             const t = TOOL[f.tool] ?? { label: f.tool, Icon: CircleAlert };
             return (
-              <li key={f.source + f.text}>
+              <li key={f.source + f.text} data-severity={f.severity}>
                 <t.Icon size={17} strokeWidth={2} aria-hidden="true" />
                 <span>
                   <b>{t.label}</b> {f.text}
@@ -69,7 +78,7 @@ export function CaseFile({
         </ul>
       )}
 
-      {c.page && <OpenedPage page={c.page} />}
+      {c.page && <OpenedPage page={c.page} paymentId={paymentId} />}
 
       {c.status !== "done" && (
         <p className="case-note">
@@ -105,22 +114,77 @@ export function CaseFile({
   );
 }
 
-/** What Spotter saw when it opened the link in a throwaway cloud browser, so nobody in the family had to. */
-function OpenedPage({ page }: { page: NonNullable<Case["page"]> }) {
+/**
+ * What Spotter saw when it opened the page in a throwaway cloud browser (KERNEL), so nobody in the family had to.
+ * When the page hides text from people that an AI agent reads, the two are shown side by side.
+ */
+function OpenedPage({ page, paymentId }: { page: NonNullable<Case["page"]>; paymentId?: string }) {
+  const [watching, setWatching] = useState(false);
   const asks = [page.asks.card && "card details", page.asks.login && "a login", page.asks.giftCard && "a gift card code"].filter(Boolean) as string[];
+  const shot = page.screenshot && SHOT.test(page.screenshot) ? page.screenshot : undefined;
+  const trap = page.seen?.hidden.find((h) => h.instruction);
+  const replayAt = page.replay ? new Date(page.replay.at).getTime() : NaN;
+  const canWatch = !!paymentId && Date.now() - replayAt < REPLAY_FOR_MS;
+
+  const view = watching ? (
+    // Our own route relays KERNEL's video; the browser never gets KERNEL's link.
+    <video className="case-page-video" src={`/api/payments/${encodeURIComponent(paymentId!)}/replay`} poster={shot} controls autoPlay muted playsInline width={320} height={240}>
+      Your browser can&apos;t play the recording.
+    </video>
+  ) : shot ? (
+    <img src={shot} alt={`What the page showed: ${page.title || host(page.finalUrl)}`} width={320} height={240} />
+  ) : null;
+
+  const watch = canWatch && !watching && (
+    <button type="button" className="case-watch" onClick={() => setWatching(true)}>
+      <Play size={15} strokeWidth={2.2} aria-hidden="true" /> Watch Spotter open it
+    </button>
+  );
+
+  const where = (
+    <>
+      Spotter opened <b>{host(page.finalUrl)}</b> in a throwaway cloud browser so nobody had to
+      {asks.length ? (
+        <>
+          . It asks for <b>{asks.join(", ")}</b>.
+        </>
+      ) : (
+        "."
+      )}
+    </>
+  );
+
+  if (trap && page.seen) {
+    return (
+      <figure className="case-seen" aria-label="What a person sees vs what your agent read">
+        <p className="case-seen-title">What a person sees vs what your agent read</p>
+        <div className="case-seen-grid">
+          <div className="case-seen-side">
+            <p className="case-seen-label">A person sees</p>
+            {view ?? <p className="case-seen-sample">{page.seen.visibleSample || "No text."}</p>}
+          </div>
+          <div className="case-seen-side case-seen-hidden">
+            <p className="case-seen-label">Your agent also read, hidden from people</p>
+            <blockquote>
+              <mark>{trap.text}</mark>
+            </blockquote>
+            <p className="case-seen-why">
+              Hidden on the page: {WHY_LABEL[trap.why]}. A person can see {page.seen.visibleChars} of its {page.seen.domChars} characters of text.
+            </p>
+          </div>
+        </div>
+        <figcaption>
+          {where} {watch}
+        </figcaption>
+      </figure>
+    );
+  }
+
   return (
     <figure className="case-page">
-      {page.screenshot && SHOT.test(page.screenshot) && <img src={page.screenshot} alt={`What the link showed: ${page.title || host(page.finalUrl)}`} width={320} height={200} />}
+      {view}
       <figcaption>
-        Spotter opened the link in a throwaway browser so nobody had to. It ended up at <b>{host(page.finalUrl)}</b>
-        {asks.length ? (
-          <>
-            {" "}
-            and asks for <b>{asks.join(", ")}</b>.
-          </>
-        ) : (
-          "."
-        )}
+        {where} {watch}
       </figcaption>
     </figure>
   );
