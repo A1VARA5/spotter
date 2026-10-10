@@ -22,10 +22,20 @@ export type PaymentRow = {
   verdict: string;
   newPayee: "Yes" | "No";
   sample: "Yes" | "No";
+  /** Pounds sitting in a PayPal authorisation right now (a Waiting payment), else 0. */
+  heldAtPayPal: number;
+  /** When PayPal's authorisation runs out, for held money. Null when not held or not known yet. */
+  paypalExpires: Date | null;
+  /** PayPal's authorisation id (or order id before there is one). */
+  paypalId: string;
 };
+/** Spotter's own words about one payment, for the case file widget and the open_case_file tool. */
+export type CaseNote = { id: string; reasons: string[]; signs: Array<{ sign: string; severity: string; why: string }>; caseHeadline?: string; caseFindings?: string[] };
+/** One thing PayPal told us about a payment (a webhook or a status check). */
+export type PaypalRow = { id: string; when: Date; eventType: string; label: string; paymentId: string; amount: number };
 export type SignRow = { paymentId: string; when: Date; who: string; payee: string; sign: string; severity: string };
 export type PersonRow = { name: string; kind: string; weeklyAllowance: number; spentThisWeek: number };
-export type Sources = { payments: PaymentRow[]; signs: SignRow[]; people: PersonRow[] };
+export type Sources = { payments: PaymentRow[]; signs: SignRow[]; people: PersonRow[]; paypal?: PaypalRow[] };
 
 export const SIGN_LABEL: Record<FlagKind, string> = {
   pressure: "Pressure to hurry",
@@ -76,6 +86,9 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
     const amount = pounds(p.amount);
     const flags = flagsOf(p);
     const when = new Date(p.created_at);
+    // Set by the PayPal reconciler once it has asked PayPal; older rows don't have the column at all.
+    const expiresRaw = (p as Payment & { paypal_auth_expires_at?: string | Date | null }).paypal_auth_expires_at;
+    const expires = outcome === "Waiting" && expiresRaw ? new Date(expiresRaw) : null;
     rows.push({
       id: p.id,
       when,
@@ -92,6 +105,9 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
       verdict: p.case_file ? (VERDICT[p.case_file.verdict] ?? "None") : "None",
       newPayee: p.request.payee.isNew ? "Yes" : "No",
       sample: p.id.startsWith(SAMPLE_PREFIX) ? "Yes" : "No",
+      heldAtPayPal: outcome === "Waiting" ? amount : 0,
+      paypalExpires: expires && Number.isFinite(expires.getTime()) ? expires : null,
+      paypalId: p.paypal_authorization_id ?? p.paypal_order_id ?? "",
     });
     for (const f of flags) {
       signs.push({ paymentId: p.id, when, who: who?.name ?? "Someone", payee: p.request.payee.name, sign: SIGN_LABEL[f.kind], severity: SEVERITY_LABEL[f.severity] });
@@ -205,4 +221,45 @@ export function watchAlerts(rows: PaymentRow[], now = new Date()): WatchAlert[] 
   }
 
   return alerts.sort((a, b) => (a.level === b.level ? 0 : a.level === "high" ? -1 : 1));
+}
+
+const PAYPAL_LABEL: Record<string, string> = {
+  "CHECKOUT.ORDER.APPROVED": "Order approved at PayPal",
+  "CHECKOUT.ORDER.COMPLETED": "PayPal completed the order",
+  "PAYMENT.AUTHORIZATION.CREATED": "PayPal is holding the money",
+  "PAYMENT.AUTHORIZATION.VOIDED": "PayPal released the hold",
+  "PAYMENT.CAPTURE.COMPLETED": "PayPal captured",
+  "PAYMENT.CAPTURE.PENDING": "PayPal capture pending",
+  "PAYMENT.CAPTURE.DENIED": "PayPal declined the capture",
+  "PAYMENT.CAPTURE.REFUNDED": "PayPal refunded",
+  "PAYMENT.CAPTURE.REVERSED": "PayPal reversed the payment",
+};
+
+/**
+ * Rows from the paypal_events table, in whatever shape it has (webhooks carry PayPal's resource, status
+ * checks may not), turned into plain words. Rows without a usable date are left out.
+ */
+export function toPaypalRows(events: Array<Record<string, unknown>>): PaypalRow[] {
+  const out: PaypalRow[] = [];
+  for (const e of events) {
+    const at = e.created_at ?? e.received_at ?? e.at;
+    const when = at instanceof Date ? at : typeof at === "string" ? new Date(at) : null;
+    if (!when || !Number.isFinite(when.getTime())) continue;
+    const eventType = String(e.event_type ?? e.type ?? "");
+    const nested = (k: string) => (e[k] as { resource?: unknown } | null | undefined)?.resource;
+    const resource = (e.resource ?? nested("data") ?? nested("payload")) as { amount?: { value?: string } } | undefined;
+    const fromEvent = resource?.amount?.value == null ? NaN : Number(resource.amount.value);
+    const fromPayment = e.payment_amount == null ? NaN : Number(e.payment_amount) / 100;
+    const amount = Number.isFinite(fromEvent) ? fromEvent : Number.isFinite(fromPayment) ? fromPayment : 0;
+    const plain = eventType.toLowerCase().replace(/[._]+/g, " ").trim();
+    out.push({
+      id: String(e.id ?? ""),
+      when,
+      eventType,
+      label: PAYPAL_LABEL[eventType] ?? (plain ? `PayPal: ${plain}` : "PayPal update"),
+      paymentId: e.payment_id == null ? "" : String(e.payment_id),
+      amount,
+    });
+  }
+  return out;
 }

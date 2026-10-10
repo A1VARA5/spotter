@@ -141,4 +141,20 @@ create table if not exists llm_turns (
 );
 create index if not exists llm_turns_at_idx on llm_turns (at);
 create index if not exists llm_turns_household_idx on llm_turns (household_id, at);
+
+-- Watchtower block (board + chat persistence), two tables: each family's saved AG Studio board with
+-- the incident pages it has already been given, and its AI chat threads. Ends after watchtower_threads.
+create table if not exists watchtower_boards (
+  household_id text primary key references households(id) on delete cascade,
+  state jsonb not null,
+  seen_incidents jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+create table if not exists watchtower_threads (
+  id text not null,
+  household_id text not null references households(id) on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (household_id, id)
+);
 `;
