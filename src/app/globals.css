@@ -1823,6 +1823,11 @@ p {
   }
 }
 
+/* The cobalt ring is 2.87:1 on the dark sidebar, under the 3:1 a focus ring needs (WCAG 1.4.11): white here */
+.side :focus-visible {
+  outline-color: #fff;
+}
+
 .side-brand {
   display: inline-flex;
   align-items: center;
@@ -5616,6 +5621,8 @@ p {
 .guide {
   margin-top: 32px;
   display: grid;
+  /* minmax(0, 1fr): the phone mockup's width must not push the guide past a 320px screen (WCAG 1.4.10) */
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
 }
 
@@ -5653,6 +5660,7 @@ p {
 
 .guide-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   align-items: center;
   padding: clamp(18px, 3vw, 32px);
@@ -5725,6 +5733,13 @@ p {
 .guide-shot {
   display: grid;
   place-items: center;
+}
+
+/* The phone is drawn at a fixed scale; on the narrowest screens shrink it so it fits without sideways scroll */
+@media (max-width: 380px) {
+  .guide-phone {
+    zoom: 0.8;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -5968,6 +5983,22 @@ p {
   border-radius: 8px;
   padding: 6px;
   width: max-content;
+}
+
+/* Narrow screens: the submenu opens under the menu instead of beside it, so nothing runs off the screen */
+@media (max-width: 520px) {
+  .dshot {
+    padding-bottom: 200px;
+  }
+
+  .dshot-menu {
+    left: 12px;
+  }
+
+  .dshot-sub {
+    left: 40px;
+    top: calc(100% + 6px);
+  }
 }
 
 .dshot-pick {

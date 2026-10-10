@@ -35,6 +35,7 @@ export function NetworkField({
   calm,
   fx = 0.72,
   fy = 0.45,
+  runFor,
 }: {
   quiet?: boolean;
   focus?: string;
@@ -42,6 +43,9 @@ export function NetworkField({
   calm?: string;
   fx?: number;
   fy?: number;
+  /** Seconds of motion before the field settles on its last frame for good. Background motion next to
+   *  reading content must stop within 5 s or offer a pause (WCAG 2.2.2), so pages of text pass 5. */
+  runFor?: number;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -408,6 +412,7 @@ export function NetworkField({
       draw();
     };
 
+    let ran = 0;
     const frame = (now: number) => {
       raf = 0;
       const dt = Math.min(0.05, (now - last) / 1000 || 0);
@@ -415,10 +420,12 @@ export function NetworkField({
       const before = lit;
       step(dt);
       if (lit || before) draw();
+      ran += dt;
+      if (runFor !== undefined && ran >= runFor) return; // settled: the last frame stays
       if (visible) raf = requestAnimationFrame(frame);
     };
     const start = () => {
-      if (reduced || raf || !visible || !n) return;
+      if (reduced || raf || !visible || !n || (runFor !== undefined && ran >= runFor)) return;
       last = performance.now();
       raf = requestAnimationFrame(frame);
     };
@@ -470,7 +477,7 @@ export function NetworkField({
       io.disconnect();
       document.removeEventListener("visibilitychange", sync);
     };
-  }, [quiet, focus, avoid, calm, fx, fy]);
+  }, [quiet, focus, avoid, calm, fx, fy, runFor]);
 
   return <canvas ref={ref} className={quiet ? "netfield netfield-quiet" : "netfield"} aria-hidden="true" />;
 }

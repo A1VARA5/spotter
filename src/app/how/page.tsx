@@ -39,7 +39,7 @@ export default function HowPage() {
   return (
     <main className="how">
       <section className="how-hero net-host">
-        <NetworkField quiet fx={0.84} fy={0.22} calm=".how-h1, .how-lede" avoid=".role, .how-track, .lnav" />
+        <NetworkField quiet runFor={5} fx={0.84} fy={0.22} calm=".how-h1, .how-lede" avoid=".role, .how-track, .lnav" />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
