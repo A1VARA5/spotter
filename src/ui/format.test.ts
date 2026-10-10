@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findQuotes, money, timeAgo, trackState } from "./format";
+import { findQuotes, money, replacementLink, timeAgo, trackState } from "./format";
 
 describe("ui format", () => {
   it("formats minor units as money", () => {
@@ -29,5 +29,41 @@ describe("ui format", () => {
     expect(timeAgo("2026-10-09T11:59:50Z", now)).toBe("just now");
     expect(timeAgo("2026-10-09T11:50:00Z", now)).toBe("10 min ago");
     expect(timeAgo("2026-10-09T09:00:00Z", now)).toBe("3 h ago");
+  });
+});
+
+describe("replacement links", () => {
+  type P = Parameters<typeof replacementLink>[0];
+  const pay = (id: string, payee: string, status: string, amount: number, extra: Record<string, unknown> = {}) =>
+    ({ id, status, amount, currency: "GBP", request: { payee: { name: payee }, ...extra } }) as unknown as P;
+  const stopped = pay("p1", "GadgetBarn", "blocked", 1999);
+  const bought = pay("p2", "currys.co.uk", "captured", 17900, {
+    swappedFrom: "p1",
+    saferOption: { offer_id: "offer_x", reason: "hidden instructions", from_payee: "GadgetBarn" },
+  });
+
+  it("tells the agent's whole story on the replacement", () => {
+    expect(replacementLink(bought, [bought, stopped], "Shopping agent")).toEqual({
+      id: "p1",
+      text: "Shopping agent tried GadgetBarn (stopped: hidden instructions), then bought from currys.co.uk for £179.00 instead.",
+    });
+    const waiting = { ...bought, status: "needs_approval" } as P;
+    expect(replacementLink(waiting, [stopped], "Shopping agent")!.text).toMatch(/then asked to buy from currys\.co\.uk for £179\.00 instead\.$/);
+  });
+
+  it("links the stopped payment to what replaced it", () => {
+    expect(replacementLink(stopped, [bought, stopped], "Shopping agent")).toEqual({ id: "p2", text: "Replaced by currys.co.uk, £179.00 (Paid)." });
+  });
+
+  it("says held, not stopped, when the first payment was only held, and handles the spotter's own swap", () => {
+    const released = pay("p1", "NewBuds", "voided", 1999);
+    const fromHeld = { ...bought, request: { ...bought.request, saferOption: { offer_id: "o", reason: "brand new shop", from_payee: "NewBuds" } } } as P;
+    expect(replacementLink(fromHeld, [released], "Shopping agent")!.text).toMatch(/^Shopping agent tried NewBuds \(held: brand new shop\)/);
+    const swapped = pay("p3", "apple.com", "captured", 21900, { swappedFrom: "p1" });
+    expect(replacementLink(swapped, [released], "Gran")!.text).toBe("Bought instead of the held payment to NewBuds.");
+  });
+
+  it("is null for a payment with no link", () => {
+    expect(replacementLink(pay("p9", "Clay & Kiln", "captured", 2499), [stopped], "Gran")).toBeNull();
   });
 });

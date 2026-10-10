@@ -181,4 +181,17 @@ create table if not exists price_checks (
 );
 create index if not exists price_checks_household_idx on price_checks (household_id, at);
 create index if not exists price_checks_at_idx on price_checks (at);
+-- Safer options block, one table: the genuine Channel3 offer Spotter suggested to an AI agent after stopping or
+-- holding its payment. An agent can only pay one of these (its own, under an hour old, once) as the replacement.
+create table if not exists safer_options (
+  id text primary key,
+  payment_id text not null references payments(id) on delete cascade,
+  spender_id text not null references spenders(id) on delete cascade,
+  offer jsonb not null,
+  reason text not null,
+  created_at timestamptz not null default now(),
+  used_at timestamptz,
+  used_by text
+);
+create index if not exists safer_options_payment_idx on safer_options (payment_id, created_at desc);
 `;

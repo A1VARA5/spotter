@@ -1,4 +1,5 @@
 import type { PaymentStatus } from "@/db/schema";
+import type { Payment } from "@/core/lifecycle";
 
 export function money(minor: number | string, currency: string) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency, minimumFractionDigits: 2 }).format(Number(minor) / 100);
@@ -39,6 +40,32 @@ export const STATE_LABEL: Record<TrackState, string> = {
   returned: "Denied, money released",
   failed: "PayPal said no",
 };
+
+type Linked = Pick<Payment, "id" | "status" | "amount" | "currency" | "request">;
+
+/**
+ * One line tying a replaced payment to its replacement, both ways. On the replacement it tells the whole story
+ * ("Shopping agent tried GadgetBarn (stopped: hidden instructions), then bought from ... instead."); on the stopped
+ * payment it says what replaced it. id is the other payment. Null when there is no link.
+ */
+export function replacementLink(p: Linked, all: Linked[], who: string): { id: string; text: string } | null {
+  const from = p.request.swappedFrom;
+  if (from) {
+    const first = all.find((x) => x.id === from);
+    const safer = p.request.saferOption;
+    if (!safer) return { id: from, text: `Bought instead of the held payment to ${first?.request.payee.name ?? "another shop"}.` };
+    const was = first && first.status !== "blocked" ? "held" : "stopped";
+    const s = trackState(p.status);
+    const did = s === "paid" ? "bought from" : s === "held" ? "asked to buy from" : "tried";
+    return {
+      id: from,
+      text: `${who} tried ${safer.from_payee} (${was}: ${safer.reason}), then ${did} ${p.request.payee.name} for ${money(p.amount, p.currency)} instead.`,
+    };
+  }
+  const next = all.find((x) => x.request.swappedFrom === p.id);
+  if (!next) return null;
+  return { id: next.id, text: `Replaced by ${next.request.payee.name}, ${money(next.amount, next.currency)} (${STATE_LABEL[trackState(next.status)]}).` };
+}
 
 /** Find each quote inside the original text, tolerant of whitespace and case. Returns non overlapping ranges. */
 export function findQuotes(text: string, quotes: string[]): Array<{ start: number; end: number; i: number }> {

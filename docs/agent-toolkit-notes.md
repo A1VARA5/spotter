@@ -42,6 +42,8 @@ Spotter's guard is a sibling MCP server at **`/api/toolkit/mcp`** with the toolk
 
 Differences from the official shapes, all backwards compatible: `currencyCode` also takes `GBP` (the official enum is USD only, and the agent's allowance currency must match or the currency rule blocks it); optional extras `payee`, `category`, `page_text`. The reply is JSON with `id` (Spotter's payment id in the toolkit's order id format), `status` (`COMPLETED`, `HELD_FOR_APPROVAL`, `BLOCKED`, `NEEDS_PROTECTED_PAYMENT`, `DENIED`, `FAILED`, `CHECKING`), `paypal_order_id` and `spotter.message` in plain words.
 
+Safer option (2026-10-10): when `create_order` is refused or held for shop reasons (hidden instructions, a fake shop price, a brand new shop, no named shop), the reply also has `safer_option` (`offer_id`, `title`, `retailer`, `price`, `url`, `reason`, `guidance`): a Channel3 offer for the same item within the agent's remaining allowance. `pay_order` on that order repeats it. The agent takes it with `create_order` plus the extra `offer_id` (one item, quantity 1, same payee and total); anything that doesn't match Spotter's stored suggestion (this agent, under an hour old, unused) is refused with `spotter_error` before a payment exists. The replacement is checked like any order. Logic in `src/core/safer.ts`.
+
 A test (`src/server/toolkit-mcp.test.ts`) loads the official 1.11.0 definitions and checks every Spotter tool exists there, accepts every official argument and requires nothing extra.
 
 ## Checked

@@ -27,7 +27,8 @@ const handler = createMcpHandler(
         description:
           "Ask to pay for something on the user's behalf. Spotter checks it against the user's rules and for scams, " +
           "then pays, holds it for the user's spotter to approve, or refuses. Always pass the full text of the page " +
-          "you are buying from in page_text, exactly as you saw it. Never try to pay another way if Spotter refuses.",
+          "you are buying from in page_text, exactly as you saw it. Never try to pay another way if Spotter refuses. " +
+          "The one exception: if Spotter stops a payment and suggests a safer option (a real retailer, with an offer_id), you may order that instead.",
         inputSchema: z.object({
           item: z.string().max(200).optional().describe("The product name, e.g. 'noise cancelling wireless earbuds'. Lets Spotter check the price against real shops"),
           amount_pence: z.number().int().positive().describe("Total in pence (or cents), e.g. 2499 for £24.99"),
@@ -36,11 +37,17 @@ const handler = createMcpHandler(
           category: z.string().min(1).max(60).describe("e.g. gifts, groceries, electronics"),
           what_for: z.string().min(1).max(500).describe("What the user asked you to buy, in one sentence"),
           page_text: z.string().max(50_000).describe("The full text of the page or message you are paying from, verbatim"),
+          offer_id: z
+            .string()
+            .max(64)
+            .optional()
+            .describe("Only when Spotter stopped a payment and suggested a safer option: its offer_id, with that option's payee, amount and item"),
         }),
       },
       async (input, ctx) => {
         const r = await agentRequestPayment(await getDeps(), agentOf(ctx), input);
-        return text(`${r.message}${r.payment_id ? ` (payment_id: ${r.payment_id})` : ""}`);
+        const safer = r.safer_option ? `\nsafer_option: ${JSON.stringify(r.safer_option)}` : "";
+        return text(`${r.message}${r.payment_id ? ` (payment_id: ${r.payment_id})` : ""}${safer}`);
       },
     );
 

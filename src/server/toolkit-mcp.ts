@@ -37,6 +37,11 @@ const createOrderInput = z.object({
   payee: z.string().max(120).optional().describe("Spotter extra: the shop or person being paid. Without it the order always waits for the spotter."),
   category: z.string().max(60).optional().describe("Spotter extra: e.g. electronics, groceries, gifts."),
   page_text: z.string().max(50_000).optional().describe("Spotter extra: the full text of the page you are buying from, verbatim."),
+  offer_id: z
+    .string()
+    .max(64)
+    .optional()
+    .describe("Spotter extra: only when Spotter stopped an order and returned a safer_option. Its offer_id, with that option's payee, item and price."),
 });
 
 export function makeToolkitMcp(opts: { deps: () => Promise<Deps>; read: OrderReader }) {
@@ -48,7 +53,8 @@ export function makeToolkitMcp(opts: { deps: () => Promise<Deps>; read: OrderRea
           title: "Create Order (through Spotter)",
           description:
             "Create an order in PayPal. This goes through Spotter first: it checks the order against the user's rules and for " +
-            "scams, then pays it, holds it for the user's spotter to approve, or refuses. Pass payee and page_text when you can.",
+            "scams, then pays it, holds it for the user's spotter to approve, or refuses. Pass payee and page_text when you can. " +
+            "If Spotter refuses an order and returns a safer_option (the same item at a real retailer), you may order that instead with its offer_id.",
           inputSchema: createOrderInput,
         },
         async (input, ctx) => text(await toolkitCreateOrder(await opts.deps(), agentOf(ctx), input as ToolkitOrderInput)),

@@ -7241,6 +7241,12 @@ h3 {
 .feed-case > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 4px 0; width: max-content; }
 .feed-case > summary:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
 .feed-case[open] > summary { margin-bottom: 8px; }
+/* A stopped payment and the safer one that replaced it (agent's own fix or the spotter's swap), linked both ways */
+.replaced-link { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--go-soft); font-size: 14px; line-height: 1.45; color: var(--ink); }
+.replaced-link svg { flex: none; margin-top: 2px; color: var(--go); }
+.replaced-link a { color: var(--go); font-weight: 600; }
+.replaced-link a:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
+[id^="pay-"] { scroll-margin-top: 80px; }
 .toolset { display: inline-flex; gap: 4px; padding: 4px; background: var(--chalk); border-radius: 12px; justify-self: start; flex-wrap: wrap; }
 .toolset-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 10px 14px; border-radius: 9px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .toolset-btn[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: var(--raise); }

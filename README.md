@@ -79,6 +79,10 @@ So Spotter has a second MCP server at `/api/toolkit/mcp` that speaks the toolkit
 
 The toolkit's `create_order` only takes USD, so the agent needs a USD allowance. If it doesn't name a shop (the official tool has no field for that), the order always waits for the spotter. The details and the full tool list are in `docs/agent-toolkit-notes.md`, and `scripts/toolkit-agent-demo.mts` is a Claude agent that gets PayPal's own tool definitions and talks to Spotter instead.
 
+## When the agent picks the wrong shop
+
+If Spotter stops an agent's payment because of the shop (hidden instructions on the page, a price no real shop charges, a brand new shop, or no shop named at all), it also tells the agent where to buy the same item safely: a real retailer from Channel3, inside what the agent has left this week, with an offer id. A well behaved agent can order that instead with `request_payment` or `create_order`. I didn't want the offer id to turn into a skip button, so Spotter keeps every suggestion on the server and only takes one back from the same agent, within an hour, once, at the same shop, price and item. The new payment still goes through the rules and the AI check, and over the ask me amount it still waits for the spotter. On the dashboard the two payments link to each other, so it reads as one story: the agent tried GadgetBarn, got stopped for hidden instructions, then bought from a real shop instead. `scripts/agent-demo.mts` and `scripts/toolkit-agent-demo.mts` run that loop against the demo shop.
+
 ## Where to look in the code
 
 | What | Where |
@@ -95,6 +99,7 @@ The toolkit's `create_order` only takes USD, so the agent needs a USD allowance.
 | Opening a suspicious link in a throwaway KERNEL cloud browser (read only, one per case) | `src/agents/kernel.ts`, `open_link` in `src/agents/tools.ts` |
 | Real shop prices | `src/market/channel3.ts`, `src/core/market.ts` |
 | MCP server for agents | `src/app/api/mcp/route.ts`, `src/server/agent.ts` |
+| The safer option after a stopped agent payment (suggest, validate the offer id, link the two payments) | `src/core/safer.ts` |
 | PayPal's Agent Toolkit with a spotter (guarded `create_order` and `pay_order`, scoped `get_order`) | `src/app/api/toolkit/mcp/route.ts`, `src/server/toolkit-mcp.ts`, `src/server/toolkit-guard.ts`, `src/paypal/toolkit.ts` |
 | Households, sessions, PIN, pairing codes, agent keys | `src/core/households.ts`, `src/server/auth.ts`, `src/core/pairing.ts` |
 | Activity table (AG Grid) | `src/app/ledger/Ledger.tsx` |

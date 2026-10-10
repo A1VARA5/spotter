@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Hand, ShieldCheck, Ban, Info } from "lucide-react";
+import { Hand, ShieldCheck, Ban, Info, Repeat } from "lucide-react";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
-import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
+import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import { readJson } from "@/ui/http";
 import { Hint } from "@/ui/Hint";
@@ -62,7 +62,7 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
             </div>
           )}
           {waiting.map((p) => (
-            <HeldCard key={p.id} p={p} who={names[p.spender_id] ?? "Someone"} demo={demo} onSettled={refresh} onLocked={() => setLocked(true)} />
+            <HeldCard key={p.id} p={p} all={payments} who={names[p.spender_id] ?? "Someone"} demo={demo} onSettled={refresh} onLocked={() => setLocked(true)} />
           ))}
         </div>
         {error && (
@@ -83,7 +83,7 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
         ) : (
           <ul className="feed">
             {rest.map((p) => (
-              <FeedRow key={p.id} p={p} who={names[p.spender_id] ?? "Someone"} />
+              <FeedRow key={p.id} p={p} all={payments} who={names[p.spender_id] ?? "Someone"} />
             ))}
           </ul>
         )}
@@ -140,10 +140,31 @@ function PinGate({ onUnlocked }: { onUnlocked: () => void }) {
   );
 }
 
+/** The other half of a replacement (an agent taking Spotter's safer option, or the spotter's swap), as a jump link. */
+function ReplacedLink({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
+  const link = replacementLink(p, all, who);
+  if (!link) return null;
+  const there = all.some((x) => x.id === link.id);
+  return (
+    <p className="replaced-link">
+      <Repeat size={15} strokeWidth={2} aria-hidden="true" />
+      <span>
+        {link.text}
+        {there && (
+          <>
+            {" "}
+            <a href={`#pay-${link.id}`}>See it</a>
+          </>
+        )}
+      </span>
+    </p>
+  );
+}
+
 /** The case agent has up to 45 seconds; until its case file lands (or that time passes) nobody approves blind. */
 const CASE_WAIT_MS = 50_000;
 
-function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: string; demo: boolean; onSettled: () => void; onLocked: () => void }) {
+function HeldCard({ p, all, who, demo, onSettled, onLocked }: { p: Payment; all: Payment[]; who: string; demo: boolean; onSettled: () => void; onLocked: () => void }) {
   const [busy, setBusy] = useState<"approve" | "deny" | "swap" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +209,7 @@ function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: stri
   }
 
   return (
-    <article className="held" aria-labelledby={`h-${p.id}`}>
+    <article className="held" id={`pay-${p.id}`} aria-labelledby={`h-${p.id}`}>
       <div className="held-head">
         <div>
           <p id={`h-${p.id}`} className="held-amount num">
@@ -201,6 +222,8 @@ function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: stri
       </div>
 
       <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
+
+      <ReplacedLink p={p} all={all} who={who} />
 
       {p.case_file ? (
         <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} busy={busy === "swap"} onSwap={busy ? undefined : () => act("swap")} />
@@ -298,12 +321,12 @@ function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: stri
 
 const ROW_ICON = { blocked: Ban, protected: ShieldCheck, held: Hand } as const;
 
-function FeedRow({ p, who }: { p: Payment; who: string }) {
+function FeedRow({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
   const s = trackState(p.status);
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
   const firstReason = p.decision?.reasons[0];
   return (
-    <li className="feed-row">
+    <li className="feed-row" id={`pay-${p.id}`}>
       <span className="feed-title">
         {who} to {p.request.payee.name}
       </span>
@@ -316,6 +339,7 @@ function FeedRow({ p, who }: { p: Payment; who: string }) {
         {Icon && <Icon size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 4 }} />}
         {STATE_LABEL[s]}
       </span>
+      <ReplacedLink p={p} all={all} who={who} />
       {p.case_file && (
         // Stopped payments have a case file too; one that caught hidden orders for an AI agent starts open.
         <details className="feed-case" open={p.case_file.findings.some((f) => f.kind === "prompt_injection")}>
