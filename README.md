@@ -55,6 +55,17 @@ The case file shows up on the held card, in the Telegram alert and in the Discor
 
 Watchtower is the family's dashboard, built on AG Studio. Every payment, hold and scam sign sits on one board, and you can ask it things in plain words. I asked "What did Leo spend on games this month?" and AG's agent team, running on Claude, got the right answer (£9.98) and built the widget for it. The assistant can only read and rearrange the board, it never sees the scam messages, and the watch alerts come from code, not the model.
 
+The chat opens with our own agent, called Spotter. It's the family's lookout. It reads case files, watch alerts, the scam radar and what PayPal said about a payment, and it can check a price live against real shops through Channel3. It doesn't build anything itself. When the board needs a widget or a page, Spotter hands the job to AG Studio's own planning, page, widget and data agents with a short brief. There's a second agent of ours too, the weekly brief writer: ask for "this week's brief" and Spotter passes it over, the brief agent gathers the numbers and asks the page and widget agents for a page called "Week of" and the date. AG's own lead agent is still in the roster. Every agent runs on Claude through my own adapter, which swaps in for AG's model layer and keeps the key on the server.
+
+```
+Spotter (ours) ── brief (ours) ──┐
+       │                         ├── planning, page, widget, data (AG Studio)
+       └─────────────────────────┘
+lead (AG Studio, kept)   all on Claude via our swapped in adapter
+```
+
+The fair price widget shows what the shopping agent paid against the cheapest real shop this month, using the Channel3 check Spotter stored when each payment was made. On the demo family it says the agent paid £8.50 more than it had to, and that Spotter caught a £24.99 pair of earbuds that real shops sell for about £169.
+
 ## Using PayPal's Agent Toolkit with Spotter
 
 PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, I pinned 1.11.0) that lets an AI agent create orders, capture them, send invoices, refund and so on. It has no spending limit and no approval step. If the agent calls `pay_order`, the money goes.

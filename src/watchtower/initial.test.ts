@@ -33,18 +33,32 @@ describe("starting board", () => {
 });
 
 describe("prompt starters", () => {
-  it("families get the same starters as before", () => {
-    expect(promptStarters(family, "family").map((s) => s.label)).toEqual([
-      "What did Leo spend on games?",
-      "Why was Gran stopped?",
-      "Build a scam report",
-      "Is the shopping agent behaving?",
-    ]);
+  it("families start with the fair price check (Spotter's agent and Channel3) and the weekly brief", () => {
+    const starters = promptStarters(family, "family");
+    expect(starters.map((s) => s.label)).toEqual(["Did we pay fair prices this month?", "Write this week's brief", "Why was Gran stopped?", "What did Leo spend on games?", "Build a scam report"]);
+    expect(starters[0]!.prompt).toMatch(/real shops/);
+    expect(starters[1]!.prompt).toMatch(/weekly brief/);
   });
 
   it("a business gets starters in business terms", () => {
     const labels = promptStarters(business, "business").map((s) => s.label);
-    expect(labels).toEqual(["Who spent the most?", "Which invoices were caught?", "Build a supplier report", "Is the buying agent behaving?"]);
+    expect(labels).toEqual(["Did we pay fair prices this month?", "Write this week's brief", "Which invoices were caught?", "Who spent the most?", "Build a supplier report"]);
     expect(labels.join(" ")).not.toMatch(/games|scam report/);
+  });
+});
+
+describe("fair price on the starting board", () => {
+  it("sits on both boards beside the watch alerts, without overlapping anything", () => {
+    for (const kind of ["family", "business"] as const) {
+      const page = (startingBoard(kind) as unknown as { pages: Array<{ widgets: Record<string, W>; widgetLayout: Record<string, { xTrack: number; yTrack: number; xSpan: number; ySpan: number }> }> }).pages[0]!;
+      expect(page.widgets.fair).toEqual({ type: "fair-price", dataMapping: {} });
+      const boxes = Object.values(page.widgetLayout);
+      for (const [i, a] of boxes.entries())
+        for (const b of boxes.slice(i + 1)) {
+          const apart = a.xTrack + a.xSpan <= b.xTrack || b.xTrack + b.xSpan <= a.xTrack || a.yTrack + a.ySpan <= b.yTrack || b.yTrack + b.ySpan <= a.yTrack;
+          expect(apart).toBe(true);
+        }
+      expect(page.widgetLayout.fair!.yTrack).toBe(page.widgetLayout.alerts!.yTrack);
+    }
   });
 });

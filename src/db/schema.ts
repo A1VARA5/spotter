@@ -173,4 +173,12 @@ create table if not exists watchtower_threads (
 -- Business mode block, one column: a household is a family (the default, so every existing one stays
 -- a family) or a small business. It only changes words and starter rules, never how a payment is checked.
 alter table households add column if not exists kind text not null default 'family';
+-- Watchtower price checks block, one table: each live Channel3 search the Spotter agent makes, so a
+-- family's daily cap can be counted like llm_turns.
+create table if not exists price_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists price_checks_household_idx on price_checks (household_id, at);
+create index if not exists price_checks_at_idx on price_checks (at);
 `;

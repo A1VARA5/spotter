@@ -158,4 +158,34 @@
 .wt-icon-replay::after { content: ""; position: absolute; left: 6px; top: 1px; width: 4px; height: 7px; border-radius: 1px; background: var(--stop); }
 .wt-icon-radar { background: radial-gradient(circle, var(--stop) 2.5px, transparent 3px) 0 50% / 5px 5px repeat-x; }
 .wt-icon-case { border: 2px solid var(--ink); border-radius: 3px; box-sizing: border-box; background: linear-gradient(var(--hold), var(--hold)) 2px 3px / 8px 2px no-repeat, linear-gradient(var(--ink-2), var(--ink-2)) 2px 7px / 6px 1.5px no-repeat; }
+.wt-icon-fair { display: inline-block; width: 16px; height: 16px; position: relative; background: linear-gradient(var(--line), var(--line)) center / 100% 2px no-repeat; }
+.wt-icon-fair::before, .wt-icon-fair::after { content: ""; position: absolute; top: 4px; width: 8px; height: 8px; border-radius: 50%; }
+.wt-icon-fair::before { left: 1px; background: var(--go); }
+.wt-icon-fair::after { right: 1px; background: var(--hold); box-shadow: 0 0 0 1.5px var(--ink); }
 .wt-notice[data-tone="problem"] .wt-notice-dot { background: var(--hold); box-shadow: 0 0 0 3px rgb(242 183 5 / 0.35); }
+
+/* fair price */
+.wt-fair { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: tabular-nums; }
+.wt-fair-empty { align-content: center; }
+.wt-fair-label { font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.wt-fair-headline { font-size: 18px; line-height: 1.3; font-weight: 650; color: var(--ink); text-wrap: pretty; }
+.wt-fair-caught { font-size: 14px; font-weight: 600; color: var(--ink); padding: 6px 10px; border-left: 3px solid var(--stop); background: var(--stop-soft); border-radius: 0 8px 8px 0; text-wrap: pretty; }
+.wt-fair-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.wt-fair-item { padding: 8px 0; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+.wt-fair-what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.wt-fair-item-name { font-size: 15px; font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.wt-fair-verdict { font-size: 12px; font-weight: 650; padding: 1px 7px; border-radius: 6px; background: var(--chalk); border: 1px solid var(--line); color: var(--ink); }
+.wt-fair-verdict[data-verdict="over"] { background: var(--hold-soft); border-color: var(--hold); }
+.wt-fair-verdict[data-verdict="fake"] { background: var(--stop); border-color: var(--stop); color: #fff; }
+.wt-fair-verdict[data-verdict="under"], .wt-fair-verdict[data-verdict="fair"] { background: transparent; border-color: var(--go); color: var(--go); }
+.wt-fair-scale { position: relative; height: 14px; }
+.wt-fair-line { position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: var(--line); }
+.wt-fair-mark { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; }
+.wt-fair-mark-real { background: var(--go); }
+.wt-fair-mark-median { top: 0; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: var(--ink-2); }
+.wt-fair-mark-paid { background: var(--ink); box-shadow: 0 0 0 3px var(--paper, #fff); }
+.wt-fair-mark-paid[data-verdict="over"] { background: var(--hold); box-shadow: 0 0 0 2px var(--ink); }
+.wt-fair-mark-paid[data-verdict="fake"] { background: var(--stop); box-shadow: 0 0 0 3px var(--stop-soft); }
+.wt-fair-note { font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+.wt-fair-payee { overflow-wrap: anywhere; color: var(--ink); }
+.wt-fair-source { font-size: 12px; color: var(--ink-2); }

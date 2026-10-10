@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AgBaseRegistry, AgBaseWidgetDefinition, AgWidgetApi, AgWidgetDataFormat, AgWidgetField, AgWidgetFieldReference, AgWidgetParams } from "ag-studio";
 import type { CaseNote, WatchAlert } from "@/watchtower/data";
-import { countdown, pickCase, radarLines, shortId, type RadarCount } from "@/watchtower/widgetLogic";
+import { countdown, fairPrice, pickCase, poundsShort, radarLines, shortId, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -16,6 +16,7 @@ export type MoneyMidAirDef = NoMapping<"money-mid-air">;
 export type ReplayDef = NoMapping<"replay">;
 export type ScamRadarDef = NoMapping<"scam-radar">;
 export type CaseFileDef = NoMapping<"case-file">;
+export type FairPriceDef = NoMapping<"fair-price">;
 
 export interface SpotterRegistry extends AgBaseRegistry {
   widgets: readonly (
@@ -26,6 +27,7 @@ export interface SpotterRegistry extends AgBaseRegistry {
     | AgBaseWidgetDefinition<"replay", ReplayDef>
     | AgBaseWidgetDefinition<"scam-radar", ScamRadarDef>
     | AgBaseWidgetDefinition<"case-file", CaseFileDef>
+    | AgBaseWidgetDefinition<"fair-price", FairPriceDef>
   )[];
 }
 
@@ -501,5 +503,88 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
         </section>
       )}
     </article>
+  );
+}
+
+// ---------- fair price ----------
+
+const PRICE_FIELDS = ["id", "when", "who", "kind", "payee", "amount", "outcome", "marketCheapest", "marketMedian", "priceGap", "marketShop", "marketItem", "sample"] as const;
+const asNumOrNull = (v: unknown) => (v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
+
+const VERDICT_TEXT: Record<PriceItem["verdict"], string> = { fake: "Too cheap to be real", over: "Paid more", under: "Paid less", fair: "Fair price" };
+
+/** Paid against the cheapest and typical real shop price, on one line: the hold track idea for prices. */
+function PriceScale({ item }: { item: PriceItem }) {
+  const top = Math.max(item.amount, item.median, item.cheapest) * 1.12 || 1;
+  const at = (n: number) => `${Math.min(100, Math.max(0, (n / top) * 100))}%`;
+  return (
+    <div className="wt-fair-scale" aria-hidden="true">
+      <span className="wt-fair-line" />
+      <span className="wt-fair-mark wt-fair-mark-real" style={{ left: at(item.cheapest) }} />
+      <span className="wt-fair-mark wt-fair-mark-median" style={{ left: at(item.median) }} />
+      <span className="wt-fair-mark wt-fair-mark-paid" data-verdict={item.verdict} style={{ left: at(item.amount) }} />
+    </div>
+  );
+}
+
+export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
+  const { context } = p;
+  const { version } = useWatch(context);
+  const { rows, failed } = usePaymentRows(p as never, PRICE_FIELDS, version);
+  const now = useTick(60_000);
+  if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price checks. Reload the page.</p>;
+  if (!rows) return null;
+  const f = fairPrice(
+    rows.map((r) => ({
+      id: asText(r.id),
+      when: asDate(r.when) ?? new Date(0),
+      who: asText(r.who),
+      kind: asText(r.kind),
+      payee: asText(r.payee),
+      amount: asNum(r.amount),
+      outcome: asText(r.outcome),
+      marketCheapest: asNumOrNull(r.marketCheapest),
+      marketMedian: asNumOrNull(r.marketMedian),
+      priceGap: asNumOrNull(r.priceGap),
+      marketShop: asText(r.marketShop),
+      marketItem: asText(r.marketItem),
+      sample: r.sample === "Yes",
+    })),
+    new Date(now),
+  );
+  if (!f.checked) {
+    return (
+      <div className="wt-fair wt-fair-empty">
+        <p className="wt-fair-label">Fair price</p>
+        <p className="wt-fair-headline">No price checks this month yet</p>
+        <p className="wt-fair-note">When someone buys a product, Spotter compares the price with real shops and it shows up here.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="wt-fair">
+      <p className="wt-fair-label">Fair price</p>
+      <p className="wt-fair-headline">{f.headline}</p>
+      {f.caught && <p className="wt-fair-caught">{f.caught}</p>}
+      <ul className="wt-fair-list">
+        {f.items.map((i) => (
+          <li key={i.id} className="wt-fair-item">
+            <p className="wt-fair-what">
+              <span className="wt-fair-item-name">{i.marketItem || i.payee}</span>
+              <span className="wt-fair-verdict" data-verdict={i.verdict}>
+                {VERDICT_TEXT[i.verdict]}
+              </span>
+              {i.sample && <span className="wt-sample-tag">Sample</span>}
+            </p>
+            <PriceScale item={i} />
+            <p className="wt-fair-note">
+              {i.outcome === "Paid" ? "Paid" : `${i.outcome}:`} {poundsShort(i.amount)} at <span className="wt-fair-payee">{i.payee}</span>. Cheapest real shop {poundsShort(i.cheapest)} at{" "}
+              <span className="wt-fair-payee">{i.marketShop}</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+      <p className="wt-fair-source">Real shop prices from Channel3, checked when each payment was made.</p>
+    </div>
   );
 }

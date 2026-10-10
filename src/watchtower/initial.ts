@@ -15,6 +15,7 @@ export const INITIAL: AgReportState = {
         kept: { type: "money-kept", dataMapping: { value: [{ id: "payments.moneyKept", aggregation: "sum" }] } },
         track: { type: "hold-track", dataMapping: { category: [{ id: "payments.outcome" }], value: [{ id: "payments.id", aggregation: "count" }] } },
         alerts: { type: "watch-alerts", dataMapping: {} },
+        fair: { type: "fair-price", dataMapping: {} },
         midair: { type: "money-mid-air", dataMapping: {} },
         replay: { type: "replay", dataMapping: {} },
         outcomes: { type: "donut-chart", dataMapping: { categoryKey: [{ id: "payments.outcome" }], valueKey: [{ id: "payments.id", aggregation: "count" }] }, format: title("What happened to each payment") },
@@ -37,8 +38,9 @@ export const INITIAL: AgReportState = {
       widgetLayout: {
         kept: { xTrack: 0, yTrack: 0, xSpan: 7, ySpan: 11 },
         track: { xTrack: 7, yTrack: 0, xSpan: 17, ySpan: 11 },
-        alerts: { xTrack: 0, yTrack: 11, xSpan: 9, ySpan: 14 },
-        midair: { xTrack: 9, yTrack: 11, xSpan: 15, ySpan: 14 },
+        alerts: { xTrack: 0, yTrack: 11, xSpan: 8, ySpan: 14 },
+        fair: { xTrack: 8, yTrack: 11, xSpan: 8, ySpan: 14 },
+        midair: { xTrack: 16, yTrack: 11, xSpan: 8, ySpan: 14 },
         replay: { xTrack: 0, yTrack: 25, xSpan: 24, ySpan: 16 },
         outcomes: { xTrack: 0, yTrack: 41, xSpan: 8, ySpan: 13 },
         signs: { xTrack: 8, yTrack: 41, xSpan: 8, ySpan: 13 },
@@ -74,18 +76,23 @@ export const startingBoard = (kind: HouseholdKind): AgReportState => (kind === "
 export function promptStarters(people: PersonRow[], kind: HouseholdKind): Array<{ label: string; prompt: string }> {
   const kid = people.find((p) => p.kind === "Kid")?.name;
   const relative = people.find((p) => p.kind === "Person")?.name;
-  const agent = people.find((p) => p.kind === "AI agent")?.name;
+  // The first two go to Spotter's own agent: a live Channel3 price check, and the weekly brief it hands
+  // to the brief agent, which hands the building to Studio's page and widget agents.
+  const fair = { label: "Did we pay fair prices this month?", prompt: "Did we pay fair prices this month? Compare what we paid with what real shops charge today, and show it on the board." };
+  const brief = { label: "Write this week's brief", prompt: "Write our weekly brief for this week." };
   if (kind === "business")
     return [
-      { label: "Who spent the most?", prompt: "Show spend by person this month and tell me anything odd." },
+      fair,
+      brief,
       { label: "Which invoices were caught?", prompt: "Which supplier payments were held or stopped this month? Open the case files and explain in a few sentences." },
+      { label: "Who spent the most?", prompt: "Show spend by person this month and tell me anything odd." },
       { label: "Build a supplier report", prompt: "Add a new page called Supplier report: spend by supplier, scam signs by kind, the scam radar, and a table of every stopped or denied payment." },
-      ...(agent ? [{ label: `Is the ${agent.toLowerCase()} behaving?`, prompt: `Show what the ${agent.toLowerCase()} spent by supplier this month and tell me anything odd.` }] : []),
     ];
   return [
-    ...(kid ? [{ label: `What did ${kid} spend on games?`, prompt: `What did ${kid} spend on games this month? Add a widget that shows it.` }] : []),
+    fair,
+    brief,
     ...(relative ? [{ label: `Why was ${relative} stopped?`, prompt: `Why were ${relative}'s payments held or stopped this month? Open the case files and explain in a few sentences.` }] : []),
+    ...(kid ? [{ label: `What did ${kid} spend on games?`, prompt: `What did ${kid} spend on games this month? Add a widget that shows it.` }] : []),
     { label: "Build a scam report", prompt: "Add a new page called Scam report: scam signs by person and by kind, the scam radar, and a table of every stopped or denied payment." },
-    ...(agent ? [{ label: `Is the ${agent.toLowerCase()} behaving?`, prompt: `Show what the ${agent.toLowerCase()} spent by shop this month and tell me anything odd.` }] : []),
   ];
 }
