@@ -42,7 +42,8 @@ export const resetTokenCache = () => {
   cached = null;
 };
 
-async function token(): Promise<string> {
+/** A sandbox access token for Spotter's PayPal app (cached). The toolkit's read tools use it too. */
+export async function token(): Promise<string> {
   if (cached && Date.now() < cached.expiresAt) return cached.token;
   const id = process.env.PAYPAL_CLIENT_ID;
   const secret = process.env.PAYPAL_CLIENT_SECRET;
