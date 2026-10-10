@@ -58,6 +58,55 @@
   }
 }
 
+/* Real, sourced numbers under the problem: each one links to where it came from. */
+.problem-stats {
+  list-style: none;
+  margin: 56px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr);
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  padding-top: 28px;
+}
+
+.problem-stats li {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  max-width: 46ch;
+}
+
+.problem-stats b {
+  font-size: clamp(32px, 4vw, 44px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.problem-stats span {
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+.problem-stats a {
+  color: var(--ink-2);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+}
+
+@media (min-width: 720px) {
+  .problem-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 48px;
+  }
+}
+
 /* ---------- 3. One payment, start to finish ---------- */
 .wk {
   --night: #0d141c;

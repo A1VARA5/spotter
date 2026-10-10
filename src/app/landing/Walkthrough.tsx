@@ -104,7 +104,7 @@ const CHECK_CASE: Case = {
   headline: "Almost certainly a fake shop. The tablet costs £229 or more at real retailers, and the link ends up somewhere else.",
   findings: [
     { tool: "find_genuine_offer", source: "c1", text: "Real shops sell this tablet from £229, around £239 across 6 retailers (Channel3)." },
-    { tool: "network_reports", source: "c2", text: "7 other Spotter families said no to this shop in the last 30 days." },
+    { tool: "network_reports", source: "c2", text: "In this example, 7 other Spotter families said no to this shop in the last 30 days." },
   ],
   ask: [],
   page: {
@@ -252,7 +252,7 @@ function Alert() {
       </span>
       <span>To {SHOP}. PayPal is holding the money until you decide.</span>
       <span>Almost certainly a fake shop. The tablet costs £229 or more at real retailers.</span>
-      <span>• 7 other Spotter families said no to this shop.</span>
+      <span>• In this example, 7 other Spotter families said no to this shop.</span>
       <i>14:02</i>
     </div>
   );

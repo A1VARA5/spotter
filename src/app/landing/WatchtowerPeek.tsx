@@ -40,7 +40,7 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
           </p>
           <div className="board-grid" aria-hidden="true">
             <div className="board-tile">
-              <p className="board-label">Money kept</p>
+              <p className="board-label">Money kept, sample month</p>
               <p className="board-big num">£932.96</p>
               <p className="board-note">7 payments stopped or denied</p>
             </div>

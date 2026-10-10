@@ -134,6 +134,26 @@ export default async function Home() {
             </a>
           </div>
         </div>
+        <ul className="problem-stats" aria-label="How big the problem is">
+          <li>
+            <b className="num">&pound;576.4m</b>
+            <span>lost in the UK in 2025 to scams where people were talked into sending the money themselves, up 19% on 2024.</span>
+            <a href="https://www.ukfinance.org.uk/system/files/2026-06/UK%20Finance%20Fraud%20Report%202026.pdf" target="_blank" rel="noopener noreferrer">
+              UK Finance, Annual Fraud Report 2026
+            </a>
+          </li>
+          <li>
+            <b className="num">$15.9bn</b>
+            <span>reported lost to fraud by people in the US in 2025, from 3 million reports.</span>
+            <a
+              href="https://www.ftc.gov/news-events/news/press-releases/2026/03/ftc-testifies-joint-economic-committee-agencys-efforts-combat-fraud"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              FTC testimony, March 2026
+            </a>
+          </li>
+        </ul>
       </section>
 
       <Walkthrough cta={<DemoButton who={who} label="Try it on the demo family" />} />

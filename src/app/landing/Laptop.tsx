@@ -69,7 +69,7 @@ function CardHead({ who, kind, ask, to, pill, done }: { who: string; kind: "pers
 export function HeldScreen() {
   const checks = [
     { icon: Users, tool: "Family history", text: "Gran has never paid jamie.k1994@inbox.example before." },
-    { icon: CircleAlert, tool: "Spotter network", text: "Another Spotter family said no to this address this month." },
+    { icon: CircleAlert, tool: "Spotter network", text: "In this example, another Spotter family said no to this address this month." },
     { icon: Hand, tool: "PayPal", text: "£250 is on hold. If nobody approves it, nothing is paid." },
   ];
   return (
@@ -115,7 +115,7 @@ const PARCEL_CASE: Case = {
   headline: "This is almost certainly a fake delivery fee. Real couriers don't ask for £2.99 through a link like this.",
   findings: [
     { tool: "check_links", source: "c1", text: "The Pay now button goes to parcel-redelivery.top, a site registered 4 days ago. It isn't a delivery company." },
-    { tool: "network_reports", source: "c2", text: "9 other Spotter families said no to this payee in the last 30 days." },
+    { tool: "network_reports", source: "c2", text: "In this example, 9 other Spotter families said no to this payee in the last 30 days." },
   ],
   ask: ["If Gran is expecting a parcel, look it up on the courier's own site, not through this email."],
   page: {
