@@ -137,7 +137,7 @@ You need Node 22, a PayPal sandbox app (client id and secret) and an Anthropic A
 npm install
 cp .env.example .env.local   # fill in the keys
 npx next dev -p 3417
-npx vitest run                # 512 tests
+npx vitest run                # 542 tests
 ```
 
 Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to set up. Channel3 and Agentboxd are optional; without them the price check and email channel switch off.
