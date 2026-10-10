@@ -24,6 +24,13 @@ function flagOutcome(f: Flag): Outcome {
 export const CHANGED_BANK_ADVICE =
   "The bank details changed. Don't pay by bank transfer or Friends and Family: pay with a protected PayPal payment or invoice, and ring the supplier on a number you already have, not one from the email.";
 
+/** Said first when the ask looks like a scam (someone pretending to be family, or heavy pressure). */
+export const SCAM_ADVICE =
+  "This looks like a scam. Don't pay at all, not even with buyer protection. Ring the person on a number you already have, not one from the message.";
+
+/** High impersonation or high pressure: the shape of a "Hi Mum" style scam. */
+const isScamPattern = (f: Flag) => f.severity === "high" && (f.kind === "impersonation" || f.kind === "pressure");
+
 export function decide(
   rules: RulesResult,
   ai: { ok: boolean; flags: Flag[] },
@@ -31,24 +38,34 @@ export function decide(
 ): Decision {
   if (!rules.valid) return { outcome: "block", reasons: ["The payment amount isn't valid."], flags: [] };
 
+  // "Pay with protection instead" is good advice for a real seller and bad advice for a scammer.
+  // When the ask looks like a scam, Friends and Family or a bank transfer holds it for the spotter instead.
+  const scam = ai.flags.some(isScamPattern);
+  const soften = (o: Outcome): Outcome => (scam && o === "protect" ? "ask" : o);
+
   let outcome: Outcome = "allow";
   // Most serious first: high severity evidence, then the rules, then softer flags.
   const urgent: string[] = [];
   const softer: string[] = [];
   const ruleReasons: string[] = [];
+  let softened = false;
   for (const h of rules.hits) {
-    outcome = stricter(outcome, h.outcome);
-    ruleReasons.push(h.reason);
+    outcome = stricter(outcome, soften(h.outcome));
+    if (scam && h.outcome === "protect") softened = true;
+    else ruleReasons.push(h.reason);
   }
   for (const f of ai.flags) {
     const o = flagOutcome(f);
-    outcome = stricter(outcome, o);
-    if (o !== "allow") (f.severity === "high" ? urgent : softer).push(f.why);
+    outcome = stricter(outcome, soften(o));
+    if (scam && o === "protect") softened = true;
+    else if (o !== "allow") (f.severity === "high" ? urgent : softer).push(f.why);
   }
   // Changed bank details always wait for a person, whatever severity the check gave them.
   const bankChanged = ai.flags.some((f) => f.kind === "changed_bank_details" && f.severity !== "low");
   if (bankChanged) outcome = stricter(outcome, "ask");
-  const reasons = [...(bankChanged ? [CHANGED_BANK_ADVICE] : []), ...urgent, ...ruleReasons, ...softer];
+  // The "pay with protection" line was dropped, so say plainly what to do instead.
+  const lead = softened ? [SCAM_ADVICE] : bankChanged ? [CHANGED_BANK_ADVICE] : [];
+  const reasons = [...lead, ...urgent, ...ruleReasons, ...softer];
   if (!ai.ok) {
     // Fail closed: without the check, nothing is paid automatically.
     reasons.unshift("The AI check didn't run, so this needs your yes.");

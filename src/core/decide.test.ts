@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decide } from "./decide";
+import { decide, SCAM_ADVICE } from "./decide";
 import type { Flag, FlagKind, Severity } from "./grounding";
 import type { RuleHit, RulesResult } from "./types";
 
@@ -90,5 +90,36 @@ describe("decide", () => {
     const d = decide(rules(hit("method", "protect")), ai([flag("changed_bank_details", "high"), flag("changed_bank_details", "medium")]), small);
     expect(d.outcome).toBe("protect");
     expect(d.reasons.filter((r) => /ring the supplier/i.test(r))).toHaveLength(1);
+  });
+
+  it("a likely scam with a Friends and Family flag is held, not 'pay with protection': don't pay, ring them", () => {
+    // The Hi Mum case: impersonation (high) plus the model also tagging "my mate's PayPal" as F&F.
+    for (const scam of [flag("impersonation", "high"), flag("pressure", "high")]) {
+      const d = decide(rules(), ai([scam, flag("friends_and_family", "high")]), small);
+      expect(d.outcome).toBe("ask");
+      expect(d.reasons[0]).toBe(SCAM_ADVICE);
+      expect(d.reasons[0]).toMatch(/don't pay/i);
+      expect(d.reasons[0]).toMatch(/number you already have/i);
+    }
+  });
+
+  it("a likely scam that asks for Friends and Family by method is held too, and the protect advice is dropped", () => {
+    const fnf: RuleHit = { rule: "method", outcome: "protect", reason: "Friends & Family payments have no buyer protection. Pay with a protected PayPal order instead." };
+    const d = decide(rules(fnf), ai([flag("impersonation", "high")]), small);
+    expect(d.outcome).toBe("ask");
+    expect(d.reasons[0]).toBe(SCAM_ADVICE);
+    expect(d.reasons).not.toContain(fnf.reason);
+  });
+
+  it("a likely scam still blocks when something else blocks it (gift cards, injection, allowance)", () => {
+    expect(decide(rules(hit("allowance", "block")), ai([flag("impersonation", "high"), flag("friends_and_family", "high")]), small).outcome).toBe("block");
+    expect(decide(rules(), ai([flag("impersonation", "high"), flag("gift_card_or_crypto", "high")]), small).outcome).toBe("block");
+  });
+
+  it("a genuine marketplace Friends and Family ask with no scam signs still says pay with protection", () => {
+    const d = decide(rules(), ai([flag("friends_and_family", "high"), flag("pressure", "medium")]), small);
+    expect(d.outcome).toBe("protect");
+    expect(d.reasons).not.toContain(SCAM_ADVICE);
+    expect(decide(rules(), ai([flag("impersonation", "medium"), flag("friends_and_family", "high")]), small).outcome).toBe("protect");
   });
 });
