@@ -72,8 +72,10 @@ describe("scenarios", () => {
     const orders = [all, [...all].reverse(), [...all.slice(5), ...all.slice(0, 5)]];
     // Hi Mum and the earbuds are the ones a judge most often sends twice.
     const twice = [...all, ...all.filter((s) => s.id === "gran-hi-mum" || s.id === "agent-big")];
-    for (const order of [...orders, twice]) {
-      const spent: Record<string, number> = {};
+    const twiceFirst = [...twice.slice(all.length), ...all];
+    for (const order of [...orders, twice, twiceFirst]) {
+      // The demo family starts with the example hold (Gran, £250) already using some of her week.
+      const spent: Record<string, number> = { person: SCENARIOS.find((s) => s.id === "gran-hi-mum")!.body.amount };
       for (const s of order) {
         const seed = DEMO_SPENDERS.find((d) => d.kind === s.spender)!;
         const req = request(s);

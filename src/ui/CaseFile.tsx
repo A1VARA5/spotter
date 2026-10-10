@@ -62,7 +62,10 @@ export function CaseFile({
 }) {
   return (
     <section className="case" data-verdict={c.verdict} aria-label="What Spotter found">
-      <p className="case-verdict">{VERDICT[c.verdict]}</p>
+      <p className="case-verdict">
+        {VERDICT[c.verdict]}
+        {c.example && <span className="case-example"> · Example, checked earlier</span>}
+      </p>
       <p className="case-headline">{c.headline}</p>
 
       {c.findings.length > 0 && (

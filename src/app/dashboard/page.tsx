@@ -10,7 +10,8 @@ import { Dashboard } from "./Dashboard";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard | Spotter" };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ example?: string }> }) {
+  const exampleOff = (await searchParams).example === "off";
   const deps = await getDeps();
   const { db } = deps;
   const { household, unlocked } = await requirePageSession(db);
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
       href: firstToConnect ? `/people/${firstToConnect.id}` : "/setup?step=connect",
     },
     { done: Boolean(household.alert_email), label: "Tell Spotter where to email you", href: "/account" },
-    { done: payments.length > 0, label: "See a payment get checked (try one with fake money)", href: "/demo" },
+    { done: payments.some((p) => !p.case_file?.example), label: "See a payment get checked (try one with fake money)", href: "/demo" },
   ];
   const left = steps.filter((s) => !s.done).length;
 
@@ -69,6 +70,11 @@ export default async function DashboardPage() {
             Add someone
           </Link>
         </nav>
+      )}
+      {exampleOff && household.demo && (
+        <p className="lede" role="status">
+          PayPal&apos;s sandbox didn&apos;t answer, so your demo family started without its example hold. <Link href="/demo">Try a payment</Link> to see one.
+        </p>
       )}
       <Dashboard names={names} unlocked={unlocked} demo={household.demo} initial={JSON.parse(JSON.stringify(payments))} />
     </AppShell>

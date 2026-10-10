@@ -18,7 +18,7 @@ export const DEMO_SPENDERS: SpenderSeed[] = [
   {
     name: "Gran",
     kind: "person",
-    allowance: { weekly: gbp(100000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Hillside Pharmacy"], blockedPayees: [] },
+    allowance: { weekly: gbp(120000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: ["Hillside Pharmacy"], blockedPayees: [] },
   },
   {
     name: "Leo",

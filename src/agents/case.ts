@@ -52,6 +52,8 @@ export type Case = {
   ms: number;
   /** What the cloud browser saw (facts, a small screenshot, hidden text, the replay link), when it ran. */
   page?: CasePage;
+  /** Written earlier for the demo family's example hold, not checked live. The page labels it. */
+  example?: boolean;
 };
 
 export const CASE_SYSTEM = `You are Spotter's case worker. A payment by someone in a family (an older relative, a kid, or an AI shopping agent) was held or stopped by Spotter. Their spotter, the family member who looks out for them, will read your case and decide. Look into it with your tools, then call file_case once.
