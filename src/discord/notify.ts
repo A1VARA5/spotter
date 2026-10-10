@@ -34,6 +34,20 @@ export function makeDiscordNotify(db: Db, site: string, dm: Dm) {
   };
 }
 
+/** PayPal's own word (from its webhook) that a held payment was paid or released. */
+export function makeDiscordConfirmed(db: Db, dm: Dm) {
+  return async (p: Payment, spender: Spender) => {
+    const [hh] = await db.query<{ discord_user_id: string | null }>("select discord_user_id from households where id = $1", [spender.household_id]);
+    if (!hh?.discord_user_id) return;
+    await dm(
+      hh.discord_user_id,
+      p.status === "captured"
+        ? `PayPal confirmed: ${amountOf(p)} paid to ${p.request.payee.name}.`
+        : `PayPal confirmed: ${amountOf(p)} released back to ${spender.name}.`,
+    );
+  };
+}
+
 export function makeDiscordDecided(dm: Dm) {
   return async (p: Payment, spender: Spender) => {
     if (!spender.discord_user_id) return;

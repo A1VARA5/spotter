@@ -141,4 +141,18 @@ create table if not exists llm_turns (
 );
 create index if not exists llm_turns_at_idx on llm_turns (at);
 create index if not exists llm_turns_household_idx on llm_turns (household_id, at);
+
+alter table payments add column if not exists paypal_auth_expires_at timestamptz;
+create table if not exists paypal_events (
+  id text primary key,
+  event_type text not null,
+  resource_id text,
+  payment_id text references payments(id) on delete cascade,
+  summary jsonb not null default '{}'::jsonb,
+  received_at timestamptz not null default now()
+);
+create index if not exists paypal_events_payment_idx on paypal_events (payment_id, received_at);
+create index if not exists payments_paypal_capture_idx on payments (paypal_capture_id) where paypal_capture_id is not null;
+create index if not exists payments_paypal_auth_idx on payments (paypal_authorization_id) where paypal_authorization_id is not null;
+create index if not exists payments_paypal_order_idx on payments (paypal_order_id) where paypal_order_id is not null;
 `;

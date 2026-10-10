@@ -7,9 +7,9 @@ import { makeMarket, searchProducts } from "@/market/channel3";
 import { after } from "next/server";
 import { buildCase } from "@/agents/case";
 import { sendHtml } from "@/telegram/api";
-import { makeTelegramDecided, makeTelegramNotify } from "@/telegram/notify";
+import { makeTelegramConfirmed, makeTelegramDecided, makeTelegramNotify } from "@/telegram/notify";
 import { sendDm } from "@/discord/api";
-import { makeDiscordDecided, makeDiscordNotify } from "@/discord/notify";
+import { makeDiscordConfirmed, makeDiscordDecided, makeDiscordNotify } from "@/discord/notify";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { makeNotify } from "@/email/alerts";
 
@@ -44,6 +44,10 @@ export function getDeps(): Promise<Deps> {
       decided: allOf([
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramDecided(sendHtml) : null,
         process.env.DISCORD_BOT_TOKEN ? makeDiscordDecided(sendDm) : null,
+      ]),
+      confirmed: allOf([
+        process.env.TELEGRAM_BOT_TOKEN ? makeTelegramConfirmed(db, sendHtml) : null,
+        process.env.DISCORD_BOT_TOKEN ? makeDiscordConfirmed(db, sendDm) : null,
       ]),
       investigate: (payment, spender) =>
         buildCase(

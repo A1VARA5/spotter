@@ -72,7 +72,8 @@ async function call<T>(method: string, path: string, body?: unknown, requestId?:
   const r = await fetch(`${BASE}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    // A string body is already JSON (the webhook check must pass PayPal's event bytes through untouched).
+    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const j = parseBody(await r.text());
@@ -143,4 +144,23 @@ export async function getAuthorization(authorizationId: string): Promise<{ statu
   const a = await call<{ status?: string; expiration_time?: string }>("GET", `/v2/payments/authorizations/${authorizationId}`);
   if (!a.status) throw new Error("PayPal returned an authorisation without a status");
   return { status: a.status, ...(a.expiration_time ? { expiresAt: a.expiration_time } : {}) };
+}
+
+export type WebhookHeaders = { authAlgo: string; certUrl: string; transmissionId: string; transmissionSig: string; transmissionTime: string };
+
+/** Asks PayPal whether a webhook really came from it. PayPal fetches and checks the cert itself, so we never
+ * touch cert_url. The event goes back as the exact raw bytes: re-serialising can change numbers (1.10 -> 1.1)
+ * and break the signature. Throws if PayPal can't be asked, so the caller can answer "try again later". */
+export async function verifyWebhookSignature(h: WebhookHeaders, webhookId: string, rawEvent: string): Promise<boolean> {
+  const head = JSON.stringify({
+    auth_algo: h.authAlgo,
+    cert_url: h.certUrl,
+    transmission_id: h.transmissionId,
+    transmission_sig: h.transmissionSig,
+    transmission_time: h.transmissionTime,
+    webhook_id: webhookId,
+  });
+  const body = `${head.slice(0, -1)},"webhook_event":${rawEvent}}`;
+  const r = await call<{ verification_status?: string }>("POST", "/v1/notifications/verify-webhook-signature", body);
+  return r.verification_status === "SUCCESS";
 }
