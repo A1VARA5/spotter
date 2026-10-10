@@ -202,7 +202,12 @@ export default function Studio({ sources, initialState, store, notify, kind }: {
   const theme = useMemo(() => themeFor(new Set(sources.payments.map((r) => r.outcome))), [sources]);
   const [initial] = useState(() => {
     const s = isValidState(initialState) ? initialState : start;
-    return phone ? stackForPhone(s as AgReportState) : s;
+    if (phone) return stackForPhone(s as AgReportState);
+    // On a laptop narrower than about 1360px the open chat panel sits on top of the widgets and cuts them
+    // off, so the board opens with it folded. One click (or "Look into this") opens it.
+    const st = s as AgReportState;
+    if (window.innerWidth < 1360 && st.panels?.ai?.collapsed === false) return { ...st, panels: { ...st.panels, ai: { ...st.panels.ai, collapsed: true } } };
+    return s;
   });
   const names = useRef<Record<string, string>>({ ...namesOf(start), ...namesOf(initial) });
   const [tabs, setTabs] = useState(() => pageTabs(initial, names.current));

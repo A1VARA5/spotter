@@ -91,6 +91,36 @@ describe("incident pages", () => {
     expect(withIncidents(INITIAL, rows, NOW, [])).toEqual(one);
   });
 
+  it("tells same named incidents apart by payee, then by time", () => {
+    const rows = [
+      row({ id: "a", who: "Shopping agent", amount: 24.99, payee: "Earbud Outlet", when: new Date("2026-10-10T09:05:00Z") }),
+      row({ id: "b", who: "Shopping agent", amount: 24.99, payee: "Earbud Outlet", when: new Date("2026-10-10T10:40:00Z") }),
+      row({ id: "c", who: "Shopping agent", amount: 24.99, payee: "Gadget Barn", when: new Date("2026-10-10T11:00:00Z") }),
+    ];
+    const names = (withIncidents(INITIAL, rows, NOW, []).state as unknown as State).pages.map((p) => p.name);
+    expect(names).toContain("Incident: Shopping agent £24.99 to Gadget Barn");
+    expect(names).toContain("Incident: Shopping agent £24.99 to Earbud Outlet, 10:05");
+    expect(names).toContain("Incident: Shopping agent £24.99 to Earbud Outlet, 11:40");
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("renames duplicates already saved on the board, but never a page the family renamed", () => {
+    const rows = [
+      row({ id: "a", who: "Leo", amount: 5, payee: "Game Shop" }),
+      row({ id: "b", who: "Leo", amount: 5, payee: "Skins Hub" }),
+    ];
+    const saved = withIncidents(INITIAL, rows.slice(0, 1), NOW, []).state as unknown as State;
+    const dup = { ...saved.pages.find((p) => p.id === "incident-a")!, id: "incident-b" };
+    const mine = { ...dup, id: "incident-x", name: "Leo's games" };
+    const board = { ...saved, pages: [...saved.pages, dup, mine] } as never;
+    const { state, added } = withIncidents(board, rows, NOW, ["a", "b"]);
+    const names = (state as unknown as State).pages.map((p) => p.name);
+    expect(added).toEqual([]);
+    expect(names).toContain("Incident: Leo £5 to Game Shop");
+    expect(names).toContain("Incident: Leo £5 to Skins Hub");
+    expect(names).toContain("Leo's games");
+  });
+
   it("copes with a saved board that isn't the shape it expects", () => {
     expect(withIncidents({} as never, [row({})], NOW, []).added).toEqual([]);
   });

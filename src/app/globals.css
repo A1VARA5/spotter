@@ -6213,11 +6213,16 @@ h3 {
   text-wrap: balance;
 }
 
-/* Money in tables lines up */
+/* Money in tables. Not tabular-nums: Schibsted Grotesk's tabular set gives "." and "," a full figure
+   width, which reads as "£957 . 95". AG Grid and AG Studio turn tabular-nums on for right aligned
+   cells and paging, so they're switched back here too. */
 .ledger-amount,
 .feed-amount,
-.mini-feed b {
-  font-variant-numeric: tabular-nums;
+.mini-feed b,
+:root .ag-right-aligned-cell,
+:root .ag-paging-number,
+:root .ag-paging-row-summary-panel-number {
+  font-variant-numeric: lining-nums proportional-nums;
 }
 
 /* Loops pause while their section is off screen or the tab is hidden */
@@ -7188,9 +7193,20 @@ h3 {
 .wt-head .lede { margin: 0; }
 .wt-banner { font-size: 14px; color: var(--ink); background: var(--hold-soft); border-radius: 10px; padding: 10px 14px; justify-self: start; }
 .wt-frame { height: calc(100dvh - 200px); min-height: 680px; border-radius: 14px; overflow: hidden; box-shadow: var(--raise); background: var(--chalk); }
-.wt-loading { height: 100%; display: grid; place-items: center; color: var(--ink-2); font-size: 16px; }
+/* Loading: the board's shape (tabs, tiles) under a note that says what is happening. Static, no shimmer. */
+.wt-loading { position: relative; height: 100%; min-height: 420px; display: grid; grid-template-rows: auto 1fr; gap: 12px; padding: 10px; color: var(--ink-2); font-size: 15px; }
+.wt-loading > .wt-loading-tabs { height: auto; display: flex; gap: 8px; }
+.wt-loading-tabs span { width: 96px; height: 30px; border-radius: 8px; background: var(--line); opacity: 0.6; }
+.wt-loading-tabs span + span { width: 150px; opacity: 0.35; }
+.wt-loading > .wt-loading-grid { height: auto; display: grid; grid-template-columns: 2fr 1fr; grid-auto-rows: minmax(120px, 1fr); gap: 10px; }
+.wt-loading-grid span { border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
+.wt-loading-grid span:first-child { grid-row: span 2; }
+.wt-loading > .wt-loading-note { position: absolute; left: 50%; top: 72px; transform: translateX(-50%); width: min(420px, calc(100% - 32px)); height: auto; display: grid; align-content: start; gap: 6px; padding: 18px 20px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 1px 2px rgb(23 33 43 / .06), 0 8px 24px -12px rgb(23 33 43 / .18); text-wrap: pretty; }
+.wt-loading-title { font-size: 17px; font-weight: 650; color: var(--ink); }
+.wt-loading-note a { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .wt-loading > .wt-loading-grid { grid-template-columns: 1fr; } .wt-loading-grid span:first-child { grid-row: auto; } }
 
-.wt-kept { height: 100%; display: grid; align-content: center; gap: 6px; padding: 4px 6px; font-variant-numeric: tabular-nums; container-type: inline-size; }
+.wt-kept { height: 100%; display: grid; align-content: center; gap: 6px; padding: 4px 6px; font-variant-numeric: lining-nums proportional-nums; container-type: inline-size; }
 .wt-kept-label { font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .wt-kept-amount { font-size: clamp(16px, 16cqi, 39px); white-space: nowrap; font-weight: 650; color: var(--ink); line-height: 1.1; }
 .wt-kept-track { display: flex; align-items: center; gap: 0; margin: 8px 0 2px; }
@@ -7199,7 +7215,7 @@ h3 {
 .wt-kept-stop { width: 14px; height: 14px; border-radius: 3px; background: var(--stop); box-shadow: 0 0 0 4px var(--stop-soft); }
 .wt-kept-note { font-size: 13px; color: var(--ink-2); }
 
-.wt-track { height: 100%; display: grid; align-content: center; gap: 10px; padding: 4px 6px; font-variant-numeric: tabular-nums; }
+.wt-track { height: 100%; display: grid; align-content: center; gap: 10px; padding: 4px 6px; font-variant-numeric: lining-nums proportional-nums; }
 .wt-track-ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
 .wt-track-stops { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); position: relative; }
 .wt-track-stops::before { content: ""; position: absolute; left: 10%; right: 10%; top: calc(31px + 7px); height: 2px; background: var(--ink); }
@@ -7237,6 +7253,7 @@ h3 {
 .wt-phone-note { font-size: 14px; color: var(--ink-2); padding: 10px 12px; background: var(--paper); border-bottom: 1px solid var(--line); }
 .wt-frame { display: flex; flex-direction: column; }
 .wt-frame > div:last-child { flex: 1; min-height: 0; height: auto; }
+.wt-frame > div.wt-live { flex: none; height: 0; }
 .wt-widget-error { font-size: 15px; color: var(--stop); padding: 8px 6px; }
 .case-page { margin: 4px 0 0; display: grid; gap: 8px; }
 .case-page img { width: 100%; max-width: 320px; height: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--chalk); }
