@@ -24,18 +24,13 @@ export function TopBar({ current }: { current?: "home" | "dashboard" | "demo" | 
         <BrandMark />
         Spotter
       </Link>
+      {/* Only the legal pages use this bar, so it links out to what a visitor needs, not the signed in app. */}
       <nav className="nav" aria-label="Main">
+        <Link className="nav-link" href="/how">
+          How it works
+        </Link>
         <Link className="nav-link" href="/dashboard" aria-current={current === "dashboard" ? "page" : undefined}>
           Dashboard
-        </Link>
-        <Link className="nav-link" href="/ledger" aria-current={current === "ledger" ? "page" : undefined}>
-          Ledger
-        </Link>
-        <Link className="nav-link" href="/demo" aria-current={current === "demo" ? "page" : undefined}>
-          Try it
-        </Link>
-        <Link className="nav-link" href="/account" aria-current={current === "account" ? "page" : undefined}>
-          Account
         </Link>
       </nav>
     </header>
