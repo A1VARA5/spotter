@@ -6,6 +6,7 @@ import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import { plainError, readJson } from "@/ui/http";
+import { contradictsPrice, priceVerdict } from "@/core/market";
 import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 
@@ -208,7 +209,8 @@ function HeldCard({ p, who, demo, onSettled, onLocked }: { p: Payment; who: stri
         <CasePending createdAt={p.created_at} />
       )}
 
-      {p.ai?.summary && (
+      {/* The message check never saw the market listings, so its summary is hidden when it argues with them. */}
+      {p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
         <p className="held-summary">
           <strong>Scam check:</strong> {p.ai.summary}
         </p>

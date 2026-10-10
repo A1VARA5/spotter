@@ -15,6 +15,43 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[mid]! : Math.round((s[mid - 1]! + s[mid]!) / 2);
 }
 
+export type PriceVerdict = "too_cheap" | "overpriced" | "normal";
+
+/** What the market check concluded, or null when it had too few offers to say. */
+export function priceVerdict(m: MarketResult | null | undefined): PriceVerdict | null {
+  if (!m || m.median === undefined) return null;
+  if (!m.flag) return "normal";
+  return m.flag.severity === "high" ? "too_cheap" : "overpriced";
+}
+
+const PRICE = /\bpric/i;
+const SAYS_NORMAL = /\b(normal|fair|reasonable|typical|usual|standard|in line|about right|going rate|market rate|competitive)\b/i;
+const SAYS_DEAR = /\b(overpriced|overcharg\w*|well over|over the going|above (the )?(going|market|usual)|too (expensive|dear|much)|pricier|more than (real )?(shops|retailers))\b/i;
+const SAYS_CHEAP = /\b(too cheap|far below|well below|suspiciously (cheap|low)|unrealistically (cheap|low)|too good to be true|much cheaper than)\b/i;
+
+/** True when a sentence says something about the price that Spotter's own market check disproves. */
+export function contradictsPrice(text: string, verdict: PriceVerdict | null): boolean {
+  if (!verdict) return false;
+  const normal = PRICE.test(text) && SAYS_NORMAL.test(text);
+  const dear = SAYS_DEAR.test(text);
+  const cheap = SAYS_CHEAP.test(text);
+  if (verdict === "normal") return dear || cheap;
+  if (verdict === "overpriced") return (normal && !dear) || cheap;
+  return (normal && !cheap) || dear;
+}
+
+/** The market result as plain facts, for prompts that must not contradict it. */
+export function marketFacts(m: (MarketResult & { item: string }) | null | undefined, amount: number, currency: Currency): string | null {
+  const verdict = priceVerdict(m);
+  if (!m || !verdict || m.median === undefined) return null;
+  const money = (minor: number) => formatMoney({ amount: minor, currency });
+  // Item and listing titles come from outside (the request, the retailer feed): no markup, kept short.
+  const clean = (t: string) => t.replace(/[<>"\r\n]/g, " ").slice(0, 80).trim();
+  const said = { too_cheap: "far below the going rate (a fake shop tell)", overpriced: "overpriced, well over the going rate", normal: "a normal price" }[verdict];
+  const cheapest = m.cheapest ? ` The cheapest listing found was ${money(m.cheapest.price)} ("${clean(m.cheapest.title)}"), which may not be the exact same product.` : "";
+  return `Spotter's market check, done by code from real retailer listings for "${clean(m.item)}": around ${money(m.median)} across ${m.offers} retailers. This payment is ${money(amount)}, which is ${said}.${cheapest}`;
+}
+
 export function priceCheck(amount: number, currency: Currency, offers: Offer[]): MarketResult {
   const same = offers.filter((o) => o.currency === currency && o.price > 0);
   if (same.length < 2) return { flag: null, offers: same.length };
