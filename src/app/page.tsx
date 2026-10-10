@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { BrandMark } from "@/ui/components";
-import { GranPhone } from "./landing/Devices";
-import { Laptop } from "./landing/Laptop";
 import { PathBar } from "./landing/PathBar";
-import { HeroStage } from "./landing/HeroStage";
+import { HeroScenes } from "./landing/HeroScenes";
+import { MoneyPaths } from "./landing/MoneyPaths";
 import { ScrollStory } from "./landing/ScrollStory";
 import { Inspector } from "./landing/Inspector";
 import { LitText } from "./landing/LitText";
@@ -12,6 +11,8 @@ import { FAQ } from "./how/faq";
 import { LoopPauser } from "@/ui/LoopPauser";
 import { getDb } from "@/db";
 import { pageSession } from "@/server/page-session";
+import "./landing/hero.css";
+import "./landing/motion.css";
 
 type Who = { name: string; demo: boolean } | null;
 
@@ -48,7 +49,8 @@ export default async function Home() {
   return (
     <main>
       <LoopPauser />
-      <section className="hero-dark" data-loop>
+      <section className="hero-dark mpaths-host" data-loop>
+        <MoneyPaths />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
@@ -83,16 +85,7 @@ export default async function Home() {
               )}
             </div>
 
-            <HeroStage label="Gran forwards a scam asking for £250. Spotter holds the payment at PayPal, looks into it, and you deny it from your laptop.">
-              <div className="hero-duo">
-                <div className="hero-duo-inner">
-                  <Laptop />
-                  <div className="hero-gran">
-                    <GranPhone scale={0.5} />
-                  </div>
-                </div>
-              </div>
-            </HeroStage>
+            <HeroScenes />
           </div>
         </div>
       </section>

@@ -2,7 +2,7 @@
 // it meets them, PayPal's yellow clamp closes on it and it waits, then you decide. Pure CSS, loops slowly,
 // pauses off screen, and stands still for reduced motion.
 const STOPS = [
-  { name: "Agentboxd", does: "brings the forwarded email in" },
+  { name: "Channels", does: "bring the ask in: email, Telegram, Discord" },
   { name: "Claude", does: "reads it and looks into it" },
   { name: "Channel3", does: "checks what real shops charge" },
   { name: "PayPal", does: "holds the money", clamp: true },
