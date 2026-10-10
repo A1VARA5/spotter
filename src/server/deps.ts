@@ -6,6 +6,7 @@ import type { Deps } from "@/core/lifecycle";
 import { makeMarket, searchProducts } from "@/market/channel3";
 import { after } from "next/server";
 import { buildCase } from "@/agents/case";
+import { visitInCloud } from "@/agents/kernel";
 import { sendHtml } from "@/telegram/api";
 import { makeTelegramConfirmed, makeTelegramDecided, makeTelegramNotify } from "@/telegram/notify";
 import { sendDm } from "@/discord/api";
@@ -51,7 +52,15 @@ export function getDeps(): Promise<Deps> {
       ]),
       investigate: (payment, spender) =>
         buildCase(
-          { db, householdId: spender.household_id, payment, search: searchProducts, getAuthorization, offers: new Map() },
+          {
+            db,
+            householdId: spender.household_id,
+            payment,
+            search: searchProducts,
+            getAuthorization,
+            ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitInCloud(url) } : {}),
+            offers: new Map(),
+          },
           { who: { name: spender.name, kind: spender.kind } },
         ),
       defer: (task) => {

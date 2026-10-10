@@ -52,6 +52,7 @@ The assistant can only read and rearrange the board. It never sees the scam mess
 | Reading a payment out of a forwarded email | `src/ai/extract.ts`, `src/email/inbound.ts` |
 | PayPal (orders, authorise, capture, void, Log in with PayPal) | `src/paypal/client.ts`, `src/paypal/identity.ts` |
 | PayPal webhooks (verified, deduped, settle stuck payments, never move money) | `src/app/api/paypal/webhook/route.ts`, `src/paypal/webhook.ts` |
+| Opening a suspicious link in a throwaway KERNEL cloud browser (read only, one per case) | `src/agents/kernel.ts`, `open_link` in `src/agents/tools.ts` |
 | Real shop prices | `src/market/channel3.ts`, `src/core/market.ts` |
 | MCP server for agents | `src/app/api/mcp/route.ts`, `src/server/agent.ts` |
 | Households, sessions, PIN, pairing codes, agent keys | `src/core/households.ts`, `src/server/auth.ts`, `src/core/pairing.ts` |
