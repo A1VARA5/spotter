@@ -1,20 +1,45 @@
 import Link from "next/link";
-import { Check, X } from "lucide-react";
+import { Check, FileCheck, Link2, ShoppingBag, Users, X } from "lucide-react";
 import { BrandMark, HoldTrack } from "@/ui/components";
 import { ChannelGuide } from "./ChannelGuide";
 import { FAQ } from "./faq";
+import { MoneyPaths } from "@/app/landing/MoneyPaths";
+import "@/app/landing/motion.css";
+import "./how.css";
 
 export const metadata = {
   title: "How it works | Spotter",
   description: "Who does what, how each person connects, what happens to the money, and what Spotter can and can't do.",
 };
 
-
+const WAITS = [
+  {
+    icon: Users,
+    title: "Who's being paid",
+    text: "Has anyone in the family paid them before? Then the Spotter network: did other Spotter families say no to this payee in the last 30 days? Families only ever share a scrambled fingerprint of the payee, never names or messages.",
+  },
+  {
+    icon: Link2,
+    title: "Where the links really go",
+    text: "Every link in the message gets followed to where it ends up, with its domain age, look alike names and borrowed brands. A parcel fee link that points at a site made four days ago says so.",
+  },
+  {
+    icon: ShoppingBag,
+    title: "A safer way to buy it",
+    text: "If it's a real product, Spotter looks for the same thing at a real shop. One tap denies the risky payment and buys it there instead, through PayPal, with buyer protection.",
+  },
+  {
+    icon: FileCheck,
+    title: "Every line has a source",
+    text: "Each finding in the case file names the check it came from. If the AI writes something no check found, code throws it out. The case agent can only read: it can't pay, approve or deny.",
+  },
+] as const;
 
 export default function HowPage() {
   return (
     <main className="how">
-      <section className="how-hero">
+      <section className="how-hero mpaths-host">
+        <MoneyPaths quiet checkpoint={0.62} />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
@@ -47,7 +72,7 @@ export default function HowPage() {
             </div>
           </div>
           <div className="how-track">
-            <HoldTrack state="held" from="Gran" to="jamie.k1994@gmail.com" amount={25000} currency="GBP" />
+            <HoldTrack state="held" from="Gran" to="jamie.k1994@inbox.example" amount={25000} currency="GBP" />
           </div>
         </div>
       </section>
@@ -85,6 +110,35 @@ export default function HowPage() {
         </div>
       </section>
 
+      <section className="shell how-sec" aria-labelledby="waits-title">
+        <div className="waits">
+          <div>
+            <h2 id="waits-title" className="sec-title">
+              While the money waits
+            </h2>
+            <p className="sec-lede">A held payment isn&apos;t just parked. Spotter&apos;s case agent looks into it, usually before you&apos;ve opened the alert.</p>
+          </div>
+          <ul className="waits-list">
+            {WAITS.map(({ icon: Icon, title, text }) => (
+              <li key={title}>
+                <Icon size={20} strokeWidth={1.9} aria-hidden="true" />
+                <div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="how-wt">
+          <h3>Watchtower, the family&apos;s board</h3>
+          <p>
+            Every payment, hold and scam sign in one place, and you can just ask it things. &quot;What did Leo try to spend on games?&quot; and Claude builds the chart
+            for you. It can read and rearrange the board, nothing else, and it never sees the scam messages themselves.
+          </p>
+        </div>
+      </section>
+
       <section className="shell how-sec" aria-labelledby="limits-title">
         <h2 id="limits-title" className="sec-title">
           What Spotter can and can&apos;t do
@@ -94,11 +148,12 @@ export default function HowPage() {
             <h3>It can</h3>
             <ul>
               {[
-                "Check anything sent to it: a forwarded email, a screenshot, a Telegram or Discord message, an agent's request.",
+                "Check anything sent to it: a forwarded email, a forwarded Telegram message, a Discord message (right click, Apps, Check with Spotter), an agent's request.",
                 "Hold a payment at PayPal while you decide, then pay or release it.",
                 "Show you why, quoting the exact words that worried it.",
                 "Stop gift card, crypto and Friends and Family payments outright.",
                 "Make AI agents pay only through it, with no way to approve themselves.",
+                "Look into a held payment for you and offer a safer shop when there is one.",
               ].map((t) => (
                 <li key={t}>
                   <Check size={17} strokeWidth={2.4} aria-hidden="true" />
@@ -111,8 +166,9 @@ export default function HowPage() {
             <h3>It can&apos;t</h3>
             <ul>
               {[
-                "Read texts, WhatsApp or calls by itself. Phones don't allow it, and that's a good thing.",
+                "Read texts, chats or calls by itself. Phones don't allow it, and that's a good thing.",
                 "Stop someone paying directly in the PayPal app if they skip Spotter.",
+                "Read pictures yet. Send it a screenshot and it asks for the words instead.",
                 "Be right every time. When it isn't sure, it asks you instead of guessing.",
                 "Move real money in this demo: it runs on the PayPal sandbox.",
               ].map((t) => (

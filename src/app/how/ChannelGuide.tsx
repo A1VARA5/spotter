@@ -20,9 +20,9 @@ const GUIDES: Guide[] = [
     key: "telegram",
     icon: Send,
     name: "Telegram",
-    who: "Best for Gran: one tap to connect, and she can just send a screenshot.",
+    who: "Best for Gran: one tap to connect, then she just forwards things.",
     connect: ["You open Gran's page in Spotter and press Connect Telegram.", "You send her the link it makes (text it, or show her the QR).", "She taps it and presses Start. That's it, she's paired."],
-    everyday: ["Something asks her for money? She takes a screenshot.", "She shares it to the Spotter chat, or forwards the message itself.", "Spotter answers in the same chat, and asks you if it needs to."],
+    everyday: ["Something asks her for money? She forwards it to the Spotter chat.", "If it came as a text, she copies the words and shares them there.", "Spotter answers in the same chat, and asks you if it needs to."],
   },
   {
     key: "email",
@@ -36,7 +36,7 @@ const GUIDES: Guide[] = [
     key: "discord",
     icon: Gamepad2,
     name: "Discord",
-    who: "For Leo: game chats are where gift card and \"cheap Robux\" scams live.",
+    who: "For Leo: game chats are where gift card and \"cheap coins\" scams live.",
     connect: ["You open Leo's page and press Connect Discord.", "He adds the Spotter app to his account from the link (no server needed).", "He sends the pairing code to Spotter once."],
     everyday: ["Someone offers him a deal in a server or a DM.", "He right clicks the message, then Apps, then Check with Spotter.", "Only Leo sees the answer. You're asked if money is involved."],
   },
@@ -55,17 +55,17 @@ function TelegramShot() {
     <Iphone scale={0.7} className="guide-phone">
       <div className="share">
         <div className="share-shot">
-          <p className="share-shot-cap">Screenshot</p>
-          <p className="share-shot-msg">{SCAM.whatsapp[3].text}</p>
+          <p className="share-shot-cap">Copied text</p>
+          <p className="share-shot-msg">{SCAM.chat[3].text}</p>
         </div>
         <div className="share-sheet">
           <p className="share-title">Share</p>
           <div className="share-row">
             {[
-              ["Messages", "#34c759"],
-              ["Mail", "#1a8cff"],
-              ["WhatsApp", "#25d366"],
-              ["Telegram", "#2aabee"],
+              ["Messages", "#7b8794"],
+              ["Mail", "#7b8794"],
+              ["Notes", "#7b8794"],
+              ["Telegram", "#2c55c9"],
             ].map(([n, c]) => (
               <span key={n} className="share-app" data-on={n === "Telegram"}>
                 <i style={{ background: c }} />
@@ -105,7 +105,7 @@ function EmailShot() {
         </p>
         <div className="gfwd-quote">
           <p>---------- Forwarded message ---------</p>
-          <p>From: Royal Mail &lt;notice@rm-parcel-redelivery.top&gt;</p>
+          <p>From: Parcel Delivery &lt;notice@parcel-redelivery.top&gt;</p>
           <p>We were unable to deliver your parcel due to an unpaid shipping fee of £2.99...</p>
         </div>
       </div>
@@ -123,7 +123,7 @@ function DiscordShot() {
           <p className="dshot-user">
             xX_cheapcoins_Xx <span>Today at 16:02</span>
           </p>
-          <p>selling 2000 robux for £8!! pay with a £8 steam gift card, send me the code in dms</p>
+          <p>selling 2000 BlockWorld coins for £8!! pay with a £8 gift card, send me the code in dms</p>
         </div>
       </div>
       <div className="dshot-menu">
@@ -158,11 +158,11 @@ function AgentShot() {
       <p>
         <b>$</b> claude
       </p>
-      <p className="term-me">&gt; buy me the Sony WF-1000XM5 earbuds at the best price you can find</p>
-      <p className="term-tool">● spotter · find_products(&quot;Sony WF-1000XM5&quot;)</p>
-      <p>£179.00 at currys.ie (Irish site), £179.99 at johnlewis.com</p>
-      <p className="term-tool">● spotter · request_payment(£179.99, John Lewis)</p>
-      <p className="term-hold">Held, not paid yet: Sam has to approve £179.99 to John Lewis.</p>
+      <p className="term-me">&gt; buy me the wireless earbuds Leo wants, at the best price you can find</p>
+      <p className="term-tool">● spotter · find_products(&quot;wireless earbuds&quot;)</p>
+      <p>£179.99 at Everything Store, £184.00 at Sound Shack</p>
+      <p className="term-tool">● spotter · request_payment(£179.99, Everything Store)</p>
+      <p className="term-hold">Held, not paid yet: Sam has to approve £179.99 to Everything Store.</p>
     </div>
   );
 }
