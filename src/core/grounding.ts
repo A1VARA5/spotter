@@ -9,6 +9,7 @@ export type FlagKind =
   | "prompt_injection"
   | "price"
   | "new_shop"
+  | "changed_bank_details"
   | "other";
 
 export type Severity = "low" | "medium" | "high";

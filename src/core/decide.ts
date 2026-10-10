@@ -20,6 +20,10 @@ function flagOutcome(f: Flag): Outcome {
   return f.severity === "medium" ? "ask" : "allow";
 }
 
+/** Said once, first, whenever the payee's bank details changed: the classic supplier invoice fraud. */
+export const CHANGED_BANK_ADVICE =
+  "The bank details changed. Don't pay by bank transfer or Friends and Family: pay with a protected PayPal payment or invoice, and ring the supplier on a number you already have, not one from the email.";
+
 export function decide(
   rules: RulesResult,
   ai: { ok: boolean; flags: Flag[] },
@@ -41,7 +45,10 @@ export function decide(
     outcome = stricter(outcome, o);
     if (o !== "allow") (f.severity === "high" ? urgent : softer).push(f.why);
   }
-  const reasons = [...urgent, ...ruleReasons, ...softer];
+  // Changed bank details always wait for a person, whatever severity the check gave them.
+  const bankChanged = ai.flags.some((f) => f.kind === "changed_bank_details" && f.severity !== "low");
+  if (bankChanged) outcome = stricter(outcome, "ask");
+  const reasons = [...(bankChanged ? [CHANGED_BANK_ADVICE] : []), ...urgent, ...ruleReasons, ...softer];
   if (!ai.ok) {
     // Fail closed: without the check, nothing is paid automatically.
     reasons.unshift("The AI check didn't run, so this needs your yes.");

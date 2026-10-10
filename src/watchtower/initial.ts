@@ -1,6 +1,8 @@
 // The board every family starts with (and gets back from "Reset board"). Plain data, so the server page
 // can add incident pages to it before Studio loads.
 import type { AgReportState } from "ag-studio";
+import type { HouseholdKind } from "@/core/households";
+import type { PersonRow } from "./data";
 
 const title = (text: string) => ({ title: { enabled: true, text } });
 
@@ -50,3 +52,40 @@ export const INITIAL: AgReportState = {
   selectedPageId: "month",
   panels: { filters: { collapsed: true }, ai: { collapsed: false }, data: { collapsed: true }, edit: { collapsed: true } },
 } as never;
+
+// A small business gets the same widgets, titled in its own words, and suppliers (payees) in place of categories.
+const BUSINESS: AgReportState = (() => {
+  const b = structuredClone(INITIAL) as unknown as { pages: Array<{ widgets: Record<string, Record<string, unknown>> }> };
+  const w = b.pages[0]!.widgets;
+  w.people = { ...w.people, format: title("Spend by person") };
+  w.signs = { ...w.signs, format: title("Invoices caught") };
+  w.categories = {
+    ...w.categories,
+    dataMapping: { cols: [{ id: "payments.payee" }, { id: "payments.amount", aggregation: "sum" }, { id: "payments.id", aggregation: "count" }] },
+    format: title("Suppliers"),
+  };
+  return b as never;
+})();
+
+/** The board a household starts with (and gets back from "Reset board"). Families keep the original. */
+export const startingBoard = (kind: HouseholdKind): AgReportState => (kind === "business" ? BUSINESS : INITIAL);
+
+/** The assistant's suggested questions, built from the household's own people. */
+export function promptStarters(people: PersonRow[], kind: HouseholdKind): Array<{ label: string; prompt: string }> {
+  const kid = people.find((p) => p.kind === "Kid")?.name;
+  const relative = people.find((p) => p.kind === "Person")?.name;
+  const agent = people.find((p) => p.kind === "AI agent")?.name;
+  if (kind === "business")
+    return [
+      { label: "Who spent the most?", prompt: "Show spend by person this month and tell me anything odd." },
+      { label: "Which invoices were caught?", prompt: "Which supplier payments were held or stopped this month? Open the case files and explain in a few sentences." },
+      { label: "Build a supplier report", prompt: "Add a new page called Supplier report: spend by supplier, scam signs by kind, the scam radar, and a table of every stopped or denied payment." },
+      ...(agent ? [{ label: `Is the ${agent.toLowerCase()} behaving?`, prompt: `Show what the ${agent.toLowerCase()} spent by supplier this month and tell me anything odd.` }] : []),
+    ];
+  return [
+    ...(kid ? [{ label: `What did ${kid} spend on games?`, prompt: `What did ${kid} spend on games this month? Add a widget that shows it.` }] : []),
+    ...(relative ? [{ label: `Why was ${relative} stopped?`, prompt: `Why were ${relative}'s payments held or stopped this month? Open the case files and explain in a few sentences.` }] : []),
+    { label: "Build a scam report", prompt: "Add a new page called Scam report: scam signs by person and by kind, the scam radar, and a table of every stopped or denied payment." },
+    ...(agent ? [{ label: `Is the ${agent.toLowerCase()} behaving?`, prompt: `Show what the ${agent.toLowerCase()} spent by shop this month and tell me anything odd.` }] : []),
+  ];
+}

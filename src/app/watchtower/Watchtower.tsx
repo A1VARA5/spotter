@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CaseNote, WatchAlert } from "@/watchtower/data";
 import type { RadarCount } from "@/watchtower/widgetLogic";
 import { revive, type WireSources } from "@/watchtower/wire";
+import type { HouseholdKind } from "@/core/households";
 import type { WatchSnapshot, WatchStore } from "./widgets";
 import "./watchtower.css";
 
@@ -42,7 +43,7 @@ const snapshotOf = (b: Board, canAsk: boolean, version: number): WatchSnapshot =
   canAsk,
 });
 
-export function Watchtower({ board, initialState, since }: { board: Board; initialState: unknown; since: string }) {
+export function Watchtower({ board, initialState, since, kind }: { board: Board; initialState: unknown; since: string; kind: HouseholdKind }) {
   const [wire, setWire] = useState(board.sources);
   const [store] = useState(() => makeStore(snapshotOf(board, typeof window !== "undefined" && !window.matchMedia("(max-width: 760px)").matches, 0)));
   const [notices, setNotices] = useState<Array<{ id: number; text: string; tone: "news" | "problem" }>>([]);
@@ -110,7 +111,7 @@ export function Watchtower({ board, initialState, since }: { board: Board; initi
 
   return (
     <div className="wt-frame">
-      <Studio sources={sources} initialState={initialState} store={store} notify={notify} />
+      <Studio sources={sources} initialState={initialState} store={store} notify={notify} kind={kind} />
       <ol className="wt-notices" role="status" aria-live="polite">
         {notices.map((x) => (
           <li key={x.id} className="wt-notice" data-tone={x.tone}>

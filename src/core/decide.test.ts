@@ -56,7 +56,7 @@ describe("decide", () => {
   });
 
   it("never lets flags weaken a rule block (every combination)", () => {
-    const kinds: FlagKind[] = ["pressure", "impersonation", "friends_and_family", "gift_card_or_crypto", "prompt_injection", "price", "new_shop", "other"];
+    const kinds: FlagKind[] = ["pressure", "impersonation", "friends_and_family", "gift_card_or_crypto", "prompt_injection", "price", "new_shop", "changed_bank_details", "other"];
     const sev: Severity[] = ["low", "medium", "high"];
     for (const k of kinds) for (const s of sev) for (const ok of [true, false]) {
       expect(decide(rules(hit("category", "block")), ai([flag(k, s)], ok), small).outcome).toBe("block");
@@ -76,5 +76,19 @@ describe("decide", () => {
   it("explains itself with rule reasons and flag whys", () => {
     const d = decide(rules(hit("threshold", "ask")), ai([flag("pressure", "medium")]), small);
     expect(d.reasons).toEqual(["threshold", "w"]);
+  });
+
+  it("changed bank details hold the payment and say what to do: protected PayPal payment, ring a known number", () => {
+    const d = decide(rules(), ai([flag("changed_bank_details", "high")]), small);
+    expect(d.outcome).toBe("ask");
+    expect(d.reasons[0]).toMatch(/protected PayPal payment or invoice/);
+    expect(d.reasons[0]).toMatch(/ring the supplier on a number you already have/i);
+    expect(decide(rules(), ai([flag("changed_bank_details", "medium")]), small).outcome).toBe("ask");
+  });
+
+  it("changed bank details with a bank transfer ask is switched to a protected payment", () => {
+    const d = decide(rules(hit("method", "protect")), ai([flag("changed_bank_details", "high"), flag("changed_bank_details", "medium")]), small);
+    expect(d.outcome).toBe("protect");
+    expect(d.reasons.filter((r) => /ring the supplier/i.test(r))).toHaveLength(1);
   });
 });

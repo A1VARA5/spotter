@@ -67,4 +67,12 @@ describe("households", () => {
     expect(await getHousehold(db, demo.id)).toBeNull();
     expect(await getHousehold(db, real.id)).not.toBeNull();
   });
+
+  it("is a family unless it says it's a business", async () => {
+    expect((await createHousehold(db, { name: "F", spotterName: "F" })).kind).toBe("family");
+    const biz = await createHousehold(db, { name: "B", spotterName: "B", kind: "business" });
+    expect(biz.kind).toBe("business");
+    expect((await getHousehold(db, biz.id))?.kind).toBe("business");
+    expect((await createDemoHousehold(db)).kind).toBe("family");
+  });
 });
