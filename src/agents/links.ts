@@ -428,7 +428,7 @@ for (const [net, bits] of [
   PRIVATE.addSubnet(net, bits, "ipv6");
 
 // Refuses hosts that resolve to a private or local address, so a link can't be used to probe our own network.
-async function safeToFetch(host: string): Promise<boolean> {
+export async function safeToFetch(host: string): Promise<boolean> {
   host = host.replace(/^\[|\]$/g, "");
   if (
     host === "localhost" ||

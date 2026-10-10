@@ -194,4 +194,22 @@ create table if not exists safer_options (
   used_by text
 );
 create index if not exists safer_options_payment_idx on safer_options (payment_id, created_at desc);
+-- Peek safely block, one table: each time a spotter looks at a case file's page live in a throwaway KERNEL browser.
+-- The partial unique index allows one open peek per household, and rows from the last day count towards the caps.
+-- session_sealed is KERNEL's session id, sealed (src/core/seal.ts). No KERNEL link is ever stored.
+create table if not exists peeks (
+  id text primary key,
+  household_id text not null references households(id) on delete cascade,
+  payment_id text not null references payments(id) on delete cascade,
+  view text not null,
+  session_sealed text,
+  started_at timestamptz not null default now(),
+  ends_at timestamptz not null,
+  last_frame_at timestamptz,
+  closed_at timestamptz,
+  close_reason text
+);
+create unique index if not exists peeks_one_open_idx on peeks (household_id) where closed_at is null;
+create index if not exists peeks_started_idx on peeks (started_at);
+create index if not exists peeks_household_started_idx on peeks (household_id, started_at);
 `;
