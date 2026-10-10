@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandMark } from "@/ui/components";
 import { PathBar } from "./landing/PathBar";
 import { HeroScenes } from "./landing/HeroScenes";
-import { MoneyPaths } from "./landing/MoneyPaths";
+import { NetworkField } from "./landing/NetworkField";
 import { ScrollStory } from "./landing/ScrollStory";
 import { Inspector } from "./landing/Inspector";
 import { LitText } from "./landing/LitText";
@@ -49,8 +49,8 @@ export default async function Home() {
   return (
     <main>
       <LoopPauser />
-      <section className="hero-dark mpaths-host" data-loop>
-        <MoneyPaths />
+      <section className="hero-dark net-host" data-loop>
+        <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .lnav" calm=".hero-copy" />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
