@@ -6,6 +6,7 @@ import type { AiCheckResult } from "@/ai/check";
 import type { Allowance } from "@/core/types";
 import { handlePayPalEvent, handleWebhookRequest, type PayPalEvent } from "./webhook";
 import { confirmedText } from "@/telegram/notify";
+import { PayPalError } from "./client";
 
 const gbp = (amount: number) => ({ amount, currency: "GBP" as const });
 const allowance: Omit<Allowance, "spentThisWeek"> = {
@@ -184,6 +185,19 @@ describe("PayPal webhook events", () => {
     expectNoMoneyMoved();
   });
 
+  it("a capture for a hold Spotter already voided is left alone but marked on the timeline", async () => {
+    const p = await held();
+    await setStatus(p.id, "voided");
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await handlePayPalEvent(deps, capture("PAYMENT.CAPTURE.COMPLETED", "COMPLETED"));
+    err.mockRestore();
+    expect(r.outcome).toBe("mismatch");
+    expect((await getPayment(db, p.id))!.status).toBe("voided");
+    expect(await db.query("select type from events where payment_id = $1 and type = 'paypal_mismatch'", [p.id])).toHaveLength(1);
+    expect(confirmed).not.toHaveBeenCalled();
+    expectNoMoneyMoved();
+  });
+
   it("a duplicate event is stored once and acted on once", async () => {
     const p = await held();
     await setStatus(p.id, "voiding");
@@ -264,6 +278,16 @@ describe("PayPal webhook request", () => {
     const restore = quiet();
     const res = await handleWebhookRequest(request(), { webhookId: "WH", verify: async () => { throw new Error("timeout"); }, deps: async () => deps });
     expect(res.status).toBe(503);
+    restore();
+  });
+
+  it("treats PayPal's verify API refusing the headers (4xx) as not genuine", async () => {
+    const restore = quiet();
+    const verify = async () => {
+      throw new PayPalError("bad request", 400, "VALIDATION_ERROR");
+    };
+    const res = await handleWebhookRequest(request(), { webhookId: "WH", verify, deps: async () => deps });
+    expect(res.status).toBe(401);
     restore();
   });
 

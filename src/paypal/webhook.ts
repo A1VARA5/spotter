@@ -3,7 +3,7 @@
 // moving money stays with the spotter's tap and the lifecycle.
 import { getSpender, settleFromPayPal, type Deps, type Payment } from "@/core/lifecycle";
 import type { PaymentStatus } from "@/db/schema";
-import type { WebhookHeaders } from "./client";
+import { PayPalError, type WebhookHeaders } from "./client";
 
 export type PayPalEvent = { id: string; event_type: string; resource?: Record<string, unknown> };
 export type WebhookDeps = Pick<Deps, "db" | "confirmed" | "defer">;
@@ -76,7 +76,10 @@ export async function handlePayPalEvent(deps: WebhookDeps, evt: PayPalEvent): Pr
     return await act(deps, evt, resource, resourceId, payment);
   } catch (e) {
     // Forget the event so PayPal's retry gets a real second chance instead of being skipped as a duplicate.
-    await db.query("delete from paypal_events where id = $1", [evt.id]).catch(() => {});
+    await db.query("delete from paypal_events where id = $1", [evt.id]).catch((del) => {
+      // Now the retry will be skipped as a duplicate, so this must be loud.
+      console.error(`[spotter] paypal event ${evt.id} failed and could not be forgotten; PayPal's retry will be skipped:`, del instanceof Error ? del.message : del);
+    });
     throw e;
   }
 }
@@ -111,8 +114,13 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   const now = moved ?? payment;
   if (now.status !== rule.to) {
     // PayPal and Spotter disagree in a way a webhook must not fix on its own (e.g. a capture for a voided hold).
-    console.error(`[spotter] paypal ${evt.event_type} for ${payment.id} while it is ${payment.status}; left as is`);
-    return result("ignored");
+    // Kept on the payment's timeline too, so the spotter's view shows it, not only a log line.
+    console.error(`[spotter] paypal ${evt.event_type} for ${payment.id} while it is ${now.status}; left as is`);
+    await db.query("insert into events (payment_id, type, data) values ($1, 'paypal_mismatch', $2)", [
+      payment.id,
+      JSON.stringify({ event: evt.event_type, paypal_event: evt.id, spotter_status: now.status }),
+    ]);
+    return result("mismatch");
   }
   if (rule.confirm && wasHeld(payment)) await confirm(deps, now);
   return result(moved ? rule.to : "confirmed");
@@ -124,11 +132,14 @@ async function confirm(deps: WebhookDeps, p: Payment) {
   const tell = async () => {
     try {
       const spender = await getSpender(deps.db, p.spender_id);
-      if (spender) await deps.confirmed!(p, spender);
+      if (!spender) throw new Error(`spender ${p.spender_id} not found`);
+      await deps.confirmed!(p, spender);
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       console.error(`[spotter] paypal confirmation note for ${p.id} failed: ${error}`);
-      await deps.db.query("insert into events (payment_id, type, data) values ($1, 'confirm_failed', $2)", [p.id, JSON.stringify({ error })]).catch(() => {});
+      await deps.db
+        .query("insert into events (payment_id, type, data) values ($1, 'confirm_failed', $2)", [p.id, JSON.stringify({ error })])
+        .catch((err) => console.error(`[spotter] could not record the failed note for ${p.id}:`, err instanceof Error ? err.message : err));
     }
   };
   if (deps.defer) deps.defer(tell);
@@ -160,8 +171,9 @@ export async function handleWebhookRequest(
     console.error("[spotter] paypal webhook without signature headers");
     return new Response("unauthorised", { status: 401 });
   }
+  if (Number(get("content-length") ?? 0) > MAX_BODY) return new Response("too large", { status: 413 });
   const raw = await req.text();
-  if (raw.length > MAX_BODY) return new Response("too large", { status: 413 });
+  if (Buffer.byteLength(raw) > MAX_BODY) return new Response("too large", { status: 413 });
   let evt: PayPalEvent;
   try {
     evt = JSON.parse(raw) as PayPalEvent;
@@ -176,6 +188,12 @@ export async function handleWebhookRequest(
   try {
     genuine = await opts.verify(h as WebhookHeaders, opts.webhookId, raw);
   } catch (e) {
+    const status = e instanceof PayPalError ? e.status : 0;
+    // PayPal refusing the headers themselves (a 4xx other than rate limiting) means not genuine, not an outage.
+    if (status >= 400 && status < 500 && status !== 429) {
+      console.error(`[spotter] paypal webhook rejected by the verify API (${status}): ${JSON.stringify({ id: evt.id, transmission: h.transmissionId })}`);
+      return new Response("unauthorised", { status: 401 });
+    }
     // We couldn't ask PayPal. 503 makes PayPal retry later; nothing is trusted meanwhile.
     console.error("[spotter] paypal webhook verify call failed:", e instanceof Error ? e.message : e);
     return new Response("try again", { status: 503 });
