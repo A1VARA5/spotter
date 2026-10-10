@@ -93,6 +93,8 @@ export function ReplayWidget(p: AgWidgetParams<ReplayDef>) {
     setIndex(n >= last ? null : n);
   };
   const end = days[last]!;
+  const sofar = days.slice(0, at + 1).flatMap((d) => d.events);
+  const heldBack = sofar.filter((e) => e.outcome !== "Protected").length;
 
   return (
     <div className="wt-rp" ref={root} data-reduced={reduced || undefined}>
@@ -119,8 +121,8 @@ export function ReplayWidget(p: AgWidgetParams<ReplayDef>) {
       </div>
 
       <div className="wt-rp-tracks">
-        <Track kind="real" label="With Spotter" events={today.events} dayKey={at} animate={!reduced && playing} />
-        <Track kind="ghost" label="Without Spotter" events={today.events} dayKey={at} animate={!reduced && playing} />
+        <Track kind="real" label="With Spotter" events={today.events} dayKey={at} animate={!reduced && playing} tally={heldBack ? `${heldBack} held back` : ""} />
+        <Track kind="ghost" label="Without Spotter" events={today.events} dayKey={at} animate={!reduced && playing} tally={sofar.length ? `${sofar.length} reached the payee` : ""} />
       </div>
 
       <div className="wt-rp-counts" aria-live={playing ? "off" : "polite"}>
@@ -143,7 +145,7 @@ export function ReplayWidget(p: AgWidgetParams<ReplayDef>) {
   );
 }
 
-function Track({ kind, label, events, dayKey, animate }: { kind: "real" | "ghost"; label: string; events: Array<{ amount: number; outcome: string; who: string; payee: string }>; dayKey: number; animate: boolean }) {
+function Track({ kind, label, events, dayKey, animate, tally }: { kind: "real" | "ghost"; label: string; events: Array<{ amount: number; outcome: string; who: string; payee: string }>; dayKey: number; animate: boolean; tally: string }) {
   return (
     <div className="wt-rp-track" data-kind={kind}>
       <span className="wt-rp-label">{label}</span>
@@ -152,6 +154,7 @@ function Track({ kind, label, events, dayKey, animate }: { kind: "real" | "ghost
         <span className="wt-rp-line" aria-hidden="true" />
         {kind === "real" && <span className="wt-rp-check" aria-hidden="true" />}
         <span className="wt-rp-end wt-rp-to">Payees</span>
+        {tally && <span className="wt-rp-tally">{tally}</span>}
         {events.slice(0, 3).map((e, i) => (
           // Keyed by day so each day's money travels once; a wrapper the width of the lane is what moves.
           <span key={`${dayKey}-${i}`} className="wt-rp-run" data-animate={animate || undefined} data-outcome={e.outcome} style={{ ["--i" as string]: i }}>

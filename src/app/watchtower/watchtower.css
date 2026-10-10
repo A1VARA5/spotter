@@ -2,7 +2,16 @@
    Tokens come from globals.css (DESIGN.md). Motion is transform and opacity only. */
 
 .wt-frame { position: relative; }
-.wt-frame > .wt-tools { height: auto; flex: none; display: flex; justify-content: flex-end; align-items: center; padding: 6px 10px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.wt-frame > .wt-tools { height: auto; flex: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 10px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.wt-pages { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.wt-page { flex: none; display: inline-flex; align-items: center; border-radius: 8px; }
+.wt-page[data-current] { background: var(--ink); }
+.wt-page-btn, .wt-page-x { all: unset; box-sizing: border-box; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; white-space: nowrap; transition: transform 160ms var(--ease-out); }
+.wt-page-x { padding: 6px 8px 6px 2px; font-size: 16px; line-height: 1; }
+.wt-page:not([data-current]) .wt-page-btn:hover, .wt-page:not([data-current]) .wt-page-x:hover { color: var(--ink); background: var(--chalk); }
+.wt-page[data-current] .wt-page-btn, .wt-page[data-current] .wt-page-x { color: var(--chalk); }
+.wt-page-btn:active, .wt-page-x:active { transform: scale(0.97); }
+.wt-page-btn:focus-visible, .wt-page-x:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
 .wt-frame > .wt-studio { flex: 1; min-height: 0; height: auto; }
 .wt-studio > div { height: 100%; }
 .wt-reset { all: unset; box-sizing: border-box; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; transition: transform 160ms var(--ease-out); }
@@ -77,7 +86,7 @@
 .wt-case-sign { font-weight: 650; }
 
 /* the month without Spotter */
-.wt-rp { height: 100%; display: grid; align-content: start; gap: 12px; padding: 4px 6px; font-variant-numeric: tabular-nums; container-type: inline-size; overflow: auto; }
+.wt-rp { height: 100%; display: grid; align-content: start; gap: 12px; padding: 4px 6px; font-variant-numeric: tabular-nums; container-type: inline-size; overflow-x: hidden; overflow-y: auto; }
 .wt-rp-empty { align-content: center; gap: 4px; }
 .wt-rp-title { font-size: 15px; font-weight: 650; }
 .wt-rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
@@ -96,11 +105,14 @@
 .wt-rp-track { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 10px; }
 .wt-rp-label { font-size: 13px; font-weight: 650; color: var(--ink); }
 .wt-rp-track[data-kind="ghost"] .wt-rp-label { color: var(--ink-2); font-weight: 500; }
-.wt-rp-lane { position: relative; height: 34px; display: flex; align-items: center; }
+.wt-rp-lane { position: relative; height: 34px; margin: 0 36px 0 30px; display: flex; align-items: center; }
 .wt-rp-line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--ink); }
 .wt-rp-track[data-kind="ghost"] .wt-rp-line { background: repeating-linear-gradient(90deg, var(--ink-2) 0 6px, transparent 6px 11px); opacity: 0.45; }
 .wt-rp-check { position: absolute; left: 50%; top: 50%; width: 14px; height: 22px; margin: -11px 0 0 -7px; border-radius: 4px; background: var(--hold); border: 2px solid var(--ink); }
 .wt-rp-end { position: absolute; top: -2px; font-size: 12px; color: var(--ink-2); line-height: 1; }
+.wt-rp-tally { position: absolute; bottom: -4px; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
+.wt-rp-track[data-kind="real"] .wt-rp-tally { left: 50%; transform: translateX(-50%); color: var(--stop); }
+.wt-rp-track[data-kind="ghost"] .wt-rp-tally { right: 0; color: var(--ink-2); }
 .wt-rp-from { left: 0; }
 .wt-rp-to { right: 0; }
 /* A wrapper the width of the lane moves, so translateX(50%) lands on the checkpoint, 100% on the payee. */

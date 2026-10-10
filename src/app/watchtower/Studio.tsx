@@ -13,6 +13,7 @@ import { OUTCOME_ORDER, type PersonRow, type Sources, type WatchAlert } from "@/
 import { INITIAL } from "@/watchtower/initial";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
+import { namesOf, pageTabs, removePage, withNames } from "@/watchtower/pages";
 
 type Shape = { object(p: Record<string, unknown>): unknown; string(o?: { description?: string }): unknown };
 type FormParams = { createDefaults(o: { dataMappingItems: Array<{ key: string; label: string }> }): unknown };
@@ -193,6 +194,8 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
   const [phone] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const theme = useMemo(() => themeFor(new Set(sources.payments.map((r) => r.outcome))), [sources]);
   const [initial] = useState(() => (isValidState(initialState) ? initialState : INITIAL));
+  const names = useRef<Record<string, string>>({ ...namesOf(INITIAL), ...namesOf(initial) });
+  const [tabs, setTabs] = useState(() => pageTabs(initial, names.current));
 
   const apiRef = useRef<AgStudioApi | null>(null);
   const onApiReady = useCallback((e: { api: AgStudioApi }) => {
@@ -208,14 +211,16 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
     saveTimer.current = null;
     const api = apiRef.current;
     if (!api) return;
-    const body = JSON.stringify({ state: api.getState() });
+    const body = JSON.stringify({ state: withNames(api.getState(), names.current) });
     fetch("/api/watchtower/board", { method: "PUT", headers: { "content-type": "application/json" }, body, keepalive: keepalive && body.length < 60_000 })
       .then(async (res) => {
         if (!res.ok) console.warn("[watchtower] board wasn't saved:", ((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status);
       })
       .catch((e: unknown) => console.warn("[watchtower] board wasn't saved:", e));
   }, []);
-  const onStateUpdated = useCallback(() => {
+  const onStateUpdated = useCallback((e: { state: AgReportState }) => {
+    Object.assign(names.current, namesOf(e.state));
+    setTabs(pageTabs(e.state, names.current));
     if (phone) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveNow(), SAVE_AFTER_MS);
@@ -228,6 +233,15 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
     document.addEventListener("visibilitychange", flush);
     return () => document.removeEventListener("visibilitychange", flush);
   }, [saveNow]);
+
+  const showPage = useCallback((id: string) => {
+    const api = apiRef.current;
+    if (api) api.setState({ ...api.getState(), selectedPageId: id });
+  }, []);
+  const dropPage = useCallback((id: string) => {
+    const api = apiRef.current;
+    if (api) api.setState(removePage(api.getState(), id));
+  }, []);
 
   const resetBoard = useCallback(() => {
     const api = apiRef.current;
@@ -417,10 +431,29 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
 
   return (
     <>
-      {phone ? (
-        <p className="wt-phone-note">Open Watchtower on a laptop to ask the assistant or change the board.</p>
-      ) : (
-        <div className="wt-tools">
+      {phone && <p className="wt-phone-note">Open Watchtower on a laptop to ask the assistant or change the board.</p>}
+      <div className="wt-tools">
+        <nav className="wt-pages" aria-label="Board pages">
+          {tabs.tabs.map((t) => (
+            <span key={t.id} className="wt-page" data-current={t.id === tabs.selected || undefined}>
+              <button type="button" className="wt-page-btn" aria-current={t.id === tabs.selected ? "page" : undefined} onClick={() => showPage(t.id)}>
+                {t.name}
+              </button>
+              {t.removable && !phone && (
+                <Confirm
+                  trigger={<span aria-hidden="true">×</span>}
+                  triggerClass="wt-page-x"
+                  triggerLabel={`Remove the page ${t.name}`}
+                  title={`Remove "${t.name}"?`}
+                  body="The page and its widgets go. Your payments stay, and Spotter won't bring this page back."
+                  confirmLabel="Remove page"
+                  onConfirm={() => dropPage(t.id)}
+                />
+              )}
+            </span>
+          ))}
+        </nav>
+        {!phone && (
           <Confirm
             trigger="Reset board"
             triggerClass="wt-reset"
@@ -429,8 +462,8 @@ export default function Studio({ sources, initialState, store }: { sources: Sour
             confirmLabel="Reset board"
             onConfirm={resetBoard}
           />
-        </div>
-      )}
+        )}
+      </div>
       <div className="wt-studio">
       <AgStudioProvider licenseKey={process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY} modules={MODULES}>
         <AgStudio<SpotterRegistry>
