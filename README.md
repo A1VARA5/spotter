@@ -42,6 +42,19 @@ Three widgets are Spotter's own: money kept, the hold track (click a stop and th
 
 The assistant can only read and rearrange the board. It never sees the scam messages, only names, amounts and Spotter's findings, and image and text widgets are switched off so a scammer's payee name can't become a link on the family's dashboard. Each family gets 60 assistant turns a day. Demo families get a sample month, marked Sample, so the board isn't empty on day one.
 
+## Using PayPal's Agent Toolkit with Spotter
+
+PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, I pinned 1.11.0) that lets an AI agent create orders, capture them, send invoices, refund and so on. It has no spending limit and no approval step. If the agent calls `pay_order`, the money goes.
+
+So Spotter has a second MCP server at `/api/toolkit/mcp` that speaks the toolkit's language. Same tool names, same arguments, same agent keys as the main one. An agent written for PayPal's toolkit points at Spotter instead and doesn't need to change.
+
+- `create_order` doesn't go to PayPal. It turns into a normal Spotter payment request: the agent's allowance, the AI check on its notes and the page it saw, a PayPal hold, then the spotter says yes or no. Spotter works out the total from the items itself, because the agent's own `itemTotal` could say anything.
+- `pay_order` never captures. It tells the agent what Spotter decided, like "held, Sam has to approve $119.00".
+- `get_order` runs the toolkit's real `get_order` against the sandbox, but only for orders that agent made.
+- Everything else is hidden for now. Refunds, invoices and subscriptions don't fit a "hold it, then the spotter decides" payment yet, and the list tools would show every family's orders, because they all share one sandbox merchant.
+
+The toolkit's `create_order` only takes USD, so the agent needs a USD allowance. If it doesn't name a shop (the official tool has no field for that), the order always waits for the spotter. The details and the full tool list are in `docs/agent-toolkit-notes.md`, and `scripts/toolkit-agent-demo.mts` is a Claude agent that gets PayPal's own tool definitions and talks to Spotter instead.
+
 ## Where to look in the code
 
 | What | Where |
@@ -55,6 +68,7 @@ The assistant can only read and rearrange the board. It never sees the scam mess
 | Opening a suspicious link in a throwaway KERNEL cloud browser (read only, one per case) | `src/agents/kernel.ts`, `open_link` in `src/agents/tools.ts` |
 | Real shop prices | `src/market/channel3.ts`, `src/core/market.ts` |
 | MCP server for agents | `src/app/api/mcp/route.ts`, `src/server/agent.ts` |
+| PayPal's Agent Toolkit with a spotter (guarded `create_order` and `pay_order`, scoped `get_order`) | `src/app/api/toolkit/mcp/route.ts`, `src/server/toolkit-mcp.ts`, `src/server/toolkit-guard.ts`, `src/paypal/toolkit.ts` |
 | Households, sessions, PIN, pairing codes, agent keys | `src/core/households.ts`, `src/server/auth.ts`, `src/core/pairing.ts` |
 | Activity table (AG Grid) | `src/app/ledger/Ledger.tsx` |
 | Watchtower (AG Studio widgets, Claude adapter, alerts, sample month) | `src/app/watchtower/`, `src/watchtower/` |
