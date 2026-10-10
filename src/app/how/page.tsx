@@ -100,7 +100,7 @@ export default function HowPage() {
         </ol>
       </section>
 
-      <section className="how-band" aria-labelledby="channels-title">
+      <section id="channels" className="how-band" aria-labelledby="channels-title">
         <div className="shell">
           <h2 id="channels-title" className="sec-title">
             How each person reaches Spotter
@@ -144,7 +144,7 @@ export default function HowPage() {
         </div>
       </section>
 
-      <section className="shell how-sec" aria-labelledby="limits-title">
+      <section id="limits" className="shell how-sec" aria-labelledby="limits-title">
         <h2 id="limits-title" className="sec-title">
           What Spotter can and can&apos;t do
         </h2>
