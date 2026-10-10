@@ -2007,6 +2007,14 @@ p {
   }
 }
 
+/* Keep whatever has keyboard focus clear of the fixed tab bar (WCAG 2.4.11): scrolling to a focused
+   control stops this far above the bottom edge. 76px = the bar (about 61px) plus breathing room. */
+@media (max-width: 899.98px) {
+  html:has(.tabbar) {
+    scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+
 .tab {
   position: relative;
   display: grid;
