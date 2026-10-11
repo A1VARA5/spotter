@@ -304,6 +304,8 @@ create table if not exists channel3_searches (
 );
 create index if not exists channel3_searches_household_idx on channel3_searches (household_id, at);
 create index if not exists channel3_searches_at_idx on channel3_searches (at);
+-- Proof block: scrolls the spotter asked for while looking at a page safely (peek), for "Spotter never touched it".
+alter table peeks add column if not exists scrolls integer not null default 0;
 
 -- Photo price check block (src/market/photo.ts): each find products in image call (up to 7 Channel3 credits) counted
 -- per family per day, and Channel3's answer cached by a hash of the picture and the condition. The photo is never stored.

@@ -7587,6 +7587,56 @@ h3 {
   .spot-diff-label { grid-column: 1 / -1; }
 }
 
+/* Two faces: the desktop (scanner) frame next to Gran's phone frame, the card form outlined, a blend slider. */
+.faces, .trail, .proof { margin: 4px 0 0; display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--paper); border: 1px solid #e3e7e3; min-width: 0; }
+.faces-title, .trail-title, .proof-title { font-size: 15px; font-weight: 650; color: var(--ink); }
+.faces-verdict { font-size: clamp(17px, 2.6vw, 20px); font-weight: 650; line-height: 1.3; color: var(--ink); text-wrap: balance; }
+.faces[data-differs="true"] { border-color: color-mix(in srgb, var(--stop) 40%, #e3e7e3); }
+.faces[data-differs="true"] .faces-verdict { color: var(--stop); }
+.faces-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr); gap: 14px; align-items: start; }
+.faces-side { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.faces-side figcaption { font-size: 13.5px; color: var(--ink-2); text-wrap: pretty; }
+.faces-side figcaption b { color: var(--ink); font-weight: 650; }
+.faces-frame { position: relative; overflow: hidden; background: var(--chalk); border: 1px solid var(--line); }
+.faces-desk .faces-frame { aspect-ratio: 4 / 3; border-radius: 8px; border-top: 10px solid #dfe4df; }
+.faces-phone .faces-frame { aspect-ratio: 390 / 844; border-radius: 18px; border: 6px solid var(--ink); }
+.faces-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.faces-blank { width: 100%; height: 100%; }
+.faces-box { position: absolute; border: 2px dashed var(--stop); border-radius: 4px; background: color-mix(in srgb, var(--stop) 10%, transparent); box-shadow: 0 0 0 2px rgb(255 255 255 / 0.7); pointer-events: none; }
+.faces-onion { display: grid; gap: 8px; }
+.faces-stage { position: relative; aspect-ratio: 4 / 3; max-width: 360px; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--chalk); }
+.faces-stage img { position: absolute; inset: 0; height: 100%; transition: opacity 120ms linear; }
+.faces-stage .faces-under { width: 100%; object-fit: cover; object-position: top; }
+.faces-stage .faces-over { left: 50%; right: auto; width: auto; aspect-ratio: 390 / 844; transform: translateX(-50%); object-fit: cover; object-position: top; }
+.faces-slider { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; max-width: 360px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.faces-slider input { width: 100%; min-height: 24px; accent-color: var(--stop); }
+.faces-diffs li { grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr); }
+@media (prefers-reduced-motion: reduce) { .faces-stage img { transition: none; } }
+@media (max-width: 560px) {
+  .faces-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 0.62fr); gap: 10px; }
+  .faces-diffs li { grid-template-columns: 1fr 1fr; }
+}
+
+/* Where the money goes: the hops in order, then where a card form would send its details. */
+.trail-line { font-size: 15px; font-weight: 600; color: var(--ink); text-wrap: pretty; overflow-wrap: anywhere; }
+.trail[data-offsite="true"] .trail-line { color: var(--stop); }
+.trail-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; counter-reset: hop; }
+.trail-steps li { position: relative; font-size: 14px; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; background: var(--chalk); overflow-wrap: anywhere; min-width: 0; }
+.trail-steps li + li::before { content: ""; position: absolute; left: -17px; top: 50%; width: 12px; height: 2px; background: var(--line); }
+.trail-steps b { color: var(--ink); font-weight: 650; }
+.trail-how { font-size: 12.5px; }
+
+/* Proof Spotter never touched it: six counts, then the fingerprints. */
+.proof-grid { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.proof-grid div { padding: 8px 10px; border-radius: 8px; background: var(--chalk); min-width: 0; }
+.proof-grid dt { font-size: 12.5px; color: var(--ink-2); }
+.proof-grid dd { margin: 2px 0 0; font-size: 18px; font-weight: 650; color: var(--go); overflow-wrap: anywhere; }
+.proof-grid div[data-unknown="true"] dd { color: var(--ink-2); font-size: 15px; }
+.proof-hashes summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink); min-height: 24px; }
+.proof-hashes p { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+.proof-hashes code { display: block; font: 12px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ink); overflow-wrap: anywhere; word-break: break-all; }
+@media (max-width: 560px) { .proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* Tools this shop offers AI agents (WebMCP): plain words, a poisoned line in red. */
 .case-tools { margin: 4px 0 0; display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: var(--paper); border: 1px solid #e3e7e3; }
 .case-tools-title { font-size: 15px; font-weight: 650; color: var(--ink); }

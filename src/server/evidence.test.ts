@@ -71,6 +71,54 @@ beforeEach(async () => {
 
 const get = (format?: string) => evidenceResponse(db, hh, paymentId, format ?? null);
 
+describe("evidence pack: two faces, where the money goes, and proof", () => {
+  const withPage = async (page: Record<string, unknown>) => {
+    const rows = await db.query<{ case_file: Record<string, unknown> & { page: Record<string, unknown> } }>("select case_file from payments where id = $1", [paymentId]);
+    const c = rows[0]!.case_file;
+    await db.query("update payments set case_file = $2 where id = $1", [paymentId, JSON.stringify({ ...c, page: { ...c.page, ...page } })]);
+  };
+
+  it("shows both faces, the money trail and the proof, with hashes, and counts the spotter's scrolls", async () => {
+    await withPage({
+      phone: { finalUrl: "https://pay-mum.example/login", title: "Fee due", asks: { card: true, login: false, giftCard: false }, network: "uk_mobile", screenshot: "data:image/jpeg;base64,/9j/BBBB" },
+      faces: { compared: true, differs: true, verdict: "This page shows something different to phones in the UK than to security scanners: only the phone was asked for card details.", differences: [{ kind: "asks_money", desktop: "No card or bank form", phone: "Asks for card details", strong: true }], textOverlap: 0.1, lookSimilarity: 0.4 },
+      trail: { shop: "pay-mum.example", targets: [{ host: "collect-x.example", how: "form" }], offsite: { host: "collect-x.example", how: "form" }, line: "Card details on this page would go to collect-x.example, not to the shop (pay-mum.example).", steps: [{ host: "bit.example", how: "link" }, { host: "pay-mum.example", how: "landed" }], stepsFrom: "network log" },
+      proof: { clicks: 0, keys: 0, scrolls: 0, downloadsBlocked: true, apiCalls: 7, hashes: { screenshot: "a".repeat(64), text: "b".repeat(64) }, deleted: true },
+    });
+    await db.query("insert into peeks (id, household_id, payment_id, view, session_sealed, ends_at, scrolls) values ('pk1', $1, $2, 'phone', 'x', now(), 4)", [hh, paymentId]);
+    const html = await (await get()).text();
+    expect(html).toContain("This page shows something different to phones in the UK than to security scanners");
+    expect(html).toContain("data:image/jpeg;base64,/9j/BBBB");
+    expect(html).toContain("Card details on this page would go to collect-x.example, not to the shop (pay-mum.example).");
+    expect(html).toMatch(/bit\.example.*pay-mum\.example/s);
+    expect(html).toMatch(/Clicks<\/th><td>0/);
+    expect(html).toMatch(/Keys typed<\/th><td>0/);
+    expect(html).toMatch(/Downloads<\/th><td>Blocked/);
+    expect(html).toContain("a".repeat(64));
+    expect(html).toContain("b".repeat(64));
+    expect(html).toMatch(/4 scrolls/);
+    const txt = await (await get("txt")).text();
+    expect(txt).toContain("collect-x.example");
+    expect(txt).toContain("a".repeat(64));
+  });
+
+  it("says plainly when the phone visit didn't work, instead of claiming two visits", async () => {
+    await withPage({ faces: { compared: false, verdict: "Spotter couldn't open it both ways, so it can't say whether this page hides from scanners." } });
+    const html = await (await get()).text();
+    expect(html).toContain("the phone visit didn&#39;t work");
+    expect(html).not.toContain("opened the link twice");
+  });
+
+  it("says 'not recorded', never zero, when a count is missing", async () => {
+    await withPage({ proof: { clicks: null, keys: null, scrolls: null, downloadsBlocked: null, apiCalls: 3, hashes: {} } });
+    const html = await (await get()).text();
+    expect(html).toMatch(/Clicks<\/th><td>Not recorded/);
+    expect(html).toMatch(/Keys typed<\/th><td>Not recorded/);
+    expect(html).toMatch(/Downloads<\/th><td>Not recorded/);
+    expect(html).not.toMatch(/Clicks<\/th><td>0/);
+  });
+});
+
 describe("evidence pack: who can get it", () => {
   it("only the household that owns the payment", async () => {
     const r = await evidenceResponse(db, other, paymentId, null);
