@@ -9,7 +9,7 @@ Your kid and your AI shopping agent work the same way. The agent can ask to pay.
 **Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything on the PayPal sandbox with fake money)
 
 [![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-1%2C550%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1%2C599%20passing-2ea44f)
 [![MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live%20demo-spotter--pay.vercel.app-0b7285)](https://spotter-pay.vercel.app)
 ![PayPal sandbox](https://img.shields.io/badge/PayPal-sandbox-003087)
@@ -50,7 +50,7 @@ Open https://spotter-pay.vercel.app and press **Try it on fake money**. You get 
 | 2. **Try a payment**, booby trapped shop | Stopped. A throwaway cloud browser opens the shop and shows what a person sees next to the hidden line an AI agent reads, plus the tools the page offers to agents | KERNEL, Claude |
 | 3. **Try a payment**, "Hi Mum" text | Held. The card asks you "Was it you?", because the text claims to be from you. The side by side example lets you answer as Tom, and his "Not me" releases the money straight away | Claude, PayPal void |
 | 4. **Try a payment**, £1.99 parcel text | Held. The link is opened as a desktop and as a UK phone at the same moment. Only the phone gets the card form, and Spotter shows where the card details would go | KERNEL two faces and telemetry |
-| 5. **Try a payment**, £6.99 skillet | Held. The shop's picture sits next to the same pan at real shops | KERNEL screenshot, Channel3 image search |
+| 5. **Try a payment**, £4.99 skillet | Held. The shop's picture sits next to the same pan at real shops | KERNEL screenshot, Channel3 image search |
 | 6. `/agent-lab`, Hijack the agent | A scripted naive test agent uses PayPal Agent Toolkit tools through Spotter, reads a hidden line, calls `create_refund`, gets frozen, and PayPal voids its hold. About 10 to 12 seconds end to end in my runs | PayPal Agent Toolkit, PayPal webhooks |
 | 7. **Watchtower**, then **Gran's view** | An AG Studio board of the month, and the same board for Gran in big type, in English or Polish | AG Studio, Claude |
 | 8. **Activity** | An AG Grid table of every payment. Click a row and the case file opens in a drawer | AG Grid |
@@ -74,7 +74,7 @@ Open the shopping agent's page (People, Shopping agent). In the connect panel pi
 
 ## Technology: how it's built
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,550 tests in 125 files, all passing in CI.
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,599 tests in 129 files, all passing in CI.
 
 Every payment takes the same path:
 
@@ -300,7 +300,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run     # 1,550 tests in 125 files
+npx vitest run     # 1,599 tests in 129 files
 npm run build
 ```
 
