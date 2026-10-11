@@ -2,7 +2,7 @@
 
 A spotter for every payment: PayPal holds the money until someone you trust says yes.
 
-A text from a new number says it's Tom and asks his mum for £250. Spotter doesn't ask her if she's sure. It asks Tom. His phone gets "Did you message Gran from a new number asking for £250?", and one tap of **Not me** releases the hold at PayPal. Nothing was paid, and nobody needed a PIN to stop it.
+A text from a new number says it's Tom and asks Gran for £250. Spotter doesn't ask her if she's sure. It asks Tom. His phone gets "Did you message Gran from a new number asking for £250?", and one tap of **Not me** releases the hold at PayPal. Nothing was paid, and nobody needed a PIN to stop it.
 
 In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't land on you. Spotter does that for payments.
 
