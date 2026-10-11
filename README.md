@@ -181,7 +181,7 @@ Price tracking first. When a payment is too dear, the spotter can start a price 
 
 <sub>Live dashboard, scrolling sped up 2x. The price watch is the demo family's starting example, labelled Example. Real shop names are blurred in the recording.</sub>
 
-Then the part that changes a decision. Real shop prices are code made evidence, not model output: the market check joins the flags before `decide()` runs ([src/core/market.ts](src/core/market.ts)). The shopping agent finds a cast iron skillet for £4.99. Without Channel3 that's a bargain under the allowance. With it, real UK shops list the same pan from £15.99 up to £28.00, so the payment is held and the card says "Likely a scam".
+Then the part that changes a decision. Real shop prices are code made evidence, not model output: the market check joins the flags before `decide()` runs ([src/core/market.ts](src/core/market.ts)). The shopping agent finds a cast iron skillet for £4.99. Without Channel3 that's a bargain under the allowance. With it, real UK shops list the same pan from £15.99 up to £28.00, so the payment is held and the card flags a price no real shop matches.
 
 - Spot the difference: the KERNEL screenshot of the shop sits next to the same product at a real shop, with the price, web address and seller compared line by line.
 - The real shop button: "Buy it from a real shop instead" opens the real listing, and "Deny this, buy it from" the real shop swaps the payment through PayPal.
@@ -215,7 +215,7 @@ Getting one honest price took work. At one point Channel3 priced a plain kettle 
 
 ## Technology
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,681 tests in 132 files, all passing.
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,688 tests in 132 files, all passing.
 
 ```mermaid
 flowchart LR
@@ -328,7 +328,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run     # 1,681 tests in 132 files
+npx vitest run     # 1,688 tests in 132 files
 npm run build
 ```
 
