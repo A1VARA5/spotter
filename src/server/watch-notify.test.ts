@@ -9,8 +9,8 @@ const w: WatchView & { householdId: string } = {
   householdId: "",
   paymentId: "pay_1",
   who: "Gran",
-  item: "Over ear <b>headphones</b>",
-  title: "Over ear headphones X2",
+  item: "the headphones the agent typed",
+  title: "Over ear <b>headphones</b>", // the notice names Channel3's title, not the item text
   currency: "GBP",
   nearlyPaid: 8900,
   target: 7600,

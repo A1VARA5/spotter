@@ -16,6 +16,8 @@ export type PaymentRow = {
   category: string;
   method: string;
   amount: number;
+  /** The payment's own currency (an agent can hold a dollar allowance). */
+  currency: string;
   outcome: string;
   moneyKept: number;
   signs: number;
@@ -136,6 +138,8 @@ const VERDICT: Record<string, string> = { likely_scam: "Likely scam", unclear: "
 export const SAMPLE_PREFIX = "pay_sample_";
 
 const pounds = (minor: string | number) => Number(minor) / 100;
+/** One space between words, none at the ends: the same tidy the simple view uses for its labels. */
+export const tidyName = (s: string) => s.replace(/\s+/g, " ").trim();
 const flagsOf = (p: Payment) => p.decision?.flags ?? p.ai?.flags ?? [];
 
 function wasItYouWords(p: Payment): string {
@@ -150,7 +154,9 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
   const rows: PaymentRow[] = [];
   const signs: SignRow[] = [];
   for (const p of payments) {
-    const who = byId.get(p.spender_id);
+    const spender = byId.get(p.spender_id);
+    // Names are tidied the same way the simple view's labels are (gran.ts), so "Margaret  Smith" matches its rows.
+    const who = spender && { ...spender, name: tidyName(spender.name) };
     const outcome = OUTCOME[trackState(p.status)];
     const amount = pounds(p.amount);
     const flags = flagsOf(p);
@@ -170,6 +176,7 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
       category: p.request.category,
       method: METHOD_LABEL[p.request.method] ?? "Other",
       amount,
+      currency: p.currency,
       outcome,
       moneyKept: outcome === "Stopped" || outcome === "Denied" ? amount : 0,
       signs: flags.length,
@@ -200,11 +207,11 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
   rows.sort((a, b) => rank(a.outcome) - rank(b.outcome) || b.when.getTime() - a.when.getTime());
   const weekAgo = now.getTime() - 7 * 24 * 3600_000;
   const people = spenders.map((s) => ({
-    name: s.name,
+    name: tidyName(s.name),
     kind: KIND_LABEL[s.kind] ?? "Person",
     weeklyAllowance: pounds(s.allowance.weekly.amount),
     // Money that actually reached a payee in the last 7 days.
-    spentThisWeek: rows.filter((r) => r.who === s.name && r.outcome === "Paid" && r.when.getTime() > weekAgo).reduce((t, r) => t + r.amount, 0),
+    spentThisWeek: rows.filter((r) => r.who === tidyName(s.name) && r.outcome === "Paid" && r.when.getTime() > weekAgo).reduce((t, r) => t + r.amount, 0),
   }));
   return { payments: rows, signs, people };
 }

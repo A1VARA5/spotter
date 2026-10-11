@@ -6,7 +6,8 @@ import { getDeps } from "@/server/deps";
 import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, agentWatchPrice } from "@/server/agent";
 import { getWatchDeps } from "@/server/watch-deps";
 import { verifyAgentToken } from "@/core/pairing";
-import { searchProducts } from "@/market/channel3";
+import { getSpender } from "@/core/lifecycle";
+import { familySearch, searchProducts } from "@/market/channel3";
 
 export const maxDuration = 120;
 
@@ -64,8 +65,13 @@ const handler = createMcpHandler(
           currency: z.enum(["GBP", "USD"]).default("GBP"),
         }),
       },
-      async ({ query, currency }) =>
-        text((await agentFindProducts((q, c, l) => searchProducts(q, c, l), query, currency)).message),
+      async ({ query, currency }, ctx) => {
+        // Each search is a Channel3 credit: cached, and capped per family and per day (src/market/channel3.ts).
+        const { db } = await getDeps();
+        const agent = await getSpender(db, agentOf(ctx));
+        if (!agent) return text("This agent isn't set up in Spotter any more. Ask the user to reconnect it.");
+        return text((await agentFindProducts((q, c, l) => familySearch(db, agent.household_id, searchProducts, q, c, l), query, currency)).message);
+      },
     );
 
     server.registerTool(

@@ -294,4 +294,14 @@ create table if not exists watchtower_receipts (
   primary key (household_id, run_id)
 );
 create index if not exists watchtower_receipts_recent_idx on watchtower_receipts (household_id, created_at desc);
+-- Security review 2026-10-11 block. F2: when a peek asked KERNEL for a browser, so a failed start still counts
+-- towards the daily caps. F3: each Channel3 product search a price watch or an agent's find_products makes
+-- (1 credit each), so they have a daily cap per family and overall, like price_checks.
+alter table peeks add column if not exists create_called_at timestamptz;
+create table if not exists channel3_searches (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists channel3_searches_household_idx on channel3_searches (household_id, at);
+create index if not exists channel3_searches_at_idx on channel3_searches (at);
 `;

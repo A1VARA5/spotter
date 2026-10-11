@@ -149,11 +149,12 @@ export async function agentWatchPrice(deps: WatchDeps, agentId: string, input: A
 
 /** Real products from real retailers (Channel3), so agents shop known shops at known prices. */
 export async function agentFindProducts(
-  search: (q: string, c: "GBP" | "USD", limit: number) => Promise<Array<{ title: string; brand?: string; offers: Array<{ domain: string; price: number; url: string }> }> | null>,
+  search: (q: string, c: "GBP" | "USD", limit: number) => Promise<Array<{ title: string; brand?: string; offers: Array<{ domain: string; price: number; url: string }> }> | null | "capped">,
   query: string,
   currency: "GBP" | "USD",
 ): Promise<{ message: string }> {
   const products = await search(query, currency, 5);
+  if (products === "capped") return { message: "That's all the product searches for today. Tell the user instead of guessing a shop." };
   if (products === null) return { message: "Product search is unavailable right now. Tell the user instead of guessing a shop." };
   if (products.length === 0) return { message: `No products found for "${query}".` };
   const lines = products.map((p, i) => {

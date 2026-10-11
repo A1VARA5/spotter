@@ -175,6 +175,45 @@ export function makeMarket(db: Db) {
   };
 }
 
+export type SearchFn = (query: string, currency: Currency, limit: number) => Promise<Product[] | null>;
+
+const SEARCH_CACHE_HOURS = 24;
+const searchCap = (name: string, fallback: number) => {
+  const n = Number(process.env[name]);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+};
+
+/**
+ * A Channel3 search on a family's behalf (1 credit each), for price watches and agents' find_products. The same
+ * words within a day come from the cache and cost nothing. Otherwise a slot is taken first, per family and overall
+ * per day in one statement (like price_checks), and it counts even when the search finds nothing or fails.
+ * "capped" when the day's slots are used up; null when Channel3 can't be reached.
+ */
+export async function familySearch(db: Db, householdId: string, search: SearchFn, query: string, currency: Currency, limit: number): Promise<Product[] | null | "capped"> {
+  const key = `products:${currency}:${limit}:${query.trim().toLowerCase()}`;
+  const hit = await db.query<{ offers: Product[] }>(
+    `select offers from market_cache where key = $1 and fetched_at > now() - interval '${SEARCH_CACHE_HOURS} hours'`,
+    [key],
+  );
+  if (hit[0]) return hit[0].offers;
+  const took = await db.query(
+    `insert into channel3_searches (household_id) select $1
+     where (select count(*) from channel3_searches where at > now() - interval '1 day') < $2
+       and (select count(*) from channel3_searches where household_id = $1 and at > now() - interval '1 day') < $3
+     returning 1`,
+    [householdId, searchCap("CHANNEL3_SEARCHES_PER_DAY", 300), searchCap("CHANNEL3_SEARCHES_PER_FAMILY", 10)],
+  );
+  if (!took.length) return "capped";
+  const products = await search(query, currency, limit);
+  if (!products) return null;
+  // Products share the payment check's cache table under their own key prefix (its keys start with the currency).
+  // The credit is spent either way, so a failed cache write is logged and the results are still used.
+  await db
+    .query("insert into market_cache (key, offers) values ($1, $2) on conflict (key) do update set offers = excluded.offers, fetched_at = now()", [key, JSON.stringify(products)])
+    .catch((e: unknown) => console.error("[spotter] caching a Channel3 search failed; the next ask searches again:", e instanceof Error ? e.message : e));
+  return products;
+}
+
 /** The one listing to watch when several are the same product: every word of the item first, then most shops, then cheapest. */
 export function bestProduct(products: Product[], item: string): Product | null {
   const words = tokens(item);
