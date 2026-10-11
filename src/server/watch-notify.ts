@@ -14,11 +14,18 @@ type Senders = {
 
 const m = (w: WatchView, minor: number) => formatMoney({ amount: minor, currency: w.currency });
 
-/** The notice in plain sentences. Item and shop come from outside, so each channel escapes them. */
+/** Backslashes Discord's markdown characters, so outside text can't become a masked link, a heading or bold. */
+export const discordEsc = (s: string) => s.replace(/[\\*_~`|>#\-[\]()]/g, "\\$&");
+
+/**
+ * The notice in plain sentences. It names the product by Channel3's title (live shop data) rather than the item text
+ * the agent or payment gave. Title and shop still come from outside, so each channel escapes them.
+ */
 export function dropLines(w: WatchView): string[] {
   const who = w.who ?? "Someone";
+  const name = w.title.trim() || w.item;
   return [
-    w.best ? `Price watch: ${w.best.shop} now sells the ${w.item} ${who} wanted for ${m(w, w.best.price)}.` : `Price watch: the ${w.item} ${who} wanted costs less at a real shop now.`,
+    w.best ? `Price watch: ${w.best.shop} now sells the ${name} ${who} wanted for ${m(w, w.best.price)}.` : `Price watch: the ${name} ${who} wanted costs less at a real shop now.`,
     w.saving ? `That's ${m(w, w.saving)} less than ${who} nearly paid (${m(w, w.nearlyPaid)}).` : "",
     "Nothing is bought unless you decide to.",
   ].filter(Boolean);
@@ -40,7 +47,7 @@ export function makeDropNotify(db: Db, site: string, send: Senders) {
       jobs.push(send.telegram(hh.telegram_chat_id, html, { reply_markup: { inline_keyboard: buttons }, link_preview_options: { is_disabled: true } }));
     }
     if (hh.discord_user_id && send.discord) {
-      jobs.push(send.discord(hh.discord_user_id, [`**${lines[0]}**`, ...lines.slice(1), link ? `See it at the shop: <${link}>` : ""].filter(Boolean).join("\n").slice(0, 1900)));
+      jobs.push(send.discord(hh.discord_user_id, [`**${discordEsc(lines[0]!)}**`, ...lines.slice(1).map(discordEsc), link ? `See it at the shop: <${link}>` : ""].filter(Boolean).join("\n").slice(0, 1900)));
     }
     if (hh.alert_email && send.email) {
       const html = layout({
