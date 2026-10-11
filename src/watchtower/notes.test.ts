@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgAiChatMessage, AgAiChatSession, AgAiHarness } from "ag-studio";
-import { notable } from "./notes";
+import { UNFINISHED_NOTE, cutOff, notable } from "./notes";
 
 // A stand in for AG's harness: one session per thread, whose messages the chat panel reads on "changed".
 function fakeHarness() {
@@ -66,6 +66,8 @@ describe("a plain note from Spotter's code in the chat", () => {
     const s = await n.openThread("t1");
     sessions.get("t1")!.push(msg("1", "assistant", "First answer."));
     n.addNote("t1", "Note.");
+    // the next question is being answered
+    (sessions.get("t1") as unknown as { status: string }).status = "running";
     sessions.get("t1")!.push(msg("2", "user", "Next question"));
     expect(texts(s)).toEqual(["First answer.", "Note.", "Next question"]);
   });
@@ -101,5 +103,39 @@ describe("a plain note from Spotter's code in the chat", () => {
     n.addNote("a", "Note.");
     expect(texts(b)).toEqual(["B"]);
     expect(texts(a)).toEqual(["A", "Note."]);
+  });
+});
+
+// R5-N3: a chat cut off mid run (the tab closed) ended at "Placed a tile" on reload, with no reply and no word
+// that it didn't finish.
+describe("a chat cut off mid run", () => {
+  const tool = (id: string, name: string): AgAiChatMessage => ({ id, role: "assistant", parts: [{ type: "tool_call", toolCall: { toolCallId: id, name, status: "complete", args: {} } }], createdAt: 0 });
+  it("is one whose last word is the family's question, or an assistant turn with tool calls and no reply", () => {
+    expect(cutOff([msg("u1", "user", "Show me Leo's games")], "idle")).toBe(true);
+    expect(cutOff([msg("u1", "user", "Show me Leo's games"), tool("a1", "place_widget")], "idle")).toBe(true);
+    expect(cutOff([msg("u1", "user", "Show me Leo's games"), tool("a1", "place_widget"), msg("a2", "assistant", "Leo spent £9.98.")], "idle")).toBe(false);
+    expect(cutOff([msg("u1", "user", "Show me Leo's games"), msg("a2", "assistant", "  ")], "idle")).toBe(true);
+    // a reply followed by a last tool call (a tidy up) still answered
+    expect(cutOff([msg("u1", "user", "Show me Leo's games"), msg("a2", "assistant", "Leo spent £9.98."), tool("a3", "rename_thread")], "idle")).toBe(false);
+  });
+  it("isn't cut off while the run is still going, when the chat is empty, or when the run ended with an error it already shows", () => {
+    expect(cutOff([msg("u1", "user", "Show me Leo's games")], "running")).toBe(false);
+    expect(cutOff([msg("u1", "user", "Show me Leo's games")], "awaiting_input")).toBe(false);
+    expect(cutOff([], "idle")).toBe(false);
+    expect(cutOff([msg("u1", "user", "hi"), { id: "e", role: "assistant", parts: [{ type: "error", message: "The model didn't answer." }], createdAt: 0 }], "idle")).toBe(false);
+  });
+  it("ends with Spotter's plain line saying it didn't finish, and the line goes once an answer arrives", async () => {
+    const { h, sessions } = fakeHarness();
+    const n = notable(h);
+    const s = await n.openThread("t1");
+    sessions.get("t1")!.push(msg("u1", "user", "Show me Leo's games"));
+    sessions.get("t1")!.push(tool("a1", "place_widget"));
+    expect(s.messages.at(-1)!.parts[0]).toEqual({ type: "text", text: UNFINISHED_NOTE });
+    expect(s.messages).toBe(s.messages); // same list while nothing changes, so the panel doesn't redraw for nothing
+    sessions.get("t1")!.push(msg("a2", "assistant", "Leo spent £9.98."));
+    expect(texts(s).includes(UNFINISHED_NOTE)).toBe(false);
+  });
+  it("says exactly that it didn't finish and to ask again", () => {
+    expect(UNFINISHED_NOTE).toBe("This answer didn't finish. Ask again.");
   });
 });

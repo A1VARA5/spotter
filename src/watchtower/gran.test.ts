@@ -217,11 +217,49 @@ describe("who decided, and why, in Gran's words", () => {
     caseHeadline: 'This looks like a fake parcel text: it uses a small £1.99 "redelivery fee" to get Gran\'s card details.',
   };
 
-  it("names the impersonated relative when their Not me released the money, not the spotter", () => {
+  // R5-N1: Gran read "Example, checked earlier: this looks like the Hi Mum scam. Tom said "not me". Just now."
+  it("tells a Not me stop by what happened: someone said they were the relative, and the relative said no", () => {
     const notes = new Map([["tom", note("tom", ["Someone on a new number says they're Tom."])]]);
     const m = granMonth([row({ id: "tom", who: "Gran", outcome: "Denied", amount: 250, wasItYou: "Tom: not me" })], notes, { who: null, spotter: "Sam", now: NOW });
-    expect(m.stopped[0]!.by).toBe('Tom said "not me"');
-    expect(m.stopped[0]!.sentence).toBe("Someone on a new number says they're Tom.");
+    expect(m.stopped[0]!.sentence).toBe("Someone said they were Tom. Tom says they didn't send it.");
+    expect(m.stopped[0]!.by).toBe("Nothing was paid");
+  });
+
+  it("never shows the example's 'checked earlier' words beside a time: the row is tagged Example instead", () => {
+    const ex: CaseNote = { id: "ex", reasons: ["Example, checked earlier. Someone pretending to be family."], signs: [], caseHeadline: "Example, checked earlier: this looks like the Hi Mum scam. Someone says they're family on a new number." };
+    const m = granMonth([row({ id: "ex", outcome: "Denied", amount: 250 })], new Map([["ex", ex]]), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped[0]!.sentence).toBe("This looks like the Hi Mum scam.");
+    expect(m.stopped[0]!.example).toBe(true);
+    const live = granMonth([row({ id: "l", outcome: "Denied" })], new Map([["l", note("l", ["Looks like a scam."])]]), { who: null, spotter: "Sam", now: NOW });
+    expect(live.stopped[0]!.example).toBe(false);
+  });
+
+  it("shows one row for repeats of the same payment (same payee and amount), newest first, with how many times", () => {
+    const rows = [
+      row({ id: "a", outcome: "Denied", payee: "jamie.k1994@mail.example", amount: 250, when: ago(1), wasItYou: "Tom: not me" }),
+      row({ id: "b", outcome: "Denied", payee: "Jamie.k1994@mail.example ", amount: 250, when: ago(2) }),
+      row({ id: "c", outcome: "Denied", payee: "Larkhill Parcels", amount: 1.99, when: ago(1.5) }),
+      row({ id: "d", outcome: "Waiting", payee: "jamie.k1994@mail.example", amount: 250, when: ago(0.5) }),
+    ];
+    const m = granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped.map((s) => [s.id, s.times])).toEqual([
+      ["a", 2],
+      ["c", 1],
+    ]);
+    // every stop still counts towards the money kept, and the one still waiting stays in its own list
+    expect(m.kept).toBe(501.99);
+    expect(m.waiting.map((w) => w.id)).toEqual(["d"]);
+    expect(granForAgent(m, NOW).stopped[0]).toMatchObject({ times: 2 });
+    // the assistant says the same total as the screen
+    expect(granForAgent(m, NOW).keptThisMonth).toBe("£501.99");
+  });
+
+  it("never hides a live stop under the Example tag when it repeats the example's payee and amount", () => {
+    const ex: CaseNote = { id: "ex", reasons: [], signs: [], caseHeadline: "Example, checked earlier: this looks like the Hi Mum scam." };
+    const rows = [row({ id: "live", outcome: "Denied", payee: "jamie", amount: 250, when: ago(2) }), row({ id: "ex", outcome: "Denied", payee: "jamie", amount: 250, when: ago(1) })];
+    const m = granMonth(rows, new Map([["ex", ex], ["live", note("live", ["Looks like the Hi Mum scam."])]]), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped).toHaveLength(1);
+    expect(m.stopped[0]!.example).toBe(false);
   });
 
   it("still credits the spotter when the relative was only asked, or said it was them", () => {
@@ -233,8 +271,9 @@ describe("who decided, and why, in Gran's words", () => {
 
   it("falls back to a calm line that names the relative when there is no reason, in English and Polish", () => {
     const rows = [row({ id: "tom", outcome: "Denied", wasItYou: "Tom: not me" })];
-    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe('Tom said "not me", so nothing was paid.');
-    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.by).toBe('Tom powiedział(a): "to nie ja"');
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe("Someone said they were Tom. Tom says they didn't send it.");
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.sentence).toBe("Ktoś podawał się za osobę: Tom. Tom mówi, że tego nie wysłał(a).");
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.by).toBe("Nic nie zostało zapłacone");
   });
 
   it("explains a stop by what the check found (the case file), not by a rule like first time paying", () => {

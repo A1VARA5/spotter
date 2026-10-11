@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgAiTelemetryEvent } from "ag-studio";
-import { TOOL_ACCESS, TOOL_WORDS, accessOf, toolWords, createRecorder, forServer, isReceipt, newEntryIds, redoTarget, receiptLines, undoTarget, type Receipt } from "./receipt";
+import { TOOL_ACCESS, TOOL_WORDS, accessOf, toolWords, createRecorder, forServer, isReceipt, newEntryIds, redoTarget, receiptLines, startedReceipt, undoTarget, type Receipt } from "./receipt";
 
 type Ev = AgAiTelemetryEvent;
 const tr = (runId: string, extra: Record<string, unknown> = {}) => ({ threadId: "t1", runId, agentId: "spotter", ...extra });
@@ -169,6 +169,26 @@ describe("receipt from the browser, checked on the server", () => {
   });
   it("refuses a receipt whose flag disagrees with its own unknown tools", () => {
     expect(isReceipt({ ...good, unknown: ["send_money"], moneyActions: 1, flagged: false })).toBe(false);
+  });
+});
+
+// R5-N3: a run cut off mid way (the tab closed) left no receipt, so after a reload the bar showed the
+// question before it. A placeholder is kept the moment a run starts; the finished receipt replaces it.
+describe("a receipt kept when a run starts, so a cut off run never shows the one before it", () => {
+  const start = { runId: "r_2", threadId: "t_1", agentId: "spotter", startedAt: 1_760_000_000_000 };
+  it("says the run hasn't finished, with no calls and nothing reassuring in it", () => {
+    const r = startedReceipt(start);
+    expect(r).toMatchObject({ runId: "r_2", threadId: "t_1", status: "unfinished", tools: [], ms: 0, boardKnown: false, flagged: false });
+    expect(isReceipt(r)).toBe(true);
+    expect(isReceipt(forServer(r))).toBe(true);
+  });
+  it("refuses an unfinished receipt that claims calls or board changes", () => {
+    const r = startedReceipt(start);
+    expect(isReceipt({ ...r, tools: [{ name: "watch_alerts", calls: 1, ms: 3, failed: 0, access: "read" }] })).toBe(false);
+    expect(isReceipt({ ...r, boardChanges: 2 })).toBe(false);
+  });
+  it("words it plainly", () => {
+    expect(receiptLines(startedReceipt(start)).summary).toBe("This question didn't finish, so there's no receipt for it.");
   });
 });
 

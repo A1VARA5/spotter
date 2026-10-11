@@ -14,7 +14,7 @@ import { promptStarters, startingBoard } from "@/watchtower/initial";
 import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
-import { READY_TILES, addPage, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
+import { ANSWER_TOP, READY_TILES, addPage, answerRows, arrangeAnswersIn, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
 import { answerLine, dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
 import { answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
 import { notable, type NotableHarness } from "@/watchtower/notes";
@@ -29,8 +29,9 @@ import { fairBrief, todayLine, todayUnavailable } from "@/watchtower/fair";
 import { createRecorder, type Recorder } from "@/watchtower/receipt";
 import { captureEnd, captureStart, type RunStartSnapshot } from "@/watchtower/runUndo";
 import { spotterToolDisplay } from "./ToolCards";
-import { ReceiptBar, createReceiptBook, record, useBook, type ReceiptBook } from "./ReceiptBar";
+import { ReceiptBar, createReceiptBook, keepStart, record, useBook, type ReceiptBook } from "./ReceiptBar";
 import { AiChecksWidget } from "./AiChecks";
+import { AnswerSummaryWidget, createAnswerFeed, type Starter } from "./AnswerCard";
 
 type Shape = { object(p: Record<string, unknown>): unknown; string(o?: { description?: string }): unknown };
 type FormParams = { createDefaults(o: { dataMappingItems: Array<{ key: string; label: string }> }): unknown };
@@ -157,6 +158,7 @@ function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[], 
         starts.set(run.runId, null);
       }
       book.setRunning(true);
+      keepStart(run);
     },
     onFinish: (receipt) => {
       const start = starts.get(receipt.runId);
@@ -230,6 +232,14 @@ function usePhoneFullHeight(box: React.RefObject<HTMLDivElement | null>, on: boo
       watch.disconnect();
     };
   }, [box, on, reset]);
+}
+
+// Studio's rows are 16 px. The board's canvas starts about 380 px down a desktop window (header, tabs, receipt).
+const ROW_PX = 16;
+/** Rows of board on screen now, less a little room, so one answer and its card fill the screen without scrolling. */
+function rowsOnScreen(): number {
+  const canvas = document.querySelector<HTMLElement>(".wt-studio .ag-studio-layout");
+  return answerRows((canvas?.clientHeight || window.innerHeight - 380) / ROW_PX - 2);
 }
 
 function isValidState(s: unknown): s is AgReportState {
@@ -368,11 +378,12 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   // Wide screens show the text tiles shorter (fitWide); this remembers the real rows so saving puts them back.
   const fittedRef = useRef<Fitted>({});
   const [initial] = useState(() => {
-    const s = isValidState(initialState) ? initialState : start;
-    if (phone) return stackForPhone(s as AgReportState);
+    // The Answers page is laid out by code (newest answer large, its card beside it), boards saved before that too.
+    const s = arrangeAnswersIn((isValidState(initialState) ? initialState : start) as AgReportState, phone ? ANSWER_TOP : rowsOnScreen());
+    if (phone) return stackForPhone(s);
     // On a laptop narrower than about 1700px the open chat panel squeezes the tiles to about 180px wide,
     // so their text runs far past the tile. The board opens with it folded; one click (or "Look into this") opens it.
-    const st = s as AgReportState;
+    const st = s;
     if (window.innerWidth < 1700 && st.panels?.ai?.collapsed === false) return { ...st, panels: { ...st.panels, ai: { ...st.panels.ai, collapsed: true } } };
     const wide = fitWide(st, window.innerWidth);
     fittedRef.current = wide.fitted;
@@ -575,8 +586,27 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
     harness.current = null;
   }, []);
 
+  // ---------- the card beside the newest answer ----------
+  // Its "Ask next" buttons ask in the chat like Ask again; one at a time, and not while a run is going.
+  const askingNext = useRef(false);
+  const askNext = useRef<(s: Starter) => void>(() => {});
+  askNext.current = (st: Starter) => {
+    if (askingNext.current || running) return;
+    askingNext.current = true;
+    setAsking(true);
+    void askInChat(st.label, st.prompt, "The assistant didn't open. Try that question again.").finally(() => {
+      askingNext.current = false;
+      setAsking(false);
+    });
+  };
+  const [answerFeed] = useState(() => createAnswerFeed((st) => askNext.current(st)));
+  const starters = useMemo(() => promptStarters(sources.people, kind), [sources.people, kind]);
+  useEffect(() => {
+    answerFeed.set({ title: latest?.title ?? "", empty: latest?.empty ?? true, running, total: latestTotal, starters, canAsk: !phone, asking });
+  }, [answerFeed, latest, running, latestTotal, starters, phone, asking]);
+
   // A new context per language: Studio reads it once, and a language change remounts Studio anyway.
-  const context = useMemo<WatchContext>(() => ({ store, lookInto: (a) => lookIntoRef.current(a), gran: labels, receipts: book, granLang }), [store, labels, book, granLang]);
+  const context = useMemo<WatchContext>(() => ({ store, lookInto: (a) => lookIntoRef.current(a), gran: labels, receipts: book, granLang, answers: answerFeed }), [store, labels, book, granLang, answerFeed]);
   const lookIntoRef = useRef(lookInto);
   lookIntoRef.current = lookInto;
 
@@ -716,6 +746,16 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
             ai: { description: "Spotter's own checks on its assistant: each recent assistant run with its receipt from the AG Studio telemetry (tool calls, time, money actions, board changes), newest first. Takes no data mapping." },
           },
           {
+            id: "answer-summary",
+            label: "Answer summary",
+            icon: { className: "wt-icon-checks" },
+            ...noMapping,
+            comp: AnswerSummaryWidget,
+            defaultSize: { width: 420, height: 420 },
+            minSize: { width: 260, height: 240 },
+            ai: { description: "Spotter places this card itself beside the newest answer on the Answers page: the question, its total, who built it, the receipt and questions to ask next. Never add, move or configure it." },
+          },
+          {
             id: "price-watches",
             label: "Price watches",
             icon: { className: "wt-icon-watch" },
@@ -738,7 +778,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         menu: [
           { label: "Spotter", widgetIds: ours },
           { label: "Simple view", widgetIds: simple },
-          ...made.menu.map((g) => ({ ...g, widgetIds: g.widgetIds.filter((id) => !banned.has(id) && !ours.includes(id) && !simple.includes(id)) })).filter((g) => g.widgetIds.length),
+          // The answer card is placed by code only, so it isn't in any menu.
+          ...made.menu.map((g) => ({ ...g, widgetIds: g.widgetIds.filter((id) => !banned.has(id) && !ours.includes(id) && !simple.includes(id) && id !== "answer-summary") })).filter((g) => g.widgetIds.length),
         ],
       };
     },
@@ -881,7 +922,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           try {
             const type = String(args.widgetType ?? "").trim();
             const title = typeof args.title === "string" ? args.title : undefined;
-            const { state, pageId, widgetId, reused } = placeAnswer(api.getState(), names.current, type, answerTypes(), title);
+            const { state, pageId, widgetId, reused } = placeAnswer(api.getState(), names.current, type, answerTypes(), title, rowsOnScreen());
             api.setState(state);
             const out = { widgetType: type, widgetId, pageId, reused };
             if (READY_TILES.has(type)) return ctx.success(`The ${type} tile is at the top of the Answers page and fills itself in. No widget agent needed.`, out);
@@ -1126,11 +1167,12 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         </div>
       ) : (
         <>
-          {line && tabs.selected === line.pageId && (
+          {/* A finished answer is named on its card beside it; the line is for one being built or cut off. */}
+          {line && line.kind !== "answer" && tabs.selected === line.pageId && (
             <p className="wt-answer-line" aria-live="polite" data-kind={line.kind}>
-              {line.kind === "building" ? (
+              {line.kind !== "unfinished" ? (
                 <>Building your chart{line.title ? <>: <strong>{line.title}</strong></> : null}…</>
-              ) : line.kind === "unfinished" ? (
+              ) : (
                 <>
                   <span className="wt-answer-kicker">This answer didn&apos;t finish</span>
                   {line.title ? <strong>{line.title}</strong> : null}
@@ -1141,11 +1183,6 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
                       {asking ? "Asking…" : "Ask again"}
                     </button>
                   )}
-                </>
-              ) : (
-                <>
-                  <span className="wt-answer-kicker">Latest answer</span> <strong>{line.title || "Your chart"}</strong>
-                  {latestTotal ? <> · {latestTotal} in total</> : null}
                 </>
               )}
             </p>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_COLOURS, answerLine, answerTotal, dropEmptyAnswers, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
-import { newestAnswer } from "./pages";
+import { ANSWER_COLOURS, answerLine, answerReceipt, answerTotal, builtBy, dropEmptyAnswers, followUps, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
+import { SUMMARY_ID, SUMMARY_TYPE, newestAnswer } from "./pages";
+import { startedReceipt, type Receipt } from "./receipt";
 
 type W = { type: string; dataMapping?: Record<string, Array<{ id: string; aggregation?: string }>> };
 const board = (answers: Record<string, W>) =>
@@ -139,7 +140,7 @@ describe("empty answer tiles", () => {
     const r = dropEmptyAnswers(s);
     expect(r.removed).toEqual(["answer-2"]);
     const page = (r.state as unknown as { pages: Array<{ id: string; widgets: Record<string, W>; widgetLayout: Record<string, { yTrack: number }> }> }).pages[1]!;
-    expect(Object.keys(page.widgets)).toEqual(["answer-1"]);
+    expect(Object.keys(page.widgets).filter((id) => id.startsWith("answer-"))).toEqual(["answer-1"]);
     expect(page.widgetLayout["answer-1"]!.yTrack).toBe(0);
   });
 
@@ -176,5 +177,89 @@ describe("answers that didn't finish", () => {
     expect(latest).toMatchObject({ widgetId: "answer-2", empty: true });
     // nothing runs when the page opens
     expect(answerLine(latest, false)?.kind).toBe("unfinished");
+  });
+});
+
+describe("the summary card beside the newest answer", () => {
+  const r = (runId: string, tools: string[], extra: Partial<Receipt> = {}): Receipt => ({
+    runId,
+    threadId: "t1",
+    agentId: "spotter",
+    startedAt: 1,
+    ms: 15_400,
+    status: "ok",
+    turns: 3,
+    tokens: { input: 1, output: 1 },
+    tools: tools.map((name) => ({ name, calls: 1, ms: 1, failed: 0, access: "read" as const })),
+    helpers: ["widget", "data"],
+    unknown: [],
+    moneyActions: 0,
+    boardChanges: 6,
+    boardKnown: true,
+    flagged: false,
+    ...extra,
+  });
+
+  it("uses the receipt of the newest run that placed a tile, skipping chat only runs and runs that didn't finish", () => {
+    const placed = r("r1", ["place_widget", "delegate_to"]);
+    const chat = r("r2", ["open_case_file"]);
+    const cut = startedReceipt({ runId: "r3", threadId: "t1", agentId: "spotter", startedAt: 2 });
+    const stopped = r("r4", ["place_widget"], { status: "cancelled" });
+    expect(answerReceipt([cut, stopped, chat, placed])).toBe(placed);
+    expect(answerReceipt([chat])).toBeNull();
+    const failed = r("r5", ["place_widget"]);
+    failed.tools[0]!.failed = 1;
+    expect(answerReceipt([failed, placed])).toBe(placed);
+  });
+
+  it("names who built it: Spotter, then each helper once", () => {
+    expect(builtBy(r("r1", [], { helpers: ["widget", "data", "widget"] }))).toEqual(["Spotter", "Widget", "Data"]);
+  });
+
+  it("suggests follow up questions that aren't the one just answered", () => {
+    const starters = [
+      { label: "Did we pay fair prices this month?", prompt: "fair" },
+      { label: "What did Leo spend on games?", prompt: "games" },
+      { label: "Where did the money go?", prompt: "where" },
+      { label: "Why was Gran stopped?", prompt: "gran" },
+      { label: "Write this week's brief", prompt: "brief" },
+    ];
+    expect(followUps(starters, "What Leo spent on games").map((s) => s.prompt)).toEqual(["fair", "where", "gran"]);
+    expect(followUps(starters, "Fair prices this month").map((s) => s.prompt)).toEqual(["games", "where", "gran"]);
+  });
+
+  it("goes when the last answer comes off the page", () => {
+    const s = {
+      pages: [
+        {
+          id: "page-answers",
+          name: "Answers",
+          widgets: { "answer-1": { type: "bar-chart-grouped" }, [SUMMARY_ID]: { type: SUMMARY_TYPE, dataMapping: {} } },
+          widgetLayout: { "answer-1": { xTrack: 0, yTrack: 0, xSpan: 16, ySpan: 28 }, [SUMMARY_ID]: { xTrack: 16, yTrack: 0, xSpan: 8, ySpan: 28 } },
+        },
+      ],
+      selectedPageId: "page-answers",
+    } as never;
+    const page = (dropEmptyAnswers(s).state as unknown as { pages: Array<{ widgets: object; widgetLayout: object }> }).pages[0]!;
+    expect(page.widgets).toEqual({});
+    expect(page.widgetLayout).toEqual({});
+  });
+
+  it("moves the next answer up into the newest spot when the newest comes off", () => {
+    const set = { valueKey: [{ id: "payments.amount" }] };
+    const s = {
+      pages: [
+        {
+          id: "page-answers",
+          name: "Answers",
+          widgets: { "answer-2": { type: "bar-chart-grouped" }, "answer-1": { type: "bar-chart-grouped", dataMapping: set }, [SUMMARY_ID]: { type: SUMMARY_TYPE, dataMapping: {} } },
+          widgetLayout: { "answer-2": { xTrack: 0, yTrack: 0, xSpan: 16, ySpan: 30 }, [SUMMARY_ID]: { xTrack: 16, yTrack: 0, xSpan: 8, ySpan: 30 }, "answer-1": { xTrack: 0, yTrack: 30, xSpan: 12, ySpan: 14 } },
+        },
+      ],
+      selectedPageId: "page-answers",
+    } as never;
+    const page = (dropEmptyAnswers(s).state as unknown as { pages: Array<{ widgetLayout: Record<string, unknown> }> }).pages[0]!;
+    expect(page.widgetLayout["answer-1"]).toEqual({ xTrack: 0, yTrack: 0, xSpan: 16, ySpan: 30 });
+    expect(page.widgetLayout[SUMMARY_ID]).toEqual({ xTrack: 16, yTrack: 0, xSpan: 8, ySpan: 30 });
   });
 });

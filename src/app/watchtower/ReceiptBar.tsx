@@ -4,7 +4,7 @@
 // outside Spotter's list ran, which turns the line red and flags the run), and board changes with a real
 // "Undo what Spotter changed" button backed by Studio's history.
 import { useId, useRef, useState, useSyncExternalStore } from "react";
-import { boardWords, forServer, helperName, receiptLines, toolWords, type Receipt } from "@/watchtower/receipt";
+import { boardWords, forServer, helperName, receiptLines, startedReceipt, toolWords, type Receipt, type RunStart } from "@/watchtower/receipt";
 import { redoRun, undoRun, type BoardApi, type RunChanges } from "@/watchtower/runUndo";
 
 export type BookEntry = { receipt: Receipt; changes: RunChanges | null; said?: string; notKept?: boolean };
@@ -59,19 +59,39 @@ const ACCESS: Record<string, string> = { read: "Read only", chat: "Chat only", b
 
 /**
  * Sends a finished receipt to the server, in the shape it accepts (a flagged run stays flagged even with odd
- * tool names). Never throws: the receipt is already on screen. If it isn't kept, its entry says so.
+ * tool names). Never throws: the receipt is already on screen. Tries twice, because if it isn't kept the
+ * placeholder from the run's start stays on the server and says the run didn't finish; its entry says so.
  */
-export function keepReceipt(book: ReceiptBook, entry: BookEntry) {
+export function keepReceipt(book: ReceiptBook, entry: BookEntry, tries = 2) {
   const failed = (why: unknown) => {
+    if (tries > 1) return void setTimeout(() => keepReceipt(book, entry, tries - 1), 2000);
     console.warn("[watchtower] receipt wasn't kept:", why);
     entry.notKept = true;
     book.touch();
   };
   fetch("/api/watchtower/receipts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(forServer(entry.receipt)), keepalive: true })
     .then(async (res) => {
-      if (!res.ok) failed(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status);
+      // 4xx is a refusal that a retry won't change.
+      if (!res.ok) {
+        const why = ((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status;
+        if (res.status < 500) tries = 1;
+        failed(why);
+      }
     })
     .catch(failed);
+}
+
+/**
+ * Keeps a placeholder receipt on the server the moment a run starts, so a run cut off mid way (the tab closed)
+ * says it didn't finish after a reload instead of the bar showing the question before it. The finished receipt
+ * replaces it. Never throws: if it isn't kept, a cut off run just has no receipt, as before.
+ */
+export function keepStart(run: RunStart) {
+  fetch("/api/watchtower/receipts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(startedReceipt(run)), keepalive: true })
+    .then(async (res) => {
+      if (!res.ok) console.warn("[watchtower] the run's start wasn't kept:", ((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status);
+    })
+    .catch((e: unknown) => console.warn("[watchtower] the run's start wasn't kept:", e));
 }
 
 /** Adds a finished run to the book and keeps it on the server. */
@@ -113,6 +133,17 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
   }
 
   const r = entry.receipt;
+  // A run cut off before it ended (kept when it started, never finished): say so, never show an older receipt.
+  if (r.status === "unfinished") {
+    return (
+      <section className="wt-rc" aria-label="Spotter's receipt" data-state="unfinished">
+        <p className="wt-rc-wait">
+          <strong>Receipt</strong> Your question at {time.format(r.startedAt)} didn&apos;t finish, so there&apos;s no receipt for it. Ask it again.
+          {running ? " Another question is running." : ""}
+        </p>
+      </section>
+    );
+  }
   const lines = receiptLines(r);
   const calls = r.tools.reduce((t, l) => t + l.calls, 0);
   const rc = entry.changes;
@@ -206,7 +237,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
           </tbody>
         </table>
         {r.helpers.length > 0 && <p className="wt-rc-note">Handed work to: {r.helpers.map(helperName).join(", ")}.</p>}
-        {entry.notKept && <p className="wt-rc-alarm">This receipt couldn&apos;t be kept on the server, so it goes when you leave the page.</p>}
+        {entry.notKept && <p className="wt-rc-alarm">This receipt couldn&apos;t be kept on the server, so it goes when you leave the page, and after a reload this run may show as not finished.</p>}
         <p className="wt-rc-note">Names, times and counts only. The receipt never keeps your question, the payees or what the tools returned.</p>
       </div>
     </section>

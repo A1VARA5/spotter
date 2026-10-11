@@ -138,8 +138,77 @@ export function unfitWide(s: AgReportState, fitted: Fitted): AgReportState {
 
 /** Where answers to typed questions go: their own page, so the new tile is the first thing on screen. */
 export const ANSWERS_PAGE = "Answers";
-/** Rows an answer tile gets: room for a chart with its labels. */
+/** Rows an older answer gets (two to a row under the newest): room for a chart with its labels. */
 export const ANSWER_SPAN = 14;
+/** The newest answer and its summary card: this many rows at least, more on a tall screen (answerRows). */
+export const ANSWER_TOP = 28;
+const ANSWER_TOP_MAX = 64;
+/** How wide the newest answer is; its summary card takes the rest of the 24 tracks. */
+const ANSWER_WIDE = 16;
+/** Spotter's card beside the newest answer: the question, its total, who built it, the receipt, what to ask next. */
+export const SUMMARY_ID = "summary";
+export const SUMMARY_TYPE = "answer-summary";
+
+/** Rows for the newest answer and its card, from the rows the board shows at once, so one answer fills the screen. */
+export const answerRows = (visibleRows: number) => Math.max(ANSWER_TOP, Math.min(ANSWER_TOP_MAX, Math.floor(visibleRows)));
+
+type AnswersPage = Page & { widgets?: Record<string, { type?: string; dataMapping?: Record<string, unknown> }>; widgetLayout?: Record<string, Box> };
+const isAnswer = (id: string) => id.startsWith("answer-");
+
+/**
+ * The Answers page laid out: the newest answer (the first in `order`, else the top left one) large at the
+ * top left with the summary card beside it, older answers two to a row below, and any other tile someone
+ * put there below those, full width. No answers: no card either. Pure; returns the same page when nothing moves.
+ */
+function arrangeAnswers(page: AnswersPage, top?: number, order?: string[]): AnswersPage {
+  const widgets = { ...(page.widgets ?? {}) };
+  const layout = page.widgetLayout ?? {};
+  const pos = (id: string) => layout[id] ?? { xTrack: 0, yTrack: Number.MAX_SAFE_INTEGER, xSpan: 24, ySpan: ANSWER_SPAN };
+  const byPlace = (a: string, b: string) => pos(a).yTrack - pos(b).yTrack || pos(a).xTrack - pos(b).xTrack || a.localeCompare(b);
+  const placed = Object.keys(widgets).filter(isAnswer).sort(byPlace);
+  const answers = order ? [...order.filter((id) => id in widgets), ...placed.filter((id) => !order.includes(id))] : placed;
+  const others = Object.keys(widgets).filter((id) => !isAnswer(id) && id !== SUMMARY_ID).sort(byPlace);
+  const rows = top ?? layout[SUMMARY_ID]?.ySpan ?? ANSWER_TOP;
+  const next: Record<string, Box> = {};
+  if (answers.length) {
+    widgets[SUMMARY_ID] = widgets[SUMMARY_ID]?.type === SUMMARY_TYPE ? widgets[SUMMARY_ID] : { type: SUMMARY_TYPE, dataMapping: {} };
+    next[answers[0]!] = { xTrack: 0, yTrack: 0, xSpan: ANSWER_WIDE, ySpan: rows };
+    next[SUMMARY_ID] = { xTrack: ANSWER_WIDE, yTrack: 0, xSpan: 24 - ANSWER_WIDE, ySpan: rows };
+    answers.slice(1).forEach((id, i) => (next[id] = { xTrack: (i % 2) * 12, yTrack: rows + Math.floor(i / 2) * ANSWER_SPAN, xSpan: 12, ySpan: ANSWER_SPAN }));
+  } else delete widgets[SUMMARY_ID];
+  // Other tiles keep their column, width and spacing; the block of them just moves below the answers.
+  const y = answers.length ? rows + Math.ceil((answers.length - 1) / 2) * ANSWER_SPAN : 0;
+  const placedOthers = others.filter((id) => layout[id]);
+  const topOther = Math.min(...placedOthers.map((id) => layout[id]!.yTrack));
+  let loose = y + Math.max(0, ...placedOthers.map((id) => layout[id]!.yTrack + layout[id]!.ySpan - topOther));
+  for (const id of others) {
+    const b = layout[id];
+    if (b) next[id] = { ...b, yTrack: y + b.yTrack - topOther };
+    else {
+      next[id] = { xTrack: 0, yTrack: loose, xSpan: 24, ySpan: ANSWER_SPAN };
+      loose += ANSWER_SPAN;
+    }
+  }
+  const same =
+    Object.keys(next).length === Object.keys(layout).length &&
+    Object.entries(next).every(([id, b]) => sameBox(b, layout[id])) &&
+    Object.keys(widgets).length === Object.keys(page.widgets ?? {}).length &&
+    Object.keys(widgets).every((id) => widgets[id] === page.widgets?.[id]);
+  return same ? page : { ...page, widgets, widgetLayout: next };
+}
+
+/** The board with its Answers page laid out (see arrangeAnswers). Same board back when nothing changes. */
+export function arrangeAnswersIn(s: AgReportState, top?: number, order?: string[]): AgReportState {
+  const pages = pagesIn(s) as AnswersPage[];
+  let changed = false;
+  const next = pages.map((p) => {
+    if (p.name !== ANSWERS_PAGE) return p;
+    const q = arrangeAnswers(p, top, order);
+    if (q !== p) changed = true;
+    return q;
+  });
+  return changed ? ({ ...s, pages: next } as unknown as AgReportState) : s;
+}
 
 /** Spotter's own tiles a question can place: complete the moment they're placed, no widget agent needed. */
 export const READY_TILES: ReadonlySet<string> = new Set(["fair-price"]);
@@ -166,6 +235,8 @@ export function placeAnswer(
   type: string,
   allowed: ReadonlySet<string>,
   title?: string,
+  /** Rows for the newest answer and its card (answerRows); the page's current height when left out. */
+  top?: number,
 ): { state: AgReportState; pageId: string; widgetId: string; reused: boolean } {
   if (allowed.size === 0) throw new Error("The widget catalogue isn't available right now, so no tile can be placed. Answer in chat instead.");
   if (!allowed.has(type)) throw new Error(`Spotter can't place a "${String(type).slice(0, 40)}" tile. Pick a chart or table type from the catalogue.`);
@@ -185,15 +256,9 @@ export function placeAnswer(
   }
   // An old tile still empty (its build failed or is still going) is set up again, never passed off as done.
   const reused = !!old && widgets[old]!.type === type && !isEmptyAnswer(widgets[old]!);
-  const layout = { ...(page.widgetLayout ?? {}) };
-  const was = old ? layout[old] : undefined;
-  delete layout[widgetId];
-  // Tiles above the old spot (or all of them, for a new tile) move down by one answer; tiles below it only
-  // by however much taller the answer is than the tile it was.
-  const below = was ? ANSWER_SPAN - was.ySpan : 0;
-  const moved = Object.fromEntries(Object.entries(layout).map(([id, b]) => [id, { ...b, yTrack: b.yTrack + (!was || b.yTrack < was.yTrack ? ANSWER_SPAN : below) }]));
   const tile = reused ? widgets[widgetId]! : { type, ...(name ? { format: { title: { enabled: true, text: name } } } : {}) };
-  const next: Pg = { ...page, widgets: { ...widgets, [widgetId]: tile }, widgetLayout: { [widgetId]: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: ANSWER_SPAN }, ...moved } };
+  // This answer becomes the newest (large, top left, beside its summary card); the rest keep their order.
+  const next = arrangeAnswers({ ...page, widgets: { ...widgets, [widgetId]: tile } } as AnswersPage, top, [widgetId]) as Pg;
   return { state: { ...state, pages: pages.map((p) => (p.id === pageId ? next : p)) } as unknown as AgReportState, pageId, widgetId, reused };
 }
 
@@ -210,6 +275,7 @@ export function newestAnswer(s: AgReportState): { pageId: string; widgetId: stri
 }
 
 export const PHONE_BAR_SPAN = 20;
+const PHONE_CARD_SPAN = 30;
 
 /** Phones get one widget per row, full width, in the order you'd read the desktop board. Never saved. */
 export function stackForPhone(s: AgReportState): AgReportState {
@@ -219,7 +285,9 @@ export function stackForPhone(s: AgReportState): AgReportState {
     const widgetLayout: Record<string, Box> = {};
     for (const [id, b] of boxes) {
       // A sideways bar chart needs height on a phone, or it skips every other label.
-      const ySpan = p.widgets?.[id]?.type?.startsWith("bar-chart") ? Math.max(b.ySpan, PHONE_BAR_SPAN) : b.ySpan;
+      // The answer card only needs its text's height on a phone, not the height of the chart beside it.
+      const type = p.widgets?.[id]?.type;
+      const ySpan = type === SUMMARY_TYPE ? PHONE_CARD_SPAN : type?.startsWith("bar-chart") ? Math.max(b.ySpan, PHONE_BAR_SPAN) : b.ySpan;
       widgetLayout[id] = { xTrack: 0, yTrack: y, xSpan: 24, ySpan };
       y += ySpan;
     }

@@ -2,7 +2,26 @@
 // off"). AG's harness has no call to add a message, so this wraps it: every chat session it hands out shows
 // its own messages plus our notes, each kept right after the message that was last when it was added, and
 // tells the chat panel to redraw. Notes live for this visit only; the saved chat keeps AG's own messages.
-import type { AgAiChatMessage, AgAiChatSession, AgAiHarness } from "ag-studio";
+import type { AgAiChatMessage, AgAiChatSession, AgAiHarness, AgAiRunStatus } from "ag-studio";
+
+/** What the chat says under a run that was cut off (the tab closed, a reload, Stop) before it replied. */
+export const UNFINISHED_NOTE = "This answer didn't finish. Ask again.";
+
+/**
+ * A chat whose last run never replied: nothing is running, and nothing after the family's last question has
+ * reply text (only tool calls, like "Placed a tile"). Spotter's lead agent always ends a run with a reply. A run that ended with an error
+ * already says so in the chat, so it doesn't count.
+ */
+export function cutOff(messages: readonly AgAiChatMessage[], status: AgAiRunStatus | undefined): boolean {
+  if (status === "running" || status === "awaiting_input") return false;
+  const lastUser = messages.findLastIndex((m) => m.role === "user");
+  if (lastUser < 0) return false;
+  const after = messages.slice(lastUser + 1).filter((m) => m.role === "assistant");
+  const parts = after.flatMap((m) => m.parts);
+  if (parts.some((p) => p.type === "error")) return false;
+  // Any reply text after the question counts, even with a tool call after it.
+  return !parts.some((p) => p.type === "text" && p.text.trim() !== "");
+}
 
 export type NotableHarness = AgAiHarness & { addNote(threadId: string, text: string): void };
 type Note = { after: string | null | undefined; message: AgAiChatMessage };
@@ -13,21 +32,24 @@ export function notable(inner: AgAiHarness): NotableHarness {
   const listeners = new Map<string, Set<Listener>>();
   const wrapped = new WeakMap<AgAiChatSession, AgAiChatSession>();
   // The merged list is rebuilt only when AG's list or our notes change, so it keeps its identity otherwise.
-  const merged = new Map<string, { from: readonly AgAiChatMessage[]; count: number; list: AgAiChatMessage[] }>();
+  const merged = new Map<string, { from: readonly AgAiChatMessage[]; count: number; cut: boolean; list: AgAiChatMessage[] }>();
   let seq = 0;
 
   const messagesOf = (s: AgAiChatSession): readonly AgAiChatMessage[] => {
-    const own = notes.get(s.threadId);
+    const own = notes.get(s.threadId) ?? [];
     const base = s.messages;
-    if (!own?.length) return base;
+    const cut = cutOff(base, s.status);
+    if (!own.length && !cut) return base;
     const hit = merged.get(s.threadId);
-    if (hit && hit.from === base && hit.count === own.length) return hit.list;
+    if (hit && hit.from === base && hit.count === own.length && hit.cut === cut) return hit.list;
     const list = [...base];
     for (const n of own) {
       const found = n.after ? list.findIndex((m) => m.id === n.after) + 1 : 0;
       list.splice(n.after === null ? 0 : found > 0 ? found : list.length, 0, n.message);
     }
-    merged.set(s.threadId, { from: base, count: own.length, list });
+    // Shown, never saved: the saved chat keeps AG's own messages, and this line goes once an answer arrives.
+    if (cut) list.push({ id: `spotter-unfinished-${base.at(-1)?.id ?? "start"}`, role: "assistant", parts: [{ type: "text", text: UNFINISHED_NOTE }], createdAt: base.at(-1)?.createdAt ?? 0 });
+    merged.set(s.threadId, { from: base, count: own.length, cut, list });
     return list;
   };
 

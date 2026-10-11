@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_SPAN, addPage, newestAnswer, fitWide, namesOf, pageTabs, placeAnswer, removePage, unfitWide, withNames } from "./pages";
+import { ANSWER_SPAN, ANSWER_TOP, SUMMARY_ID, SUMMARY_TYPE, addPage, answerRows, arrangeAnswersIn, newestAnswer, fitWide, namesOf, pageTabs, placeAnswer, removePage, unfitWide, withNames } from "./pages";
 import { INITIAL } from "./initial";
 
 const state = (pages: Array<{ id: string; name?: string }>, selectedPageId = pages[0]!.id) => ({ pages: pages.map((p) => ({ ...p, widgets: {} })), selectedPageId }) as never;
@@ -158,13 +158,15 @@ describe("a tile for a typed question (place_widget)", () => {
     }) as never;
   const pageOf = (s: unknown, id: string) => (s as { pages: Pg[] }).pages.find((p) => p.id === id)!;
 
-  it("puts an empty tile of the asked type at the top of an Answers page, full width, and shows that page", () => {
+  it("puts an empty tile of the asked type at the top of an Answers page, with its summary card beside it, and shows that page", () => {
     const r = placeAnswer(board(), {}, "bar-chart-grouped", allowed);
     const page = pageOf(r.state, r.pageId);
     expect(page.name).toBe("Answers");
     expect((r.state as unknown as { selectedPageId: string }).selectedPageId).toBe(r.pageId);
     expect(page.widgets[r.widgetId]).toEqual({ type: "bar-chart-grouped" });
-    expect(page.widgetLayout[r.widgetId]).toEqual({ xTrack: 0, yTrack: 0, xSpan: 24, ySpan: ANSWER_SPAN });
+    expect(page.widgetLayout[r.widgetId]).toEqual({ xTrack: 0, yTrack: 0, xSpan: 16, ySpan: ANSWER_TOP });
+    expect(page.widgets[SUMMARY_ID]).toEqual({ type: SUMMARY_TYPE, dataMapping: {} });
+    expect(page.widgetLayout[SUMMARY_ID]).toEqual({ xTrack: 16, yTrack: 0, xSpan: 8, ySpan: ANSWER_TOP });
     // the board's own page is untouched
     expect(pageOf(r.state, "month").widgets).toEqual({ kept: { type: "money-kept" } });
   });
@@ -176,7 +178,7 @@ describe("a tile for a typed question (place_widget)", () => {
     expect(two.widgetId).not.toBe(one.widgetId);
     const page = pageOf(two.state, two.pageId);
     expect(page.widgetLayout[two.widgetId]!.yTrack).toBe(0);
-    expect(page.widgetLayout[one.widgetId]!.yTrack).toBe(ANSWER_SPAN);
+    expect(page.widgetLayout[one.widgetId]).toEqual({ xTrack: 0, yTrack: ANSWER_TOP, xSpan: 12, ySpan: ANSWER_SPAN });
   });
 
   it("titles the new tile with the question's title", () => {
@@ -194,9 +196,9 @@ describe("a tile for a typed question (place_widget)", () => {
     expect(again.widgetId).toBe(one.widgetId);
     expect(again.reused).toBe(true);
     const page = pageOf(again.state, again.pageId);
-    expect(Object.keys(page.widgets)).toHaveLength(2);
+    expect(Object.keys(page.widgets).filter((id) => id.startsWith("answer-"))).toHaveLength(2);
     expect(page.widgetLayout[one.widgetId]!.yTrack).toBe(0);
-    expect(page.widgetLayout[other.widgetId]!.yTrack).toBe(ANSWER_SPAN);
+    expect(page.widgetLayout[other.widgetId]!.yTrack).toBe(ANSWER_TOP);
   });
 
   it("never calls a tile reused while it is still empty (so the widget agent still sets it up)", () => {
@@ -243,5 +245,80 @@ describe("a tile for a typed question (place_widget)", () => {
 
   it("refuses a widget type that isn't in the allowed catalogue (no image or free text tiles)", () => {
     expect(() => placeAnswer(board(), {}, "image", allowed)).toThrow(/can't place/i);
+  });
+});
+
+// Round 5: the Answers page was about 80% empty at 1920 and 2560 with one answer (a 170 px chart above 650 px
+// of nothing). The newest answer is large with its summary card beside it, older answers two to a row below.
+describe("the Answers page reads as a designed page", () => {
+  type Box = { xTrack: number; yTrack: number; xSpan: number; ySpan: number };
+  type Pg = { id: string; name: string; widgets: Record<string, { type: string }>; widgetLayout: Record<string, Box> };
+  const allowed = new Set(["bar-chart-grouped", "donut-chart", "grid"]);
+  const board = () => ({ pages: [{ id: "month", name: "This month", widgets: {}, widgetLayout: {} }], selectedPageId: "month" }) as never;
+  const answers = (s: unknown) => (s as { pages: Pg[] }).pages.find((p) => p.name === "Answers")!;
+  const overlaps = (l: Record<string, Box>) => {
+    const boxes = Object.values(l);
+    return boxes.some((a, i) => boxes.slice(i + 1).some((b) => a.xTrack < b.xTrack + b.xSpan && b.xTrack < a.xTrack + a.xSpan && a.yTrack < b.yTrack + b.ySpan && b.yTrack < a.yTrack + a.ySpan));
+  };
+
+  it("makes the newest answer and its summary as tall as the screen allows, within sensible bounds", () => {
+    const r = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "Leo on games", 40);
+    const page = answers(r.state);
+    expect(page.widgetLayout[r.widgetId]).toEqual({ xTrack: 0, yTrack: 0, xSpan: 16, ySpan: 40 });
+    expect(page.widgetLayout[SUMMARY_ID]).toEqual({ xTrack: 16, yTrack: 0, xSpan: 8, ySpan: 40 });
+    expect(answerRows(20)).toBe(ANSWER_TOP);
+    expect(answerRows(44)).toBe(44);
+    expect(answerRows(200)).toBe(64);
+  });
+
+  it("puts older answers two to a row under the newest, with no overlaps", () => {
+    let s: Parameters<typeof placeAnswer>[0] = board();
+    const ids: string[] = [];
+    for (const t of ["One", "Two", "Three", "Four"]) {
+      const r = placeAnswer(s, {}, "bar-chart-grouped", allowed, t);
+      s = r.state;
+      ids.push(r.widgetId);
+    }
+    const l = answers(s).widgetLayout;
+    expect(l[ids[3]!]).toEqual({ xTrack: 0, yTrack: 0, xSpan: 16, ySpan: ANSWER_TOP });
+    expect(l[ids[2]!]).toEqual({ xTrack: 0, yTrack: ANSWER_TOP, xSpan: 12, ySpan: ANSWER_SPAN });
+    expect(l[ids[1]!]).toEqual({ xTrack: 12, yTrack: ANSWER_TOP, xSpan: 12, ySpan: ANSWER_SPAN });
+    expect(l[ids[0]!]).toEqual({ xTrack: 0, yTrack: ANSWER_TOP + ANSWER_SPAN, xSpan: 12, ySpan: ANSWER_SPAN });
+    expect(overlaps(l)).toBe(false);
+    expect(newestAnswer(s)?.widgetId).toBe(ids[3]);
+  });
+
+  it("lays out a board saved before the card existed (full width answers) the new way, and changes nothing the second time", () => {
+    const saved = {
+      pages: [
+        { id: "month", name: "This month", widgets: {}, widgetLayout: {} },
+        {
+          id: "page-answers",
+          name: "Answers",
+          widgets: { "answer-2": { type: "bar-chart-grouped" }, "answer-1": { type: "donut-chart" } },
+          widgetLayout: { "answer-2": { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 14 }, "answer-1": { xTrack: 0, yTrack: 14, xSpan: 24, ySpan: 14 } },
+        },
+      ],
+      selectedPageId: "page-answers",
+    } as never;
+    const once = arrangeAnswersIn(saved, 36);
+    const page = answers(once);
+    expect(page.widgetLayout["answer-2"]).toEqual({ xTrack: 0, yTrack: 0, xSpan: 16, ySpan: 36 });
+    expect(page.widgetLayout["answer-1"]).toEqual({ xTrack: 0, yTrack: 36, xSpan: 12, ySpan: ANSWER_SPAN });
+    expect(page.widgets[SUMMARY_ID]).toEqual({ type: SUMMARY_TYPE, dataMapping: {} });
+    expect(arrangeAnswersIn(once, 36)).toBe(once);
+    // a board with no Answers page is left alone
+    const plain = board();
+    expect(arrangeAnswersIn(plain, 36)).toBe(plain);
+  });
+
+  it("keeps other tiles someone put on the Answers page, below the answers", () => {
+    const r = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "One");
+    const page = answers(r.state);
+    page.widgets["mine"] = { type: "grid" };
+    page.widgetLayout["mine"] = { xTrack: 6, yTrack: 0, xSpan: 10, ySpan: 10 };
+    const l = answers(arrangeAnswersIn(r.state, ANSWER_TOP)).widgetLayout;
+    expect(l["mine"]).toEqual({ xTrack: 6, yTrack: ANSWER_TOP, xSpan: 10, ySpan: 10 });
+    expect(overlaps(l)).toBe(false);
   });
 });

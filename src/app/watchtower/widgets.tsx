@@ -10,6 +10,7 @@ import type { GranLabels } from "@/watchtower/gran";
 import type { GranLang } from "@/watchtower/granLang";
 import type { GranSafeDef, GranScamsDef, GranWaitingDef } from "./GranWidgets";
 import type { AiChecksDef } from "./AiChecks";
+import type { AnswerFeed, AnswerSummaryDef } from "./AnswerCard";
 import type { ReceiptBook } from "./ReceiptBar";
 import { countdown, fairPrice, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
@@ -39,6 +40,7 @@ export interface SpotterRegistry extends AgBaseRegistry {
     | AgBaseWidgetDefinition<"gran-scams", GranScamsDef>
     | AgBaseWidgetDefinition<"price-watches", PriceWatchesDef>
     | AgBaseWidgetDefinition<"ai-checks", AiChecksDef>
+    | AgBaseWidgetDefinition<"answer-summary", AnswerSummaryDef>
   )[];
 }
 
@@ -55,7 +57,7 @@ export type WatchSnapshot = {
 };
 export type WatchStore = { get(): WatchSnapshot; subscribe(fn: () => void): () => void };
 /** Studio's `context` is read once, so it carries a store the page updates rather than the values. */
-export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void>; gran?: GranLabels; granLang?: GranLang; receipts?: ReceiptBook };
+export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void>; gran?: GranLabels; granLang?: GranLang; receipts?: ReceiptBook; answers?: AnswerFeed };
 
 /**
  * Widgets scroll inside their tile when the text is longer than the tile. A scrolling box has to be

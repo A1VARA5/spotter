@@ -73,10 +73,11 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
                     {gt(lang, "to")} <span className="gran-payee">{s.payee}</span>
                   </span>
                   <Sample on={s.sample} lang={lang} />
+                  {s.example && !s.sample && <span className="gran-sample">{gt(lang, "example")}</span>}
                 </p>
                 <p className="gran-item-body">{s.sentence}</p>
                 <p className="gran-item-meta">
-                  {s.by}. {ago(s.when, now, lang)}.
+                  {s.by}. {ago(s.when, now, lang)}.{s.times > 1 ? ` ${gt(lang, "tries", { n: s.times })}` : ""}
                 </p>
               </li>
             ))}

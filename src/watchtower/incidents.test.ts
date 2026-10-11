@@ -42,15 +42,15 @@ describe("incident pages", () => {
     const rows = [
       row({ id: "old_stop", when: hoursAgo(30) }),
       row({ id: "paid", outcome: "Paid", moneyKept: 0 }),
-      row({ id: "wait_old", outcome: "Waiting", when: hoursAgo(50), heldAtPayPal: 400 }),
-      row({ id: "denied", outcome: "Denied", when: hoursAgo(5) }),
+      row({ id: "wait_old", outcome: "Waiting", when: hoursAgo(50), heldAtPayPal: 400, amount: 401 }),
+      row({ id: "denied", outcome: "Denied", when: hoursAgo(5), amount: 402 }),
       row({ id: "stop", when: hoursAgo(2) }),
     ];
     expect(pickIncidents(rows, NOW, []).map((r) => r.id)).toEqual(["stop", "denied", "wait_old"]);
   });
 
   it("skips ones the family has already been shown, and keeps to three", () => {
-    const rows = [1, 2, 3, 4, 5].map((h) => row({ id: `s${h}`, when: hoursAgo(h) }));
+    const rows = [1, 2, 3, 4, 5].map((h) => row({ id: `s${h}`, when: hoursAgo(h), amount: 400 + h }));
     expect(pickIncidents(rows, NOW, ["s1"]).map((r) => r.id)).toEqual(["s2", "s3", "s4"]);
   });
 
@@ -100,7 +100,7 @@ describe("incident pages", () => {
     const seen: string[] = [];
     // Five visits, a new waiting payment each time (a judge sending Hi Mum again and again).
     for (let i = 1; i <= 5; i++) {
-      const rows = Array.from({ length: i }, (_, k) => row({ id: `w${k + 1}`, outcome: "Waiting", when: hoursAgo(10 - k) }));
+      const rows = Array.from({ length: i }, (_, k) => row({ id: `w${k + 1}`, outcome: "Waiting", amount: 100 + k, when: hoursAgo(10 - k) }));
       const r = withIncidents(board, rows, NOW, seen);
       seen.push(...r.added);
       board = r.state;
@@ -130,17 +130,61 @@ describe("incident pages", () => {
     expect((r.state as unknown as State).selectedPageId).toBe("month");
   });
 
-  it("tells same named incidents apart by payee, then by time", () => {
+  it("tells same named incidents apart by a short payee, then by the time, and keeps every name unique", () => {
     const rows = [
       row({ id: "a", who: "Shopping agent", amount: 24.99, payee: "Earbud Outlet", when: new Date("2026-10-10T09:05:00Z") }),
-      row({ id: "b", who: "Shopping agent", amount: 24.99, payee: "Earbud Outlet", when: new Date("2026-10-10T10:40:00Z") }),
+      row({ id: "b", who: "Shopping agent", amount: 24.99, payee: "Earbud Outlet Ltd", when: new Date("2026-10-10T10:40:00Z") }),
       row({ id: "c", who: "Shopping agent", amount: 24.99, payee: "Gadget Barn", when: new Date("2026-10-10T11:00:00Z") }),
     ];
     const names = (withIncidents(INITIAL, rows, NOW, []).state as unknown as State).pages.map((p) => p.name);
-    expect(names).toContain("Incident: Shopping agent £24.99 to Gadget Barn");
-    expect(names).toContain("Incident: Shopping agent £24.99 to Earbud Outlet, 10:05");
-    expect(names).toContain("Incident: Shopping agent £24.99 to Earbud Outlet, 11:40");
+    expect(names).toContain("Incident: Shopping agent £24.99, Gadget Barn");
+    expect(names).toContain("Incident: Shopping agent £24.99, Earbud Outlet");
+    expect(names).toContain("Incident: Shopping agent £24.99, Earbud Outlet…");
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  // R5-N4: the example hold and the live Hi Mum (same person, amount and payee, same minute) both got the tab
+  // "Incident: Gran £250 to jamie.k1994@mail.example, 22:20".
+  it("opens one tab for repeats of the same payment (same person, payee and amount), the one still waiting first", () => {
+    const at = new Date("2026-10-10T21:20:30Z");
+    const rows = [
+      row({ id: "example", amount: 250, payee: "jamie.k1994@mail.example", outcome: "Waiting", when: at }),
+      row({ id: "live", amount: 250, payee: "jamie.k1994@mail.example", outcome: "Denied", when: new Date(at.getTime() + 20_000) }),
+      row({ id: "parcel", amount: 1.99, payee: "Larkhill Parcels", outcome: "Denied", when: hoursAgo(3) }),
+    ];
+    const r = withIncidents(INITIAL, rows, NOW, []);
+    expect(incidentIds(r.state)).toEqual(expect.arrayContaining(["incident-example", "incident-parcel"]));
+    expect(incidentIds(r.state)).toHaveLength(2);
+    // both count as shown, so the repeat never opens a tab of its own later
+    expect(r.added).toEqual(expect.arrayContaining(["example", "live", "parcel"]));
+    const names = (r.state as unknown as State).pages.map((p) => p.name);
+    expect(names).toContain("Incident: Gran £250");
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("closes the second tab of a repeat already saved on the board, with its long old name", () => {
+    const rows = [
+      row({ id: "a", amount: 250, payee: "jamie.k1994@mail.example", outcome: "Denied", when: hoursAgo(2) }),
+      row({ id: "b", amount: 250, payee: "jamie.k1994@mail.example", outcome: "Denied", when: hoursAgo(1) }),
+    ];
+    const opened = withIncidents(INITIAL, rows.slice(0, 1), NOW, []).state as unknown as State;
+    const a = opened.pages.find((p) => p.id === "incident-a")!;
+    const old = "Incident: Gran £250 to jamie.k1994@mail.example, 22:20";
+    const board = { ...opened, pages: [...opened.pages.map((p) => (p.id === "incident-a" ? { ...p, name: old } : p)), { ...a, id: "incident-b", name: old }] } as never;
+    const r = withIncidents({ ...(board as object), selectedPageId: "incident-a" } as never, rows, NOW, ["a", "b"]);
+    expect(incidentIds(r.state)).toEqual(["incident-b"]);
+    expect((r.state as unknown as State).selectedPageId).toBe("incident-b");
+    expect((r.state as unknown as State).pages.find((p) => p.id === "incident-b")!.name).toBe("Incident: Gran £250");
+  });
+
+  it("shortens a long payee to keep the tab name short", () => {
+    const rows = [
+      row({ id: "a", amount: 250, payee: "jamie.k1994@mail.example" }),
+      row({ id: "b", amount: 250, payee: "Someone with a really long shop name" }),
+    ];
+    const names = (withIncidents(INITIAL, rows, NOW, []).state as unknown as State).pages.map((p) => p.name).filter((n) => n.startsWith("Incident"));
+    expect(names).toEqual(expect.arrayContaining(["Incident: Gran £250, jamie.k1994", "Incident: Gran £250, Someone with a…"]));
+    for (const n of names) expect(n.length).toBeLessThanOrEqual(40);
   });
 
   it("renames duplicates already saved on the board, but never a page the family renamed", () => {
@@ -155,8 +199,8 @@ describe("incident pages", () => {
     const { state, added } = withIncidents(board, rows, NOW, ["a", "b"]);
     const names = (state as unknown as State).pages.map((p) => p.name);
     expect(added).toEqual([]);
-    expect(names).toContain("Incident: Leo £5 to Game Shop");
-    expect(names).toContain("Incident: Leo £5 to Skins Hub");
+    expect(names).toContain("Incident: Leo £5, Game Shop");
+    expect(names).toContain("Incident: Leo £5, Skins Hub");
     expect(names).toContain("Leo's games");
   });
 

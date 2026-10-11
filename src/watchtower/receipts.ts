@@ -27,9 +27,12 @@ export function makeReceiptStore(db: Db, opts: { keep?: number } = {}) {
         return json({ error: "That wasn't JSON." }, 400);
       }
       if (!isReceipt(value)) return json({ error: "That isn't a receipt." }, 400);
+      // The placeholder kept when a run started is replaced by its finished receipt; a finished receipt never is.
       await db.query(
         `insert into watchtower_receipts (household_id, run_id, data, flagged) values ($1, $2, $3::jsonb, $4)
-         on conflict (household_id, run_id) do nothing`,
+         on conflict (household_id, run_id) do update set data = excluded.data, flagged = excluded.flagged
+         where watchtower_receipts.data->>'status' = 'unfinished' and excluded.data->>'status' <> 'unfinished'
+           and watchtower_receipts.data->>'threadId' = excluded.data->>'threadId'`,
         [hh, value.runId, JSON.stringify(value), value.flagged],
       );
       // The receipt is kept by now: a failed tidy up is logged, not reported as a failed save.

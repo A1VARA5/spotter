@@ -7,7 +7,8 @@
 // chart on every refresh (chartPolish.ts hands them over): answer tiles get a neutral palette of their own,
 // and every chart that adds up money gets its value axis in pounds.
 import type { AgReportState } from "ag-studio";
-import { ANSWERS_PAGE, isEmptyAnswer } from "./pages";
+import { ANSWERS_PAGE, arrangeAnswersIn, isEmptyAnswer } from "./pages";
+import { helperName, type Receipt } from "./receipt";
 
 /**
  * Neutral answer colours from the design tokens: a tint of the protect blue (3.3:1 on white, ink text on it
@@ -132,16 +133,40 @@ export function dropEmptyAnswers(state: AgReportState): { state: AgReportState; 
     const gone = Object.entries(p.widgets ?? {}).filter(([id, w]) => id.startsWith("answer-") && isEmptyAnswer(w)).map(([id]) => id);
     if (!gone.length) return p;
     removed.push(...gone);
-    const layout = p.widgetLayout ?? {};
-    const holes = gone.map((id) => layout[id]).filter((b): b is Box => !!b);
     const widgets = Object.fromEntries(Object.entries(p.widgets ?? {}).filter(([id]) => !gone.includes(id)));
-    const widgetLayout = Object.fromEntries(
-      Object.entries(layout)
-        .filter(([id]) => !gone.includes(id))
-        // A full width hole above a tile moves it up by the hole's height.
-        .map(([id, b]) => [id, { ...b, yTrack: b.yTrack - holes.filter((h) => h.xSpan >= 24 && h.yTrack < b.yTrack).reduce((n, h) => n + h.ySpan, 0) }]),
-    );
+    const widgetLayout = Object.fromEntries(Object.entries(p.widgetLayout ?? {}).filter(([id]) => !gone.includes(id)));
     return { ...p, widgets, widgetLayout };
   });
-  return removed.length ? { state: { ...state, pages: next } as unknown as AgReportState, removed } : { state, removed };
+  if (!removed.length) return { state, removed };
+  // The answers left close up: the next one moves into the newest spot beside the card (no answers, no card).
+  return { state: arrangeAnswersIn({ ...state, pages: next } as unknown as AgReportState), removed };
+}
+
+/**
+ * The receipt for the newest answer on the summary card: the newest finished run that placed a tile. A run
+ * that only chatted, was stopped, was cut off or whose place_widget failed didn't build the answer, so it's skipped.
+ * Known gap: if a run's tile was taken off as empty, the older answer moved up still shows that run's receipt.
+ */
+export function answerReceipt(receipts: readonly Receipt[]): Receipt | null {
+  return receipts.find((r) => r.status === "ok" && r.tools.some((t) => t.name === "place_widget" && t.calls > t.failed)) ?? null;
+}
+
+/** Who built an answer, from its receipt: the agent that led, then each helper it handed work to, once. */
+export function builtBy(r: Pick<Receipt, "agentId" | "helpers">): string[] {
+  return [...new Set([r.agentId, ...r.helpers].map(helperName))];
+}
+
+const COMMON = new Set(["what", "when", "where", "which", "this", "that", "with", "from", "show", "your", "have", "does", "were", "much", "about"]);
+const words = (t: string) => new Set(t.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2 && !COMMON.has(w)));
+
+/** Questions to ask next on the card: the board's own starters, minus any about the answer just given. */
+export function followUps<T extends { label: string }>(starters: readonly T[], title: string, max = 3): T[] {
+  const asked = words(title);
+  return starters
+    .filter((s) => {
+      const mine = words(s.label);
+      const shared = [...mine].filter((w) => asked.has(w)).length;
+      return shared === 0 || shared < Math.min(2, mine.size, asked.size);
+    })
+    .slice(0, max);
 }

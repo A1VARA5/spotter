@@ -257,3 +257,29 @@
 @media (max-width: 760px) {
   .wt-frame > div.wt-studio:last-child { flex: none; min-height: 560px; }
 }
+
+/* The card beside the newest answer (AnswerCard.tsx): the question, its total, who built it, the receipt,
+   and what to ask next pinned to the bottom, so a tall card on a big screen still reads top to bottom. */
+.wt-ans { height: 100%; overflow: auto; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; gap: 14px; color: var(--ink); font-variant-numeric: lining-nums proportional-nums; }
+.wt-ans-kicker { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.wt-ans-q { margin: -8px 0 0; font-size: 22px; line-height: 1.25; font-weight: 700; text-wrap: balance; overflow-wrap: anywhere; }
+.wt-ans-total { margin: 0; font-size: 15px; color: var(--ink-2); }
+.wt-ans-sum { display: block; font-size: 40px; line-height: 1.1; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+.wt-ans-facts { margin: 0; display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.wt-ans-facts > div { display: grid; gap: 2px; }
+.wt-ans-facts dt { font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.wt-ans-facts dd { margin: 0; font-size: 15px; display: flex; flex-wrap: wrap; gap: 2px 12px; text-wrap: pretty; }
+.wt-ans-money { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; }
+.wt-ans-money::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--go); }
+.wt-ans-money[data-flagged]::before { background: var(--stop); }
+.wt-ans-next { margin-top: auto; display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.wt-ans-next-h { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.wt-ans-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wt-ans-btn { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--chalk); font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--ink); text-wrap: pretty; transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+.wt-ans-btn:hover:not(:disabled) { background: var(--paper); border-color: var(--ink); }
+.wt-ans-btn:active:not(:disabled) { transform: scale(0.98); }
+.wt-ans-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.wt-ans-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+.wt-ans-plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink); }
+.wt-ans-hint { margin: 0; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+@media (prefers-reduced-motion: reduce) { .wt-ans-btn { transition: none; } }

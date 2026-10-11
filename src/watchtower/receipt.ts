@@ -104,7 +104,8 @@ export type Receipt = {
   agentId: string;
   startedAt: number;
   ms: number;
-  status: "ok" | "error" | "cancelled";
+  /** unfinished: kept the moment a run starts (startedReceipt) and replaced when it ends; one left means it was cut off. */
+  status: "ok" | "error" | "cancelled" | "unfinished";
   turns: number;
   tokens: { input: number; output: number };
   tools: ToolLine[];
@@ -145,6 +146,15 @@ export type Recorder = AgAiTelemetryObserver & {
 };
 
 const MAX_TIMES = 500;
+
+/**
+ * The receipt kept the moment a run starts. If the tab closes mid run no finished receipt ever arrives, so
+ * this one stays and says the question didn't finish, rather than the bar showing the question before it.
+ * It claims nothing: no calls, no board changes, board count unknown.
+ */
+export function startedReceipt(run: RunStart): Receipt {
+  return { ...run, ms: 0, status: "unfinished", turns: 0, tokens: { input: 0, output: 0 }, tools: [], helpers: [], unknown: [], moneyActions: 0, boardChanges: 0, boardKnown: false, flagged: false };
+}
 
 /**
  * An observer for one harness. `onStart` fires when a top level run starts (synchronously, so the page
@@ -303,6 +313,7 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function receiptLines(r: Receipt): { summary: string; money: string; board: string } {
+  if (r.status === "unfinished") return { summary: "This question didn't finish, so there's no receipt for it.", money: "", board: "" };
   const calls = r.tools.reduce((t, l) => t + l.calls, 0);
   const money = r.flagged
     ? `Money actions: ${r.moneyActions} unchecked. Spotter saw a tool it doesn't know (${r.unknown.join(", ")}). This run is flagged.`
@@ -366,7 +377,7 @@ export function isReceipt(v: unknown): v is Receipt {
   if (![r.runId, r.threadId].every((x) => typeof x === "string" && ID.test(x))) return false;
   if (typeof r.agentId !== "string" || !NAME.test(r.agentId)) return false;
   if (!count(r.startedAt, 1e13) || !count(r.ms, 3_600_000) || !count(r.turns, 1000) || !count(r.moneyActions, 1000) || !count(r.boardChanges, 1000)) return false;
-  if (!["ok", "error", "cancelled"].includes(r.status as string) || typeof r.flagged !== "boolean" || typeof r.boardKnown !== "boolean") return false;
+  if (!["ok", "error", "cancelled", "unfinished"].includes(r.status as string) || typeof r.flagged !== "boolean" || typeof r.boardKnown !== "boolean") return false;
   const tk = r.tokens as Record<string, unknown> | null;
   if (!tk || typeof tk !== "object" || Object.keys(tk).length !== 2 || !count(tk.input) || !count(tk.output)) return false;
   const names = (a: unknown, max: number) => Array.isArray(a) && a.length <= max && a.every((x) => typeof x === "string" && NAME.test(x));
@@ -378,6 +389,8 @@ export function isReceipt(v: unknown): v is Receipt {
     if (typeof t.name !== "string" || !NAME.test(t.name) || !count(t.calls, 1000) || !count(t.ms, 3_600_000) || !count(t.failed, 1000)) return false;
     if (t.access !== accessOf(t.name)) return false;
   }
+  // A run that hasn't finished can't claim anything yet.
+  if (r.status === "unfinished" && ((r.tools as unknown[]).length || (r.helpers as unknown[]).length || (r.unknown as unknown[]).length || r.ms !== 0 || r.boardChanges !== 0 || r.flagged)) return false;
   // The flag has to agree with what the receipt itself lists.
   const tools = r.tools as ToolLine[];
   return r.flagged === ((r.unknown as string[]).length > 0) && r.flagged === (r.moneyActions as number) > 0 && r.flagged === tools.some((t) => t.access === "unknown");

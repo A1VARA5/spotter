@@ -16,6 +16,17 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 function Row({ r }: { r: Receipt }) {
   const calls = r.tools.reduce((t, l) => t + l.calls, 0);
   const who = r.agentId === "gran" ? "Simple view" : "Your assistant";
+  if (r.status === "unfinished")
+    return (
+      <li className="wt-checks-row">
+        <p className="wt-checks-head">
+          <span className="wt-checks-dot" aria-hidden="true" />
+          <span className="wt-checks-when">{when.format(r.startedAt)}</span>
+          <span className="wt-checks-who">{who}</span>
+        </p>
+        <p className="wt-checks-facts">Didn&apos;t finish (cut off before it ended), so there&apos;s no receipt for it.</p>
+      </li>
+    );
   return (
     <li className="wt-checks-row" data-flagged={r.flagged || undefined}>
       <p className="wt-checks-head">

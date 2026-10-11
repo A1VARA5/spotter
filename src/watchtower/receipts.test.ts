@@ -76,6 +76,24 @@ describe("AI receipts", () => {
     expect(row!.n).toBe("1");
   });
 
+  it("replaces the placeholder kept when the run started with the finished receipt, but never a finished one", async () => {
+    const s = makeReceiptStore(db);
+    const empty = { ...receipt("r5"), ms: 0, status: "unfinished", turns: 0, tokens: { input: 0, output: 0 }, tools: [], boardChanges: 0, boardKnown: false };
+    expect((await s.post(req("POST", a, empty))).status).toBe(200);
+    await s.post(req("POST", a, receipt("r5", { threadId: "t2", boardChanges: 7 })));
+    let kept = (await (await s.list(req("GET", a))).json()) as { receipts: Array<{ status: string }> };
+    expect(kept.receipts[0]!.status).toBe("unfinished");
+    await s.post(req("POST", a, receipt("r5")));
+    // a late placeholder (the start's request arriving last) can't undo the finished receipt
+    await s.post(req("POST", a, empty));
+    // nor can one for another thread, or a second finished receipt
+    await s.post(req("POST", a, receipt("r5", { threadId: "t2", boardChanges: 7 })));
+    await s.post(req("POST", a, receipt("r5", { boardChanges: 9 })));
+    const mine = (await (await s.list(req("GET", a))).json()) as { receipts: Array<{ runId: string; status: string; boardChanges: number }> };
+    expect(mine.receipts).toHaveLength(1);
+    expect(mine.receipts[0]).toMatchObject({ status: "ok", boardChanges: 1 });
+  });
+
   it("keeps the newest receipts only", async () => {
     const s = makeReceiptStore(db, { keep: 3 });
     for (let i = 0; i < 5; i++) await s.post(req("POST", a, receipt(`r${i}`)));

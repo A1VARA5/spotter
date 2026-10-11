@@ -7,6 +7,9 @@ import type { HouseholdKind } from "@/core/households";
 import type { CaseNote, PaymentRow, PersonRow } from "./data";
 import { TRICK_KEY, gt, whenIn, type GranLang } from "./granLang";
 
+/** The demo's example hold was checked before the visit and says so ("Example, checked earlier: ..."). */
+const EXAMPLE_PREFIX = /^\s*Example, checked earlier\s*[:.]?\s*/i;
+
 export type GranLabels = { who: string | null; viewLabel: string; waitingTitle: string; spotter: string };
 
 const MAX_NAME = 24;
@@ -69,7 +72,8 @@ function notMeWho(words: string | undefined): string | null {
 
 /** currency is missing on rows that came through the board's data (pounds there for now). */
 export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample"> & { currency?: string; wasItYou?: string };
-export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean };
+/** example: the demo's example, checked before the visit. times: how often the same payee asked for the same amount this month. */
+export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean; example: boolean; times: number };
 /** ends: when PayPal lets the hold go on its own; asleep: someone chose "ask again tomorrow". */
 export type GranWait = { id: string; when: Date; payee: string; amount: number; currency: string; status: string; ends?: string; asleep: boolean; sample: boolean };
 export type GranTrick = { sign: string; plain: string; count: number };
@@ -91,11 +95,14 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
       // Spotter's own reasons are written in English, so in another language the stop is told by the
       // trick it used (hand translated), never by a machine translation of the reason.
       const trick = signsOf(r).map((s) => TRICK_KEY[s]).find(Boolean);
-      const said = lang === "en" ? plainSentence(yours(bestReason(notes.get(r.id)), r.who)) : trick ? gt(lang, trick) : "";
-      // "Was it you?": when the real person said "not me", their answer released the money, not the spotter.
+      // The example's "checked earlier" label goes; the row gets an Example tag, so it never sits beside "Just now".
+      const reason = bestReason(notes.get(r.id));
+      const example = EXAMPLE_PREFIX.test(reason);
+      const said = lang === "en" ? plainSentence(yours(reason.replace(EXAMPLE_PREFIX, "").replace(/^\p{Ll}/u, (c) => c.toUpperCase()), r.who)) : trick ? gt(lang, trick) : "";
+      // "Was it you?": when the real person said "not me", that is the whole story for Gran, and it released the money.
       const notMe = denied ? notMeWho(r.wasItYou) : null;
-      const by = notMe ? gt(lang, "byNotMe", { who: notMe }) : gt(lang, denied ? "byDenied" : "byStopped", { spotter: o.spotter });
-      const fallback = notMe ? gt(lang, "notMeFallback", { who: notMe }) : gt(lang, denied ? "deniedFallback" : "stoppedFallback", { spotter: o.spotter });
+      const by = notMe ? gt(lang, "byNotMe") : gt(lang, denied ? "byDenied" : "byStopped", { spotter: o.spotter });
+      const fallback = gt(lang, denied ? "deniedFallback" : "stoppedFallback", { spotter: o.spotter });
       return {
         id: r.id,
         when: r.when,
@@ -103,10 +110,28 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
         amount: r.amount,
         currency: r.currency ?? "GBP",
         by,
-        sentence: said || fallback,
+        sentence: notMe ? gt(lang, "notMeSentence", { who: notMe }) : said || fallback,
         sample: r.sample === "Yes",
+        example,
+        times: 1,
       };
     });
+  // The same payee asking for the same amount again (a scammer retrying, or the demo run twice) is one row.
+  const shown: GranStop[] = [];
+  const byAsk = new Map<string, GranStop>();
+  for (const s of stopped) {
+    const key = `${s.sample}\u0000${clean(s.payee).toLowerCase()}\u0000${s.amount}\u0000${s.currency}`;
+    const first = byAsk.get(key);
+    if (first) {
+      first.times++;
+      // The Example tag only when every try was the example: a live stop is never hidden under it.
+      first.example &&= s.example;
+    }
+    else {
+      byAsk.set(key, s);
+      shown.push(s);
+    }
+  }
   const waiting = mine
     .filter((r) => r.outcome === "Waiting")
     .sort((a, b) => a.when.getTime() - b.when.getTime())
@@ -131,7 +156,7 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
     for (const sign of new Set(signsOf(r))) if (TRICK_KEY[sign]) counts.set(sign, (counts.get(sign) ?? 0) + 1);
   }
   const tricks = [...counts].map(([sign, count]) => ({ sign, plain: gt(lang, TRICK_KEY[sign]!), count })).sort((a, b) => b.count - a.count || a.sign.localeCompare(b.sign));
-  return { kept: round(stopped.reduce((t, s) => t + s.amount, 0)), stopped, waiting, tricks };
+  return { kept: round(stopped.reduce((t, s) => t + s.amount, 0)), stopped: shown, waiting, tricks };
 }
 
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -148,7 +173,8 @@ const cash = (amount: number, currency: string) => {
 /** Money kept per currency ("£25.00 and $119.00"): pounds and dollars are never added together. */
 function keptByCurrency(stopped: GranStop[]): string {
   const totals = new Map<string, number>();
-  for (const s of stopped) totals.set(s.currency, round((totals.get(s.currency) ?? 0) + s.amount));
+  // A row stands for every try (times), so the total matches the one on Gran's screen.
+  for (const s of stopped) totals.set(s.currency, round((totals.get(s.currency) ?? 0) + s.amount * s.times));
   return totals.size ? [...totals].map(([c, n]) => cash(n, c)).join(" and ") : gbp.format(0);
 }
 
@@ -156,7 +182,7 @@ function keptByCurrency(stopped: GranStop[]): string {
 export function granForAgent(m: GranMonth, now: Date, lang: GranLang = "en") {
   return {
     keptThisMonth: keptByCurrency(m.stopped),
-    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample })),
+    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample, ...(s.example ? { example: true } : {}), ...(s.times > 1 ? { times: s.times } : {}) })),
     waiting: m.waiting.map((w) => ({ payee: w.payee, amount: cash(w.amount, w.currency), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
     tricks: m.tricks.map((t) => ({ trick: t.plain, times: t.count })),
     advice: gt(lang, "advice"),
