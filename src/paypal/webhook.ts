@@ -22,6 +22,8 @@ const RULES: Record<string, Rule> = {
   // Captured, but PayPal is still clearing it. The money has left the hold, so it counts as paid.
   "PAYMENT.CAPTURE.PENDING": { from: ["needs_approval", "authorised", "capturing", "failed"], to: "captured" },
   "PAYMENT.CAPTURE.DENIED": { from: ["capturing", "captured"], to: "failed", error: "PayPal denied the capture, so nothing was paid." },
+  // PayPal's event list names the Orders v2 decline DECLINED (DENIED is the v1 name). Same meaning, same rule.
+  "PAYMENT.CAPTURE.DECLINED": { from: ["capturing", "captured"], to: "failed", error: "PayPal denied the capture, so nothing was paid." },
   // The hold is gone. Settles a deny that was cut off, and stops anyone approving a hold PayPal already released.
   "PAYMENT.AUTHORIZATION.VOIDED": { from: ["needs_approval", "authorised", "capturing", "voiding", "failed"], to: "voided", confirm: true },
 };
@@ -98,7 +100,7 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   const rule = RULES[evt.event_type];
   if (!rule) return result("recorded");
   // A denial for some other capture must not undo the one that went through.
-  if (evt.event_type === "PAYMENT.CAPTURE.DENIED" && payment.paypal_capture_id && payment.paypal_capture_id !== resourceId) return result("recorded");
+  if ((evt.event_type === "PAYMENT.CAPTURE.DENIED" || evt.event_type === "PAYMENT.CAPTURE.DECLINED") && payment.paypal_capture_id && payment.paypal_capture_id !== resourceId) return result("recorded");
 
   const isCapture = evt.event_type.startsWith("PAYMENT.CAPTURE.");
   const moved = await settleFromPayPal(db, payment.id, rule.from, rule.to, {
