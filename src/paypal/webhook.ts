@@ -126,7 +126,18 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   if ((evt.event_type === "PAYMENT.CAPTURE.DENIED" || evt.event_type === "PAYMENT.CAPTURE.DECLINED") && payment.paypal_capture_id && payment.paypal_capture_id !== resourceId) return result("recorded");
 
   const isCapture = evt.event_type.startsWith("PAYMENT.CAPTURE.");
-  const moved = await settleFromPayPal(db, payment.id, rule.from, rule.to, {
+  // A decline is final for that capture. PayPal doesn't promise order, so a PENDING or COMPLETED for the same
+  // capture that arrives after it (a retried earlier delivery) must not turn the payment back into paid.
+  const declined =
+    isCapture && rule.to === "captured" && resourceId
+      ? (
+          await db.query(
+            "select 1 from paypal_events where resource_id = $1 and event_type in ('PAYMENT.CAPTURE.DECLINED', 'PAYMENT.CAPTURE.DENIED') and id <> $2 limit 1",
+            [resourceId, evt.id],
+          )
+        ).length > 0
+      : false;
+  const moved = declined ? null : await settleFromPayPal(db, payment.id, rule.from, rule.to, {
     ...(isCapture && rule.to === "captured" && resourceId ? { paypal_capture_id: resourceId } : {}),
     ...(rule.error ? { error: rule.error } : {}),
   });
