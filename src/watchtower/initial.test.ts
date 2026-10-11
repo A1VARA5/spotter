@@ -41,14 +41,22 @@ describe("starting board", () => {
 describe("prompt starters", () => {
   it("families start with the fair price check (Spotter's agent and Channel3) and the weekly brief", () => {
     const starters = promptStarters(family, "family");
-    expect(starters.map((s) => s.label)).toEqual(["Did we pay fair prices this month?", "Write this week's brief", "Why was Gran stopped?", "What did Leo spend on games?", "Build a scam report"]);
+    expect(starters.map((s) => s.label)).toEqual(["Did we pay fair prices this month?", "What did Leo spend on games?", "Where did the money go?", "Why was Gran stopped?", "Write this week's brief"]);
     expect(starters[0]!.prompt).toMatch(/real shops/);
-    expect(starters[1]!.prompt).toMatch(/weekly brief/);
+    expect(starters[4]!.prompt).toMatch(/weekly brief/);
+  });
+
+  it("at least two starters always ask for a chart, so a typed question visibly becomes a tile", () => {
+    for (const [people, kind] of [[family, "family"], [business, "business"], [[], "family"]] as const) {
+      const shows = promptStarters([...people], kind).filter((s) => /^Show me/.test(s.prompt));
+      expect(shows.length).toBeGreaterThanOrEqual(2);
+      for (const s of shows) expect(s.prompt).toMatch(/chart|by shop|by category|by person|by supplier/);
+    }
   });
 
   it("a business gets starters in business terms", () => {
     const labels = promptStarters(business, "business").map((s) => s.label);
-    expect(labels).toEqual(["Did we pay fair prices this month?", "Write this week's brief", "Which invoices were caught?", "Who spent the most?", "Build a supplier report"]);
+    expect(labels).toEqual(["Did we pay fair prices this month?", "Who spent the most?", "Where did the money go?", "Which invoices were caught?", "Write this week's brief"]);
     expect(labels.join(" ")).not.toMatch(/games|scam report/);
   });
 });

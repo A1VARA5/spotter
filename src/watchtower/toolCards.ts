@@ -4,7 +4,7 @@
 // result is shown only when it matches one of those labels exactly; everything else is counted, never echoed.
 import { accessOf, type Access } from "./receipt";
 
-export const CARD_TOOLS = ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "fair_prices", "add_page", "my_month"] as const;
+export const CARD_TOOLS = ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "fair_prices", "add_page", "place_widget", "my_month"] as const;
 
 export type CallStatus = "streaming" | "ready" | "awaiting_approval" | "executing" | "done" | "cancelled";
 type Result = { success: true; response?: string; data?: unknown } | { success: false; issues?: unknown };
@@ -18,6 +18,7 @@ const WORDS: Record<(typeof CARD_TOOLS)[number], [running: string, done: string]
   real_price: ["Checking real shop prices", "Checked real shop prices"],
   fair_prices: ["Checking this month's prices", "Checked this month's prices"],
   add_page: ["Adding a page", "Added a page"],
+  place_widget: ["Placing a tile", "Placed a tile"],
   my_month: ["Looking at your month", "Looked at your month"],
 };
 
@@ -144,6 +145,7 @@ function fair(d: Record<string, unknown>) {
     pill: `${paid} paid, checked`,
     lines: [
       `${plural(checked, "price check")} this month, ${paid} on paid payments${paid ? `: ${gap}` : ""}.${d.allSample === true && checked ? " All sample month." : ""}`,
+      ...(arr(d.tooCheap).length ? [`${plural(arr(d.tooCheap).length, "price")} far below real shops: a fake shop sign, not a saving.`] : []),
       today.length ? `Today's live search: ${plural(today.length, "item")}, ${matched} matched a real shop.` : "No live search today: nothing paid had a price check.",
       "Item and shop names are left out here.",
     ],
@@ -180,6 +182,7 @@ export function describeCall(name: string, _args: Record<string, unknown>, call:
     : tool === "fair_prices" ? fair(d)
     : tool === "my_month" ? month(d)
     : tool === "add_page" ? { pill: "Board change", lines: ["Added one empty page to the board. The receipt can undo it."] }
+    : tool === "place_widget" ? { pill: "Board change", lines: ["Placed one empty tile on the Answers page for the widget agent to build. The receipt can undo it."] }
     : { lines: ["Spotter doesn't know this tool."] };
   return { ...card, ...body };
 }

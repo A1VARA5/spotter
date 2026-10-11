@@ -84,11 +84,11 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
             </div>
             <ul className="wt3-notes">
               <li>
-                <b>The receipt is AG Studio&apos;s record, not the AI&apos;s word.</b> Spotter reads AG Studio&apos;s own telemetry of the run: which tools ran, how
+                <b>The receipt is the AG Studio record, not the AI&apos;s word.</b> Spotter reads the run telemetry AG Studio keeps: which tools ran, how
                 often, and whether any of them could move money. None can.
               </li>
               <li>
-                <b>Undo puts the board back.</b> Every change one answer made comes off in one click, using AG Studio&apos;s own history.
+                <b>Undo puts the board back.</b> Every change one answer made comes off in one click, using the board history AG Studio keeps.
               </li>
             </ul>
           </div>

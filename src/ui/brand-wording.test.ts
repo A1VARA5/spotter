@@ -55,4 +55,21 @@ describe("brand wording", () => {
     for (const l of ["AG Studio's record", "AG Studio&apos;s record", "AG Studio’s record"]) expect(/AG Studio(&apos;|'|’)s\b/.test(l)).toBe(true);
     expect(/AG Studio(&apos;|'|’)s\b/.test("the AG Studio record")).toBe(false);
   });
+
+  it("never writes AG Studio's or PayPal's Agent Toolkit in the landing, Watchtower or the agent lab", () => {
+    const dirs = ["landing", "watchtower", "agent-lab"].map((d) => join(ROOT, "app", d));
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) return walk(p);
+        return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [p] : [];
+      });
+    const hits = [...dirs.flatMap(walk), join(ROOT, "app", "page.tsx")].flatMap((f) =>
+      readable(readFileSync(f, "utf8"))
+        .split("\n")
+        .filter((l) => /AG Studio(&apos;|'|’)s\b|PayPal(&apos;|'|’)s (Agent Toolkit|agent tools|toolkit)/.test(l))
+        .map((l) => `${f.slice(ROOT.length)}: ${l.trim()}`),
+    );
+    expect(hits).toEqual([]);
+  });
 });

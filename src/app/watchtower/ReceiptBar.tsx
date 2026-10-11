@@ -182,7 +182,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
       >
         <p className={r.flagged ? "wt-rc-alarm" : "wt-rc-note"}>{lines.money}</p>
         <table className="wt-rc-table">
-          <caption>What Spotter did, from AG Studio&apos;s own record of the run</caption>
+          <caption>What Spotter did, from the AG Studio record of the run</caption>
           <thead>
             <tr>
               <th scope="col">What</th>

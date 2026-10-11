@@ -132,6 +132,19 @@ describe("fair price", () => {
     expect(f.headline).toBe("Everyone together paid £3.50 more than the cheapest real shop this month");
   });
 
+  it("never counts a paid price far below real shops as a saving: it's a fake shop sign, called out on its own", () => {
+    const skillet = pr({ id: "sk", who: "Gran", kind: "Person", payee: "Panmoor Kitchen", amount: 6.99, marketCheapest: 15.99, marketMedian: 28, priceGap: -9, marketItem: "Cast iron skillet" });
+    const f = fairPrice([skillet], NOW);
+    expect(f.saved).toBe(0);
+    expect(f.items[0]!.verdict).toBe("fake");
+    expect(f.warning).toBe('Gran paid £6.99 for "Cast iron skillet" that real shops sell for around £28: far too cheap, a common sign of a fake shop');
+    expect(f.headline).not.toMatch(/fair prices/i);
+    // A normal saving next to it still counts
+    const g = fairPrice([skillet, pr({ id: "k", amount: 18, marketCheapest: 20, priceGap: -2 })], NOW);
+    expect(g.saved).toBe(2);
+    expect(g.warning).toMatch(/fake shop/);
+  });
+
   it("has nothing to say without a price check", () => {
     expect(fairPrice([pr({ marketCheapest: null, marketMedian: null, priceGap: null })], NOW)).toMatchObject({ checked: 0, headline: "", caught: null, items: [] });
   });

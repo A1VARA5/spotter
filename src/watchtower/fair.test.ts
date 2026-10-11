@@ -34,7 +34,7 @@ describe("fair prices for the assistant (no data agent hop)", () => {
     expect(b.overpaid).toBe(8.5);
     expect(b.allSample).toBe(true);
     expect(b.items.map((i) => i.item)).toEqual(["Pro wireless earbuds 2", "LED desk lamp", "Steel kettle 1.7L"]);
-    expect(b.items[1]).toMatchObject({ paid: 29.99, cheapestThen: 24.99, overBy: 5, outcome: "Paid", sample: true });
+    expect(b.items[1]).toMatchObject({ amount: 29.99, wasPaid: true, cheapestThen: 24.99, gapToCheapest: 5, outcome: "Paid", sample: true });
     // no ids reach the assistant
     expect(JSON.stringify(b)).not.toMatch(/"p\d"/);
   });
@@ -51,6 +51,34 @@ describe("fair prices for the assistant (no data agent hop)", () => {
     expect(b.liveItems).toEqual([]);
     expect(b.paidChecked).toBe(0);
     expect(b.allSample).toBe(true);
+  });
+
+  it("flags a paid price far below real shops as a scam sign, never a good price or a saving", () => {
+    const skillet = row({ id: "p7", who: "Gran", kind: "Person", payee: "Panmoor Kitchen", amount: 6.99, marketItem: "Cast iron skillet", marketCheapest: 15.99, marketMedian: 28, priceGap: -9, marketShop: "pans.example" });
+    const b = fairBrief([skillet], NOW);
+    expect(b.saved).toBe(0);
+    expect(b.tooCheap).toEqual([{ item: "Cast iron skillet", payee: "Panmoor Kitchen", who: "Gran", amount: 6.99, wasPaid: true, goingRate: 28 }]);
+    expect(b.items[0]).toMatchObject({ priceSign: "too_cheap_to_be_real", wasPaid: true });
+    expect(b.items[0]!.meaning).toMatch(/fake shop/i);
+    expect(b.items[0]!.meaning).toMatch(/not a saving|never a good price/i);
+    expect(`${b.headline} ${b.warning}`).not.toMatch(/fair prices|good price|saved/i);
+    expect(b.warning).toMatch(/fake shop/);
+  });
+
+  it("never describes a stopped, denied or waiting payment as paid", () => {
+    const denied = row({ id: "p8", amount: 12, outcome: "Denied", marketItem: "Phone case", marketCheapest: 10, marketMedian: 11, priceGap: 2 });
+    const b = fairBrief([earbuds, denied, lamp], NOW);
+    const byItem = Object.fromEntries(b.items.map((i) => [i.item, i]));
+    expect(byItem["Pro wireless earbuds 2"]).toMatchObject({ wasPaid: false, outcome: "Stopped" });
+    expect(byItem["Pro wireless earbuds 2"]!.meaning).toMatch(/nothing was paid/i);
+    expect(byItem["Phone case"]).toMatchObject({ wasPaid: false });
+    expect(byItem["Phone case"]!.meaning).toMatch(/nothing was paid/i);
+    expect(byItem["LED desk lamp"]).toMatchObject({ wasPaid: true, priceSign: "over_cheapest" });
+    // overpaid only counts money that left
+    expect(b.overpaid).toBe(5);
+    // the stopped fake earbuds are in tooCheap, marked not paid
+    expect(b.tooCheap).toEqual([expect.objectContaining({ item: "Pro wireless earbuds 2", wasPaid: false })]);
+    expect(b.items.some((i) => "paid" in i)).toBe(false);
   });
 
   it("leaves out checks older than this month (30 days), like the fair price widget", () => {

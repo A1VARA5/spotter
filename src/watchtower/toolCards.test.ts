@@ -41,6 +41,7 @@ describe("tool cards never show untrusted text", () => {
       },
     ],
     ["add_page", { pageId: EVIL }],
+    ["place_widget", { widgetType: EVIL, widgetId: EVIL, pageId: EVIL }],
     ["my_month", { keptThisMonth: EVIL, stopped: [{ payee: EVIL, why: EVIL }], waiting: [{ payee: EVIL }], tricks: [{ trick: EVIL, times: 2 }], advice: EVIL }],
   ];
   it("covers every tool Spotter defines", () => {
@@ -110,6 +111,10 @@ describe("what a card says", () => {
       "Today's live search: 2 items, 1 matched a real shop.",
       "Item and shop names are left out here.",
     ]);
+  });
+  it("fair prices: a price far below real shops shows as a fake shop sign, not a saving", () => {
+    const c = describeCall("fair_prices", {}, done({ checked: 1, paidChecked: 1, overpaid: 0, saved: 0, tooCheap: [{ item: "x" }], items: [], today: [] }));
+    expect(c.lines).toContain("1 price far below real shops: a fake shop sign, not a saving.");
   });
   it("add page: marks a board change", () => {
     const c = describeCall("add_page", {}, done({ pageId: "p1" }));

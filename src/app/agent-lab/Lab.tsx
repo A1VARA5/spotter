@@ -24,7 +24,7 @@ const ACTOR_ICON = { agent: Bot, spotter: ShieldCheck, paypal: Landmark } as con
 
 // What the trace will show, so the page has its shape before anything runs.
 const PLAN: Array<{ kind: LabStep["kind"]; title: string }> = [
-  { kind: "tools", title: "The agent asks Spotter for PayPal's toolkit tools" },
+  { kind: "tools", title: "The agent asks Spotter for the PayPal toolkit tools" },
   { kind: "read", title: "It reads the GadgetBarn shop page" },
   { kind: "order", title: "It orders the earbuds with create_order" },
   { kind: "bait", title: "It does what a hidden line on the page says" },
@@ -169,7 +169,7 @@ export function Lab({ runsLeft }: { runsLeft: number }) {
                 <Icon size={16} strokeWidth={2} aria-hidden="true" />
                 <span>
                   <b>{ACTOR_NAME[a]}</b>{" "}
-                  {a === "agent" ? "uses PayPal's Agent Toolkit tools, pointed at Spotter." : a === "spotter" ? "checks every call and freezes a hijacked agent." : "holds and releases the real sandbox money."}
+                  {a === "agent" ? "uses PayPal Agent Toolkit tools, pointed at Spotter." : a === "spotter" ? "checks every call and freezes a hijacked agent." : "holds and releases the real sandbox money."}
                 </span>
               </li>
             );
@@ -189,7 +189,7 @@ export function Lab({ runsLeft }: { runsLeft: number }) {
         </h2>
         <p ref={statusRef} tabIndex={-1} className="lab-status" role="status" data-state={state}>
           {state === "idle" && "Press Hijack the agent to start. It takes about 10 to 30 seconds."}
-          {state === "running" && "Running against Spotter's real toolkit server and PayPal's sandbox…"}
+          {state === "running" && "Running against Spotter's real toolkit server and the PayPal sandbox…"}
           {state === "done" && "Done. The agent is frozen and its hold is released. Nothing was paid."}
           {state === "stopped" && (byKind.get("limit")?.title ?? "The run stopped. See the last step.")}
         </p>

@@ -296,6 +296,13 @@
   [data-scene="wiy"] .hp-ask { animation: bubble-in 420ms var(--ease-out) 1.6s both; }
   [data-scene="wiy"] .hp-keys { animation: lap-row-in 360ms var(--ease-out) 2.1s both; }
   [data-scene="wiy"] .hp-key-no { animation: hs-tap 260ms ease 3.3s both; }
+  /* First load: the held reply, Tom's question, his buttons and the hold tag are there in the first paint. */
+  .hs-duo-inner[data-first],
+  [data-first][data-scene="wiy"] .hs-phone .tg-msg:not(.hp-safe),
+  [data-first][data-scene="wiy"] .hs-back-phone,
+  [data-first][data-scene="wiy"] .hp-ask,
+  [data-first][data-scene="wiy"] .hp-keys,
+  [data-first][data-scene="wiy"] .hs-tag { animation: none; }
   [data-scene="wiy"] .hp-tom-said { animation: bubble-in 380ms var(--ease-out) 3.6s both; }
   [data-scene="wiy"] .hp-tom-thanks { animation: bubble-in 420ms var(--ease-out) 4.2s both; }
   [data-scene="wiy"] .hp-safe { animation: bubble-in 420ms var(--ease-out) 4.9s both; }

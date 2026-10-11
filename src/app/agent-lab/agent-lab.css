@@ -41,7 +41,9 @@
 .lab-step[data-state="done"]::before { background: var(--actor); opacity: 0.35; }
 .lab-mark { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); border: 2px solid var(--line); color: var(--ink-2); }
 .lab-step[data-state="done"] .lab-mark { border-color: var(--actor); background: var(--actor-soft); color: var(--actor); }
-.lab-step[data-state="todo"] .lab-body, .lab-step[data-state="waiting"] .lab-body { opacity: 0.55; }
+/* Steps still to come read quieter by colour and weight, not opacity, so their text keeps 4.5:1 contrast. */
+.lab-step[data-state="todo"] .lab-title, .lab-step[data-state="waiting"] .lab-title { color: var(--ink-2); font-weight: 500; }
+.lab-step[data-state="todo"] .lab-mark, .lab-step[data-state="waiting"] .lab-mark { border-style: dashed; }
 .lab-body { display: grid; gap: 6px; min-width: 0; padding-top: 6px; }
 .lab-who { margin: 0; font-size: 13px; font-weight: 700; color: var(--actor); display: flex; gap: 10px; align-items: baseline; }
 .lab-step:not([data-state="done"]) .lab-who { color: var(--ink-2); }

@@ -21,6 +21,7 @@ const extra: SpotterTools = {
   price: t("real_price"),
   fair: t("fair_prices"),
   addPage: t("add_page"),
+  place: t("place_widget"),
 };
 const NOW = new Date("2026-10-10T12:00:00Z"); // a Saturday
 const catalogue = [{ type: "fair-price", name: "Fair price", description: "What was paid against real shops.", sizing: {} }];
@@ -88,6 +89,23 @@ describe("Watchtower's agent roster", () => {
     expect(route).toMatch(/view_page/);
     // a loose name match must never be passed off as the usual price
     expect(s).toMatch(/never call it the usual price/i);
+  });
+
+  it("turns a breakdown or show me question into a new tile: place_widget, then the widget and data agents side by side", () => {
+    expect(names(SPOTTER_ID)).toContain("place_widget");
+    const s = agent(SPOTTER_ID).instructions!(ctx, undefined as never) as string;
+    const route = s.split("\n").find((l) => l.startsWith("- Breakdowns and show me questions"))!;
+    expect(route).toMatch(/place_widget/);
+    expect(route).toMatch(/widget/);
+    expect(route).toMatch(/same turn|side by side|together/i);
+    expect(route).toMatch(/spend|how much/i);
+  });
+
+  it("never lets a price far below real shops pass as a good price, and never calls an unpaid payment paid", () => {
+    const s = agent(SPOTTER_ID).instructions!(ctx, undefined as never) as string;
+    expect(s).toMatch(/fake shop/i);
+    expect(s).toMatch(/never a good price|never call it a good price|not a saving/i);
+    expect(s).toMatch(/wasPaid/);
   });
 
   it("describes both custom agents so a delegating agent knows when to hand off", () => {

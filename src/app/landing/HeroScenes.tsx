@@ -52,7 +52,7 @@ const SCENES: Scene[] = [
     key: "tower",
     tab: "Watchtower",
     short: "Watch",
-    caption: "Sam asks about the month and the board answers. The receipt comes from AG Studio's own record: Money actions: 0. Gran sees it in big type.",
+    caption: "Sam asks about the month and the board answers. The receipt comes from the AG Studio record of the run: Money actions: 0. Gran sees it in big type.",
     ms: 6800,
     Back: WatchtowerScreen,
     backKind: "laptop",
@@ -152,7 +152,9 @@ export function HeroScenes() {
         </p>
         <div className="hs-tilt" aria-hidden="true">
           <div className="hs-duo">
-            <div className="hs-duo-inner" key={`${s.key}-${run}`} data-scene={s.key}>
+            {/* data-first: the very first scene on page load starts mid story (both phones already showing), so
+                the server rendered first frame is never two empty phones. */}
+            <div className="hs-duo-inner" key={`${s.key}-${run}`} data-scene={s.key} data-first={run === 0 || undefined}>
               {s.backKind === "laptop" ? (
                 <Laptop>
                   <s.Back />
