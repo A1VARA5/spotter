@@ -111,6 +111,39 @@ describe("find_genuine_offer", () => {
     expect(c.offers.get(offers[0]!.offer_id)?.url).toBe("https://currys.co.uk/a");
   });
 
+  // The card's price note comes from the payment's saved market check (deps.market, cached). The case file must
+  // name the same cheapest shop, so the tool reads the same listings before it ever searches on its own.
+  const offer = (domain: string, price: number, condition?: "used") => ({
+    title: "Apple AirPods Pro 2", domain, price, currency: "GBP" as const, url: `https://${domain}/a`, ...(condition ? { condition } : {}),
+  });
+  const withItem = (p: Payment, market: Payment["market"]): Payment => ({ ...p, request: { ...p.request, item: "Apple AirPods Pro 2" }, market });
+
+  it("reuses the card's market listings for the payment's item, so the case and the card name the same cheapest shop", async () => {
+    const now = await pay("gran", "BargainPods", 2499);
+    const listings = [offer("argos.co.uk", 18900), offer("currys.co.uk", 17900), offer("resale.example", 9000, "used"), offer("fake.example", 2000)];
+    const p = withItem(now, { item: "Apple AirPods Pro 2", flag: null, median: 18900, offers: 3, cheapest: offer("currys.co.uk", 17900) });
+    const market = vi.fn(async () => listings);
+    const search = vi.fn(async () => [{ id: "x", title: "Apple AirPods Pro 2", offers: [offer("johnlewis.com", 15000)] }]);
+    const out = await runTool("find_genuine_offer", { item: "AirPods Pro second generation" }, ctx(p, { market, search }));
+    expect(market).toHaveBeenCalledWith("Apple AirPods Pro 2", "GBP");
+    expect(search).not.toHaveBeenCalled();
+    const offers = (out.data as { offers: Array<{ domain: string }> }).offers;
+    // Cheapest first and the same as the card's cheapest; used and far below listings are never offered.
+    expect(offers.map((o) => o.domain)).toEqual(["currys.co.uk", "argos.co.uk"]);
+  });
+
+  it("falls back to the payment's stored cheapest shop when the market lookup is unavailable", async () => {
+    const now = await pay("gran", "BargainPods", 2499);
+    const p = withItem(now, { item: "Apple AirPods Pro 2", flag: null, median: 18900, offers: 3, cheapest: offer("currys.co.uk", 17900) });
+    const search = vi.fn(async () => [{ id: "x", title: "Apple AirPods Pro 2", offers: [offer("johnlewis.com", 15000), offer("ao.com", 16000)] }]);
+    const c = ctx(p, { market: async () => null, search });
+    const out = await runTool("find_genuine_offer", { item: "Apple AirPods Pro 2" }, c);
+    expect(search).not.toHaveBeenCalled();
+    const offers = (out.data as { offers: Array<{ offer_id: string; domain: string }> }).offers;
+    expect(offers.map((o) => o.domain)).toEqual(["currys.co.uk"]);
+    expect(c.offers.get(offers[0]!.offer_id)?.url).toBe("https://currys.co.uk/a");
+  });
+
   it("says when the search is down instead of guessing", async () => {
     const now = await pay("gran", "BargainPods", 2499);
     const out = await runTool("find_genuine_offer", { item: "AirPods" }, ctx(now, { search: async () => null }));

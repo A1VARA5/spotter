@@ -54,7 +54,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const chipHidden = (await cookies()).get(START_COOKIE)?.value === "1";
 
   return (
-    <DashboardState names={names} unlocked={unlocked} demo={household.demo} tz={safeTz(household.time_zone)} serverNow={Date.now()} initial={JSON.parse(JSON.stringify(payments))}>
+    <DashboardState names={names} unlocked={unlocked} demo={household.demo} tz={safeTz(household.time_zone)} serverNow={Date.now()} business={household.kind === "business"} initial={JSON.parse(JSON.stringify(payments))}>
       <AppShell db={db} household={household} current="waiting" layout="rail" rail={<DashboardRail />} railLabel="Everything today and tools">
         <Warnings initial={warnings} />
         <AgentHolds initial={JSON.parse(JSON.stringify(agentHolds))} />

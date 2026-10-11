@@ -1,7 +1,7 @@
 "use client";
 // The case agent's write up on a held payment: what it most likely is, what each check found (every line names
 // the check it came from), what to do before deciding, and a safer way to buy the same thing when there is one.
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
@@ -50,9 +50,22 @@ const VERDICT = {
   looks_fine: "Looks genuine",
 } as const;
 
-/** Still being built: only for a minute or two after the payment, after that there just isn't one. */
-export function CasePending({ createdAt }: { createdAt: string }) {
-  if (Date.now() - new Date(createdAt).getTime() > 2 * 60_000) return null;
+/**
+ * The browser's clock, but only after the first render: null on the server and during hydration, so nothing drawn
+ * from it can differ from the server's HTML. Used when the caller didn't pass the server's clock down.
+ */
+function useClientNow(): number | null {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => setNow(Date.now()), []);
+  return now;
+}
+
+/**
+ * Still being built: only for a minute or two after the payment, after that there just isn't one. now is the
+ * dashboard's clock (the server's on the first render), so the server HTML and the first client render agree.
+ */
+export function CasePending({ createdAt, now }: { createdAt: string; now: number }) {
+  if (now - new Date(createdAt).getTime() > 2 * 60_000) return null;
   return (
     <p className="case-pending" role="status">
       <span className="case-spin" aria-hidden="true" />
@@ -70,7 +83,10 @@ export function CaseFile({
   pageShot,
   footer,
   peekScrolls,
+  now,
 }: {
+  /** The dashboard's clock (the server's on the first render). Without it, the replay button waits for the browser. */
+  now?: number;
   /** Scrolls the spotter made looking at the page safely; null or undefined when they never looked. */
   peekScrolls?: number | null;
   c: Case;
@@ -84,6 +100,8 @@ export function CaseFile({
   /** Shown last, inside the case file: the price watch line on the dashboard. */
   footer?: React.ReactNode;
 }) {
+  const clientNow = useClientNow();
+  const clock = now ?? clientNow;
   const base = `cf-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   const findings = c.findings.map((f, i) => ({ f, id: `${base}-f${i}` })).filter(({ f }) => !panelShows(f, c.page));
   const ids = {
@@ -164,7 +182,7 @@ export function CaseFile({
 
           {hasEvidence && (
             <div className="cf-evidence">
-              {c.page && <OpenedPage id={ids.kernel} page={c.page} paymentId={paymentId} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
+              {c.page && <OpenedPage id={ids.kernel} page={c.page} paymentId={paymentId} now={clock} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
               {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
               {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
               {c.page?.faces && <TwoFaces page={c.page} />}
@@ -621,8 +639,11 @@ function OpenedPage({
   paymentId,
   fallback,
   inFaces,
+  now,
 }: {
   id: string;
+  /** null until there is a clock that can't differ from the server's HTML: no replay button until then. */
+  now: number | null;
   page: NonNullable<Case["page"]>;
   paymentId?: string;
   fallback?: React.ReactNode;
@@ -636,7 +657,7 @@ function OpenedPage({
   const shot = page.screenshot && SHOT.test(page.screenshot) ? page.screenshot : undefined;
   const trap = page.seen?.hidden.find((h) => h.instruction);
   const replayAt = page.replay ? new Date(page.replay.at).getTime() : NaN;
-  const canWatch = !!paymentId && Date.now() - replayAt < REPLAY_FOR_MS;
+  const canWatch = !!paymentId && now !== null && now - replayAt < REPLAY_FOR_MS;
 
   const view =
     watching && !replayFailed ? (

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import type { Db } from "@/db";
 import type { Payment } from "@/core/lifecycle";
-import type { Offer } from "@/core/market";
+import { genuineOffers, marketSummary, type Offer } from "@/core/market";
 import { networkCount } from "@/core/network";
 import { normName } from "@/core/rules";
 import { formatMoney, type Currency } from "@/core/types";
@@ -23,6 +23,8 @@ export type CaseCtx = {
   householdId: string;
   payment: Payment;
   search?: (query: string, currency: Currency, limit: number) => Promise<Product[] | null>;
+  /** The payment check's own market lookup (cached), so find_genuine_offer reads the listings the card used. */
+  market?: (item: string, currency: Currency) => Promise<Offer[] | null>;
   getAuthorization?: (authorizationId: string) => Promise<{ status: string; expiresAt?: string }>;
   inspect?: (url: string) => Promise<LinkReport>;
   /** Opens a link in a throwaway cloud browser (KERNEL). Without it, open_link and inspect_shop aren't offered. */
@@ -358,14 +360,15 @@ const inspectShop = tool({
 const findGenuineOffer = tool({
   name: "find_genuine_offer",
   description:
-    "Searches real retailers (Channel3) for the same product, cheapest first. Use it when the payment is for a product, to compare the price and offer a safer place to buy it.",
+    "Real retailer listings (Channel3) for the product, cheapest first. Use it when the payment is for a product, to compare the price and offer a safer place to buy it. When the payment names its item, this reads the same listings as Spotter's price check on the card, so the two agree.",
   schema: z.object({ item: z.string().min(2).max(120) }),
-  async run({ item }, ctx) {
+  async run(args, ctx) {
     const currency = ctx.payment.request.money.currency;
-    const products = ctx.search ? await ctx.search(item, currency, 8) : null;
-    if (!products) return { ok: false, summary: "Product search is unavailable right now." };
-    const offers = offersFor(products, item)
-      .filter((o) => o.condition !== "used")
+    const own = ctx.payment.request.item?.trim();
+    const item = own || args.item;
+    const found = await genuineListings(item, own, ctx);
+    if (!found) return { ok: false, summary: "Product search is unavailable right now." };
+    const offers = found
       .sort((a, b) => a.price - b.price)
       .filter((o, i, all) => all.findIndex((x) => x.domain === o.domain) === i)
       .slice(0, 3);
@@ -382,6 +385,26 @@ const findGenuineOffer = tool({
     };
   },
 });
+
+/**
+ * The listings for find_genuine_offer, in the order that keeps the case file and the card in agreement: the card's
+ * own market lookup for the payment's item (cached, the same listings its price note came from), then the cheapest
+ * shop saved on the payment, and only then a fresh search. Genuine new offers only, as on the card.
+ */
+async function genuineListings(item: string, own: string | undefined, ctx: CaseCtx): Promise<Offer[] | null> {
+  const currency = ctx.payment.request.money.currency;
+  if (own && ctx.market) {
+    const listed = await ctx.market(own, currency).catch((e: unknown) => {
+      console.error("[spotter] case agent couldn't reuse the market check, falling back:", e instanceof Error ? e.message : e);
+      return null;
+    });
+    if (listed) return genuineOffers(listed, currency);
+  }
+  const saved = own ? marketSummary(ctx.payment.market)?.cheapest : null;
+  if (saved && saved.currency === currency) return [saved];
+  const products = ctx.search ? await ctx.search(item, currency, 8) : null;
+  return products ? offersFor(products, item).filter((o) => o.condition !== "used") : null;
+}
 
 /** PayPal's authorisation statuses, in the words the spotter reads. */
 const HOLD_WORDS: Record<string, string> = {

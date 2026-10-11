@@ -1,0 +1,71 @@
+/* Nothing waiting: the last 7 days and a few Try scenarios, so a wide screen isn't one short box over white space.
+   Hairline borders and the outcome colours of the hold track (paid green, stopped red). */
+.allclear {
+  container-type: inline-size;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel, 14px);
+}
+.allclear-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.allclear-head svg { flex: none; margin-top: 2px; color: var(--go); }
+.allclear-head p { margin: 0; max-width: 70ch; text-wrap: pretty; }
+.allclear-head strong { color: var(--ink); }
+.allclear-cols { display: grid; }
+.allclear-week,
+.allclear-try { display: grid; align-content: start; gap: 12px; padding: 20px 22px 22px; min-width: 0; }
+.allclear-try { border-top: 1px solid var(--line); }
+@container (min-width: 760px) {
+  .allclear-cols { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  .allclear-try { border-top: 0; border-left: 1px solid var(--line); }
+}
+.allclear-title { margin: 0; font-size: 15px; font-weight: 650; color: var(--ink); }
+.allclear-text { margin: 0; max-width: 60ch; color: var(--ink); line-height: 1.5; text-wrap: pretty; }
+.allclear-bar { display: flex; gap: 3px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--chalk); }
+.allclear-bar span { flex-basis: 0; min-width: 6px; }
+.allclear-bar [data-part="paid"],
+.allclear-legend [data-part="paid"]::before { background: var(--go); }
+.allclear-bar [data-part="stopped"],
+.allclear-legend [data-part="stopped"]::before { background: var(--stop); }
+.allclear-bar [data-part="other"],
+.allclear-legend [data-part="other"]::before { background: var(--line); }
+.allclear-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; color: var(--ink-2); font-size: 15px; }
+.allclear-legend li { display: inline-flex; align-items: center; gap: 7px; }
+.allclear-legend li::before { content: ""; width: 9px; height: 9px; border-radius: 50%; }
+.allclear-legend b { color: var(--ink); }
+.allclear-links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 4px 0 0; font-size: 15px; font-weight: 600; }
+.allclear-tries { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.allclear-tryrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title chev" "who chev";
+  row-gap: 2px;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+.allclear-tryrow:hover { background: var(--chalk); border-color: #c3cbc5; }
+.allclear-tryrow:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.allclear-trywho { grid-area: who; font-size: 14px; line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
+.allclear-checks { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.allclear-checks li { position: relative; padding-left: 20px; }
+.allclear-checks li::before { content: ""; position: absolute; left: 2px; top: 0.55em; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--go); }
+.allclear-trytitle { grid-area: title; font-size: 16px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.allclear-tryrow svg { grid-area: chev; color: var(--ink-2); }
+.allclear-note { margin: 0; color: var(--ink-2); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .allclear-tryrow { transition: none; }
+}

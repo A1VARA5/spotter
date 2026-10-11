@@ -15,12 +15,16 @@ import { PriceWatch, watchable } from "@/ui/PriceWatch";
 import type { WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 import { PhotoCheck } from "@/ui/PhotoCheck";
+import { weekSummary } from "@/ui/week";
+import "./allclear.css";
+import { BUSINESS_SCENARIOS, SCENARIOS, type Scenario } from "@/ui/scenarios";
 
 
 type DashCtx = {
   payments: Payment[];
   names: Record<string, string>;
   demo: boolean;
+  business: boolean;
   tz: string;
   now: number;
   watches: WatchView[];
@@ -63,12 +67,15 @@ export function DashboardState({
   demo = false,
   tz = DEFAULT_TZ,
   serverNow,
+  business = false,
   children,
 }: {
   initial: Payment[];
   names: Record<string, string>;
   unlocked: boolean;
   demo?: boolean;
+  /** A small business household: the empty state suggests the business Try scenarios. */
+  business?: boolean;
   /** The household's time zone, for "asks again tomorrow at 9am" and when a hold ends. */
   tz?: string;
   /** The server's clock when it rendered the page, so relative times match on the first render. */
@@ -108,7 +115,7 @@ export function DashboardState({
     return () => clearInterval(t);
   }, [refresh]);
 
-  return <Ctx.Provider value={{ payments, names, demo, tz, now, watches, error, locked, setLocked, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ payments, names, demo, business, tz, now, watches, error, locked, setLocked, refresh }}>{children}</Ctx.Provider>;
 }
 
 /** The hold that opens first: one Spotter thinks is a scam, else the oldest. */
@@ -208,11 +215,7 @@ export function DashboardMain() {
         </p>
       )}
       <div className="stack">
-        {waiting.length === 0 && (
-          <p className="empty">
-            <strong>All clear.</strong> Nothing needs you right now. <Link href="/demo">Try a payment</Link>
-          </p>
-        )}
+        {waiting.length === 0 && <AllClear />}
         {waiting.map((p) => (
           <HeldCard
             key={p.id}
@@ -237,6 +240,101 @@ export function DashboardMain() {
         </p>
       )}
     </section>
+  );
+}
+
+const TRY_FAMILY = ["gran-hi-mum", "agent-trap", "leo-giftcard"];
+const TRY_BUSINESS = ["biz-invoice", "biz-paper"];
+
+/**
+ * Nothing waiting: say so, then fill the column with something useful instead of white space. What Spotter did in
+ * the last 7 days (from the same payments the rail lists, by the shared clock), and a few Try scenarios to watch it
+ * catch something.
+ */
+function AllClear() {
+  const { payments, business, now } = useDash();
+  const w = weekSummary(payments, now);
+  const tries = (business ? TRY_BUSINESS : TRY_FAMILY).map((id) => [...SCENARIOS, ...BUSINESS_SCENARIOS].find((s) => s.id === id)).filter((s): s is Scenario => !!s);
+  const kept = w.kept.map((k) => money(k.amount, k.currency)).join(" and ");
+  const parts = [
+    { key: "paid", n: w.paid, label: "paid" },
+    { key: "stopped", n: w.stopped, label: "stopped or denied" },
+    { key: "other", n: w.checked - w.paid - w.stopped - w.waiting, label: "checking or failed" },
+  ].filter((x) => x.n > 0);
+
+  return (
+    <div className="allclear">
+      <div className="allclear-head">
+        <ShieldCheck size={22} strokeWidth={2} aria-hidden="true" />
+        <p>
+          <strong>All clear.</strong> Nothing needs you right now. Anything risky is held at PayPal and lands here first.
+        </p>
+      </div>
+      <div className="allclear-cols">
+        <section className="allclear-week" aria-labelledby="allclear-week">
+          <h2 id="allclear-week" className="allclear-title">
+            Your last 7 days
+          </h2>
+          {w.checked === 0 ? (
+            <>
+              <p className="allclear-text">No payments went through Spotter this week yet. Try one with fake money and it shows up here.</p>
+              <ul className="allclear-checks" aria-label="What Spotter checks on every payment">
+                <li>Your rules first: the allowance, blocked shops and who needs asking.</li>
+                <li>The message behind it, read by AI that has to quote its evidence.</li>
+                <li>Links opened in a throwaway cloud browser, so nobody clicks them.</li>
+                <li>Real shop prices, so a fake bargain or an overcharge shows.</li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <p className="allclear-text">
+                Spotter checked {w.checked} payment{w.checked === 1 ? "" : "s"}.{" "}
+                {w.stopped > 0 ? (
+                  <>
+                    {w.stopped} {w.stopped === 1 ? "was" : "were"} stopped or denied before any money moved, keeping <b>{kept}</b> with you.
+                  </>
+                ) : (
+                  "None needed stopping."
+                )}
+              </p>
+              <div className="allclear-bar" aria-hidden="true">
+                {parts.map((x) => (
+                  <span key={x.key} data-part={x.key} style={{ flexGrow: x.n }} />
+                ))}
+              </div>
+              <ul className="allclear-legend">
+                {parts.map((x) => (
+                  <li key={x.key} data-part={x.key}>
+                    <b>{x.n}</b> {x.label}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="allclear-links">
+            <Link href="/ledger">Every payment in Activity</Link>
+            <Link href="/watchtower">Ask Watchtower about your month</Link>
+          </p>
+        </section>
+        <section className="allclear-try" aria-labelledby="allclear-try">
+          <h2 id="allclear-try" className="allclear-title">
+            Watch it catch something
+          </h2>
+          <ul className="allclear-tries">
+            {tries.map((s) => (
+              <li key={s.id}>
+                <Link href={`/demo#s-${s.id}`} className="allclear-tryrow">
+                  <span className="allclear-trytitle">{s.title}</span>
+                  <span className="allclear-trywho">{s.blurb}</span>
+                  <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="allclear-note">Fake money on PayPal&apos;s sandbox. Each one lands here to decide.</p>
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -582,7 +680,7 @@ function HeldCard({
 
       {!open && <HeldSummary p={p} pending={pending} />}
 
-      <WasItYouLine w={p.was_it_you} status={p.status} />
+      <WasItYouLine w={p.was_it_you} status={p.status} now={now} />
 
       <div className="held-body" id={bodyId} hidden={!open}>
         <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
@@ -595,13 +693,14 @@ function HeldCard({
             currency={p.currency}
             paymentId={p.id}
             peekScrolls={p.peek_scrolls}
+            now={now}
             busy={busy === "swap"}
             onSwap={busy ? undefined : () => act("swap")}
             footer={watchable(p) || watch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} /> : null}
           />
         ) : (
           <>
-            <CasePending createdAt={p.created_at} />
+            <CasePending createdAt={p.created_at} now={tick ?? now} />
             {(watchable(p) || watch) && <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} />}
           </>
         )}
@@ -797,7 +896,7 @@ function FeedRow({ p, all, who, now, watch, onWatchChanged }: { p: Payment; all:
         {Icon && <Icon size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 4 }} />}
         {STATE_LABEL[s]}
       </span>
-      <WasItYouLine w={p.was_it_you} status={p.status} />
+      <WasItYouLine w={p.was_it_you} status={p.status} now={now} />
       {(p.case_file || canWatch) && (
         <div className="feed-open">
           <Sheet
@@ -816,7 +915,7 @@ function FeedRow({ p, all, who, now, watch, onWatchChanged }: { p: Payment; all:
             </p>
             <ReplacedLink p={p} all={all} who={who} />
             <EvidenceLinks p={p} />
-            {p.case_file && <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} />}
+            {p.case_file && <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} now={now} />}
             {canWatch && <PriceWatch watch={watch} paymentId={p.id} onChanged={onWatchChanged} />}
           </Sheet>
         </div>

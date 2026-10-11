@@ -52,10 +52,11 @@ export function getDeps(): Promise<Deps> {
   ready ??= (async () => {
     const db = await getDb();
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app";
+    const market = makeMarket(db);
     return {
       db,
       check: (req) => aiCheck(req),
-      market: makeMarket(db),
+      market,
       notify: allOf([
         process.env.AGENTBOXD_API_KEY ? makeNotify(db, site) : null,
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramNotify(db, site, sendHtml) : null,
@@ -97,6 +98,8 @@ export function getDeps(): Promise<Deps> {
             householdId: spender.household_id,
             payment,
             search: searchProducts,
+            // The same cached listings the card's price note came from, so the case file can't disagree with it.
+            market,
             getAuthorization,
             ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitTwoFaces(url) } : {}),
             // Spot the difference needs Channel3; without a key it is simply off (no slot spent, nothing shown).
