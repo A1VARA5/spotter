@@ -79,6 +79,8 @@ function eventWords(type: string, data: Record<string, unknown>, tz: string): st
   switch (type) {
     case "requested":
       return "Asked to pay";
+    case "example_created":
+      return "Example hold made for the demo family (the checks were written earlier)";
     case "checked":
       return data.ok === false ? "Spotter's scam check couldn't finish, so Spotter played safe" : "Spotter checked the message for scam signs";
     case "decided":
@@ -153,7 +155,7 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
   let network = "Spotter couldn't count other families' reports for this payee.";
   try {
     const n = (await networkCount(db, r.payee.name, householdId)).families;
-    network = `${n} other Spotter ${n === 1 ? "family" : "families"} said no to this payee in the last 30 days.`;
+    network = n ? `${n} other Spotter ${n === 1 ? "family" : "families"} said no to this payee in the last 30 days.` : "No other Spotter family has said no to this payee in the last 30 days.";
   } catch (e) {
     console.error(`[spotter] evidence pack network count for ${p.id} failed:`, e instanceof Error ? e.message : e);
   }
@@ -230,7 +232,7 @@ pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.5 
 q { quotes: '"' '"'; font-style: italic; } img { display: block; max-width: 100%; height: auto; border: 1px solid #d5dbd6; border-radius: 6px; margin-top: 8px; }
 .print { margin-top: 32px; } @media print { .print { display: none; } main { padding: 0; } h2 { break-after: avoid; } tr, li, .untrusted { break-inside: avoid; } }
 </style></head><body><main>
-<h1>Spotter evidence: ${esc(p.title.toLowerCase())}</h1>
+<h1>Spotter evidence: ${esc(p.title.charAt(0).toLowerCase() + p.title.slice(1))}</h1>
 <p class="meta">Made ${esc(p.generated)} for ${esc(p.household)}. Spotter reference ${esc(p.ref)}.</p>
 ${p.example ? `<p class="example">${esc(p.example)}</p>` : ""}
 <h2>The payment</h2>
