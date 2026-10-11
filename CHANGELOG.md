@@ -21,7 +21,7 @@ KERNEL and Channel3
 - One Channel3 going rate per card: UK shops only for pounds, one price per shop, the same department.
 
 Watchtower and the app
-- Gran's view in her own language (Polish), the AI's receipt from AG Studio's telemetry with undo, fair prices in two turns.
+- Gran's view in her own language (Polish), the AI's receipt from the AG Studio telemetry with undo, fair prices in two turns.
 - Telegram reads screenshots (Claude vision copies the words, then the normal check runs).
 - Printable evidence pack, switched off alerts, folded case files, one layout system, a landing page rebuild.
 - Fixed: a semicolon in a schema comment broke production only (Neon splits DDL on `;`). A test guards it.
