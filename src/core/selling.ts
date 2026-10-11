@@ -25,14 +25,20 @@ const decimal = (minor: number) => (minor / 100).toFixed(2);
 const fmt = (amount: number, currency: string) => formatMoney({ amount, currency: currency as Currency });
 
 /** Reads the toolkit's answer. ok false carries PayPal's (or the toolkit's) words. */
-export function readRun(raw: string): { ok: true; data: any } | { ok: false; message: string } {
+/** Reads the toolkit's answer. ok false carries PayPal's (or the toolkit's) words; noAnswer means PayPal never replied,
+ * so whatever was asked may or may not have happened. The toolkit sends errors two ways: {"error":{...}} for its own
+ * failures, and an LlmError ({"ok":false,"code":"PAYPAL_API_HTTP_ERROR" or "PAYPAL_API_NO_RESPONSE",...}) for PayPal's. */
+export function readRun(raw: string): { ok: true; data: any } | { ok: false; message: string; noAnswer: boolean } {
   let data: any;
   try {
     data = JSON.parse(raw);
   } catch {
-    return { ok: false, message: `PayPal's answer wasn't readable: ${raw.slice(0, 120)}` };
+    return { ok: false, message: `PayPal's answer wasn't readable: ${raw.slice(0, 120)}`, noAnswer: false };
   }
-  if (data && typeof data === "object" && data.error) return { ok: false, message: String(data.error.message ?? "PayPal refused it").slice(0, 300) };
+  if (data && typeof data === "object" && data.error) return { ok: false, message: String(data.error.message ?? "PayPal refused it").slice(0, 300), noAnswer: false };
+  if (data && typeof data === "object" && data.ok === false) {
+    return { ok: false, message: String(data.message ?? data.code ?? "PayPal refused it").slice(0, 300), noAnswer: data.code === "PAYPAL_API_NO_RESPONSE" };
+  }
   return { ok: true, data };
 }
 
@@ -40,7 +46,7 @@ async function callRun(run: Run, method: string, args: Record<string, unknown>) 
   try {
     return readRun(await run(method, args));
   } catch (e) {
-    return { ok: false as const, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false as const, message: e instanceof Error ? e.message : String(e), noAnswer: true };
   }
 }
 
@@ -72,7 +78,7 @@ export async function recordSale(
 async function activeAgent(db: Db, agentId: string): Promise<Spender | string> {
   const spender = await getSpender(db, agentId);
   if (!spender) return err("This agent isn't set up in Spotter any more. Ask the user to reconnect it.");
-  if (spender.frozen_at) return err(`${spender.spotter_name} paused this agent, so nothing it asks for goes through. Ask ${spender.spotter_name} to check Spotter.`);
+  if (spender.frozen_at) return err(`Spotter paused this agent, so nothing it asks for goes through. Only ${spender.spotter_name} can unpause it.`);
   return spender;
 }
 
@@ -87,7 +93,10 @@ export function captureFacts(order: any, captureId: string): { status: string; p
     const paid = toMinor(capture.amount?.value);
     if (paid === null || typeof capture.amount?.currency_code !== "string") return null;
     const refunds = (unit.payments.refunds ?? []).filter((r: any) => r?.status === "COMPLETED" || r?.status === "PENDING");
-    const refunded = refunds.reduce((sum: number, r: any) => sum + (toMinor(r.amount?.value) ?? 0), 0);
+    const amounts = refunds.map((r: any) => toMinor(r.amount?.value));
+    // A refund Spotter can't read could be anything: better to stop than to undercount and refund twice.
+    if (amounts.some((a: number | null) => a === null)) return null;
+    const refunded = amounts.reduce((sum: number, a: number) => sum + a, 0);
     return { status: String(capture.status ?? ""), paid, currency: capture.amount.currency_code, refunded };
   }
   return null;
@@ -95,7 +104,7 @@ export function captureFacts(order: any, captureId: string): { status: string; p
 
 async function paypalCapture(run: Run, sale: Sale, captureId: string) {
   const r = await callRun(run, "get_order", { id: sale.paypal_order_id });
-  if (!r.ok) return { error: `Spotter couldn't read the payment from PayPal (${r.message}), so nothing was done.` };
+  if (!r.ok) return { error: `Spotter couldn't reach PayPal to check the payment (${r.message}), so nothing was done. Try again in a minute.`, outage: true };
   const facts = captureFacts(r.data, captureId);
   if (!facts) return { error: "PayPal doesn't show that payment on this sale, so nothing was done." };
   return { facts };
@@ -240,9 +249,19 @@ export async function decideRefund(deps: Deps, run: Run, householdId: string, id
     amount: { currency_code: req.currency, value: decimal(amount) },
     ...(req.note ? { note_to_payer: req.note } : {}),
   });
+  if (!r.ok && r.noAnswer) {
+    // PayPal may have refunded it: it stays "refunding" (shown as "check PayPal") so nobody sends it again blind.
+    await db.query("update refund_requests set error = $2 where id = $1", [id, `PayPal didn't answer: ${r.message}`]);
+    console.error(`[spotter] refund ${id}: PayPal didn't answer (${r.message}); left as refunding, check PayPal`);
+    return { ok: false, message: "PayPal didn't answer, so Spotter can't tell if the refund went through. Check PayPal before trying again." };
+  }
   if (!r.ok) return failWith(`PayPal refused the refund: ${r.message}`);
   const refundId = typeof r.data?.id === "string" ? r.data.id.slice(0, 64) : null;
-  await db.query("update refund_requests set status = 'refunded', paypal_refund_id = $2, paypal_status = $3 where id = $1", [id, refundId, String(r.data?.status ?? "").slice(0, 32)]);
+  const paypalStatus = String(r.data?.status ?? "");
+  if (!refundId || (paypalStatus !== "COMPLETED" && paypalStatus !== "PENDING")) {
+    return failWith(`PayPal answered the refund with status ${paypalStatus || "none"}${refundId ? ` (refund ${refundId})` : " and no refund id"}, so it isn't counted as sent. Check PayPal.`);
+  }
+  await db.query("update refund_requests set status = 'refunded', paypal_refund_id = $2, paypal_status = $3, error = null where id = $1", [id, refundId, paypalStatus.slice(0, 32)]);
   return { ok: true, message: `Refunded ${fmt(amount, req.currency)} to the original payment. PayPal will confirm it.` };
 }
 
@@ -272,6 +291,7 @@ export async function guardShipment(deps: Deps, run: Run, agentId: string, args:
   if (!sale) return err("Spotter only adds tracking to sales it made for this family. That isn't one of them, so nothing was added.");
   if (sale.capture_id && sale.capture_id !== args.transaction_id) return err("That transaction id isn't this sale's payment, so nothing was added.");
   const read = await paypalCapture(run, sale, args.transaction_id);
+  if ("error" in read && read.outage) return err(read.error!);
   if ("error" in read || read.facts.status !== "COMPLETED") {
     return err(
       `Paid? Prove it. PayPal shows no completed payment for "${sale.item}" yet, so Spotter didn't add tracking. ` +
@@ -321,6 +341,10 @@ export async function sellPayOrder(deps: Deps, run: Run, agentId: string, orderI
   const r = readRun(raw);
   const capture = r.ok ? (r.data?.response?.purchase_units?.[0]?.payments?.captures?.[0] as { id?: unknown } | undefined) : undefined;
   if (typeof capture?.id === "string") await deps.db.query("update sales set capture_id = $2 where id = $1", [sale.id, capture.id.slice(0, 64)]);
+  else if (r.ok) {
+    console.error(`[spotter] pay_order for sale ${sale.id}: PayPal's answer had no capture id, so the sale isn't linked to a payment`);
+    return JSON.stringify({ paypal: r.data, spotter: { message: "PayPal answered, but Spotter couldn't find the payment in its answer, so refunds and tracking for this sale won't work yet. Check with get_order." } });
+  }
   return raw;
 }
 

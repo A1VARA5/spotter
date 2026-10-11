@@ -262,7 +262,7 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
   const spender = await getSpender(db, input.spenderId);
   if (!spender) throw new Error(`Unknown spender ${input.spenderId}`);
   // A paused (frozen) agent reached for a tool its job doesn't use (core/tripwire.ts). Only the spotter's PIN unpauses it.
-  if (spender.frozen_at) throw new InvalidPaymentError(`${spender.name} is frozen: ${spender.spotter_name} paused it after it reached for a tool its job doesn't use. Nothing was paid. Ask ${spender.spotter_name} to check Spotter.`);
+  if (spender.frozen_at) throw new InvalidPaymentError(`${spender.name} is frozen: Spotter paused it after it reached for a tool its job doesn't use. Nothing was paid. Only ${spender.spotter_name} can unpause it.`);
 
   if (!Number.isInteger(input.money.amount) || input.money.amount <= 0) {
     throw new InvalidPaymentError("Amount must be a whole number of pence or cents above zero.");

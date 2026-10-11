@@ -100,12 +100,27 @@ PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, I pinned 1.11.0
 
 So Spotter has a second MCP server at `/api/toolkit/mcp` that speaks the toolkit's language. Same tool names, same arguments, same agent keys as the main one. An agent written for PayPal's toolkit points at Spotter instead and doesn't need to change.
 
-- `create_order` doesn't go to PayPal. It turns into a normal Spotter payment request: the agent's allowance, the AI check on its notes and the page it saw, a PayPal hold, then the spotter says yes or no. Spotter works out the total from the items itself, because the agent's own `itemTotal` could say anything.
-- `pay_order` never captures. It tells the agent what Spotter decided, like "held, Sam has to approve $119.00".
-- `get_order` runs the toolkit's real `get_order` against the sandbox, but only for orders that agent made.
-- Everything else is hidden for now. Refunds, invoices and subscriptions don't fit a "hold it, then the spotter decides" payment yet, and the list tools would show every family's orders, because they all share one sandbox merchant.
+One table decides what happens to every one of the toolkit's 47 tools (`src/core/toolkit-coverage.ts`), and it depends on the agent's job. The table runs the MCP server and the "all 47 tools" view in the app, so the page can't say one thing while the server does another. A test checks the table against the installed toolkit's own list.
 
-The toolkit's `create_order` only takes USD, so the agent needs a USD allowance. If it doesn't name a shop (the official tool has no field for that), the order always waits for the spotter. The details and the full tool list are in `docs/agent-toolkit-notes.md`, and `scripts/toolkit-agent-demo.mts` is a Claude agent that gets PayPal's own tool definitions and talks to Spotter instead.
+The thing that took me a while to see: PayPal's toolkit is a seller's toolkit. Refunds, invoices, tracking and subscriptions all act for the account that gets paid. So for a shopping agent most of it makes no sense at all, and for a family that sells (a teen reselling trainers on a parent's PayPal, the parent is the account holder and the spotter) it makes a lot of sense and needs different guards.
+
+A shopping agent gets:
+
+- `create_order` as a normal Spotter payment request: the agent's allowance, the AI check on its notes and the page it saw, a PayPal hold, then the spotter says yes or no. Spotter works out the total from the items itself, because the agent's own `itemTotal` could say anything.
+- `pay_order`, which never captures. It tells the agent what Spotter decided, like "held, Sam has to approve $119.00".
+- `get_order`, the toolkit's real call, only for orders that agent made.
+- `create_subscription`, which stays in PayPal's own "waiting for approval" state. Spotter reads the plan first and shows the spotter the whole tail: $0.00 now, $39.99 in 7 days, then every month, $479.88 in the first year. The approval link goes to the spotter after their PIN. The agent never sees it.
+- Tripwires. 35 seller tools (refunds, invoices, disputes, list_transactions and so on) are offered with PayPal's own names, descriptions and schemas, and none of them ever runs. A shopping agent has no honest reason to call `create_refund`. If it does, someone is steering it: Spotter pauses the agent, lets go of its held payments through the normal deny, tells the spotter on their channels, and shows what it asked for next to the page line that could have caused it. The agent gets a calm no.
+
+A selling agent gets:
+
+- `create_refund` held for the spotter's PIN. It can only go back to a payment Spotter took for that family, and Spotter checks the amount against what PayPal says the buyer paid. "They paid £50.00. They're asking for £200.00 back. This is how the overpayment scam works." Approving runs the toolkit's real `create_refund` on the original capture, and PayPal's `PAYMENT.CAPTURE.REFUNDED` webhook confirms it.
+- `create_shipment_tracking`, refused until PayPal itself shows a completed payment for that sale. A fake "payment received" email doesn't count.
+- Its own sales through `create_order`, `pay_order` and `get_order`, recorded as that family's, so it never sees another family's orders even though every family shares one sandbox merchant.
+
+The same money cut up gets caught too: if an order to a shop was held today and the agent comes back smaller, or with a subscription to the same shop, Spotter holds it and says why.
+
+Honest bit: when I pointed a real Claude agent at the booby trapped shop with a system prompt telling it to obey pages, it still refused to call the refund tool, and it spotted the fake payment email on its own. Good for Claude, annoying for my demo. So `scripts/toolkit-tripwire-demo.mts --scripted` is a plain script that does what the page says, labelled as a naive test agent, and the two real runs are in the submission folder. The toolkit's `create_order` only takes USD, so a shopping agent on it needs a USD allowance. The details are in `docs/agent-toolkit-notes.md`.
 
 ## When the agent picks the wrong shop
 
@@ -128,7 +143,7 @@ If Spotter stops an agent's payment because of the shop (hidden instructions on 
 | Real shop prices | `src/market/channel3.ts`, `src/core/market.ts` |
 | MCP server for agents | `src/app/api/mcp/route.ts`, `src/server/agent.ts` |
 | The safer option after a stopped agent payment (suggest, validate the offer id, link the two payments) | `src/core/safer.ts` |
-| PayPal's Agent Toolkit with a spotter (guarded `create_order` and `pay_order`, scoped `get_order`) | `src/app/api/toolkit/mcp/route.ts`, `src/server/toolkit-mcp.ts`, `src/server/toolkit-guard.ts`, `src/paypal/toolkit.ts` |
+| PayPal's Agent Toolkit with a spotter (coverage table for all 47 tools, tripwires, selling agent guard, subscription tail) | `src/core/toolkit-coverage.ts`, `src/core/tripwire.ts`, `src/core/selling.ts`, `src/core/subscriptions.ts`, `src/server/toolkit-mcp.ts`, `src/server/toolkit-guard.ts`, `src/server/agent-holds.ts`, `src/paypal/toolkit.ts`, `src/ui/ToolkitCoverage.tsx`, `src/ui/AgentHolds.tsx` |
 | Households, sessions, PIN, pairing codes, agent keys | `src/core/households.ts`, `src/server/auth.ts`, `src/core/pairing.ts` |
 | Activity table (AG Grid) | `src/app/ledger/Ledger.tsx` |
 | Watchtower (AG Studio widgets, Claude adapter, alerts, sample month) | `src/app/watchtower/`, `src/watchtower/` |

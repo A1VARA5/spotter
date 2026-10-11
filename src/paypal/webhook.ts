@@ -100,7 +100,15 @@ async function sellerRefund(deps: WebhookDeps, evt: PayPalEvent, resource: Recor
     [evt.id, evt.event_type, refundId, JSON.stringify(summaryOf(resource))],
   );
   if (!inserted.length) return { outcome: "duplicate", paymentId: null };
-  await refundConfirmed(deps.db, refundId);
+  try {
+    await refundConfirmed(deps.db, refundId);
+  } catch (e) {
+    // Forget the event so PayPal's retry gets a real second chance instead of being skipped as a duplicate.
+    await deps.db.query("delete from paypal_events where id = $1", [evt.id]).catch((del) => {
+      console.error(`[spotter] paypal event ${evt.id} failed and could not be forgotten; PayPal's retry will be skipped:`, del instanceof Error ? del.message : del);
+    });
+    throw e;
+  }
   return { outcome: "refund_confirmed", paymentId: null };
 }
 

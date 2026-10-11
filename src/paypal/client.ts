@@ -118,6 +118,25 @@ export async function createAuthorizeOrder(
   };
 }
 
+/** A finished sale for a family that sells (core/selling.ts), paid at once with the sandbox test card. Demo only:
+ * it gives the selling agent's refund and tracking guards a real PayPal capture to check against. */
+export async function createExampleSale(s: { amount: number; currency: string; item: string; ref: string }): Promise<{ orderId: string; captureId: string }> {
+  const body = {
+    intent: "CAPTURE",
+    purchase_units: [{ reference_id: s.ref, description: s.item.slice(0, 127), amount: { currency_code: s.currency, value: toDecimal(s.amount) } }],
+    payment_source: { card: SANDBOX_CARD },
+  };
+  const o = await call<{ id: string; status: string; purchase_units?: Array<{ payments?: { captures?: Array<{ id: string; status: string }> } }> }>(
+    "POST",
+    "/v2/checkout/orders",
+    body,
+    `sale-${s.ref}`,
+  );
+  const capture = o.purchase_units?.[0]?.payments?.captures?.[0];
+  if (!capture?.id || capture.status !== "COMPLETED") throw new PayPalError(`PayPal didn't complete the capture (order ${o.status})`, 200, "NO_CAPTURE");
+  return { orderId: o.id, captureId: capture.id };
+}
+
 /** After the payer approved an approval_link order. */
 export async function authorizeOrder(orderId: string): Promise<{ authorizationId: string; expiresAt: string }> {
   const o = await call<OrderResponse>("POST", `/v2/checkout/orders/${orderId}/authorize`, {}, `authorize-${orderId}`);

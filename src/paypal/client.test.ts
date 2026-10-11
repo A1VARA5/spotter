@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   captureAuthorization,
   createAuthorizeOrder,
+  createExampleSale,
   PayPalError,
   reauthorizeAuthorization,
   resetTokenCache,
@@ -176,5 +177,24 @@ describe("reauthorizeAuthorization", () => {
   it("surfaces PayPal's issue, e.g. too soon inside the honor period", async () => {
     mockFetch([TOKEN, { status: 422, body: { name: "UNPROCESSABLE_ENTITY", details: [{ issue: "REAUTHORIZATION_TOO_SOON" }] } }]);
     await expect(reauthorizeAuthorization("A1", "k")).rejects.toMatchObject({ status: 422, issue: "REAUTHORIZATION_TOO_SOON" });
+  });
+});
+
+describe("an example sale for a family that sells", () => {
+  it("is a CAPTURE order paid with the sandbox test card, and returns the order and capture ids", async () => {
+    mockFetch([TOKEN, { status: 201, body: { id: "1AB23456CD789012E", status: "COMPLETED", purchase_units: [{ payments: { captures: [{ id: "2GG279541U471931P", status: "COMPLETED" }] } }] } }]);
+    const r = await createExampleSale({ amount: 5000, currency: "GBP", item: "Example: trainers, size 9", ref: "sale_1" });
+    expect(r).toEqual({ orderId: "1AB23456CD789012E", captureId: "2GG279541U471931P" });
+    expect(calls[1]!.url).toBe("https://api-m.sandbox.paypal.com/v2/checkout/orders");
+    const body = JSON.parse(String(calls[1]!.init.body));
+    expect(body.intent).toBe("CAPTURE");
+    expect(body.purchase_units[0].amount).toEqual({ currency_code: "GBP", value: "50.00" });
+    expect(body.payment_source.card.number).toBe("4111111111111111");
+    expect(header(calls[1]!, "PayPal-Request-Id")).toBe("sale-sale_1");
+  });
+
+  it("throws when PayPal didn't complete the capture", async () => {
+    mockFetch([TOKEN, { status: 201, body: { id: "1AB23456CD789012E", status: "PAYER_ACTION_REQUIRED", purchase_units: [{}] } }]);
+    await expect(createExampleSale({ amount: 5000, currency: "GBP", item: "x", ref: "sale_2" })).rejects.toThrow(/capture/);
   });
 });

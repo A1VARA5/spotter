@@ -131,6 +131,20 @@ describe("create_subscription through Spotter", () => {
     expect(String(warn.mock.calls.at(-1)![1].text)).toMatch(/US\$150\.00/);
   });
 
+  it("no approval link from PayPal: the agent is told, nothing is held for the spotter to lose", async () => {
+    run.mockImplementation(async (method) =>
+      method === "show_subscription_plan_details" ? JSON.stringify(plan()) : JSON.stringify({ id: "I-NOLINK", status: "APPROVAL_PENDING", links: [] }),
+    );
+    expect(JSON.parse(await holdSubscription(deps, run, "agent", { plan_id: "P-5ML4271244454362WXNWU5NQ" })).error).toBeTruthy();
+    expect(await listHeldSubscriptions(deps.db, hh)).toHaveLength(0);
+  });
+
+  it("the toolkit's LlmError on the plan read starts nothing", async () => {
+    run.mockImplementationOnce(async () => JSON.stringify({ ok: false, status: 404, code: "PAYPAL_API_HTTP_ERROR", message: "RESOURCE_NOT_FOUND" }));
+    expect(JSON.parse(await holdSubscription(deps, run, "agent", { plan_id: "P-NOPE00000000000" })).error).toBeTruthy();
+    expect(run).not.toHaveBeenCalledWith("create_subscription", expect.anything());
+  });
+
   it("a plan PayPal can't show, or a frozen agent, starts nothing", async () => {
     run.mockImplementationOnce(async () => JSON.stringify({ error: { message: "RESOURCE_NOT_FOUND", type: "paypal_error" } }));
     expect(JSON.parse(await holdSubscription(deps, run, "agent", { plan_id: "P-NOPE00000000000" })).error).toBeTruthy();

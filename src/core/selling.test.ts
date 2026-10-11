@@ -170,6 +170,34 @@ describe("the spotter decides a refund", () => {
     expect((await listRefunds(deps.db, hh))[0]).toMatchObject({ status: "failed", error: expect.stringContaining("CAPTURE_FULLY_REFUNDED") });
   });
 
+  it("the toolkit's own error shape (an LlmError, ok false) is a failure, never a refund", async () => {
+    const req = await held();
+    run.mockImplementationOnce(async () => orders["1AB23456CD789012E"]!).mockImplementationOnce(async () =>
+      JSON.stringify({ ok: false, status: 422, code: "PAYPAL_API_HTTP_ERROR", message: "The refund amount must be less than or equal to the capture amount" }),
+    );
+    const r = await decideRefund(deps, run, hh, req.id, "approve", "Sam");
+    expect(r.ok).toBe(false);
+    expect((await listRefunds(deps.db, hh))[0]).toMatchObject({ status: "failed", paypal_refund_id: null, error: expect.stringContaining("less than or equal") });
+  });
+
+  it("no answer from PayPal leaves it as unknown (refunding), not failed and not refunded", async () => {
+    const req = await held();
+    run.mockImplementationOnce(async () => orders["1AB23456CD789012E"]!).mockImplementationOnce(async () =>
+      JSON.stringify({ ok: false, code: "PAYPAL_API_NO_RESPONSE", message: "timeout of 15000ms exceeded" }),
+    );
+    const r = await decideRefund(deps, run, hh, req.id, "approve", "Sam");
+    expect(r.ok).toBe(false);
+    expect(r.message).toMatch(/check PayPal/i);
+    expect((await listRefunds(deps.db, hh))[0]).toMatchObject({ status: "refunding", paypal_refund_id: null });
+  });
+
+  it("a refund PayPal answers without an id, or as FAILED, isn't called refunded", async () => {
+    const req = await held();
+    run.mockImplementationOnce(async () => orders["1AB23456CD789012E"]!).mockImplementationOnce(async () => JSON.stringify({ id: "3RF12345AB678901C", status: "FAILED" }));
+    expect((await decideRefund(deps, run, hh, req.id, "approve", "Sam")).ok).toBe(false);
+    expect((await listRefunds(deps.db, hh))[0]!.status).toBe("failed");
+  });
+
   it("PayPal's PAYMENT.CAPTURE.REFUNDED webhook confirms it", async () => {
     const req = await held();
     await decideRefund(deps, run, hh, req.id, "approve", "Sam");
@@ -197,6 +225,13 @@ describe("create_shipment_tracking: paid? prove it", () => {
     const r = parse(await guardShipment(deps, run, "seller", { order_id: "9ZZ23456CD789012E", transaction_id: "6FAKE9541U471931P", tracking_number: "RM1" }));
     expect(r.error?.message).toMatch(/Paid\? Prove it/);
     expect(run).not.toHaveBeenCalledWith("create_shipment_tracking", expect.anything());
+  });
+
+  it("a PayPal outage isn't reported as unpaid", async () => {
+    run.mockImplementationOnce(async () => JSON.stringify({ ok: false, code: "PAYPAL_API_NO_RESPONSE", message: "timeout" }));
+    const r = parse(await guardShipment(deps, run, "seller", { order_id: "1AB23456CD789012E", transaction_id: "2GG279541U471931P", tracking_number: "RM1" }));
+    expect(r.error?.message).toMatch(/couldn't reach PayPal/i);
+    expect(r.error?.message).not.toMatch(/Prove it/);
   });
 
   it("refuses another family's sale and a transaction id that isn't the sale's capture", async () => {

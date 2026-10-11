@@ -72,6 +72,8 @@ export async function runAgent(opts: {
   task: string;
   file: string;
   meta: Record<string, unknown>;
+  /** Where the transcript goes. Default: the submission folder next to the repo. */
+  dir?: string;
 }) {
   const client = new Anthropic({ maxRetries: 1 });
   const messages: Array<{ role: "user" | "assistant"; content: any }> = [{ role: "user", content: opts.task }];
@@ -119,7 +121,7 @@ export async function runAgent(opts: {
   }
 
   const day = new Date().toISOString().slice(0, 10);
-  const dir = path.resolve(import.meta.dirname, "../../paypal-spotter-submission");
+  const dir = opts.dir ?? path.resolve(import.meta.dirname, "../../paypal-spotter-submission");
   mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${opts.file}-${day}.json`);
   writeFileSync(

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { GET } from "./route";
-import { HIDDEN_INSTRUCTION, HONEST_TOOL, POISONED_TOOL, TOOL_POISON } from "./shop";
+import { HIDDEN_INSTRUCTION, HONEST_TOOL, POISONED_TOOL, REFUND_ASK, TOOL_POISON } from "./shop";
+import { coverageFor } from "@/core/toolkit-coverage";
+import { looksLikeInstruction } from "@/agents/seen";
 import { readShopTools } from "@/agents/webmcp";
 
 describe("GadgetBarn demo shop", () => {
@@ -32,5 +34,12 @@ describe("GadgetBarn demo shop", () => {
       ["add_to_basket", true],
       ["check_delivery", false],
     ]);
+  });
+
+  it("the hidden line asks a shopping agent for a refund, which is a tripwire tool for it", () => {
+    expect(HIDDEN_INSTRUCTION).toContain(REFUND_ASK);
+    expect(REFUND_ASK).toMatch(/refund tool to refund capture [A-Z0-9]{17}/);
+    expect(coverageFor("create_refund", "shopping")?.treatment).toBe("bait");
+    expect(looksLikeInstruction(HIDDEN_INSTRUCTION)).toBe(true);
   });
 });

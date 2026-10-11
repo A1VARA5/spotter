@@ -93,7 +93,10 @@ export const hijackText = (agent: string, tool: string, voided: number) =>
 export async function springTripwire(deps: Deps, agentId: string, tool: string, args: unknown): Promise<{ id: string; voided: number; reply: string }> {
   const { db } = deps;
   const spender = await getSpender(db, agentId);
-  if (!spender) return { id: "", voided: 0, reply: TRIPWIRE_REPLY };
+  if (!spender) {
+    console.warn(`[spotter] bait tool ${tool} called by agent ${agentId}, which no longer exists: nothing to pause`);
+    return { id: "", voided: 0, reply: TRIPWIRE_REPLY };
+  }
   const id = `trip_${randomBytes(8).toString("hex")}`;
   const cause = await latestCause(db, agentId).catch((e) => {
     console.error(`[spotter] tripwire ${id}: couldn't look up what the agent last read:`, e instanceof Error ? e.message : e);

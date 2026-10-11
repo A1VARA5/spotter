@@ -107,7 +107,7 @@ export async function holdSubscription(deps: Deps, run: Run, agentId: string, ar
   const { db } = deps;
   const agent = await getSpender(db, agentId);
   if (!agent) return err("This agent isn't set up in Spotter any more. Ask the user to reconnect it.");
-  if (agent.frozen_at) return err(`${agent.spotter_name} paused this agent, so nothing it asks for goes through. Ask ${agent.spotter_name} to check Spotter.`);
+  if (agent.frozen_at) return err(`Spotter paused this agent, so nothing it asks for goes through. Only ${agent.spotter_name} can unpause it.`);
   const planRead = readRun(await run("show_subscription_plan_details", { plan_id: args.plan_id }));
   if (!planRead.ok) return err(`Spotter couldn't read that plan from PayPal (${planRead.message}), so no subscription was started.`);
   let tail: Tail;
@@ -127,6 +127,10 @@ export async function holdSubscription(deps: Deps, run: Run, agentId: string, ar
   if (!created.ok || typeof created.data?.id !== "string") return err(`PayPal didn't start the subscription (${created.ok ? "no id" : created.message}). Nothing will be charged.`);
   const links: Array<{ rel?: string; href?: string }> = Array.isArray(created.data.links) ? created.data.links : [];
   const approve = links.find((l) => l.rel === "approve" && typeof l.href === "string" && l.href.startsWith("https://"))?.href ?? null;
+  if (!approve) {
+    console.error(`[spotter] subscription ${created.data.id}: PayPal gave no approval link`);
+    return err("PayPal started the subscription but gave no approval link, so it can never be approved and nothing will be charged. Tell the user to try again later.");
+  }
   const id = `sub_${randomBytes(8).toString("hex")}`;
   await db.query(
     "insert into held_subscriptions (id, household_id, spender_id, plan_id, plan_name, payee, paypal_subscription_id, approve_url, tail, cut_up, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'held')",
@@ -194,7 +198,7 @@ export async function decideSubscription(db: Db, householdId: string, id: string
     return rows.length ? { ok: true, message: "Turned down. PayPal never charges a subscription nobody approved." } : { ok: false, message: "That subscription isn't waiting any more." };
   }
   const [row] = await db.query<{ approve_url: string | null }>(
-    "update held_subscriptions set status = 'released', decided_by = $3, decided_at = now() where id = $1 and household_id = $2 and status = 'held' returning approve_url",
+    "update held_subscriptions set status = 'released', decided_by = $3, decided_at = now() where id = $1 and household_id = $2 and status = 'held' and approve_url is not null returning approve_url",
     [id, householdId, by],
   );
   if (!row) return { ok: false, message: "That subscription isn't waiting any more." };
