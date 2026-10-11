@@ -230,6 +230,35 @@
   text-wrap: pretty;
 }
 
+/* The channels line: every scene works the same in each of them, so it sits under all three. */
+.hs-chan {
+  max-width: 58ch;
+  padding-top: 16px;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #aeb9c3;
+  text-wrap: pretty;
+}
+
+.hs-chan b {
+  color: #fff;
+  font-weight: 650;
+}
+
+.hs-chan a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgb(255 255 255 / 0.4);
+  white-space: nowrap;
+}
+
+.hs-chan a:hover {
+  text-decoration-color: currentColor;
+}
+
 /* While paused, everything in the scene holds its frame, and so does the clock. */
 /* Pausing (hover, focus, the pause button) only stops the move to the next scene. The scene itself keeps
    drawing: freezing its entrance animation would leave it stuck at the first, invisible frame. */

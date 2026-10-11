@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Hand, MessageSquareQuote, RotateCcw } from "lucide-react";
 import { Iphone } from "./Devices";
+import { CheckViews } from "./Checks";
 import { BrandMark, Evidence } from "@/ui/components";
 import { CaseFile } from "@/ui/CaseFile";
 import type { Case } from "@/agents/case";
@@ -433,6 +434,12 @@ export function Walkthrough({ cta }: { cta: React.ReactNode }) {
                 <div className="wk-inline" aria-hidden="true" inert>
                   <Art k={s.key} live={false} />
                 </div>
+                {/* Phones: after Gran's own case file. Desktop: under the stop's words, beside the pinned case file. */}
+                {s.key === "checked" && (
+                  <div className="wk-more">
+                    <CheckViews />
+                  </div>
+                )}
               </li>
             ))}
           </ol>

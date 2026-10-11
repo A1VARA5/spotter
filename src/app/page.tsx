@@ -3,9 +3,7 @@ import { BrandMark } from "@/ui/components";
 import { HeroScenes } from "./landing/HeroScenes";
 import { NetworkField } from "./landing/NetworkField";
 import { Problem } from "./landing/Problem";
-import { Checks } from "./landing/Checks";
 import { Walkthrough } from "./landing/Walkthrough";
-import { ChannelHub } from "./landing/ChannelHub";
 import { AgentToolkit } from "./landing/AgentToolkit";
 import { WatchtowerPeek } from "./landing/WatchtowerPeek";
 import { Final } from "./landing/Sections";
@@ -75,7 +73,7 @@ export default async function Home() {
     <main>
       <LoopPauser />
       <section className="hero-dark net-host" data-loop>
-        <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .lnav" calm=".hero-copy" />
+        <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .hs-chan, .lnav" calm=".hero-copy" />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
@@ -121,19 +119,6 @@ export default async function Home() {
       <Problem />
 
       <Walkthrough cta={<DemoButton who={who} label="Try it on the demo family" />} />
-
-      <Checks />
-
-      <ChannelHub
-        cta={
-          <>
-            <DemoButton who={who} />
-            <a className="next-link" href="/how#channels">
-              How each person connects, step by step
-            </a>
-          </>
-        }
-      />
 
       <AgentToolkit
         connectHref={connectHref}

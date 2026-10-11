@@ -1,12 +1,11 @@
 /* ==========================================================================
    Landing v3 (2026-10-11): the problem as a demo (Problem.tsx), what Spotter
-   checks that you can't (Checks.tsx), and Watchtower on AG Studio
+   checks that you can't (Checks.tsx, inside the walkthrough), and Watchtower on AG Studio
    (WatchtowerPeek.tsx). Prefixes: pb-, xr-, ck-, wt3-.
    ========================================================================== */
 
 /* Two tone statements: the claim in ink, the reason in a quieter tone. */
 .pb-title,
-.ck-title,
 .wt3-title {
   max-width: 25ch;
   font-size: clamp(30px, 4vw, 50px);
@@ -18,12 +17,10 @@
 }
 
 .pb-title span,
-.ck-title span,
 .wt3-title span {
   color: #6b7884;
 }
 
-.ck-title,
 .wt3-title {
   max-width: 30ch;
 }
@@ -726,131 +723,100 @@
 }
 
 /* ---------- what Spotter checks that you can't ---------- */
-.ck {
-  padding: clamp(72px, 12vh, 136px) 0;
-}
-
-.ck-panel {
-  display: grid;
-  gap: 28px;
-  margin-top: clamp(32px, 5vw, 56px);
-  padding: clamp(18px, 3vw, 40px);
-  border-radius: 28px;
+/* Folded into the walkthrough's "Checked" stop (dark section): one row of tabs, one example card at a time. */
+.wk-more {
+  grid-column: 2;
+  margin-top: 28px;
   min-width: 0;
 }
 
-.ck-copy {
+.ck2 {
   display: grid;
   gap: 14px;
-  align-content: start;
-  min-width: 0;
+  max-width: 580px;
 }
 
-.ck-h3 {
-  font-size: clamp(22px, 2.2vw, 28px);
-  font-weight: 650;
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-  text-wrap: balance;
-}
-
-.ck-p {
+.ck2-h {
   font-size: 17px;
-  line-height: 1.55;
-  max-width: 46ch;
-  text-wrap: pretty;
+  font-weight: 650;
+  color: #fff;
 }
 
-.ck-credit {
-  padding-top: 14px;
-  border-top: 1px solid currentColor;
-  border-top-color: rgb(127 140 152 / 0.3);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-/* The browser panel lives on the night colour: it is the outside world, kept away from the family. */
-.ck-kernel {
-  background: #0d141c;
-  color: #e8edf1;
-}
-
-.ck-kernel .ck-p,
-.ck-kernel .ck-credit {
-  color: #aeb9c3;
-}
-
-@media (min-width: 1024px) {
-  .ck-kernel {
-    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-    gap: 48px;
-  }
-}
-
-.ck-tabs {
-  display: grid;
+.ck2-tabs {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 6px 0;
 }
 
-.ck-tab {
-  display: grid;
-  gap: 4px;
-  width: 100%;
+.ck2-tab {
   min-height: 44px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  border: 1px solid rgb(255 255 255 / 0.12);
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.18);
   background: transparent;
-  color: inherit;
-  text-align: left;
+  color: #dfe5ea;
   font: inherit;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background-color 160ms ease,
-    border-color 160ms ease;
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out);
 }
 
-.ck-tab[aria-selected="true"] {
-  background: rgb(255 255 255 / 0.07);
+.ck2-tab[aria-selected="true"] {
+  background: var(--hold);
   border-color: var(--hold);
+  color: var(--ink);
 }
 
-.ck-tab:focus-visible {
+.ck2-tab:active {
+  transform: scale(0.97);
+}
+
+.ck2-tab:focus-visible {
   outline: 3px solid #8fb0ff;
   outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .ck-tab[aria-selected="false"]:hover {
-    background: rgb(255 255 255 / 0.04);
-    border-color: rgb(255 255 255 / 0.25);
+  .ck2-tab[aria-selected="false"]:hover {
+    background: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.3);
   }
 }
 
-.ck-tab-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+.ck2-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ck2-head {
+  color: #b9c3cc;
   font-size: 16px;
-  font-weight: 650;
-  color: #fff;
+  line-height: 1.5;
+  max-width: 52ch;
+  text-wrap: pretty;
 }
 
-.ck-tab-head {
-  font-size: 14.5px;
-  line-height: 1.45;
-  color: #aeb9c3;
+.ck2-credit {
+  color: #93a0ab;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 56ch;
 }
 
-.ck-soon {
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px dashed var(--hold);
-  color: var(--hold);
-  font-size: 12px;
-  font-weight: 650;
+/* The two market views sit inside the example card, so they drop their own card. */
+.ck2 .ck-spot,
+.ck2 .ck-watch {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
 }
 
 .ck-view {
@@ -968,7 +934,7 @@
   padding: 7px 9px;
   border-radius: 6px;
   border: 1px solid #cfd5da;
-  color: #8a959f;
+  color: #5d6873;
 }
 
 .ck-row {
@@ -1105,7 +1071,7 @@
   display: grid;
   place-items: center;
   background: #fff;
-  color: #9aa4ad;
+  color: #5d6873;
   font-size: 14px;
 }
 
@@ -1146,43 +1112,6 @@
 
 .ck-trail .ck-faces-h {
   font-size: 14px;
-}
-
-/* The market panel: light, two real pieces side by side */
-.ck-market {
-  background: var(--paper);
-  border: 1px solid var(--line);
-}
-
-.ck-market .ck-p,
-.ck-market .ck-credit {
-  color: var(--ink-2);
-}
-
-.ck-market .btn {
-  justify-self: start;
-}
-
-@media (min-width: 760px) {
-  .ck-market {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .ck-market .ck-copy {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 1180px) {
-  .ck-market {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 0.85fr);
-    gap: 28px;
-    align-items: start;
-  }
-
-  .ck-market .ck-copy {
-    grid-column: auto;
-  }
 }
 
 .ck-spot,
