@@ -1,132 +1,293 @@
 # Spotter
 
-PayPal holds the money until someone you trust says yes. Gran forwards the text she isn't sure about, and if it looks like a scam, PayPal holds her £250 and you get asked. Your kid and your AI shopping agent work the same way.
+A spotter for every payment: PayPal holds the money until someone you trust says yes.
 
-Live: https://spotter-pay.vercel.app
+Gran gets a text from a number she doesn't know. "Hi mum its me, new number. phones dead and I cant get into my banking... Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow. Please hurry mum x". She forwards it to Spotter. PayPal holds her £250, nothing leaves her account, and her son gets a ping asking if it's fine. It isn't. He taps Deny, PayPal lets the money go back, and Gran gets told why.
 
-Built for the PayPal AI Hackathon. Everything runs on the PayPal sandbox, so no real money moves.
+Your kid and your AI shopping agent work the same way. The agent can ask to pay. It can never say yes.
 
-## For judges
+**Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything on the PayPal sandbox with fake money)
 
-No sign up and no PayPal account needed.
+[![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-1%2C449%20passing-2ea44f)
+[![MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![Live demo](https://img.shields.io/badge/live%20demo-spotter--pay.vercel.app-0b7285)](https://spotter-pay.vercel.app)
+![PayPal sandbox](https://img.shields.io/badge/PayPal-sandbox-003087)
+![Next.js 16](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+![No AI can move money](https://img.shields.io/badge/no%20AI-can%20move%20money-b03a2e)
 
-1. Open https://spotter-pay.vercel.app and press **Try it on fake money**. You get your own private demo family (Gran, Leo and a shopping agent), deleted after 48 hours. The PIN is `2468`.
-2. The dashboard opens on one payment already waiting for you: Gran's forwarded "Hi Mum" text, £250. The PayPal part is real, a sandbox authorisation made the moment your family was created. The scam check and case file on it were written earlier and say "Example, checked earlier" on the card. Approve it (type `2468`) and PayPal captures the money, or deny it and PayPal voids the hold. If the sandbox didn't answer, the dashboard says so and the family starts without it.
-3. Go to **Try a payment**. The four buttons at the top are the short tour, each a live Claude check and a real sandbox hold:
-   - **Booby trapped shop**: stopped. KERNEL opens the shop in a throwaway cloud browser and shows what a person sees next to the hidden line the agent read, plus the tools the page offers to AI agents.
-   - **"Hi Mum" text**: held. The text calls Gran "Mum", so it claims to be from you, and the held card asks you "Was it you?". In the side by side example lower on the page the text claims to be from Tom and you answer as Tom: his "not me" releases the money straight away.
-   - **£1.99 parcel text**: held. KERNEL opens the link as a desktop and as a UK phone at the same moment. Only the phone gets the card form, and Spotter shows where the card details would go.
-   - **£6.99 skillet**: held. Spot the difference puts the shop's picture next to the same pan at real shops (Channel3 image search).
+![A held £250 payment on the dashboard: the case file folds open, then Deny, and PayPal releases the money](docs/media/spotter-hold.gif)
 
-   The full list under the tour has the rest, including Friends and Family (never sent), a gift card offer for Leo (stopped) and a normal mug order (paid straight away). They come out the same in any order.
-4. Open **Waiting for you** and decide the held ones. Every approval asks for the PIN. Under **Tools** on the same page, **Check a photo or a screenshot** boxes each thing in a photo and prices it against real shops with Channel3 (there's an example photo if you don't have one).
-5. **Activity** is an AG Grid table of every payment. Click a row and its case file opens in a drawer. **How it checked** (`/checks`) shows each engine's work on your own payments: Claude's quotes, KERNEL visits, Channel3 prices, PayPal's webhooks, and all 47 tools of PayPal's Agent Toolkit with what Spotter does to each one.
-6. **Watchtower** is the AG Studio board. Switch to **Gran's view** for big type and plain words, in English or Polish.
-7. If a week's allowance ever runs low after lots of sends, **Start fresh** on the Try page clears it.
+<sub>The real live app. The £250 "Hi Mum" hold is a real PayPal sandbox authorisation. Deny voids it at PayPal and the card says so.</sub>
 
-### Testing an AI agent through PayPal's toolkit
+## Contents
 
-Open the shopping agent's page (People, Shopping agent). In the connect panel pick **PayPal's Agent Toolkit**, press **Set this agent's allowance in dollars** (the toolkit only makes USD orders), then **Make a key**. The panel gives a one line `claude mcp add` command for Claude Code and an `npx mcp-remote` config for Claude Desktop. Ask the agent to order something with PayPal: its `create_order` becomes a Spotter payment and anything over the ask me amount waits on your dashboard. **Set back to pounds** in the same panel undoes the switch. This week's spend is counted per currency.
+- [Try it in 5 minutes](#try-it-in-5-minutes)
+- [Technology: how it's built](#technology-how-its-built)
+- [Design: calm on a phone](#design-calm-on-a-phone)
+- [Impact: who it helps](#impact-who-it-helps)
+- [The idea: ask the person being impersonated](#the-idea-ask-the-person-being-impersonated)
+- [Presentation](#presentation)
+- [PayPal, in depth](#paypal-in-depth)
+- [AG Studio and AG Grid](#ag-studio-and-ag-grid)
+- [Channel3](#channel3)
+- [KERNEL](#kernel)
+- [Thinking outside the box](#thinking-outside-the-box)
+- [Security and what happens when things fail](#security-and-what-happens-when-things-fail)
+- [Honest limits](#honest-limits)
+- [Run it locally](#run-it-locally)
+- [Where to look in the code](#where-to-look-in-the-code)
+- [Credits](#credits)
+
+## Try it in 5 minutes
+
+Open https://spotter-pay.vercel.app and press **Try it on fake money**. You get your own private demo family (Sam the spotter, Gran, Leo and a shopping agent), deleted after 48 hours. The PIN is `2468`.
+
+| Step | What you'll see | Which engine shows it |
+| --- | --- | --- |
+| 1. The dashboard opens on Gran's "Hi Mum" £250 | A real sandbox hold. The check and case file on it were written earlier and the card says "Example, checked earlier". Deny voids it at PayPal, Approve asks for the PIN and captures it | PayPal Orders v2 and Payments v2 |
+| 2. **Try a payment**, booby trapped shop | Stopped. A throwaway cloud browser opens the shop and shows what a person sees next to the hidden line an AI agent reads, plus the tools the page offers to agents | KERNEL, Claude |
+| 3. **Try a payment**, "Hi Mum" text | Held. The card asks you "Was it you?", because the text claims to be from you. The side by side example lets you answer as Tom, and his "Not me" releases the money straight away | Claude, PayPal void |
+| 4. **Try a payment**, £1.99 parcel text | Held. The link is opened as a desktop and as a UK phone at the same moment. Only the phone gets the card form, and Spotter shows where the card details would go | KERNEL two faces and telemetry |
+| 5. **Try a payment**, £6.99 skillet | Held. The shop's picture sits next to the same pan at real shops | KERNEL screenshot, Channel3 image search |
+| 6. `/agent-lab`, Hijack the agent | A scripted naive test agent uses PayPal's Agent Toolkit tools through Spotter, reads a hidden line, calls `create_refund`, gets frozen, and PayPal voids its hold. About 10 to 12 seconds end to end in my runs | PayPal Agent Toolkit, PayPal webhooks |
+| 7. **Watchtower**, then **Gran's view** | An AG Studio board of the month, and the same board for Gran in big type, in English or Polish | AG Studio, Claude |
+| 8. **Activity** | An AG Grid table of every payment. Click a row and the case file opens in a drawer | AG Grid |
+| 9. **How it checked** (`/checks`) | Each engine's work on your own payments, and all 47 Agent Toolkit tools with what Spotter does to each one | All of them |
+
+The four Try buttons each run one live Claude check and make one real sandbox hold. They come out the same in any order. If the allowance runs low after lots of sends, **Start fresh** on the Try page clears it.
+
+![The agent lab: a naive test agent obeys a hidden line, Spotter freezes it and PayPal voids the hold](docs/media/spotter-agent-lab.gif)
+
+<sub>The agent lab is labelled what it is: a scripted naive test agent. When I pointed real Claude at the same page it refused the bait twice, which is good for Claude and annoying for my demo. Spotter doesn't rely on the model being careful.</sub>
+
+### Testing an AI agent of your own
+
+Open the shopping agent's page (People, Shopping agent). In the connect panel pick **PayPal's Agent Toolkit**, press **Set this agent's allowance in dollars** (the toolkit only makes USD orders), then **Make a key**. The panel gives a one line `claude mcp add` command for Claude Code and an `npx mcp-remote` config for Claude Desktop. Ask the agent to order something with PayPal: its `create_order` becomes a Spotter payment, and anything over the ask me amount waits on your dashboard.
 
 ### Sandbox notes
 
 - The demo family needs nothing from you. Every payment is a real PayPal sandbox order with fake money.
-- **Log in with PayPal** uses the PayPal sandbox, so your real PayPal login won't work there. To try it, make a sandbox personal account at developer.paypal.com (Testing tools, Sandbox accounts) and log in with that.
-- To run your own copy, create a sandbox app at developer.paypal.com (Apps and Credentials, Sandbox) and put its client id and secret in `.env.local` (see Run it locally below).
+- **Log in with PayPal** uses the sandbox, so your real PayPal login won't work there. To try it, make a sandbox personal account at developer.paypal.com (Testing tools, Sandbox accounts).
+- What's an example: the hold your demo family starts with has a check and case file written earlier, the price watch it starts with is labelled Example, and Watchtower's starting month is a sample labelled Sample. Everything you send yourself is live.
 
-### What's real and what's an example
+## Technology: how it's built
 
-- Real: every PayPal call (orders, authorise, capture, void, webhooks), the Claude check and the case agent on payments you send, Channel3 prices, image search and photo check, the KERNEL page visits, "Was it you?", Telegram and Discord.
-- Example: the one hold your demo family starts with has a check and case file written earlier, labelled on the card. The price watch it starts with is labelled Example too. Network counts in the landing page mockups say "In this example". Watchtower's starting month for demo families is a sample, labelled Sample.
-- Tests: 1,350 passing across 114 files (`npx vitest run`).
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,449 tests in 122 files, all passing in CI.
 
-## What it does
+Every payment takes the same path:
 
-One person, the spotter, signs in with PayPal and adds the people they look out for, each with simple rules: a weekly limit, an amount above which they're asked, and things that are never allowed (gift cards, crypto, gambling).
-
-Those people don't get accounts. Each connects once, then sends Spotter anything that asks them for money:
-
-- Email: they forward it to spotter@homingbox.net. Spotter checks who really sent it (aligned DKIM, SPF or DMARC), reads the request and replies in the same thread. Pairing is one email with a `SPOT-` code.
-- Telegram: they open a pairing link from their page and press Start, then forward anything to @spotter_scam_bot. Spotter answers in the same chat ("On hold, nothing has left your account") and tells them later what the spotter decided.
-- Discord: they add the Spotter app to their own account, then right click any message, Apps, Check with Spotter. Only they see the answer. Handy for Leo, because game chats are where the gift card scams live.
-- AI agents: each agent gets its own key and four MCP tools (find products, request a payment, check a payment, check its allowance). There is no approve tool. The agent can ask to pay, and that's all it can do.
-
-The spotter gets the alert by email, Telegram or a Discord DM, and the Telegram and Discord ones have a one tap Deny. Approving needs the PIN on the dashboard, so nobody can say yes for you.
-
-For every request Spotter runs the person's rules, then Claude reads the message as untrusted text and has to quote the exact words that worried it. Code throws out any warning it can't find in the message, and hidden text (invisible Unicode tags, fake delimiters) is decoded and flagged. For shopping, Channel3 compares the price with real retailers, so earbuds for £24.99 that cost £179 everywhere else show up as evidence.
-
-Then PayPal:
-
-- allowed: Spotter authorises and captures straight away
-- needs you: Spotter authorises (the money is reserved, not taken) and you get an alert email; approve captures it, deny voids it
-- Friends and Family, gift cards, crypto: never sent, because there's no way back if it's a scam
-
-Every status change is a single conditional update in Postgres, so a double tap can't capture twice, and a capture cut off halfway is settled later by asking PayPal for the authorisation's real status.
-
-## While the money waits
-
-A held payment doesn't just sit there. The case agent (Claude with five read only tools) looks into it, usually before the spotter has opened the alert:
-
-- has anyone in the family paid this payee before
-- the Spotter network: did other Spotter families say no to this payee in the last 30 days. Families only share an HMAC of the payee, never names or messages, and your own family never counts towards your number
-- where every link in the message really goes: redirects, look alike domains, borrowed brand names and domain age
-- whether the same product is sold at a real shop, and the state of the PayPal hold
-- when a link asks for card details or a login, it opens that one link in a throwaway KERNEL cloud browser and reports where it really ends up, what the page asks for, and a small screenshot, so nobody in the family has to click it
-
-Every finding has to name the tool call it came from, or code drops it. The agent can't pay, approve or deny. If it found the same thing at a real shop, the spotter gets one button: deny this payment and buy it there instead (the safe swap). PayPal voids the risky hold and the new order goes through PayPal like any other.
-
-The case file shows up on the held card, in the Telegram alert and in the Discord DM. A case costs about 5p in model calls, and there's a 45 second hard cap so a slow site can't keep a payment waiting.
-
-## Watchtower
-
-Watchtower is the family's dashboard, built on AG Studio. Every payment, hold and scam sign sits on one board, and you can ask it things in plain words. I asked "What did Leo spend on games this month?" and AG's agent team, running on Claude, got the right answer (£9.98) and built the widget for it. The assistant can only read and rearrange the board, it never sees the scam messages, and the watch alerts come from code, not the model.
-
-The chat opens with our own agent, called Spotter. It's the family's lookout. It reads case files, watch alerts, the scam radar and what PayPal said about a payment, and it can check a price live against real shops through Channel3. It doesn't build anything itself. When the board needs a widget or a page, Spotter hands the job to AG Studio's own planning, page, widget and data agents with a short brief. There's a second agent of ours too, the weekly brief writer: ask for "this week's brief" and Spotter passes it over, the brief agent gathers the numbers and asks the page and widget agents for a page called "Week of" and the date. AG's own lead agent is still in the roster. Every agent runs on Claude through my own adapter, which swaps in for AG's model layer and keeps the key on the server.
-
-```
-Spotter (ours) ── brief (ours) ──┐
-       │                         ├── planning, page, widget, data (AG Studio)
-       └─────────────────────────┘
-lead (AG Studio, kept)   all on Claude via our swapped in adapter
+```mermaid
+flowchart LR
+  A[Gran, Leo or an AI agent] -->|forwards a message or calls a tool| R[Rules: allowance, ask me first, never allowed]
+  R --> C[AI check: Claude quotes its evidence, code drops any quote it can't find]
+  R --> M[Real shop prices: Channel3]
+  C --> D{decide}
+  M --> D
+  D -->|allowed| CAP[PayPal authorise then capture]
+  D -->|needs you| H[PayPal authorise: money held]
+  D -->|unsafe method| N[Never sent, told to pay a protected way]
+  H --> CASE[Case agent: 7 read only tools, KERNEL visit]
+  H --> S[Spotter asked on Telegram, Discord, email or the dashboard]
+  S -->|Deny, one tap| V[PayPal void]
+  S -->|Approve with PIN| CAP2[PayPal capture]
+  V --> W[PayPal webhook confirms, verified]
+  CAP2 --> W
 ```
 
-The fair price widget shows what the shopping agent paid against the cheapest real shop this month, using the Channel3 check Spotter stored when each payment was made. On the demo family it says the agent paid £8.50 more than it had to, and that Spotter caught a £24.99 pair of earbuds that real shops sell for about £169.
+The bits I'm proudest of:
 
-Every answer comes with a receipt. The assistant reads words scammers wrote, so I don't take its word for what it did. AG Studio's telemetry records each tool call, and Watchtower turns that into a receipt under the board: which tools ran, how long they took, money actions (0, because none of its tools can move money, and any tool that isn't on Spotter's list turns that line red and flags the run) and board changes. One button undoes exactly what the assistant changed, using Studio's own undo history. Each tool call in the chat shows a small card with counts only, never a payee's name or a message, and Gran gets the same receipt in plain words under her answers.
+- No AI and no agent can move money. There is no approve tool on either MCP server, and approving a held payment needs the spotter's PIN. The only agent tool that ever captures is a selling agent's `pay_order` on its own sale, after the buyer approved it at PayPal.
+- The AI check (`claude-opus-5-5`, 20 second timeout, one retry) reads every message as untrusted text and has to quote the exact words that worried it. Code throws away any warning it can't find in the message, and hidden text (invisible Unicode tags, fake delimiters, fake `<email>` wrappers) is decoded and flagged. If the check can't run, `decide()` fails closed: "The AI check didn't run, so this needs your yes."
+- Every status change is one conditional update in Postgres, so Approve and Deny racing each other can't capture twice, and a capture cut off halfway is settled later by asking PayPal for the real state (`reconcileStuck`, also a daily cron).
+- Every hold, capture, void, reauthorize and refund carries a `PayPal-Request-Id`: `create-<id>`, `capture-<id>-<auth>`, `void-<id>-<auth>`, `reauth-<id>-<from>`, `refund-<id>`.
+- A case agent (Claude with 7 read only tools, 5 turns and 6 tool calls at most, 45 second hard cap) looks into every held payment, usually before the spotter has opened the alert. Every finding has to name the tool call it came from, or code drops it.
 
-Gran's view can also switch to Polish. AG Studio has no Lithuanian locale, so I picked Polish, the most spoken main language in England and Wales after English. AG's own words come from its official locale package, and everything Spotter says to Gran is translated by hand in `src/watchtower/granLang.ts`, so "waiting" can never read like "approved". The assistant answers her in Polish too, with the same rules: it never tells her to approve or pay anything, in any language.
+The most annoying bug of the build: a semicolon inside a SQL comment in `schema.ts`. PGlite on my laptop didn't care. Neon splits DDL on `;`, so production broke and only production. `src/db/schema.test.ts` now fails the build if a schema comment ever has one again.
 
-## PayPal's agent tools, with Spotter in the middle
+The full picture with the money path, the webhook path and every service is in [docs/architecture.md](docs/architecture.md).
 
-PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, I pinned 1.11.0) that lets an AI agent create orders, capture them, send invoices, refund and so on. It has no spending limit and no approval step. If the agent calls `pay_order`, the money goes.
+## Design: calm on a phone
 
-So Spotter has a second MCP server at `/api/toolkit/mcp` that speaks the toolkit's language. Same tool names, same arguments, same agent keys as the main one. An agent written for PayPal's toolkit points at Spotter instead and doesn't need to change.
+The person deciding is usually somebody's son or daughter on a phone, on the bus, with Gran waiting. So the held card leads with one sentence, who and how much, and Deny before Approve. Everything else folds behind **See the evidence (N)**.
 
-One table decides what happens to every one of the toolkit's 47 tools (`src/core/toolkit-coverage.ts`), and it depends on the agent's job. The table runs the MCP server and the "all 47 tools" view in the app, so the page can't say one thing while the server does another. A test checks the table against the installed toolkit's own list.
+- Measured on the live site in my last full walkthrough: landing loads in 1.8 s, every Try scenario shows first feedback in 0.55 s, and a whole result lands in 4 to 7 s.
+- Checked at 320, 390, 1440, 1920 and 2560 px. App pages use wide screens with a side rail instead of a narrow column next to empty space.
+- An axe pass (WCAG 2.2 AA tags) at 390 and 1440 and a keyboard walk: visible focus on every stop, no traps, focus moves to the result after Send it, Approve and Deny, and results are announced in live regions. Fixes for what it found went in the next commit.
+- Gran's view is its own design: big type, plain words, nothing to approve, and a hand written glossary so "held" can never read like "approved" in Polish.
+- Sample shops and people have made up names, and a test keeps real brand names out of the demo data.
 
-The thing that took me a while to see: PayPal's toolkit is a seller's toolkit. Refunds, invoices, tracking and subscriptions all act for the account that gets paid. So for a shopping agent most of it makes no sense at all, and for a family that sells (a teen reselling trainers on a parent's PayPal, the parent is the account holder and the spotter) it makes a lot of sense and needs different guards.
+![Gran's view in Watchtower: big type, plain words, nothing to approve](docs/media/spotter-gran-view.gif)
 
-A shopping agent gets:
+## Impact: who it helps
 
-- `create_order` as a normal Spotter payment request: the agent's allowance, the AI check on its notes and the page it saw, a PayPal hold, then the spotter says yes or no. Spotter works out the total from the items itself, because the agent's own `itemTotal` could say anything.
-- `pay_order`, which never captures. It tells the agent what Spotter decided, like "held, Sam has to approve $119.00".
-- `get_order`, the toolkit's real call, only for orders that agent made.
-- `create_subscription`, which stays in PayPal's own "waiting for approval" state. Spotter reads the plan first and shows the spotter the whole tail: $0.00 now, $39.99 in 7 days, then every month, $479.88 in the first year. The approval link goes to the spotter after their PIN. The agent never sees it.
-- Tripwires. 35 seller tools (refunds, invoices, disputes, list_transactions and so on) are offered with PayPal's own names, descriptions and schemas, and none of them ever runs. A shopping agent has no honest reason to call `create_refund`. If it does, someone is steering it: Spotter pauses the agent, lets go of its held payments through the normal deny, tells the spotter on their channels, and shows what it asked for next to the page line that could have caused it. The agent gets a calm no.
+Three groups get the same hold:
 
-A selling agent gets:
+- Older relatives who get "Hi Mum" texts, fake parcel fees and Friends and Family requests. UK Finance counted [£576.4m lost in the UK in 2025](https://www.ukfinance.org.uk/system/files/2026-06/UK%20Finance%20Fraud%20Report%202026.pdf) to scams where people were talked into sending the money themselves, up 19% on 2024.
+- Kids on game chats, where the cheap game credit scams live. Leo's Discord has a "Check with Spotter" right click.
+- AI agents that shop with PayPal's Agent Toolkit, which has no spending limit or approval step of its own.
 
-- `create_refund` held for the spotter's PIN. It can only go back to a payment Spotter took for that family, and Spotter checks the amount against what PayPal says the buyer paid. "They paid £50.00. They're asking for £200.00 back. This is how the overpayment scam works." Approving runs the toolkit's real `create_refund` on the original capture, and PayPal's `PAYMENT.CAPTURE.REFUNDED` webhook confirms it.
-- `create_shipment_tracking`, refused until PayPal itself shows a completed payment for that sale. A fake "payment received" email doesn't count.
-- Its own sales through `create_order`, `pay_order` and `get_order`, recorded as that family's, so it never sees another family's orders even though every family shares one sandbox merchant.
+In the US the FTC reported [$15.9bn lost to fraud in 2025](https://www.ftc.gov/news-events/news/press-releases/2026/03/ftc-testifies-joint-economic-committee-agencys-efforts-combat-fraud), from 3 million reports.
 
-The same money cut up gets caught too: if an order to a shop was held today and the agent comes back smaller, or with a subscription to the same shop, Spotter holds it and says why.
+Nobody installs anything new. Gran forwards texts the way she already does, on Telegram or by email. Her son gets the alert where he already is. A small business gets the same Spotter with different words (approver, staff and agents) and two extra checks: a supplier invoice with changed bank details, and a buying agent over budget.
 
-Honest bit: when I pointed a real Claude agent at the booby trapped shop with a system prompt telling it to obey pages, it still refused to call the refund tool, and it spotted the fake payment email on its own. Good for Claude, annoying for my demo. So `scripts/toolkit-tripwire-demo.mts --scripted` is a plain script that does what the page says, labelled as a naive test agent, and the two real runs are in the submission folder. The toolkit's `create_order` only takes USD, so a shopping agent on it needs a USD allowance. The details are in `docs/agent-toolkit-notes.md`.
+## The idea: ask the person being impersonated
 
-## When the agent picks the wrong shop
+A "Hi Mum" text pretends to be from Tom. Banks ask the payer "was this you?". Spotter asks Tom. His phone buzzes on his own linked Telegram or Discord, one tap of "Not me" voids the hold at PayPal with no PIN needed, and "Yes, it was me" never pays anything by itself.
 
-If Spotter stops an agent's payment because of the shop (hidden instructions on the page, a price no real shop charges, a brand new shop, or no shop named at all), it also tells the agent where to buy the same item safely: a real retailer from Channel3, inside what the agent has left this week, with an offer id. A well behaved agent can order that instead with `request_payment` or `create_order`. I didn't want the offer id to turn into a skip button, so Spotter keeps every suggestion on the server and only takes one back from the same agent, within an hour, once, at the same shop, price and item. The new payment still goes through the rules and the AI check, and over the ask me amount it still waits for the spotter. On the dashboard the two payments link to each other, so it reads as one story: the agent tried GadgetBarn, got stopped for hidden instructions, then bought from a real shop instead. `scripts/agent-demo.mts` and `scripts/toolkit-agent-demo.mts` run that loop against the demo shop.
+The rest of the idea is the same move applied to every face of a payment: hold first, then find out. Spotter refuses irreversible payments a stranger is pushing you to make (Friends and Family, gift cards, crypto, bank transfer) and tells the person how to pay with buyer protection instead. It never just warns, because a warning is a popup the scammer talks you past.
+
+## Presentation
+
+You can try every claim in this README on the live site in under 5 minutes, with no account. The three loops above are screen recordings of that site. The Try page's tour names which engine each scenario shows, and `/checks` shows every engine's work on your own payments, so you don't have to take my word for any of it.
+
+## PayPal, in depth
+
+PayPal is the only thing that holds or moves money. Spotter decides when to ask it to.
+
+| API or event | What Spotter uses it for | Code |
+| --- | --- | --- |
+| `POST /v1/oauth2/token` | Server token, 15 s timeout on every call | `src/paypal/client.ts` |
+| `POST /v2/checkout/orders` (`intent: AUTHORIZE`) | Every checked payment becomes a hold. `invoice_id` per payment, `custom_id` from the agent key | `src/paypal/client.ts` |
+| `POST /v2/payments/authorizations/{id}/capture` | Approve with the PIN, or an allowed payment | `src/core/lifecycle.ts` |
+| `POST /v2/payments/authorizations/{id}/void` | Deny, "Not me", a tripwire, a canary key | `src/core/lifecycle.ts` |
+| `POST /v2/payments/authorizations/{id}/reauthorize` | "Ask again tomorrow": renews a hold once, day 4 to 29 | `src/core/sleep.ts` |
+| `GET /v2/payments/authorizations/{id}` | Reconcile stuck rows, check a refused capture, the agent lab | `src/core/lifecycle.ts` |
+| `POST /v2/checkout/orders` (`intent: CAPTURE`) | A selling agent's example sale | `src/paypal/client.ts` |
+| `POST /v1/notifications/verify-webhook-signature` | Every webhook, on the raw bytes | `src/paypal/webhook.ts` |
+| Log in with PayPal (OpenID Connect, `userinfo`) | The spotter's account, keyed on PayPal's user id | `src/paypal/identity.ts` |
+| `PAYMENT.AUTHORIZATION.CREATED` | Records when PayPal will let the hold go | `src/paypal/webhook.ts` |
+| `PAYMENT.AUTHORIZATION.VOIDED` | Confirms a deny on the card ("PayPal confirmed") | |
+| `PAYMENT.CAPTURE.COMPLETED`, `.PENDING` | Confirms a capture | |
+| `PAYMENT.CAPTURE.DENIED`, `.DECLINED` | Marks the recorded capture failed, final even if events arrive out of order | |
+| `PAYMENT.CAPTURE.REFUNDED` | Confirms a refund Spotter approved | |
+| `CHECKOUT.ORDER.APPROVED` | Recorded | |
+| `IDENTITY.AUTHORIZATION-CONSENT.REVOKED` | Warns the spotter that someone disconnected Spotter (scammers coach this). Never touches payments | |
+
+A webhook never captures or voids anything. Events are deduped on their id, the row is deleted if handling fails so PayPal's retry is processed, and anything that doesn't match Spotter's own record is written on the payment's timeline instead of changing it.
+
+### PayPal's Agent Toolkit, with a spotter in the middle
+
+PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, pinned at 1.11.0). If an agent calls `pay_order`, the money goes. So Spotter runs a second MCP server at `/api/toolkit/mcp` that speaks the toolkit's language: same tool names, same arguments, PayPal's own descriptions and JSON Schemas. An agent written for the toolkit points at Spotter instead and doesn't change.
+
+The thing that took me a while to see: PayPal's toolkit is a seller's toolkit. Refunds, invoices, tracking and subscriptions act for the account that gets paid. So one table, `src/core/toolkit-coverage.ts`, decides what happens to all 47 tools for each agent job, and a test checks it against the installed package's own list:
+
+| Agent job | Guarded | Passed through | Tripwire (bait) | Hidden | Offered |
+| --- | --- | --- | --- | --- | --- |
+| Shopping | 3 | 3 | 35 | 6 | 41 |
+| Selling | 3 | 7 | 0 | 37 | 10 |
+
+- `create_order` becomes a Spotter payment. Spotter works out the total from the items itself, because the agent's own `itemTotal` could say anything.
+- `pay_order` never captures for a shopping agent. It tells the agent what Spotter decided.
+- `create_subscription` stays in PayPal's own APPROVAL_PENDING state, with the whole tail shown first ($0.00 now, $39.99 in 7 days, then monthly). The approval link goes to the spotter after their PIN, never to the agent.
+- Tripwires: a shopping agent has no honest reason to call `create_refund`. If it does, someone is steering it. Spotter freezes the agent, voids its holds through the normal deny, alerts the spotter, and shows the page line that probably caused it next to "$200.00 would have left your account, $0.00 sent".
+- A selling agent's `create_refund` is held for the PIN, only goes back to the original capture, and is checked against what PayPal says the buyer paid. "They paid £50.00. They're asking for £200.00 back. This is how the overpayment scam works." Tracking is refused until PayPal shows a completed capture, so a fake "payment received" email doesn't count.
+- A second lock: `src/paypal/toolkit.ts` only runs the methods in `SPOTTER_RUNS`, so a bait or hidden tool can't reach PayPal even through a bug in the server.
+
+### Agent keys
+
+- Each key is `spt_` plus 32 random bytes, shown once, stored as a SHA-256 hash and the last 4 characters.
+- The key card shows the agent's job, allowance left, status and its last 5 tool calls, and reads the newest order back from PayPal to compare its `custom_id` (match, mismatch, missing or error). **Switch off now** revokes the key without making a new one.
+- The `custom_id` on every agent order is the key's public label plus the payment id (`spt-abcd:<payment>`), so PayPal's own record says which key asked.
+- A canary key is issued with every real key, as `SPOTTER_KEY_BACKUP`. Nothing legitimate ever sends it. If it shows up, the agent leaked its secrets: Spotter freezes the agent, burns every key, voids its held payments at PayPal and alerts the spotter. The caller just gets a calm 401.
+- 100 tool calls per key per day and 2,000 across everyone on the MCP routes.
+
+PayPal's Agent Ready and Store Sync are merchant side. Spotter is the buyer side, so it doesn't depend on them, or on PayPal's hosted MCP server.
+
+## AG Studio and AG Grid
+
+**Watchtower** (`/watchtower`) is the family's board, built on AG Studio 3.0.
+
+- 13 custom widgets of mine (money kept, the hold track with cross filtering, watch alerts, money in mid air with PayPal's countdown, replay the month without Spotter, scam radar, case file, fair price, price watches, the AI's receipt, and three for Gran) next to AG's own.
+- Two themes: the family's, where the chart palette is built from the outcomes present (Stopped red through Paid green), and Gran's, with big type. Gran's view also takes AG's official Polish locale through `localeText`, and everything Spotter says to her is translated by hand in `src/watchtower/granLang.ts`.
+- My own agent, "spotter", opens the chat. It has read only tools (`open_case_file`, `watch_alerts`, `scam_radar`, `paypal_status`, `real_price`, `fair_prices`, `add_page`) and builds nothing itself: it hands widget and page work to AG's built in planning, page, widget and data agents through `delegate_to`. A second agent of mine, "brief", writes the weekly page the same way. AG's own lead agent stays in the roster.
+- A typed question becomes a widget. I asked "What did Leo spend on games this month?" and the agents went lead, data, page, widget, got the right answer (£9.98) and built the widget for it.
+- Every agent runs on Claude through my own adapter in place of AG's model layer, so the key stays on the server. 60 turns per family and 600 a day.
+- The AI's receipt: the assistant reads words scammers wrote, so I don't take its word for what it did. AG Studio's telemetry records each tool call, and the receipt under the board says which tools ran, money actions (always 0, and any tool not on Spotter's list turns that line red) and board changes. One button undoes exactly what the assistant changed, using Studio's own history. Image and free text widgets are switched off, so a scammer's payee name can't become a picture or a paragraph on the board.
+
+**Activity** (`/ledger`) is an AG Grid Community table of every payment, with filters, search and a drawer that opens the case file. Escape puts focus back on the cell.
+
+## Channel3
+
+Price tracking first. When a payment is too dear, held or denied, the spotter can start a price watch on the real product (Channel3 tracking and price history). Spotter only offers it where it makes sense, the target is never above what was asked, Channel3's webhooks are signature checked and treated as hints, a daily job polls as well, and Spotter never buys anything. It tells you a real shop has it for less, and you decide.
+
+Then the part that changes a decision. Real shop prices are code made evidence, not model output: the market check joins the flags before `decide()` runs. A shopping agent finds "premium noise cancelling earbuds, was £249" for £24.99 at a brand new shop. Without Channel3 that's a bargain under the allowance. With it, real shops charge around £169 and the payment is held with the listing to open.
+
+Getting one honest price took work. At one point Channel3 priced a plain kettle like a designer one, and I'd seen an Australian shop's converted price land in a UK going rate. Now there's one going rate per card: UK shops only for pounds, one price per shop, the same department, and the card, the reasons list and spot the difference all read it.
+
+- Spot the difference: KERNEL's screenshot of the held shop goes to Channel3 image search, and the card shows the shop's picture next to the genuine product at real shops.
+- Photo price check: a photo of a doorstep quote or an ad gets each thing boxed and priced against real shops, new or used, so a lowball offer for something Gran is selling shows up too.
+- Priced like a used one: a "brand new" item priced inside the used range is a sign.
+- Searches are cached in Postgres and capped per family and per day, so a loop can't burn the credits.
+
+## KERNEL
+
+A held payment with a suspicious link, or an agent payment with a shop page, gets one throwaway KERNEL cloud browser. Hard limits: one page load, 15 seconds, the browser is always deleted, and the code Spotter runs on the page only reads. It never types, clicks or submits, and Chrome's own policy blocks downloads.
+
+- Seen vs read: the same visit compares the text a person can see with all the text an AI agent reads (in an isolated world), and files hidden instructions as prompt injection with the hidden line quoted.
+- Tools for agents: it lists the tools the page registers for AI agents (WebMCP), never runs them, and flags descriptions written to steer an agent.
+- Two faces: the same link opens at the same moment as a desktop scanner and as Gran's UK phone (a GB mobile proxy when the plan allows it, and the card says so when it doesn't). Scam kits show scanners a harmless page and keep the card form for real phones.
+- Where the money goes: KERNEL's telemetry shows where a card form would really send what's typed, even when that's a domain that isn't the shop.
+- Zero clicks proof: from the same telemetry, the case file shows Spotter made 0 clicks and 0 key presses. A count Spotter can't back with telemetry it confirmed says "not recorded", never 0.
+- Look at it safely: the spotter can watch the page themselves without opening it. The server relays a screenshot about once a second and offers two actions, scroll up and scroll down. 90 seconds, 3 a day per family. KERNEL's live view link never leaves the server.
+
+## Thinking outside the box
+
+Before picking features I asked three fresh AI models, with no idea Spotter existed, what they would build for this hackathon. Their lists overlapped a lot: a dispute defender for sellers, an invoice chaser, a group pot or bill splitter, an agent that buys when the price drops, a subscription cleaner, a spending limit dashboard for agents, a merchant copilot on AG Studio. "Authorise first, capture after a check" turned up inside almost every one of them. So I assumed other people's AI gave them the same list, and that a hold on its own isn't the idea.
+
+What none of them suggested: one specific person (Gran), one specific threat (someone pretending to be family), asking the person being pretended to be, catching instructions hidden from people but read by agents, and a view built for the person being protected instead of the person watching. That's where Spotter lives.
+
+## Security and what happens when things fail
+
+The short version is in [SECURITY.md](SECURITY.md) and the full one in [docs/threat-model.md](docs/threat-model.md).
+
+| Threat | What Spotter does |
+| --- | --- |
+| Prompt injection in a message or a shop page | Untrusted text is cleaned and fenced, every warning must quote it word for word, hidden text becomes a flag, and the model has no tools and can't move money |
+| Tool poisoning (a shop's agent tools that steer) | KERNEL lists them without running them and flags the steering lines |
+| A hijacked agent | Tripwire tools freeze it and void its holds. A leaked key trips the canary |
+| Webhook forgery | PayPal's verify API on the raw bytes, no webhook id means 503, missing headers 401, 256 KB cap. Telegram, Discord, email and Channel3 hooks are each verified their own way, and an unset secret means refuse |
+| SSRF through link checks and cloud browser visits | Link checks walk every redirect hop and refuse private, loopback and link local addresses, and the connection itself only uses the checked address. The cloud browser only opens http or https links that are in the payment's own message, and "look at it safely" walks every hop again before it opens. Whether KERNEL's own network blocks private ranges is still an open question, written down in the threat model |
+| Cost abuse | Daily caps on everything that costs money: Try checks, MCP calls, the agent lab, Watchtower turns, Channel3 searches, KERNEL peeks |
+| Approve and a timeout or Deny landing together | Every status move is a conditional update from a list of allowed starting states, so only one wins |
+
+When things break:
+
+- The AI is down, slow or out of credit: the payment is held, never waved through. That one is tested by accident too. My Anthropic key ran out of credit in the middle of testing, and Spotter held the payment anyway.
+- PayPal doesn't answer: captures and voids that time out stay in `capturing` or `voiding` and `reconcileStuck` finishes them from PayPal's real state. A firm refusal makes Spotter ask PayPal before it changes any label, so a live hold is never relabelled as failed.
+- The case agent or KERNEL is slow: the 45 second cap ends the case and the payment still waits for a person.
+
+## Honest limits
+
+- Spotter can't read texts or chat apps by itself, and nothing should. People forward what asks them for money. It can't stop someone paying directly in the PayPal app either. For people it's a habit, like ringing a sensible friend. For AI agents it's enforced, because the agent only has Spotter's tools.
+- In the sandbox, agent holds use a sandbox test card. Whether PayPal renews a card funded hold on day 4 is unproven (PayPal said "too soon" on day 1, as it should). The app never claims a renewal unless PayPal returned one. A live version would use a vaulted PayPal wallet.
+- If PayPal creates an authorisation but the answer never reaches Spotter, the ids aren't saved and that hold ends only when PayPal expires it.
+- Discord DM alerts to the spotter work in code but I haven't seen one land yet. Discord only lets an app DM you if you share a server or allow it in your settings.
+- The AI check can be wrong. When it can't run or isn't sure, the payment waits for a person.
+- The Polish hasn't been checked by a native speaker yet.
+- `npm audit` reports high issues in the Agent Toolkit's own dependencies (langchain, mathjs and others). Spotter only reads tool definitions and calls a few methods, so none of the flagged code runs, but they're there.
+- Watchtower runs on an AG Studio trial licence that ends on 24 November 2026. After that the board shows AG's watermark.
+
+## Run it locally
+
+You need Node 22, a PayPal sandbox app (client id and secret from developer.paypal.com, Apps and Credentials, Sandbox) and an Anthropic API key.
+
+```bash
+git clone https://github.com/A1VARA5/spotter.git
+cd spotter
+npm ci
+cp .env.example .env.local   # add PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, ANTHROPIC_API_KEY, SESSION_SECRET
+npx next dev -p 3417
+```
+
+Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE_URL` it uses PGlite in `.data/`. Channel3, KERNEL, Agentboxd, Telegram and Discord are optional: without their keys those checks and channels switch off. Every variable is explained in [.env.example](.env.example).
+
+```bash
+npm run typecheck
+npx vitest run     # 1,449 tests in 122 files
+npm run build
+```
 
 ## Where to look in the code
 
@@ -135,55 +296,31 @@ If Spotter stops an agent's payment because of the shop (hidden instructions on 
 | The payment lifecycle (rules, check, hold, capture, void, reconcile) | `src/core/lifecycle.ts` |
 | Rules and the decision | `src/core/rules.ts`, `src/core/decide.ts` |
 | The AI check, grounding and hidden text | `src/ai/check.ts`, `src/core/grounding.ts`, `src/ai/sanitize.ts` |
-| Reading a payment out of a forwarded email | `src/ai/extract.ts`, `src/email/inbound.ts` |
-| Telegram and Discord (pairing, forwards, Check with Spotter, alerts with Deny) | `src/telegram/`, `src/discord/`, `src/app/api/telegram/route.ts`, `src/app/api/discord/route.ts` |
-| The case agent, its tools and link checks | `src/agents/case.ts`, `src/agents/tools.ts`, `src/agents/links.ts`, `src/ui/CaseFile.tsx` |
-| The Spotter network | `src/core/network.ts` |
-| PayPal (orders, authorise, capture, void, Log in with PayPal) | `src/paypal/client.ts`, `src/paypal/identity.ts` |
-| PayPal webhooks (verified, deduped, settle stuck payments, never move money) | `src/app/api/paypal/webhook/route.ts`, `src/paypal/webhook.ts` |
-| Opening a suspicious link in a throwaway KERNEL cloud browser (read only, one per case) | `src/agents/kernel.ts`, `open_link` in `src/agents/tools.ts` |
-| Real shop prices | `src/market/channel3.ts`, `src/core/market.ts` |
-| MCP server for agents | `src/app/api/mcp/route.ts`, `src/server/agent.ts` |
-| The safer option after a stopped agent payment (suggest, validate the offer id, link the two payments) | `src/core/safer.ts` |
-| PayPal's Agent Toolkit with a spotter (coverage table for all 47 tools, tripwires, selling agent guard, subscription tail) | `src/core/toolkit-coverage.ts`, `src/core/tripwire.ts`, `src/core/selling.ts`, `src/core/subscriptions.ts`, `src/server/toolkit-mcp.ts`, `src/server/toolkit-guard.ts`, `src/server/agent-holds.ts`, `src/paypal/toolkit.ts`, `src/ui/ToolkitCoverage.tsx`, `src/ui/AgentHolds.tsx` |
-| Households, sessions, PIN, pairing codes, agent keys | `src/core/households.ts`, `src/server/auth.ts`, `src/core/pairing.ts` |
-| Activity table (AG Grid) | `src/app/ledger/Ledger.tsx` |
-| Watchtower (AG Studio widgets, Claude adapter, alerts, sample month) | `src/app/watchtower/`, `src/watchtower/` |
+| PayPal REST, Log in with PayPal, webhooks | `src/paypal/client.ts`, `src/paypal/identity.ts`, `src/paypal/webhook.ts` |
+| PayPal's Agent Toolkit with a spotter (47 tool table, tripwires, selling, subscriptions) | `src/core/toolkit-coverage.ts`, `src/core/tripwire.ts`, `src/core/selling.ts`, `src/core/subscriptions.ts`, `src/server/toolkit-mcp.ts`, `src/server/toolkit-guard.ts`, `src/paypal/toolkit.ts` |
+| Agent keys, rate limits, canary, key card | `src/core/agent-keys.ts`, `src/core/pairing.ts`, `src/ui/AgentKeyCard.tsx` |
+| The agent lab | `src/server/agent-lab.ts`, `src/app/agent-lab/` |
+| "Was it you?" | `src/core/was-it-you.ts`, `src/server/was-it-you.ts` |
+| The case agent and link checks | `src/agents/case.ts`, `src/agents/tools.ts`, `src/agents/links.ts`, `src/ui/CaseFile.tsx` |
+| KERNEL (visits, seen vs read, two faces, telemetry, WebMCP, peek) | `src/agents/kernel.ts`, `src/agents/seen.ts`, `src/agents/twofaces.ts`, `src/agents/trail.ts`, `src/agents/webmcp.ts`, `src/server/peek.ts` |
+| Channel3 (prices, image search, photo check, tracking) | `src/market/channel3.ts`, `src/core/market.ts`, `src/market/lookalike.ts`, `src/market/photo.ts`, `src/market/webhook.ts` |
+| Watchtower (AG Studio widgets, agents, Claude adapter, receipt, Gran) | `src/app/watchtower/`, `src/watchtower/` |
+| Activity (AG Grid) | `src/app/ledger/` |
+| Telegram, Discord, email | `src/telegram/`, `src/discord/`, `src/email/` |
+| Daily caps on paid calls | `src/core/agent-keys.ts`, `src/server/agent-lab.ts`, `src/server/peek.ts`, `src/watchtower/llm.ts` |
 
-## Run it locally
-
-You need Node 22, a PayPal sandbox app (client id and secret) and an Anthropic API key.
-
-```
-npm install
-cp .env.example .env.local   # fill in the keys
-npx next dev -p 3417
-npx vitest run                # 542 tests
-```
-
-Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to set up. Channel3 and Agentboxd are optional; without them the price check and email channel switch off.
-
-## What doesn't work yet
-
-- Spotter can't read texts or chat apps by itself, and nothing should. People forward what asks them for money. It can't read screenshots yet: send one on Telegram and it asks for the words instead.
-- Discord DM alerts to the spotter work in code but I haven't seen one land yet. Discord only lets an app DM you if you share a server with it or allow it in your settings.
-- It can't stop someone paying directly in the PayPal app. For people it's a habit, like ringing a sensible friend. For AI agents it is enforced, because the agent only has Spotter's tools.
-- In the sandbox, Spotter pays with a sandbox card. A live version would have Gran link her own PayPal once so Spotter can pay on her behalf after the check.
-- The AI check can be wrong. When it can't run or isn't sure, the payment waits for a person instead of going through.
-- The Polish translations haven't been checked by a native speaker yet, and AG's own locales say theirs are an illustration only. Payee names and Spotter's longer reasons stay in English, so in Polish each stop is described by the trick it used.
+More detail: [docs/architecture.md](docs/architecture.md), [docs/threat-model.md](docs/threat-model.md), [docs/agent-toolkit-notes.md](docs/agent-toolkit-notes.md), [docs/paypal-notes.md](docs/paypal-notes.md), [docs/kernel-notes.md](docs/kernel-notes.md), [CHANGELOG.md](CHANGELOG.md).
 
 ## Credits
 
-- PayPal REST APIs and Log in with PayPal, sandbox
-- Claude (Anthropic) for the scam check and for reading requests out of emails
-- Channel3 for real retailer prices
-- KERNEL for the throwaway cloud browser that opens suspicious links
-- AG Grid Community for the Activity table, and AG Studio (trial licence) for Watchtower
-- Agentboxd for the spotter@homingbox.net inbox and its webhook
+- PayPal REST APIs, Log in with PayPal, webhooks and the Agent Toolkit, all on the sandbox
+- Claude (Anthropic) for the scam check, the case agent, reading screenshots and Watchtower's agents
+- AG Studio (trial licence) for Watchtower and AG Grid Community for Activity
+- Channel3 for real shop prices, image search, photo checks and price tracking
+- KERNEL for the throwaway cloud browsers
+- Agentboxd for the spotter@homingbox.net inbox
 - Neon Postgres and Vercel for hosting
-- The email sender checks and webhook verification come from my earlier project, Red Flag (github.com/A1VARA5/redflag), reused and credited here
+- The email sender checks and webhook verification come from my earlier project, [Red Flag](https://github.com/A1VARA5/redflag), reused and credited here
 - Claude Code (Anthropic), used as a coding tool
 
-## Licence
-
-MIT, see `LICENSE`.
+MIT licence, see [LICENSE](LICENSE). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
