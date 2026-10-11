@@ -418,12 +418,20 @@ for (const [net, bits] of [
   ["192.168.0.0", 16],
 ] as const) {
   PRIVATE.addSubnet(net, bits, "ipv4");
+  // The same ranges written inside IPv6: NAT64 (64:ff9b::/96, RFC 6052) and 6to4 (2002::/16) carry an IPv4
+  // address in their bits, and a gateway on the path would connect to it.
+  const [a, b, c, d] = net.split(".").map(Number) as [number, number, number, number];
+  const hi = ((a << 8) | b).toString(16);
+  const lo = ((c << 8) | d).toString(16);
+  PRIVATE.addSubnet(`64:ff9b::${hi}:${lo}`, 96 + bits, "ipv6");
+  PRIVATE.addSubnet(`2002:${hi}:${lo}::`, 16 + bits, "ipv6");
 }
 for (const [net, bits] of [
   ["::", 128],
   ["::1", 128],
   ["fc00::", 7],
   ["fe80::", 10],
+  ["64:ff9b:1::", 48], // NAT64 for local use (RFC 8215): whatever it embeds, it's someone's own network
 ] as const)
   PRIVATE.addSubnet(net, bits, "ipv6");
 
@@ -487,10 +495,14 @@ export function guardedLookup(
 }
 const guarded = new Agent({ connect: { lookup: guardedLookup as never } });
 
-// Follows redirects by hand with HEAD (then GET if refused), never reads bodies, max 5 hops.
-async function unwrap(
+// Follows redirects by hand with HEAD (then GET if refused), never reads bodies, max 5 hops. Every hop's host is
+// checked with isPublic before it is asked for ("host not resolvable" when it isn't), and the connection itself only
+// uses addresses guardedLookup allows.
+export type Redirects = { finalUrl: string | null; hops: string[]; error: string | null };
+export async function followRedirects(
   url: string,
-): Promise<{ finalUrl: string | null; hops: string[]; error: string | null }> {
+  isPublic: (host: string) => Promise<boolean> = safeToFetch,
+): Promise<Redirects> {
   const hops: string[] = [];
   let current = url;
   // A site that answers each hop slowly must not use up the whole time budget, so the walk has its own limit.
@@ -504,7 +516,7 @@ async function unwrap(
     } catch {
       return { finalUrl: null, hops, error: "bad url" };
     }
-    if (!(await safeToFetch(u.hostname)))
+    if (!(await isPublic(u.hostname)))
       return { finalUrl: current, hops, error: "host not resolvable" };
     let res: Awaited<ReturnType<typeof guardedFetch>>;
     try {
@@ -742,7 +754,7 @@ export async function inspectUrl(input: string): Promise<LinkReport> {
   const { host, domain, isShort, brand: start, flags } = addressChecks(url);
 
   const [{ finalUrl, hops, error }, age] = await Promise.all([
-    unwrap(url.toString()),
+    followRedirects(url.toString()),
     domain ? domainAge(domain) : Promise.resolve(noAge),
   ]);
 

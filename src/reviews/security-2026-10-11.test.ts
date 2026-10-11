@@ -76,7 +76,9 @@ describe("F2 peek: starts that fail don't count towards the daily caps", () => {
     const id = await heldPaymentWithPage({ url: SHOP, finalUrl: SHOP });
     // A browser that never answers in time (a slow start URL, KERNEL busy). Each create is still a billed browser.
     const k = fakeKernel(() => new Promise<never>(() => {}));
-    for (let i = 0; i < PEEK.perHouseholdDaily + 3; i++) await startPeek(db, hh, id, "desktop", { kernel: k, isPublicHost, createMs: 5 });
+    // resolve: the peek now walks the link's redirects again (F1); a fake keeps this test off the network.
+    const resolve = async (url: string) => ({ finalUrl: url, hops: [], error: null });
+    for (let i = 0; i < PEEK.perHouseholdDaily + 3; i++) await startPeek(db, hh, id, "desktop", { kernel: k, isPublicHost, resolve, createMs: 5 });
     expect(k.browsers.create.mock.calls.length).toBeLessThanOrEqual(PEEK.perHouseholdDaily);
   });
 });
