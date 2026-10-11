@@ -16,6 +16,7 @@ import { WHY_LABEL } from "./seen";
 import type { ShopTools } from "./webmcp";
 import type { SpotInput, SpotTheDifference } from "@/market/lookalike";
 import { seal } from "@/core/seal";
+import { whenText } from "@/core/holdtime";
 
 export type CaseCtx = {
   db: Db;
@@ -382,6 +383,17 @@ const findGenuineOffer = tool({
   },
 });
 
+/** PayPal's authorisation statuses, in the words the spotter reads. */
+const HOLD_WORDS: Record<string, string> = {
+  CREATED: "PayPal is holding the money, so nothing has moved yet.",
+  PENDING: "PayPal is still setting up the hold, so nothing has moved yet.",
+  PARTIALLY_CAPTURED: "PayPal has paid part of this and is holding the rest.",
+  CAPTURED: "PayPal has paid this.",
+  VOIDED: "The hold was cancelled, so nothing was paid.",
+  EXPIRED: "The hold ran out, so nothing was paid.",
+  DENIED: "PayPal turned the hold down, so nothing was paid.",
+};
+
 const paypalHold = tool({
   name: "paypal_hold",
   description: "The status of the PayPal hold on this payment, and when it expires (an expired hold pays nobody).",
@@ -391,11 +403,14 @@ const paypalHold = tool({
     if (!id) return { ok: true, summary: "There is no PayPal hold on this payment: nothing was reserved." };
     if (!ctx.getAuthorization) return { ok: false, summary: "PayPal can't be asked right now." };
     const a = await ctx.getAuthorization(id);
+    // Plain words and a plain date, never PayPal's raw status or the id: the model repeats this text to the spotter.
     // Said plainly, because "releases" reads both ways: an expired hold pays nobody, the money stays with the payer.
-    const until = a.expiresAt
-      ? ` If nobody approves it by ${a.expiresAt.slice(0, 10)}, the hold simply expires and nothing is paid.`
-      : "";
-    return { ok: true, summary: `PayPal hold ${id} is ${a.status}.${until}`, data: a };
+    const ends = a.expiresAt ? new Date(a.expiresAt) : null;
+    const until =
+      ends && Number.isFinite(ends.getTime()) && /^(CREATED|PENDING|PARTIALLY_CAPTURED)$/.test(a.status)
+        ? ` If nobody approves by ${whenText(ends, "Europe/London").split(" at ")[0]}, the hold simply ends and nothing is paid.`
+        : "";
+    return { ok: true, summary: `${HOLD_WORDS[a.status] ?? "PayPal didn't say clearly where this hold stands."}${until}`, data: a };
   },
 });
 

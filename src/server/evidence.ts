@@ -22,10 +22,10 @@ const TOOL: Record<string, string> = {
   payee_history: "Family history",
   network_reports: "Spotter network",
   check_links: "Links",
-  find_genuine_offer: "Real shops",
-  paypal_hold: "PayPal",
-  open_link: "Opened safely",
-  inspect_shop: "Shop page",
+  find_genuine_offer: "Real shop prices (Channel3)",
+  paypal_hold: "PayPal hold",
+  open_link: "Cloud browser (KERNEL)",
+  inspect_shop: "Cloud browser (KERNEL)",
 };
 const METHOD: Record<string, string> = {
   paypal_order: "PayPal payment",
@@ -73,6 +73,31 @@ type Pack = {
 };
 
 const str = (v: unknown, max = 400) => (typeof v === "string" ? v.slice(0, max) : "");
+
+const TAG_RUN = /[\u{E0000}-\u{E007F}]+/gu;
+const INVISIBLE_RUN = /[​-‍⁠﻿‪-‮⁦-⁩]+/g;
+// Control characters other than tab and new lines: they print as garbage and mean nothing to a person.
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+/**
+ * Text a stranger wrote, made safe to print: text hidden with invisible tag characters (a way to slip orders to an AI)
+ * is shown decoded inside a visible [hidden text: "..."] marker, invisible spaces and direction flips become
+ * [hidden text], and stray control characters are dropped. HTML escaping still happens after this.
+ */
+export function printable(raw: string): string {
+  return raw
+    .replace(TAG_RUN, (run) => {
+      const decoded = [...run]
+        .map((c) => String.fromCharCode(c.codePointAt(0)! - 0xe0000))
+        .join("")
+        .replace(CONTROL, "");
+      return decoded.trim() ? `[hidden text: "${decoded}"]` : "[hidden text]";
+    })
+    .replace(INVISIBLE_RUN, "[hidden text]")
+    .replace(CONTROL, "");
+}
+const say = (v: unknown, max = 400) => printable(str(v, max));
 const host = (u: string) => {
   try {
     return new URL(u).hostname;
@@ -176,7 +201,7 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
 
   const market = p.market;
   const price = market?.median
-    ? `Real shops sell ${str(market.item, 120) || "this"} for about ${formatMoney({ amount: market.median, currency })} (${market.offers} offers checked).`
+    ? `Real shop prices (Channel3): shops sell ${str(market.item, 120) || "this"} for about ${formatMoney({ amount: market.median, currency })} (${market.offers} offers checked).`
     : null;
 
   const trap = c?.page?.seen?.hidden.find((h) => h.instruction);
@@ -238,17 +263,17 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
       ["Spotter reference", p.id],
     ],
     timeline: events.map((e) => ({ at: fmt(e.at), what: eventWords(e.type, (e.data ?? {}) as Record<string, unknown>, tz) })),
-    message: str(r.context, 20_000),
+    message: printable(str(r.context, 20_000)),
     reasons: (p.decision?.reasons ?? []).map((x) => str(x, 400)),
-    signs: (p.decision?.flags ?? p.ai?.flags ?? []).map((f) => ({ label: SIGN_LABEL[f.kind] ?? "Something odd", severity: str(f.severity, 10), quote: str(f.quote, 300), why: str(f.why, 300) })),
+    signs: (p.decision?.flags ?? p.ai?.flags ?? []).map((f) => ({ label: SIGN_LABEL[f.kind] ?? "Something odd", severity: str(f.severity, 10), quote: say(f.quote, 300), why: say(f.why, 300) })),
     summary: p.ai?.summary ? str(p.ai.summary, 600) : null,
     price,
     verdict: c ? (VERDICT[c.verdict] ?? null) : null,
-    headline: c ? str(c.headline, 300) : null,
-    findings: (c?.findings ?? []).map((f) => ({ label: TOOL[f.tool] ?? "Check", text: str(f.text, 400), ...(f.quote ? { quote: str(f.quote, 300) } : {}) })),
+    headline: c ? say(c.headline, 300) : null,
+    findings: (c?.findings ?? []).map((f) => ({ label: TOOL[f.tool] ?? "Check", text: say(f.text, 400), ...(f.quote ? { quote: say(f.quote, 300) } : {}) })),
     network,
     page: c?.page
-      ? { host: host(c.page.finalUrl), title: str(c.page.title, 160), asks, hidden: trap ? str(trap.text, 400) : null, screenshot: shot }
+      ? { host: host(c.page.finalUrl), title: str(c.page.title, 160), asks, hidden: trap ? say(trap.text, 400) : null, screenshot: shot }
       : null,
     faces,
     trail,
@@ -283,7 +308,7 @@ q { quotes: '"' '"'; font-style: italic; } img { display: block; max-width: 100%
 .print { margin-top: 32px; } @media print { .print { display: none; } main { padding: 0; } h2 { break-after: avoid; } tr, li, .untrusted { break-inside: avoid; } }
 </style></head><body><main>
 <h1>Spotter evidence: ${esc(p.title.charAt(0).toLowerCase() + p.title.slice(1))}</h1>
-<p class="meta">Made ${esc(p.generated)} for ${esc(p.household)}. Spotter reference ${esc(p.ref)}.</p>
+<p class="meta">Made ${esc(p.generated)}. Family: ${esc(p.household)}. Spotter reference ${esc(p.ref)}.</p>
 ${p.example ? `<p class="example">${esc(p.example)}</p>` : ""}
 <h2>The payment</h2>
 <table>${rows(p.facts)}</table>
@@ -302,7 +327,7 @@ ${p.price ? `<h3>Price check</h3><p>${esc(p.price)}</p>` : ""}
 <h3>Other families</h3><p>${esc(p.network)}</p>
 ${
   p.page
-    ? `<h3>The page the message linked to</h3><p>Spotter opened ${esc(p.page.host || "the link")} in a throwaway cloud browser so nobody in the family had to.${p.page.title ? ` Its title: <q>${esc(p.page.title)}</q>.` : ""}${p.page.asks.length ? ` It asks for ${esc(p.page.asks.join(", "))}.` : ""}</p>${p.page.hidden ? `<p>Hidden from people but read by AI agents: <q>${esc(p.page.hidden)}</q></p>` : ""}${p.page.screenshot ? `<img src="${p.page.screenshot}" alt="What the page showed when Spotter opened it" width="320" height="240">` : ""}`
+    ? `<h3>The page the message linked to</h3><p>Spotter opened ${esc(p.page.host || "the link")} in a throwaway cloud browser (KERNEL) so nobody in the family had to.${p.page.title ? ` Its title: <q>${esc(p.page.title)}</q>.` : ""}${p.page.asks.length ? ` It asks for ${esc(p.page.asks.join(", "))}.` : ""}</p>${p.page.hidden ? `<p>Hidden from people but read by AI agents: <q>${esc(p.page.hidden)}</q></p>` : ""}${p.page.screenshot ? `<img src="${p.page.screenshot}" alt="What the page showed when Spotter opened it" width="320" height="240">` : ""}`
     : ""
 }
 ${
@@ -315,7 +340,7 @@ ${
     : ""
 }
 ${p.trail ? `<h3>Where the money would go</h3>${p.trail.line ? `<p><b>${esc(p.trail.line)}</b></p>` : "<p>The page had no card or bank form.</p>"}<p>The link went: ${esc(p.trail.steps)}.</p>` : ""}
-${p.proof ? `<h3>Proof Spotter never touched the page</h3><p class="note">Counted by the cloud browser's own log of the visit. Anything it didn't record says so; it never says zero without a record.</p><table>${p.proof.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>` : ""}
+${p.proof ? `<h3>Proof Spotter never touched the page</h3><p class="note">Counted by the cloud browser's own log of the visit (KERNEL). Anything it didn't record says so; it never says zero without a record.</p><table>${p.proof.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>` : ""}
 <h2>Who to tell</h2>
 <p>${esc(WHO_TO_TELL)}</p>
 <p class="note print">To print this or save it as a PDF, use your browser's Print. <a href="?format=txt">Download it as plain text</a>.</p>
@@ -325,7 +350,7 @@ ${p.proof ? `<h3>Proof Spotter never touched the page</h3><p class="note">Counte
 function text(p: Pack): string {
   const out: string[] = [];
   const h = (s: string) => out.push("", s.toUpperCase(), "-".repeat(s.length));
-  out.push(`SPOTTER EVIDENCE: ${p.title.toUpperCase()}`, `Made ${p.generated} for ${p.household}. Spotter reference ${p.ref}.`);
+  out.push(`SPOTTER EVIDENCE: ${p.title.toUpperCase()}`, `Made ${p.generated}. Family: ${p.household}. Spotter reference ${p.ref}.`);
   if (p.example) out.push("", p.example);
   h("The payment");
   for (const [k, v] of p.facts) out.push(`${k}: ${v}`);
@@ -343,7 +368,7 @@ function text(p: Pack): string {
   out.push("", "What each check found:", ...(p.findings.length ? p.findings.map((f) => `- ${f.label}: ${f.text}${f.quote ? ` "${f.quote}"` : ""}`) : ["- None."]));
   out.push("", `Other families: ${p.network}`);
   if (p.page) {
-    out.push("", `The page the message linked to: Spotter opened ${p.page.host || "the link"} in a throwaway cloud browser.${p.page.title ? ` Title: "${p.page.title}".` : ""}${p.page.asks.length ? ` It asks for ${p.page.asks.join(", ")}.` : ""}`);
+    out.push("", `The page the message linked to: Spotter opened ${p.page.host || "the link"} in a throwaway cloud browser (KERNEL).${p.page.title ? ` Title: "${p.page.title}".` : ""}${p.page.asks.length ? ` It asks for ${p.page.asks.join(", ")}.` : ""}`);
     if (p.page.hidden) out.push(`Hidden from people but read by AI agents: "${p.page.hidden}"`);
     if (p.page.screenshot) out.push("Screenshot: included in the printable version of this page.");
   }
