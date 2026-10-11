@@ -10,10 +10,12 @@ import type { AgReportState } from "ag-studio";
 import { ANSWERS_PAGE, isEmptyAnswer } from "./pages";
 
 /**
- * Neutral answer colours from the design tokens: ink-2 slate, soft tints of the protect, go and hold
- * colours, a light slate and ink. Each sits well apart from its neighbours in a donut. No red.
+ * Neutral answer colours from the design tokens: a tint of the protect blue (3.3:1 on white, ink text on it
+ * 4.9:1), ink-2 slate, soft tints of the go and hold colours, a light slate and ink. Neighbours sit well
+ * apart in a donut. No red.
  */
-export const ANSWER_COLOURS = ["#4A5866", "#8FA6E4", "#7DB89F", "#E8C35A", "#B7C0C9", "#17212B"];
+export const ANSWER_COLOURS = ["#6F8BD8", "#4A5866", "#7DB89F", "#E8C35A", "#B7C0C9", "#17212B"];
+const INK = "#17212B";
 const OUTCOME_FIELDS = new Set(["payments.outcome", "payments.outcomeText"]);
 
 /** A field in a data mapping: saved boards say `id`, the hydrated fields Studio hands a chart say `fieldId`. */
@@ -65,11 +67,36 @@ export function polishChart<T extends object>(options: T, money: MoneyFields): T
   if (params.widgetId.startsWith("answer-") && !byOutcome && o.theme && typeof o.theme === "object") {
     next.theme = { ...o.theme, palette: { fills: ANSWER_COLOURS, strokes: ANSWER_COLOURS } };
   }
+  // Answers show their numbers at the end of each bar: inside it, or just past it when the bar is too short.
+  // Ink reads on the first answer colour and on the page. Studio formats series labels with the field's format (£).
+  if (params.widgetId.startsWith("answer-") && Array.isArray(o.series)) {
+    next.series = (o.series as Array<Record<string, unknown>>).map((s) =>
+      s?.type === "bar" ? { ...s, label: { ...(s.label as object | undefined), enabled: true, color: INK, placement: ["inside-end", "outside-end"] } } : s,
+    );
+  }
   const sumsMoney = refs(m, "valueKey").some((r) => money.fields.has(fieldOf(r)) && !isCount(r));
   if (sumsMoney && o.axes) {
     next.axes = Object.fromEntries(Object.entries(o.axes).map(([k, a]) => [k, a?.type === "number" ? { ...a, label: { ...a.label, format: `${money.symbol},~f` } } : a]));
   }
   return next as T;
+}
+
+/**
+ * What an answer chart adds up to, from the very rows it draws, for the line above the Answers page
+ * ("£9.98"). Money in the board's currency, counts as whole numbers. Null for other charts or no rows.
+ */
+export function answerTotal(options: object, money: MoneyFields): { widgetId: string; text: string } | null {
+  const o = options as ChartOptions & { data?: unknown; series?: unknown };
+  const params = o.context?.params;
+  if (!params || typeof params.widgetId !== "string" || !params.widgetId.startsWith("answer-")) return null;
+  const rows = Array.isArray(o.data) ? (o.data as Array<Record<string, unknown>>) : [];
+  const keys = (Array.isArray(o.series) ? (o.series as Array<Record<string, unknown>>) : []).map((s) => s?.yKey ?? s?.angleKey).filter((k): k is string => typeof k === "string");
+  if (!rows.length || !keys.length) return null;
+  let total = 0;
+  for (const row of rows) for (const k of keys) if (typeof row[k] === "number" && Number.isFinite(row[k])) total += row[k] as number;
+  const isMoney = refs(params.dataMapping, "valueKey").some((r) => money.fields.has(fieldOf(r)) && !isCount(r));
+  const text = isMoney ? `${money.symbol}${total.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : Math.round(total).toLocaleString("en-GB");
+  return { widgetId: params.widgetId, text };
 }
 
 export { isEmptyAnswer };

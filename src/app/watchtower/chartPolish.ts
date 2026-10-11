@@ -5,10 +5,28 @@
 // it. ag-charts-enterprise is the copy Studio itself depends on (14.2), so both import the same AgCharts.
 // TODO(AG Studio): drop this if Studio gets per widget palettes or axis number formats.
 import { AgCharts } from "ag-charts-enterprise";
-import { polishChart, type MoneyFields } from "@/watchtower/answers";
+import { answerTotal, polishChart, type MoneyFields } from "@/watchtower/answers";
 
 let money: MoneyFields | null = null;
 let installed = false;
+// What each answer chart adds up to, from the rows it was last drawn with ("£9.98"), for the Answers line.
+const totals = new Map<string, string>();
+const listeners = new Set<() => void>();
+
+export function answerTotalFor(widgetId: string): string | undefined {
+  return totals.get(widgetId);
+}
+export function onAnswerTotals(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+const noteTotal = (options: object) => {
+  if (!money) return;
+  const t = answerTotal(options, money);
+  if (!t || totals.get(t.widgetId) === t.text) return;
+  totals.set(t.widgetId, t.text);
+  queueMicrotask(() => listeners.forEach((l) => l()));
+};
 
 /** The board's currency fields; set before Studio draws, and again when the data changes. */
 export function setChartMoney(next: MoneyFields) {
@@ -18,6 +36,7 @@ export function setChartMoney(next: MoneyFields) {
 const polish = <T extends object>(options: T): T => {
   if (!money) return options;
   try {
+    noteTotal(options);
     return polishChart(options, money);
   } catch (e) {
     // Polish is cosmetic: a chart drawn in Studio's own colours beats no chart.

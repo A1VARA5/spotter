@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_SPAN, addPage, fitWide, namesOf, pageTabs, placeAnswer, removePage, unfitWide, withNames } from "./pages";
+import { ANSWER_SPAN, addPage, newestAnswer, fitWide, namesOf, pageTabs, placeAnswer, removePage, unfitWide, withNames } from "./pages";
 import { INITIAL } from "./initial";
 
 const state = (pages: Array<{ id: string; name?: string }>, selectedPageId = pages[0]!.id) => ({ pages: pages.map((p) => ({ ...p, widgets: {} })), selectedPageId }) as never;
@@ -226,6 +226,14 @@ describe("a tile for a typed question (place_widget)", () => {
     const again = placeAnswer(one.state, {}, "fair-price", fair, "Did we pay fair prices?");
     expect(again.widgetId).toBe(one.widgetId);
     expect(again.reused).toBe(true);
+  });
+
+  it("knows the newest answer: the tile at the top of the Answers page, its title and whether it's still empty", () => {
+    expect(newestAnswer(board())).toBeNull();
+    const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "Leo on games");
+    expect(newestAnswer(one.state)).toEqual({ pageId: one.pageId, widgetId: one.widgetId, title: "Leo on games", empty: true });
+    (pageOf(one.state, one.pageId).widgets[one.widgetId] as unknown as { dataMapping: unknown }).dataMapping = { valueKey: [{ id: "payments.amount" }] };
+    expect(newestAnswer(one.state)?.empty).toBe(false);
   });
 
   it("refuses a widget type that isn't in the allowed catalogue (no image or free text tiles)", () => {

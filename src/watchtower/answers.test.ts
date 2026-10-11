@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_COLOURS, dropEmptyAnswers, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
+import { ANSWER_COLOURS, answerTotal, dropEmptyAnswers, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
 
 type W = { type: string; dataMapping?: Record<string, Array<{ id: string; aggregation?: string }>> };
 const board = (answers: Record<string, W>) =>
@@ -54,6 +54,46 @@ describe("answer chart colours", () => {
   it("leaves the board's own charts on the outcome palette", () => {
     const o = polishChart(studioOptions("people", byShop), money) as ReturnType<typeof studioOptions>;
     expect(o.theme.palette.fills[0]).toBe("#BE3328");
+  });
+});
+
+describe("answer value labels", () => {
+  it("puts the value on each bar of an answer chart, keeping Studio's label settings", () => {
+    const opts = { ...studioOptions("answer-1", byShop), series: [{ type: "bar", yKey: "v", label: { fontSize: 12 } }] };
+    const o = polishChart(opts, money) as any;
+    expect(o.series[0].label).toEqual({ fontSize: 12, enabled: true, color: "#17212B", placement: ["inside-end", "outside-end"] });
+    // the first answer colour holds ink text at AA and stands off white at 3:1 or more
+    expect(ANSWER_COLOURS[0]).toBe("#6F8BD8");
+  });
+
+  it("leaves the board's own bars without labels", () => {
+    const o = polishChart({ ...studioOptions("people", byShop), series: [{ type: "bar", yKey: "v" }] }, money) as any;
+    expect(o.series[0].label).toBeUndefined();
+  });
+});
+
+describe("an answer's total", () => {
+  const withData = (widgetId: string, rows: Array<Record<string, unknown>>, series: Array<Record<string, unknown>>, mapping = byShop) => ({ ...studioOptions(widgetId, mapping), data: rows, series });
+
+  it("adds up what the answer chart shows, in pounds for money", () => {
+    const t = answerTotal(withData("answer-1", [{ p: "BlockWorld", v: 4.99 }, { p: "TuneBox", v: 4.99 }], [{ type: "bar", yKey: "v" }]), money);
+    expect(t).toEqual({ widgetId: "answer-1", text: "£9.98" });
+  });
+
+  it("adds every series and counts plainly when the chart counts", () => {
+    const counts = { categoryKey: [{ id: "payments.who" }], valueKey: [{ id: "payments.id", aggregation: "count" }] };
+    const t = answerTotal(withData("answer-2", [{ a: 2, b: 1 }, { a: 3, b: "x" }], [{ type: "bar", yKey: "a" }, { type: "bar", yKey: "b" }], counts), money);
+    expect(t).toEqual({ widgetId: "answer-2", text: "6" });
+  });
+
+  it("reads a donut's slices", () => {
+    const t = answerTotal(withData("answer-3", [{ v: 10 }, { v: 5.5 }], [{ type: "donut", angleKey: "v" }]), money);
+    expect(t?.text).toBe("£15.50");
+  });
+
+  it("has nothing to say about the board's own charts or a chart with no rows", () => {
+    expect(answerTotal(withData("people", [{ v: 1 }], [{ type: "bar", yKey: "v" }]), money)).toBeNull();
+    expect(answerTotal(withData("answer-1", [], [{ type: "bar", yKey: "v" }]), money)).toBeNull();
   });
 });
 

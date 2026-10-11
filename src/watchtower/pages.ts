@@ -196,6 +196,18 @@ export function placeAnswer(
   return { state: { ...state, pages: pages.map((p) => (p.id === pageId ? next : p)) } as unknown as AgReportState, pageId, widgetId, reused };
 }
 
+/** The newest answer: the answer tile at the top left of the Answers page, for the line above it. */
+export function newestAnswer(s: AgReportState): { pageId: string; widgetId: string; title: string; empty: boolean } | null {
+  type Pg = Page & { widgets?: Record<string, AnswerWidget>; widgetLayout?: Record<string, Box> };
+  const page = (pagesIn(s) as Pg[]).find((p) => p.name === ANSWERS_PAGE);
+  if (!page) return null;
+  const top = Object.entries(page.widgetLayout ?? {}).find(([id, b]) => id.startsWith("answer-") && b.yTrack === 0 && b.xTrack === 0)?.[0];
+  const w = top ? page.widgets?.[top] : undefined;
+  if (!top || !w) return null;
+  const title = typeof w.format?.title?.text === "string" ? w.format.title.text : "";
+  return { pageId: page.id, widgetId: top, title, empty: isEmptyAnswer(w) };
+}
+
 export const PHONE_BAR_SPAN = 20;
 
 /** Phones get one widget per row, full width, in the order you'd read the desktop board. Never saved. */

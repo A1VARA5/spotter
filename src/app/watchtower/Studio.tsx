@@ -14,9 +14,9 @@ import { promptStarters, startingBoard } from "@/watchtower/initial";
 import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
-import { READY_TILES, addPage, fitWide, namesOf, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
+import { READY_TILES, addPage, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
 import { dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
-import { installChartPolish, setChartMoney } from "./chartPolish";
+import { answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
 import { notable, type NotableHarness } from "@/watchtower/notes";
 import { SPOTTER_ID, buildGranRoster, buildRoster, paypalStatus } from "@/watchtower/agents";
 import { granBoard, granForAgent, granLabels, granMonth, granThemeParams } from "@/watchtower/gran";
@@ -380,10 +380,16 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   });
   const names = useRef<Record<string, string>>({ ...namesOf(start), ...namesOf(initial) });
   const [tabs, setTabs] = useState(() => pageTabs(initial, names.current));
+  // The newest answer and what its chart adds up to, for the line above the Answers page.
+  const [latest, setLatest] = useState(() => newestAnswer(initial));
+  const [, setTotalsSeen] = useState(0);
+  useEffect(() => onAnswerTotals(() => setTotalsSeen((n) => n + 1)), []);
+  const latestTotal = latest && !latest.empty ? answerTotalFor(latest.widgetId) : undefined;
 
   const apiRef = useRef<AgStudioApi | null>(null);
   const onApiReady = useCallback((e: { api: AgStudioApi }) => {
-    apiRef.current = e.api;  }, []);
+    apiRef.current = e.api;
+  }, []);
   const harness = useRef<FocusableHarness | null>(null);
   const harnessWaiters = useRef<Array<(h: FocusableHarness) => void>>([]);
 
@@ -452,6 +458,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
     if (audienceRef.current === "gran") return;
     Object.assign(names.current, namesOf(e.state));
     setTabs(pageTabs(e.state, names.current));
+    setLatest(newestAnswer(e.state));
     if (phone) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveNow(), SAVE_AFTER_MS);
@@ -991,7 +998,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   );
 
   const board = (
-    <div className="wt-studio" ref={studioBox} data-swapping={swapping || undefined}>
+    <div className="wt-studio" ref={studioBox} data-swapping={swapping || undefined} data-answer-building={(!gran && latest?.empty && tabs.selected === latest.pageId) || undefined}>
       <AgStudioProvider licenseKey={process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY} modules={MODULES}>
         <AgStudio<SpotterRegistry>
           key={gran ? `gran-${granLang}-${mount.key}` : `spotter-${mount.key}`}
@@ -1084,6 +1091,18 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         </div>
       ) : (
         <>
+          {latest && tabs.selected === latest.pageId && (
+            <p className="wt-answer-line" aria-live="polite">
+              {latest.empty ? (
+                <>Building your chart{latest.title ? <>: <strong>{latest.title}</strong></> : null}…</>
+              ) : (
+                <>
+                  <span className="wt-answer-kicker">Latest answer</span> <strong>{latest.title || "Your chart"}</strong>
+                  {latestTotal ? <> · {latestTotal} in total</> : null}
+                </>
+              )}
+            </p>
+          )}
           {board}
           {!phone && <ReceiptBar book={book} api={() => apiRef.current} />}
         </>
