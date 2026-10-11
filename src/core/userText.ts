@@ -30,7 +30,9 @@ export function withoutIds(text: string): string {
     .trim();
 }
 
-/** 'The message says "it's Tom".' A quote's own closing stop (or ! or ?) is dropped so the line never ends '.".'. */
+/** 'The message says "it's Tom".' Only the quote's own closing full stops are dropped, so the line never ends '.".';
+ * a question or exclamation mark stays, since the words are shown as a quote. */
 export function messageSays(quote: string): string {
-  return `The message says "${quote.trim().replace(/[\s.!?,;:]+$/, "")}".`;
+  const q = quote.trim();
+  return `The message says "${q.replace(/\.+$/, "") || q}".`;
 }

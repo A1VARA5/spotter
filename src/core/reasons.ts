@@ -112,7 +112,8 @@ export function decidedReason(p: DecidedInput): string | null {
   const clause = pastClause(top);
   // The AI's own sentence keeps its words after a short label: "Stopped: It hides text from people ...". A Not me
   // says why it was held in its own words instead, since the person the message named has already answered.
-  const why = clause ? `${verb} because ${clause}.` : s === "not_me" ? notMeWhy(p) : `${verb}: ${oneStop(top)}`;
+  const w = p.was_it_you;
+  const why = clause ? oneStop(`${verb} because ${clause}.`) : s === "not_me" && w ? notMeWhy(w) : `${verb}: ${oneStop(top)}`;
   // Endings where money moved after the hold say so, so "Held because" never sits alone next to a payment.
   if (s === "paid") return `${why} Paid after ${p.decided_by} approved.`;
   if (s === "paying") return `${why} ${p.decided_by && p.decided_by !== "Spotter" ? `${p.decided_by} approved it` : "It was approved"} and PayPal is paying it.`;
@@ -122,9 +123,8 @@ export function decidedReason(p: DecidedInput): string | null {
 }
 
 /** "Held because the message said it was from Tom, and Tom said it wasn't." ("you" when the spotter was the one named). */
-function notMeWhy(p: DecidedInput): string {
-  const w = p.was_it_you;
-  const who = !w ? "someone you know" : w.channel === "alert" ? "you" : w.who;
+function notMeWhy(w: NonNullable<DecidedInput["was_it_you"]>): string {
+  const who = w.channel === "alert" ? "you" : w.who;
   return `Held because the message said it was from ${who}, and ${who} said it wasn't.`;
 }
 

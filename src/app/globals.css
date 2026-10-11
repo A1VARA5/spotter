@@ -3505,7 +3505,7 @@ p {
   .app-main .feed-row,
   .app-main .scenario,
   .app-main .person-row {
-    animation: page-in 380ms var(--ease-out) both;
+    animation: page-settle 380ms var(--ease-out) both;
   }
 
   .app-main .feed-row:nth-child(2),

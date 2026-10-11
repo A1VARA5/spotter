@@ -113,6 +113,10 @@ describe("decidedReason: once decided, the why is in the past tense", () => {
       { status: "capturing", decided_by: "Sam" },
       { status: "voided", decided_by: "Tom", was_it_you: { state: "not_me", who: "Tom" } },
     ];
+    // A payee whose name ends in a full stop goes through the past tense clause path.
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Sam", decision: decision(["First time paying Acme Ltd."]) })).toBe(
+      "Held because it was the first time paying Acme Ltd.",
+    );
     for (const t of tails)
       for (const e of endings) {
         const r = decidedReason({ ...base, ...e, decision: decision([t], [flag("pressure", "medium", t)]) });

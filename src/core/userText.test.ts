@@ -39,6 +39,7 @@ describe("messageSays", () => {
   it("quotes the words with one full stop, never a stop inside and outside the quote", () => {
     expect(messageSays("Hi mum its me, new number.")).toBe('The message says "Hi mum its me, new number".');
     expect(messageSays("it's Tom")).toBe(`The message says "it's Tom".`);
-    expect(messageSays("help me!!  ")).toBe('The message says "help me".');
+    expect(messageSays("Is this Gran?")).toBe('The message says "Is this Gran?".');
+    expect(messageSays("...")).toBe('The message says "...".');
   });
 });
