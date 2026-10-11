@@ -122,6 +122,8 @@ export type KeyCardView = {
   job: string;
   allowanceLeft: Money;
   status: "live" | "frozen" | "switched_off" | "none";
+  /** The key itself still works (a frozen agent can have a live key, or one burned by the decoy). */
+  keyLive: boolean;
   lastUsedAt: string | null;
   calls: KeyCall[];
   /** The newest agent order and the custom_id Spotter sent PayPal for it (the route may confirm it from PayPal). */
@@ -155,6 +157,7 @@ export async function keyCard(db: Db, householdId: string, spenderId: string): P
     job: spender.agent_job ?? "shopping",
     allowanceLeft: { amount: Math.max(0, weekly.amount - spent), currency: weekly.currency },
     status,
+    keyLive: live,
     lastUsedAt: iso(key?.last_used_at ?? null),
     calls,
     order: order ? { paypalOrderId: order.paypal_order_id, customId: order.paypal_custom_id } : null,

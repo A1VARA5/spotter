@@ -53,17 +53,19 @@ export function AgentKeyCard({ agentId, name, refreshKey = 0 }: { agentId: strin
 
   if (!view) {
     return (
-      <article className="connect-card key-card" aria-busy={!error || undefined}>
+      <article className="key-card" aria-busy={!error || undefined}>
         <h3 className="connect-title">{name}&apos;s key</h3>
         {error ? <p className="field-error" role="alert">{error}</p> : <p className="connect-sub">Loading the key…</p>}
       </article>
     );
   }
 
+  // Nothing to show before the agent's first key: the steps below make one.
+  if (view.status === "none") return null;
   const now = Date.now();
   const record = view.paypalCustomId;
   return (
-    <article className="connect-card key-card" aria-labelledby={`key-${agentId}`}>
+    <article className="key-card" aria-labelledby={`key-${agentId}`}>
       <header className="connect-head">
         <span className="connect-icon">
           <KeyRound size={20} strokeWidth={1.75} aria-hidden="true" />
@@ -129,7 +131,7 @@ export function AgentKeyCard({ agentId, name, refreshKey = 0 }: { agentId: strin
         )}
       </div>
 
-      {view.status === "live" || view.status === "frozen" ? (
+      {view.keyLive ? (
         <Confirm
           trigger={busy ? "Switching off" : "Switch off now"}
           triggerClass="btn btn-stop key-off"

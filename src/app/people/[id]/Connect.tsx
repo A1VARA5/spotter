@@ -129,7 +129,8 @@ function AgentCard({ spender }: { spender: SpenderView }) {
           <p className="connect-sub">Works with Claude, Claude Code and any agent that speaks MCP. One key works for both sets of tools.</p>
         </div>
       </header>
-      {(spender.hasKey || t.data) && <AgentKeyCard agentId={spender.id} name={spender.name} refreshKey={t.data ? 1 : 0} />}
+      {/* Hides itself until the agent has had a key. */}
+      <AgentKeyCard agentId={spender.id} name={spender.name} refreshKey={t.data ? 1 : 0} />
       <div className="toolset" role="group" aria-label="Which tools the agent gets">
         {(Object.keys(TOOLSETS) as Array<keyof typeof TOOLSETS>).map((k) => (
           <button key={k} type="button" className="toolset-btn" aria-pressed={tools === k} onClick={() => setTools(k)}>

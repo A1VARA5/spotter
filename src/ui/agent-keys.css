@@ -1,4 +1,6 @@
 /* The agent key card and the "PayPal didn't confirm yet" retry line. Tokens from docs/DESIGN.md. */
+.key-card { display: grid; gap: 14px; padding: 16px; border-radius: 14px; background: var(--chalk); min-width: 0; }
+.key-card .connect-icon { background: var(--paper); }
 .key-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .key-label { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .key-status { font-size: 14px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--chalk); color: var(--ink-2); }

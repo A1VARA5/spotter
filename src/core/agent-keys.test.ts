@@ -59,7 +59,7 @@ describe("agent keys with a planted decoy", () => {
     expect(String(warn.mock.calls[0]![1].text)).toMatch(/leaked/i);
     const trips = await db.query<{ tool: string }>("select tool from tripwires where spender_id = 'agent'");
     expect(trips.map((t) => t.tool)).toEqual(["decoy_key"]);
-    expect((await keyCard(db, hh, "agent"))?.status).toBe("frozen");
+    expect(await keyCard(db, hh, "agent")).toMatchObject({ status: "frozen", keyLive: false });
   });
 });
 
@@ -139,7 +139,7 @@ describe("the key card", () => {
     expect(await verifyAgentToken(db, key)).not.toBeNull();
     expect(await switchOff(db, hh, "agent")).toBe(true);
     expect(await verifyAgentToken(db, key)).toBeNull();
-    expect((await keyCard(db, hh, "agent"))?.status).toBe("switched_off");
+    expect(await keyCard(db, hh, "agent")).toMatchObject({ status: "switched_off", keyLive: false });
   });
 
   it("the key's label for PayPal's custom_id has no secret in it beyond its last 4 characters", () => {
