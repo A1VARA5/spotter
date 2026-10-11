@@ -3,6 +3,7 @@
 import type { Db } from "@/db";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
+import { askingAgain } from "@/core/sleep";
 import { askLines, buttonId, notMeText, tokenFor, wasItYouLine, type WasItYou } from "@/core/was-it-you";
 
 type Dm = (userId: string, content: string, components?: unknown[]) => Promise<void>;
@@ -12,7 +13,13 @@ export function alertContent(p: Payment, spender: Spender): string {
   const held = p.status === "needs_approval";
   const c = p.case_file;
   return [
-    `**${held ? `${spender.name} wants to pay ${amountOf(p)}. It's on hold.` : `Spotter stopped ${amountOf(p)} from ${spender.name}.`}**`,
+    `**${
+      held
+        ? askingAgain(p)
+          ? `Asking again, as you wanted: ${spender.name} wants to pay ${amountOf(p)}. It's still on hold.`
+          : `${spender.name} wants to pay ${amountOf(p)}. It's on hold.`
+        : `Spotter stopped ${amountOf(p)} from ${spender.name}.`
+    }**`,
     `To ${p.request.payee.name}.${held ? " PayPal is holding the money until you decide." : ""}`,
     c?.headline ?? p.decision?.reasons[0] ?? "",
     ...(c?.findings.slice(0, 3).map((f) => `- ${f.text}`) ?? []),

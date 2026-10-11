@@ -141,6 +141,14 @@ export async function voidAuthorization(authorizationId: string) {
   return { status: v.status ?? "VOIDED" };
 }
 
+/** A fresh hold for a payment still waiting after PayPal's 3 day honor period. PayPal allows it once, day 4 to 29, and
+ * answers with a NEW authorisation id: capture and void must use that one from now on (docs/paypal-notes.md). */
+export async function reauthorizeAuthorization(authorizationId: string, idempotencyKey: string): Promise<{ authorizationId: string; expiresAt?: string }> {
+  const a = await call<{ id?: string; expiration_time?: string }>("POST", `/v2/payments/authorizations/${authorizationId}/reauthorize`, {}, idempotencyKey);
+  if (!a.id) throw new PayPalError("PayPal reauthorised without an authorisation id", 200, "NO_AUTHORIZATION");
+  return { authorizationId: a.id, ...(a.expiration_time ? { expiresAt: a.expiration_time } : {}) };
+}
+
 export async function getAuthorization(authorizationId: string): Promise<{ status: string; expiresAt?: string }> {
   const a = await call<{ status?: string; expiration_time?: string }>("GET", `/v2/payments/authorizations/${authorizationId}`);
   if (!a.status) throw new Error("PayPal returned an authorisation without a status");

@@ -57,6 +57,84 @@ export async function searchProducts(query: string, currency: Currency, limit = 
   }
 }
 
+export type ImageQuery = { base64: string } | { url: string };
+
+/**
+ * Image search (POST /v1/image-search, 1 credit): products that look like the picture, with segment "AUTO" so Channel3
+ * crops the main product out of a page screenshot first. Same product shape as text search. null when Channel3 can't
+ * be reached or answers with an error, so an outage is never mistaken for "no match".
+ */
+export async function searchByImage(img: ImageQuery, currency: Currency, limit = 10): Promise<Product[] | null> {
+  const key = process.env.CHANNEL3_API_KEY;
+  if (!key) return null;
+  try {
+    const r = await fetch(`${BASE}/v1/image-search`, {
+      method: "POST",
+      headers: { "x-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({
+        ...("base64" in img ? { base64_image: img.base64 } : { image_url: img.url }),
+        limit,
+        segment: "AUTO",
+        config: { country: COUNTRY[currency], currency },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!r.ok) {
+      console.error(`[spotter] Channel3 image search failed: ${r.status}`);
+      return null;
+    }
+    const j = (await r.json()) as { products?: unknown };
+    if (!Array.isArray(j.products)) {
+      console.error("[spotter] Channel3 image search answered without a product list");
+      return null;
+    }
+    return (j.products as C3Product[])
+      .filter((p) => p && typeof p.id === "string" && typeof p.title === "string")
+      .map((p) => ({ id: p.id, title: p.title, brand: p.brands?.[0]?.name, image: p.images?.[0]?.url, offers: toOffers(p, currency) }));
+  } catch (e) {
+    console.error("[spotter] Channel3 image search error:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** Highest price over the last 30 days, in minor units of that currency. */
+export type PriceHigh = { max: number; currency: string; days: number };
+
+/**
+ * GET /v0/price-tracking/history/{id}?days=30 without starting tracking (live on 2026-10-11 it answered with up to 30
+ * days of history for some products and an empty list for others). The highest price seen, only when there is history;
+ * the currency is whatever Channel3 recorded (often USD for a UK product), so callers check it. null otherwise.
+ */
+export async function priceHigh(productId: string): Promise<PriceHigh | null> {
+  const key = process.env.CHANNEL3_API_KEY;
+  if (!key || !/^[A-Za-z0-9_-]{1,64}$/.test(productId)) return null;
+  try {
+    const r = await fetch(`${BASE}/v0/price-tracking/history/${productId}?days=30`, {
+      headers: { "x-api-key": key },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!r.ok) {
+      console.error(`[spotter] Channel3 price history failed: ${r.status}`);
+      return null;
+    }
+    return highFrom(await r.json());
+  } catch (e) {
+    console.error("[spotter] Channel3 price history error:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** The highest price in a history answer, when every point is in one currency. */
+export function highFrom(j: unknown): PriceHigh | null {
+  const h = (j as { history?: unknown })?.history;
+  if (!Array.isArray(h) || !h.length) return null;
+  const points = h.filter((p): p is { price: number; currency: string } => !!p && typeof p.price === "number" && p.price > 0 && typeof p.currency === "string");
+  if (points.length !== h.length) return null;
+  const currencies = new Set(points.map((p) => p.currency));
+  if (currencies.size !== 1) return null;
+  return { max: Math.round(Math.max(...points.map((p) => p.price)) * 100), currency: points[0]!.currency, days: points.length };
+}
+
 const ACCESSORY = /\b(tips?|case|cases|cover|covers|strap|straps|charger|cable|replacement|protector|skin|stand|holder|refill)\b/i;
 const tokens = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 

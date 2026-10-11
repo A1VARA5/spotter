@@ -55,7 +55,8 @@ const TRICK: Record<string, string> = {
 
 export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample">;
 export type GranStop = { id: string; when: Date; payee: string; amount: number; by: string; sentence: string; sample: boolean };
-export type GranWait = { id: string; when: Date; payee: string; amount: number; status: string; sample: boolean };
+/** ends: when PayPal lets the hold go on its own; asleep: someone chose "ask again tomorrow". */
+export type GranWait = { id: string; when: Date; payee: string; amount: number; status: string; ends?: string; asleep: boolean; sample: boolean };
 export type GranTrick = { sign: string; plain: string; count: number };
 export type GranMonth = { kept: number; stopped: GranStop[]; waiting: GranWait[]; tricks: GranTrick[] };
 
@@ -84,14 +85,21 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
   const waiting = mine
     .filter((r) => r.outcome === "Waiting")
     .sort((a, b) => a.when.getTime() - b.when.getTime())
-    .map((r): GranWait => ({
-      id: r.id,
-      when: r.when,
-      payee: r.payee,
-      amount: r.amount,
-      status: `${o.spotter} has been asked. PayPal keeps the money safe until they decide.`,
-      sample: r.sample === "Yes",
-    }));
+    .map((r): GranWait => {
+      const wait = notes.get(r.id)?.wait;
+      return {
+        id: r.id,
+        when: r.when,
+        payee: r.payee,
+        amount: r.amount,
+        status: wait?.askAgain
+          ? `Sleeping on it. Spotter asks ${o.spotter} again ${wait.askAgain}. The money stays put until then.`
+          : `${o.spotter} has been asked. PayPal keeps the money safe until they decide.`,
+        ...(wait?.holdEnds ? { ends: `If nobody says yes by ${wait.holdEnds}, the money comes back to you.` } : {}),
+        asleep: Boolean(wait?.askAgain),
+        sample: r.sample === "Yes",
+      };
+    });
   const counts = new Map<string, number>();
   for (const r of mine) {
     if (r.outcome === "Paid") continue;
@@ -110,7 +118,7 @@ export function granForAgent(m: GranMonth, now: Date) {
   return {
     keptThisMonth: gbp.format(m.kept),
     stopped: m.stopped.map((s) => ({ payee: s.payee, amount: gbp.format(s.amount), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample })),
-    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: gbp.format(w.amount), daysAgo: daysAgo(w.when, now), status: w.status, sample: w.sample })),
+    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: gbp.format(w.amount), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
     tricks: m.tricks.map((t) => ({ trick: t.plain, times: t.count })),
     advice: ADVICE,
   };

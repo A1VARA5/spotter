@@ -25,6 +25,8 @@ export type Deps = {
   decided?: (payment: Payment, spender: Spender) => Promise<void>;
   /** Tells the spotter PayPal confirmed a held payment was paid or released (from a PayPal webhook). Optional. */
   confirmed?: (payment: Payment, spender: Spender) => Promise<void>;
+  /** Tells a household's spotter that someone switched a protection off (core/switchedoff.ts). Optional. */
+  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked"; text: string }) => Promise<void>;
   /** Asks the real person a message claims to be from ("Was it you?") on their own linked channel. Optional. */
   ask?: (payment: Payment, payer: Spender, ask: WasItYou, to: Spender) => Promise<void>;
   /** A short plain note to the spotter (e.g. "Tom says it wasn't him"). Failures are logged, never fatal. Optional. */
@@ -37,6 +39,8 @@ export type Deps = {
     voidAuthorization: typeof voidAuthorization;
     /** Looks up an authorisation's status at PayPal. Optional: only reconciliation needs it. */
     getAuthorization?: (authorizationId: string) => Promise<{ status: string; expiresAt?: string }>;
+    /** A fresh hold after the 3 day honor period (core/sleep.ts). Optional: only the daily job needs it. */
+    reauthorizeAuthorization?: (authorizationId: string, idempotencyKey: string) => Promise<{ authorizationId: string; expiresAt?: string }>;
   };
 };
 
@@ -72,6 +76,12 @@ export type Payment = {
   paypal_capture_id: string | null;
   /** When PayPal drops the hold if nobody captures it. Optional so older rows and samples still type check. */
   paypal_auth_expires_at?: string | Date | null;
+  /** "Ask again tomorrow" (core/sleep.ts): when Spotter asks the spotter again, and how many times someone slept on it. */
+  ask_again_at?: string | Date | null;
+  sleeps?: number;
+  /** Set once PayPal gave the hold a fresh honor period; reauth_note says why it couldn't, in plain words. */
+  reauthorized_at?: string | Date | null;
+  reauth_note?: string | null;
   approve_url: string | null;
   error: string | null;
   decided_by: string | null;

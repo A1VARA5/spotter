@@ -6,6 +6,9 @@ import { requirePageSession } from "@/server/page-session";
 import { listSpenders } from "@/core/households";
 import { listPayments, reconcileStuck, sweepStale } from "@/core/lifecycle";
 import { Dashboard } from "./Dashboard";
+import { safeTz } from "@/core/holdtime";
+import { listWarnings } from "@/core/switchedoff";
+import { Warnings } from "@/ui/Warnings";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard | Spotter" };
@@ -20,6 +23,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const spenders = await listSpenders(db, household.id);
   const names = Object.fromEntries(spenders.map((s) => [s.id, s.name]));
   const payments = await listPayments(db, household.id);
+  const warnings = await listWarnings(db, household.id);
   const [tokens] = await db.query<{ n: string }>(
     "select count(*)::text as n from agent_tokens t join spenders s on s.id = t.spender_id where s.household_id = $1 and t.revoked_at is null",
     [household.id],
@@ -41,6 +45,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <AppShell db={db} household={household} current="waiting">
+      <Warnings initial={warnings} />
       {left > 0 && (
         <section className="start-list" aria-labelledby="start-title">
           <h2 id="start-title" className="start-title">
@@ -76,7 +81,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           PayPal&apos;s sandbox didn&apos;t answer, so your demo family started without its example hold. <Link href="/demo">Try a payment</Link> to see one.
         </p>
       )}
-      <Dashboard names={names} unlocked={unlocked} demo={household.demo} initial={JSON.parse(JSON.stringify(payments))} />
+      <Dashboard names={names} unlocked={unlocked} demo={household.demo} tz={safeTz(household.time_zone)} initial={JSON.parse(JSON.stringify(payments))} />
     </AppShell>
   );
 }

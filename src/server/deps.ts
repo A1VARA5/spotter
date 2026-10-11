@@ -1,9 +1,11 @@
 // Real dependencies for the running app: Postgres, Claude, PayPal sandbox, Channel3.
 import { getDb } from "@/db";
 import { aiCheck } from "@/ai/check";
-import { captureAuthorization, createAuthorizeOrder, getAuthorization, voidAuthorization } from "@/paypal/client";
+import { captureAuthorization, createAuthorizeOrder, getAuthorization, reauthorizeAuthorization, voidAuthorization } from "@/paypal/client";
 import type { Deps } from "@/core/lifecycle";
-import { makeMarket, searchProducts } from "@/market/channel3";
+import { makeMarket, priceHigh, searchByImage, searchProducts } from "@/market/channel3";
+import { spotTheDifference, type SpotInput } from "@/market/lookalike";
+import { cap } from "@/watchtower/llm";
 import { after } from "next/server";
 import { buildCase } from "@/agents/case";
 import { visitInCloud } from "@/agents/kernel";
@@ -13,6 +15,8 @@ import { sendDm } from "@/discord/api";
 import { makeDiscordAsk, makeDiscordConfirmed, makeDiscordDecided, makeDiscordNote, makeDiscordNotify } from "@/discord/notify";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { makeEmailAsk, makeEmailNote, makeNotify } from "@/email/alerts";
+import { send as sendEmail } from "@/email/agentboxd";
+import { makeWarn } from "./warn";
 
 let ready: Promise<Deps> | null = null;
 
@@ -81,6 +85,11 @@ export function getDeps(): Promise<Deps> {
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramConfirmed(db, sendHtml) : null,
         process.env.DISCORD_BOT_TOKEN ? makeDiscordConfirmed(db, sendDm) : null,
       ]),
+      warn: makeWarn(db, site, {
+        ...(process.env.TELEGRAM_BOT_TOKEN ? { telegram: sendHtml } : {}),
+        ...(process.env.DISCORD_BOT_TOKEN ? { discord: sendDm } : {}),
+        ...(process.env.AGENTBOXD_API_KEY ? { email: sendEmail } : {}),
+      }),
       investigate: (payment, spender) =>
         buildCase(
           {
@@ -90,6 +99,23 @@ export function getDeps(): Promise<Deps> {
             search: searchProducts,
             getAuthorization,
             ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitInCloud(url) } : {}),
+            // Spot the difference needs Channel3; without a key it is simply off (no slot spent, nothing shown).
+            ...(process.env.CHANNEL3_API_KEY
+              ? {
+                  spot: (input: SpotInput) =>
+                    spotTheDifference(
+                      {
+                        db,
+                        householdId: spender.household_id,
+                        imageSearch: searchByImage,
+                        priceHigh,
+                        perHousehold: cap("SPOT_IMAGE_CHECKS_PER_FAMILY", 10),
+                        overall: cap("SPOT_IMAGE_CHECKS_PER_DAY", 200),
+                      },
+                      input,
+                    ),
+                }
+              : {}),
             offers: new Map(),
           },
           { who: { name: spender.name, kind: spender.kind } },
@@ -103,7 +129,7 @@ export function getDeps(): Promise<Deps> {
           task().catch((err) => console.error("[spotter] follow up failed:", err));
         }
       },
-      paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization, getAuthorization },
+      paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization, getAuthorization, reauthorizeAuthorization },
     } satisfies Deps;
   })().catch((e) => {
     ready = null; // retry on the next request instead of failing forever
