@@ -126,7 +126,7 @@ export const SHOP_HTML = `<!doctype html>
     <a class="buy" href="#">Add to basket</a>
     <section class="demo-tools" aria-labelledby="demo-tools-title">
       <p class="demo-tools-title" id="demo-tools-title">Demo: tools for AI agents</p>
-      <p>This page also offers two tools to AI agents through the browser. One is honest. The other, add_to_basket, has a line in its description written to steer agents. It's a new kind of attack, shown here on a made up shop.</p>
+      <p>This page also offers two tools to AI agents through the browser. One is honest. The other, add_to_basket, has a line in one of its field descriptions written to steer agents. It's a new kind of attack, shown here on a made up shop.</p>
       <div class="basket" id="basket" aria-live="polite">
         <p class="basket-title">Basket</p>
         <p class="basket-line" id="basket-line">Pulse wireless earbuds <b>£19.99</b></p>

@@ -225,6 +225,21 @@ describe("visitInCloud", () => {
     expect(k.browsers.deleteByID).toHaveBeenCalledWith("sess1");
   });
 
+  it("keeps the page when listing tools hangs: the tools are 'not checked', the visit isn't lost", async () => {
+    const k = {
+      browsers: {
+        create: vi.fn(async () => ({ session_id: "sess1" })),
+        deleteByID: vi.fn(async () => {}),
+        playwright: { execute: vi.fn(async () => good) },
+        webmcp: { listTools: vi.fn(() => new Promise<unknown>(() => {})) },
+      },
+    };
+    const v = await visitInCloud("https://gadgetbarn.example/", { client: k, record: false, timeoutMs: 2500 });
+    expect(v.ok).toBe(true);
+    expect(v.ok && v.tools).toMatchObject({ checked: false });
+    expect(k.browsers.deleteByID).toHaveBeenCalledWith("sess1");
+  });
+
   it("treats a malformed result as a failure, not as facts", async () => {
     const k = fakeKernel(async () => ({ success: true, result: { title: 42 } }));
     const v = await visitInCloud("https://bargainpods.shop/", { client: k });

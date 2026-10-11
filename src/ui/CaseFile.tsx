@@ -86,6 +86,7 @@ export function CaseFile({
 
       {c.page && <OpenedPage page={c.page} paymentId={paymentId} fallback={pageShot} />}
       {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
+      {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
 
       {c.status !== "done" && (
         <p className="case-note">
@@ -156,6 +157,7 @@ function ShopToolList({ tools }: { tools: Extract<NonNullable<NonNullable<Case["
         ))}
       </ul>
       {more > 0 && <p className="case-tools-sub">And {more} more.</p>}
+      {tools.incomplete && <p className="case-tools-sub">Spotter couldn&apos;t read all of this shop&apos;s tools, so this is only part of the picture.</p>}
     </section>
   );
 }

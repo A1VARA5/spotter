@@ -160,7 +160,8 @@ export async function visitInCloud(
       if (!r.success) return fail("The cloud browser sent back something unexpected.");
       // Stopped before the delete in finally, so KERNEL saves the video. A replay that didn't save just isn't shown.
       // In the same visit, on the page that just loaded: the tools it offers AI agents.
-      const tools = await listShopTools(client, browser.session_id);
+      // Its own short limit, so a slow listing can't cost the page visit that already worked.
+      const tools = await listShopTools(client, browser.session_id, Math.max(300, Math.min(5000, limit - (Date.now() - started) - 1500)));
       const replayUrl = replay && (await stopReplay(client, browser.session_id, replay.id)) ? replay.url : undefined;
       const { finalUrl, title, facts, seen, isolated, seenError, shot } = r.data;
       // A check the page broke, or one that had to run where the page could fake it, is logged rather than hidden.
@@ -227,14 +228,24 @@ async function startReplay(client: KernelLike, session: string): Promise<{ id: s
  * The page's own WebMCP tools (custom tools excluded), read and judged. Undefined when the client can't list tools;
  * a failed listing is logged and comes back as "not checked", so it never reads as "this shop offers no tools".
  */
-async function listShopTools(client: KernelLike, session: string): Promise<ShopTools | undefined> {
-  if (!client.browsers.webmcp) return undefined;
+async function listShopTools(client: KernelLike, session: string, ms: number): Promise<ShopTools | undefined> {
+  if (!client.browsers.webmcp) {
+    console.error("[spotter] this KERNEL client can't list a page's tools for AI agents, so they weren't checked");
+    return undefined;
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return readShopTools(await client.browsers.webmcp.listTools(session, { exclude_custom: true }));
+    const listed = await Promise.race([
+      client.browsers.webmcp.listTools(session, { exclude_custom: true }),
+      new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms))),
+    ]);
+    return readShopTools(listed);
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     console.error("[spotter] listing the page's tools for AI agents failed (the visit goes on without them):", error);
     return { checked: false, error: "Spotter couldn't list the tools this page offers AI agents." };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

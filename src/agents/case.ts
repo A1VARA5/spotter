@@ -145,7 +145,9 @@ export async function buildCase(ctx: CaseCtx, opts: CaseOpts = {}): Promise<Case
   // sourced to the browser call that saw them, and a page that hides orders for AI agents is never "fine".
   const trap = ctx.page.seen?.hidden.find((h) => h.instruction);
   // The same goes for a tool the page offers AI agents whose own text carries orders for them (tool poisoning).
-  const poisoned = ctx.page.tools?.checked ? ctx.page.tools.tools.find((t) => t.poisoned) : undefined;
+  const tools = ctx.page.tools?.checked ? ctx.page.tools : undefined;
+  const poisonedTools = tools?.tools.filter((t) => t.poisoned) ?? [];
+  const poisoned = poisonedTools[0];
   // Prefer a call that finished; a call that timed out but whose page still arrived is the source otherwise.
   const browser = c.calls.filter((x) => x.tool === "inspect_shop" || x.tool === "open_link");
   const from = browser.findLast((x) => x.ok) ?? browser.at(-1);
@@ -161,29 +163,44 @@ export async function buildCase(ctx: CaseCtx, opts: CaseOpts = {}): Promise<Case
       text: `The shop page hides text from people (${WHY_LABEL[trap.why]}) that an AI agent reads, written to steer the agent: "${trap.text}"`,
     });
   }
-  if (poisoned?.poisoned) {
+  // One finding per poisoned tool, up to three; the rest are counted on the last one.
+  const shown = poisonedTools.slice(0, 3);
+  const more = (tools?.poisoned ?? poisonedTools.length) - shown.length;
+  shown.forEach((t, i) => {
     proof.push({
       kind: "prompt_injection",
       severity: "high",
-      quote: poisoned.poisoned.quote,
-      toolName: poisoned.name,
+      quote: t.poisoned!.quote,
+      toolName: t.name,
       tool: from.tool,
       source: from.id,
-      text: `The shop offers AI agents a tool, "${poisoned.name}", with a line in ${poisoned.poisoned.where} written to steer the agent: "${poisoned.poisoned.quote}"`,
+      text:
+        `The shop offers AI agents a tool, "${t.name}", with a line in ${t.poisoned!.where} written to steer the agent: "${t.poisoned!.quote}"` +
+        (i === shown.length - 1 && more > 0 ? ` ${more} more of its tools carry lines like this.` : ""),
     });
-  }
+  });
   // The model often repeats the same line in its own words; the code made finding already says it, so the repeat goes.
-  const repeats = (f: Finding) => f.source === from.id && proof.some((p) => p.quote && sharesRun(f.text, p.quote));
+  // Only when the finding is mostly that quote: a finding that adds another fact around it stays.
+  const repeats = (f: Finding) => f.source === from.id && proof.some((p) => p.quote && mostlyQuote(f.text, p.quote));
   return { ...c, page: ctx.page, verdict: "likely_scam", findings: [...proof, ...c.findings.filter((f) => !repeats(f))] };
 }
 
-/** True when the two texts share a run of at least 30 characters (ignoring case and spacing). */
-function sharesRun(a: string, b: string): boolean {
+/**
+ * True when a finding is mostly the quote: it shares runs of 30 characters with it (ignoring case and spacing) and
+ * what is left once those runs are taken out is a short frame ("The tool says: ... This is prompt injection.").
+ */
+function mostlyQuote(text: string, quote: string): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ");
-  const x = norm(a);
-  const y = norm(b);
-  for (let i = 0; i + 30 <= y.length; i += 10) if (x.includes(y.slice(i, i + 30))) return true;
-  return false;
+  const x = norm(text);
+  const y = norm(quote);
+  const covered = new Array<boolean>(x.length).fill(false);
+  for (let i = 0; i + 30 <= y.length; i += 5) {
+    const at = x.indexOf(y.slice(i, i + 30));
+    if (at >= 0) covered.fill(true, at, at + 30);
+  }
+  if (!covered.some(Boolean)) return false;
+  const left = x.split("").filter((c, i) => !covered[i] && /[a-z0-9]/.test(c)).length;
+  return left <= 70;
 }
 
 /** The shop an AI agent is paying: the first link in its context, when the agent and the cloud browser are both there. */

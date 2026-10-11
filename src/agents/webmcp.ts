@@ -6,7 +6,8 @@
 //
 // List only: Spotter never runs a page's tools (a test checks that no source file calls the invoke API). Everything here is a
 // stranger's text: it is cleaned (invisible characters revealed or removed, markup and control characters dropped)
-// before it is read, judged on the whole cleaned text, and only then cut short for display.
+// before it is read, judged on the whole cleaned text, and only then cut short for display. Whenever a limit stops
+// Spotter reading everything, the result says so (incomplete), so a partial check never reads as a clean one.
 import { around, looksLikeInstruction } from "./seen";
 
 /** One tool as Spotter shows it: plain text only, never the raw JSON. */
@@ -24,13 +25,23 @@ export type ShopTool = {
 };
 
 export type ShopTools =
-  | { checked: true; tools: ShopTool[]; total: number; truncated: boolean }
+  | {
+      checked: true;
+      /** Poisoned first, then the rest, at most MAX_TOOLS_SHOWN. */
+      tools: ShopTool[];
+      /** Every entry the page offered, read or not. */
+      total: number;
+      /** How many tools were poisoned among those read (some may not be in tools). */
+      poisoned: number;
+      /** A limit stopped Spotter reading everything (too many tools, fields or text, or entries it couldn't read). */
+      incomplete: boolean;
+    }
   | { checked: false; error: string };
 
 const MAX_TOOLS_READ = 200; // every one of these is checked for instructions
 const MAX_TOOLS_SHOWN = 12; // poisoned first, then the rest
-const MAX_FIELDS = 100;
-const MAX_DEPTH = 5;
+const MAX_STRINGS = 600; // strings read per tool, anywhere in its schemas
+const MAX_DEPTH = 8;
 const MAX_RAW = 2_000_000; // a memory guard on one piece of text before cleaning (KERNEL's answer is bounded anyway)
 const MAX_READ = 100_000; // characters of cleaned text judged
 const MAX_SHOWN = 300;
@@ -74,30 +85,51 @@ const HINTS: Array<[string, boolean, string]> = [
 ];
 
 type Piece = { where: string; text: string };
+type Walk = { pieces: Piece[]; incomplete: boolean };
 
-/** Every string in an input schema a model would read: descriptions, titles, string defaults, enums and examples. */
-function schemaPieces(schema: unknown, prefix: string, depth: number, out: { fields: ShopTool["fields"]; pieces: Piece[] }) {
-  if (!schema || typeof schema !== "object" || depth > MAX_DEPTH) return;
-  const props = (schema as { properties?: unknown }).properties;
-  if (props && typeof props === "object") {
-    for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
-      if (out.fields.length >= MAX_FIELDS) return;
-      const name = cleanToolText(key, 60) || "field";
-      const path = prefix ? `${prefix}.${name}` : name;
-      const where = `the "${path}" field`;
-      const v = (value ?? {}) as Record<string, unknown>;
-      const strings = [v.description, v.title, v.default, ...(Array.isArray(v.enum) ? v.enum : []), ...(Array.isArray(v.examples) ? v.examples : [])].filter(
-        (s): s is string => typeof s === "string",
-      );
-      out.fields.push({ name: path, description: typeof v.description === "string" ? cleanToolText(v.description) : "" });
-      for (const s of strings) out.pieces.push({ where, text: s });
-      out.pieces.push({ where, text: key });
-      schemaPieces(v, path, depth + 1, out);
-      if (v.items) schemaPieces(v.items, `${path}[]`, depth + 1, out);
-    }
+/**
+ * Every string anywhere in a schema (descriptions, titles, defaults, enums, examples, const, patterns, anyOf branches,
+ * $defs, property names...), labelled with the field it belongs to. A model reads all of it, so all of it is checked.
+ */
+function walkStrings(value: unknown, where: string, depth: number, out: Walk) {
+  if (out.pieces.length >= MAX_STRINGS || depth > MAX_DEPTH) {
+    if (value !== null && typeof value === "object") out.incomplete = true;
+    else if (typeof value === "string") out.incomplete = true;
+    return;
   }
-  const desc = (schema as { description?: unknown }).description;
-  if (depth === 0 && typeof desc === "string") out.pieces.push({ where: "the input description", text: desc });
+  if (typeof value === "string") {
+    out.pieces.push({ where, text: value });
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    for (const v of value) walkStrings(v, where, depth + 1, out);
+    return;
+  }
+  for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+    // A property's name and everything under it belong to that field.
+    if ((key === "properties" || key === "patternProperties") && v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [prop, sub] of Object.entries(v as Record<string, unknown>)) {
+        const field = `the "${cleanToolText(prop, 60) || "field"}" field`;
+        walkStrings(prop, field, depth + 1, out);
+        walkStrings(sub, field, depth + 1, out);
+      }
+      continue;
+    }
+    walkStrings(v, where, depth + 1, out);
+  }
+}
+
+/** The input schema's top level fields, for display. */
+function fieldsOf(schema: unknown): ShopTool["fields"] {
+  const props = schema && typeof schema === "object" ? (schema as { properties?: unknown }).properties : undefined;
+  if (!props || typeof props !== "object" || Array.isArray(props)) return [];
+  return Object.entries(props as Record<string, unknown>)
+    .slice(0, 8)
+    .map(([key, v]) => {
+      const d = v && typeof v === "object" ? (v as { description?: unknown }).description : undefined;
+      return { name: cleanToolText(key, 60) || "field", description: typeof d === "string" ? cleanToolText(d) : "" };
+    });
 }
 
 const hostOf = (u: unknown) => {
@@ -110,53 +142,61 @@ const hostOf = (u: unknown) => {
 };
 
 /** One raw entry from KERNEL (SDK shape { tool: { name, description, inputSchema, annotations }, source }), or null. */
-function readOne(entry: unknown): ShopTool | null {
+function readOne(entry: unknown): { tool: ShopTool; incomplete: boolean } | null {
   if (!entry || typeof entry !== "object") return null;
   const e = entry as { tool?: unknown; source?: { frame?: { url?: unknown } | null } };
   const t = (e.tool ?? null) as Record<string, unknown> | null;
-  if (!t || typeof t.name !== "string" || typeof t.description !== "string") return null;
-  const name = cleanToolText(t.name, 80);
-  if (!name) return null;
-  const out = { fields: [] as ShopTool["fields"], pieces: [] as Piece[] };
-  const pieces: Piece[] = [
-    { where: "the description", text: t.description },
-    { where: "the name", text: t.name },
-    ...(typeof t.title === "string" ? [{ where: "the title", text: t.title }] : []),
-  ];
-  schemaPieces(t.inputSchema, "", 0, out);
-  pieces.push(...out.pieces);
+  if (!t || typeof t !== "object") return null;
+  const name = typeof t.name === "string" ? cleanToolText(t.name, 80) : "";
+  const description = typeof t.description === "string" ? t.description : "";
+  const out: Walk = { pieces: [], incomplete: false };
+  walkStrings(t.description, "the description", 0, out);
+  walkStrings(t.name, "the name", 0, out);
+  walkStrings(t.title, "the title", 0, out);
+  walkStrings(t.inputSchema, "the input schema", 0, out);
+  walkStrings(t.outputSchema, "the output schema", 0, out);
 
   let poisoned: ShopTool["poisoned"];
-  for (const p of pieces) {
-    const { text } = clean(p.text);
-    if (looksLikeInstruction(text)) {
-      poisoned = { where: p.where, quote: display(text) };
-      break;
-    }
+  let incomplete = out.incomplete || !name;
+  for (const p of out.pieces) {
+    const { text, cut } = clean(p.text);
+    if (cut) incomplete = true;
+    if (!poisoned && looksLikeInstruction(text)) poisoned = { where: p.where, quote: display(text) };
   }
   const ann = (t.annotations ?? {}) as Record<string, unknown>;
   const frame = hostOf(e.source?.frame?.url);
+  const title = typeof t.title === "string" ? cleanToolText(t.title, 80) : "";
   return {
-    name,
-    ...(typeof t.title === "string" && cleanToolText(t.title, 80) ? { title: cleanToolText(t.title, 80) } : {}),
-    description: cleanToolText(t.description),
-    fields: out.fields.slice(0, 8),
-    hints: HINTS.filter(([k, want]) => ann[k] === want).map(([, , label]) => label),
-    ...(frame ? { frame } : {}),
-    ...(poisoned ? { poisoned } : {}),
+    incomplete,
+    tool: {
+      name: name || "unnamed tool",
+      ...(title ? { title } : {}),
+      description: cleanToolText(description),
+      fields: fieldsOf(t.inputSchema),
+      hints: HINTS.filter(([k, want]) => ann[k] === want).map(([, , label]) => label),
+      ...(frame ? { frame } : {}),
+      ...(poisoned ? { poisoned } : {}),
+    },
   };
 }
 
 /** What KERNEL's listTools sent back, read and judged. Not a tool list at all: checked is false, never "no tools". */
 export function readShopTools(raw: unknown): ShopTools {
   const list = raw && typeof raw === "object" ? (raw as { tools?: unknown }).tools : undefined;
-  if (!Array.isArray(list)) return { checked: false, error: "The cloud browser didn't send back a list of tools." };
-  const read = list.slice(0, MAX_TOOLS_READ).map(readOne).filter((t): t is ShopTool => t !== null);
-  const sorted = [...read.filter((t) => t.poisoned), ...read.filter((t) => !t.poisoned)];
+  if (!Array.isArray(list)) {
+    console.error(`[spotter] the cloud browser's tool list wasn't a list (got ${raw === null ? "null" : typeof raw}${raw && typeof raw === "object" ? ` with keys ${Object.keys(raw).slice(0, 5).join(", ")}` : ""})`);
+    return { checked: false, error: "The cloud browser didn't send back a list of tools." };
+  }
+  const results = list.slice(0, MAX_TOOLS_READ).map(readOne);
+  const read = results.filter((r): r is NonNullable<typeof r> => r !== null);
+  const tools = read.map((r) => r.tool);
+  const poisoned = tools.filter((t) => t.poisoned);
+  const skipped = results.length - read.length;
   return {
     checked: true,
-    tools: sorted.slice(0, MAX_TOOLS_SHOWN),
-    total: read.length,
-    truncated: list.length > MAX_TOOLS_READ || sorted.length > MAX_TOOLS_SHOWN,
+    tools: [...poisoned, ...tools.filter((t) => !t.poisoned)].slice(0, MAX_TOOLS_SHOWN),
+    total: list.length,
+    poisoned: poisoned.length,
+    incomplete: list.length > MAX_TOOLS_READ || skipped > 0 || read.some((r) => r.incomplete),
   };
 }

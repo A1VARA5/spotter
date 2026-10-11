@@ -269,7 +269,8 @@ describe("inspect_shop", () => {
   const poisonedTools = {
     checked: true as const,
     total: 2,
-    truncated: false,
+    poisoned: 1,
+    incomplete: false,
     tools: [
       {
         name: "add_to_basket",
@@ -297,10 +298,22 @@ describe("inspect_shop", () => {
 
   it("says plainly when the shop offers no tools, and when they couldn't be listed", async () => {
     const now = await pay("gran", "GadgetBarn", 1999, shop);
-    const none = await runTool("inspect_shop", { url: "https://gadgetbarn.example/pulse" }, ctx(now, { visit: visit({ tools: { checked: true, total: 0, truncated: false, tools: [] } }) }));
+    const none = await runTool("inspect_shop", { url: "https://gadgetbarn.example/pulse" }, ctx(now, { visit: visit({ tools: { checked: true, total: 0, poisoned: 0, incomplete: false, tools: [] } }) }));
     expect(none.summary).toContain("The page offers no tools to AI agents.");
-    const failed = await runTool("inspect_shop", { url: "https://gadgetbarn.example/pulse" }, ctx(now, { visit: visit({ tools: { checked: false, error: "x" } }) }));
+    const failed = await runTool("inspect_shop", { url: "https://gadgetbarn.example/pulse" }, ctx(now, { visit: visit({ seen: { ...seen, hidden: [seen.hidden[1]!] }, tools: { checked: false, error: "x" } }) }));
     expect(failed.summary).toContain("Spotter couldn't list the tools this page offers AI agents.");
+    // A tool check that didn't run (or couldn't read everything) is never a clean bill of health.
+    expect(failed.ok).toBe(false);
+    const harmless = { ...seen, hidden: [seen.hidden[1]!] };
+    const part = await runTool(
+      "inspect_shop",
+      { url: "https://gadgetbarn.example/pulse" },
+      ctx(now, { visit: visit({ seen: harmless, tools: { checked: true, total: 500, poisoned: 0, incomplete: true, tools: [] } }) }),
+    );
+    expect(part.ok).toBe(false);
+    expect(part.summary).toContain("Spotter couldn't read all of them, so this is not a clean bill of health.");
+    const unlisted = await runTool("inspect_shop", { url: "https://gadgetbarn.example/pulse" }, ctx(now, { visit: visit({ seen: harmless }) }));
+    expect(unlisted.summary).toContain("The tools this page offers AI agents weren't checked.");
   });
 
   it("only opens shop links from the message, and is only offered with KERNEL", async () => {
