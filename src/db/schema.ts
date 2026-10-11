@@ -247,4 +247,14 @@ create unique index if not exists price_watches_one_active_idx on price_watches 
 -- Spotter asks that real person. The ask, who it went to and their answer (never a secret: tokens are HMACs).
 alter table payments add column if not exists was_it_you jsonb;
 create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
+-- Security review 2026-10-11 block. F2: when a peek asked KERNEL for a browser, so a failed start still counts
+-- towards the daily caps. F3: each Channel3 product search a price watch or an agent's find_products makes
+-- (1 credit each), so they have a daily cap per family and overall, like price_checks.
+alter table peeks add column if not exists create_called_at timestamptz;
+create table if not exists channel3_searches (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists channel3_searches_household_idx on channel3_searches (household_id, at);
+create index if not exists channel3_searches_at_idx on channel3_searches (at);
 `;

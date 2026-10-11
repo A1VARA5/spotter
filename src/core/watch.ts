@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import type { Db } from "@/db";
 import type { Offer } from "./market";
 import type { Currency } from "./types";
-import { bestProduct, type PriceHistory, type Product } from "@/market/channel3";
+import { bestProduct, familySearch, type PriceHistory, type Product } from "@/market/channel3";
 import { cleanQuery } from "@/watchtower/price";
 
 export const WATCH_DAYS = 14;
@@ -224,7 +224,9 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
       : { error: "Spotter is watching as many prices as it can today. Try again tomorrow.", status: 429 };
   }
 
-  const products = await c3.search(item, input.currency, 8);
+  // Each search is a Channel3 credit, spent before any watch row exists: cached, and capped per family and per day.
+  const products = await familySearch(db, input.householdId, (q, c, l) => c3.search(q, c, l), item, input.currency, 8);
+  if (products === "capped") return { error: "Spotter has looked up all the products it can today. Try again tomorrow.", status: 429 };
   if (!products) return { error: "Real shop prices are unavailable right now, so nothing is watched yet. Try again in a minute.", status: 502 };
   const product = bestProduct(products, item);
   if (!product) return { error: "Spotter couldn't find this exact product at real shops, so there's no price to watch.", status: 404 };
