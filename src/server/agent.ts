@@ -1,7 +1,7 @@
 // The agent face: what an AI agent can do through Spotter's MCP tools. Each agent is a spender with its own
 // token (see core/pairing). It can ask to pay and check on its own payments. It can never approve, deny or
 // change its allowance; only the human spotter can.
-import { getPayment, getSpender, LATE_HOLD, submitPayment, weekSpend, type Deps, type Payment } from "@/core/lifecycle";
+import { getPayment, getSpender, LATE_BY, LATE_HOLD, submitPayment, weekSpend, type Deps, type Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { offerSaferOption, paySaferOption, stopReason, type SaferOption } from "@/core/safer";
 import { startWatch, watchFromPayment, type WatchDeps, type WatchResult } from "@/core/watch";
@@ -50,7 +50,7 @@ export function reply(p: Payment, spotter: string): AgentReply {
       return { status: "protected", payment_id: p.id, message: `Not paid. This needed a protected payment method.${why}` };
     case "voided":
     case "voiding":
-      if (p.error === LATE_HOLD) return { status: "failed", payment_id: p.id, message: `Not paid. ${LATE_HOLD}` };
+      if (p.decided_by === LATE_BY || p.error === LATE_HOLD) return { status: "failed", payment_id: p.id, message: `Not paid. ${LATE_HOLD}` };
       return { status: "denied", payment_id: p.id, message: `${spotter} said no to ${amount} to ${to}. Nothing was paid.` };
     case "failed":
       return { status: "failed", payment_id: p.id, message: `Not paid. PayPal didn't complete it: ${p.error ?? "unknown error"}.` };

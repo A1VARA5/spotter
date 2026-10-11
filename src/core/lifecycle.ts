@@ -319,6 +319,8 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
 async function crashed(deps: Deps, id: string, e: unknown): Promise<Payment> {
   const { db } = deps;
   const now = await getPayment(db, id).catch(() => null);
+  // PayPal may have made the hold before the crash: kept authorising, so reconcile replays the request and lets it go.
+  if (now?.status === "authorising") return unconfirmed(db, id, "authorising", "authorise", e);
   const live: PaymentStatus[] = ["needs_approval", "authorised", "capturing", "voiding"];
   if (!now?.paypal_authorization_id || !live.includes(now.status)) return fail(db, id, "check", e);
   const error = `Spotter hit an error after PayPal made the hold, so it waits for the spotter: ${errText(e)}`.slice(0, 500);
@@ -419,16 +421,18 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
   if (!hold.authorizationId) {
     return fail(db, id, "authorise", new Error(NO_HOLD), { paypal_order_id: hold.orderId }, "authorising");
   }
-  await event(db, id, "authorised", { orderId: hold.orderId });
-  const held = await setStatus(db, id, decision.outcome === "allow" ? "authorised" : "needs_approval", {
-    decision,
-    ai,
+  // The hold's ids are saved first, and only onto the row still authorising (reconcile may have replayed it meanwhile).
+  const held = await move(db, id, "authorising", decision.outcome === "allow" ? "authorised" : "needs_approval", {
     paypal_order_id: hold.orderId,
     paypal_authorization_id: hold.authorizationId,
     approve_url: hold.approveUrl ?? null,
     paypal_auth_expires_at: hold.expiresAt ?? null,
-    ...(customId ? { paypal_custom_id: customId } : {}),
   });
+  if (!held) {
+    console.error(`[spotter] payment ${id}: PayPal made the hold but the payment had already left authorising; left as it is`);
+    return (await getPayment(db, id))!;
+  }
+  await event(db, id, "authorised", { orderId: hold.orderId });
   // The tripwire race: it may have frozen the agent and swept its holds while PayPal was making this one. Checked after
   // the hold is saved, so either the sweep saw it or this sees the freeze. Either way the hold is let go, never paid.
   if (await isFrozen(db, spender.id)) {
@@ -455,7 +459,12 @@ async function createHold(deps: Deps, req: PaymentRequest, customId?: string) {
   } catch (e) {
     if (isFirm(e)) throw e;
     console.error(`[spotter] payment ${req.id}: PayPal didn't answer the hold, asking again with the same request: ${errText(e)}`);
-    return deps.paypal.createAuthorizeOrder(req, holdOpts("replay", customId));
+    try {
+      return await deps.paypal.createAuthorizeOrder(req, holdOpts("replay", customId));
+    } catch (replayError) {
+      // A replay sends no card, so even a 4xx (say a token error) says nothing about the first request: never "no hold".
+      throw new Error(`PayPal didn't answer, and asking again failed: ${errText(replayError)}`);
+    }
   }
 }
 
@@ -678,12 +687,13 @@ export async function sweepStale(db: Db, minutes = 5): Promise<number> {
  * A failed lookup leaves the payment as it is, to try again later. */
 export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
   const { db, paypal } = deps;
-  if (!paypal.getAuthorization) return 0;
   // Captures and voids PayPal never confirmed (cut off, timed out, or PayPal down when the spotter tapped).
-  const stuck = await db.query<Payment>(
-    "select * from payments where status in ('capturing', 'voiding') and paypal_authorization_id is not null and updated_at < now() - make_interval(mins => $1)",
-    [minutes],
-  );
+  const stuck = paypal.getAuthorization
+    ? await db.query<Payment>(
+        "select * from payments where status in ('capturing', 'voiding') and paypal_authorization_id is not null and updated_at < now() - make_interval(mins => $1)",
+        [minutes],
+      )
+    : [];
   let settled = 0;
   for (const p of stuck) {
     try {
@@ -705,7 +715,10 @@ export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
   return settled;
 }
 
-export const LATE_HOLD ="PayPal's answer came too late, so Spotter let the hold go. Nothing was paid.";
+export const LATE_HOLD = "PayPal's answer came too late, so Spotter let the hold go. Nothing was paid.";
+/** decided_by on a hold Spotter let go because PayPal answered late: nobody decided it, so nobody is told they did. */
+export const LATE_BY = "Spotter (PayPal answered late)";
+const REPLAY_NO_HOLD = "PayPal has no hold on record for this payment. If one was made, PayPal lets it go when it expires. Nothing was paid.";
 
 /**
  * A hold whose answer never arrived. Replayed (same PayPal-Request-Id, no card), PayPal returns the order it made, or
@@ -718,22 +731,20 @@ async function recoverHold(deps: Deps, p: Payment): Promise<boolean> {
   try {
     hold = await paypal.createAuthorizeOrder(p.request, holdOpts("replay", p.paypal_custom_id));
   } catch (e) {
-    if (!isFirm(e)) {
-      await unconfirmed(db, p.id, "authorising", "authorise", e);
-      return false;
-    }
-    const why = new Error(`PayPal refused to look up the hold again (${errText(e)}). If PayPal made it the first time, PayPal lets it go when it expires. Nothing was paid.`);
-    return (await fail(db, p.id, "authorise", why, {}, "authorising")).status === "failed";
+    // A replay sends no card, so no error from it (not even a 4xx) proves there is no hold: ask again next run.
+    await unconfirmed(db, p.id, "authorising", "authorise", e);
+    return false;
   }
   if (!hold.authorizationId) {
-    const why = new Error(NO_HOLD);
-    return (await fail(db, p.id, "authorise", why, { paypal_order_id: hold.orderId }, "authorising")).status === "failed";
+    // The replay's own order is unrelated to this payment, so it isn't saved as the payment's order.
+    return (await fail(db, p.id, "authorise", new Error(REPLAY_NO_HOLD), {}, "authorising")).status === "failed";
   }
   const auth = hold.authorizationId;
   const claimed = await move(db, p.id, "authorising", "voiding", {
     paypal_order_id: hold.orderId,
     paypal_authorization_id: auth,
     paypal_auth_expires_at: hold.expiresAt ?? null,
+    decided_by: LATE_BY,
     error: null,
   });
   // Another reconcile run got there first (the same request id gives it the same hold), and it lets the hold go.
@@ -766,11 +777,12 @@ async function finishWithPayPal(deps: Deps, p: Payment, opts: { voidAgain?: bool
     return false;
   }
   if (p.status === "voiding") {
+    const late = p.decided_by === LATE_BY;
     if (GONE.has(status)) {
-      const done = await move(db, p.id, "voiding", "voided", { error: null });
+      const done = await move(db, p.id, "voiding", "voided", { error: late ? LATE_HOLD : null });
       if (!done) return false;
       await event(db, p.id, "reconciled", { paypal: status });
-      await tellDecided(deps, done);
+      if (!late) await tellDecided(deps, done);
       return true;
     }
     if (TAKEN.has(status)) {
@@ -788,10 +800,10 @@ async function finishWithPayPal(deps: Deps, p: Payment, opts: { voidAgain?: bool
       await unconfirmed(db, p.id, "voiding", "void", e);
       return false;
     }
-    const done = await move(db, p.id, "voiding", "voided", { error: null });
+    const done = await move(db, p.id, "voiding", "voided", { error: late ? LATE_HOLD : null });
     if (!done) return false;
     await event(db, p.id, "voided", { by: "reconcile" });
-    await tellDecided(deps, done);
+    if (!late) await tellDecided(deps, done);
     return true;
   }
   if (TAKEN.has(status)) {

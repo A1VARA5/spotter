@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb, type Db } from "@/db";
-import { approve, createSpender, deny, getPayment, listEvents, reconcileStuck, retryWithPayPal, settleFromPayPal, submitPayment, withdraw, type Deps } from "./lifecycle";
+import { approve, createSpender, deny, getPayment, LATE_BY, LATE_HOLD, listEvents, reconcileStuck, retryWithPayPal, settleFromPayPal, submitPayment, withdraw, type Deps } from "./lifecycle";
 import { springTripwire } from "./tripwire";
 import type { AiCheckResult } from "@/ai/check";
 import { PayPalError } from "@/paypal/client";
@@ -223,7 +223,7 @@ describe("an authorise answer PayPal never delivered", () => {
     expect(await getPayment(db, p.id)).toMatchObject({ status: "voiding", paypal_authorization_id: "A9" });
   });
 
-  it("reconcile: PayPal still not answering leaves it authorising; a firm no ends it failed", async () => {
+  it("reconcile: any replay error (a timeout, or a 4xx that says nothing about the first request) leaves it authorising", async () => {
     create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
     const p = await held();
     await age(p.id);
@@ -231,11 +231,63 @@ describe("an authorise answer PayPal never delivered", () => {
     await reconcileStuck(deps);
     expect((await getPayment(db, p.id))?.status).toBe("authorising");
     await age(p.id);
-    create.mockRejectedValueOnce(new PayPalError("dup", 422, "DUPLICATE_INVOICE_ID"));
+    create.mockRejectedValueOnce(new PayPalError("token", 401, "AUTH_FAILED"));
+    await reconcileStuck(deps);
+    expect((await getPayment(db, p.id))?.status).toBe("authorising");
+  });
+
+  it("a firm error on the immediate replay (no card, so not a decline) leaves it authorising, never failed", async () => {
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(new PayPalError("token", 401, "AUTH_FAILED"));
+    expect((await held()).status).toBe("authorising");
+  });
+
+  it("a database error right after PayPal made the hold keeps a recoverable row, never failed with no ids", async () => {
+    const real = db.query.bind(db);
+    let thrown = false;
+    deps = {
+      ...deps,
+      db: {
+        query: (async (sql: string, params?: unknown[]) => {
+          if (!thrown && sql.startsWith("update payments set status = $3") && params?.[2] === "needs_approval") {
+            thrown = true;
+            throw new Error("connection reset");
+          }
+          return real(sql, params);
+        }) as Db["query"],
+      },
+    };
+    const p = await held();
+    expect(p.status).toBe("authorising");
+    await age(p.id);
+    await reconcileStuck(deps);
+    expect(voidAuth).toHaveBeenCalledWith("A1", `void-${p.id}-A1`);
+    expect((await getPayment(db, p.id))?.status).toBe("voided");
+  });
+
+  it("a recovered hold settled by the usual void retry still tells the agent it was a late answer, not the spotter's no", async () => {
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+    const p = await held();
+    await age(p.id);
+    create.mockResolvedValueOnce({ orderId: "O9", authorizationId: "A9" });
+    voidAuth.mockRejectedValueOnce(new Error("network"));
+    await reconcileStuck(deps);
+    await age(p.id);
+    lookup.mockResolvedValueOnce({ status: "CREATED" });
     await reconcileStuck(deps);
     const now = await getPayment(db, p.id);
-    expect(now?.status).toBe("failed");
-    expect(now?.error).toContain("DUPLICATE_INVOICE_ID");
+    expect(now?.status).toBe("voided");
+    expect(now?.decided_by).toBe(LATE_BY);
+    expect(now?.error).toBe(LATE_HOLD);
+  });
+
+  it("recovers authorising rows even without an authorisation lookup", async () => {
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+    const p = await held();
+    await age(p.id);
+    create.mockResolvedValueOnce({ orderId: "O9", authorizationId: "A9" });
+    deps = { ...deps, paypal: { ...deps.paypal, getAuthorization: undefined } };
+    await reconcileStuck(deps);
+    expect((await getPayment(db, p.id))?.status).toBe("voided");
   });
 
   it("a replay that finds no hold (PayPal never got the first request) ends failed: nothing held, nothing paid", async () => {
@@ -247,6 +299,8 @@ describe("an authorise answer PayPal never delivered", () => {
     const now = await getPayment(db, p.id);
     expect(now?.status).toBe("failed");
     expect(now?.error).toMatch(/no hold/i);
+    // The replay's own new order is unrelated to the payment, so it isn't saved as the payment's order.
+    expect(now?.paypal_order_id).toBeNull();
     expect(voidAuth).not.toHaveBeenCalled();
   });
 
