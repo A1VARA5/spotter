@@ -88,6 +88,25 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
 export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
   const { month, failed, labels, now } = useGranMonth(p as never);
   const scroll = useScrollBox<HTMLElement>();
+  // "Ask again tomorrow" only makes the hold wait a day: it never pays or releases anything, so Gran can choose it too.
+  const [slept, setSlept] = useState<Record<string, string>>({});
+  const [sleepError, setSleepError] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  async function sleepOn(id: string) {
+    if (busy) return;
+    setBusy(id);
+    setSleepError((e) => ({ ...e, [id]: "" }));
+    try {
+      const r = await fetch(`/api/payments/${encodeURIComponent(id)}/sleep`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ as: "person" }) });
+      const j = (await r.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!r.ok) throw new Error(j.error ?? `That didn't work (${r.status}).`);
+      setSlept((s) => ({ ...s, [id]: `Sleeping on it. ${j.message ?? "Spotter asks again tomorrow."}` }));
+    } catch (e) {
+      setSleepError((s) => ({ ...s, [id]: e instanceof Error ? e.message : "That didn't work. Try again, or ask your spotter." }));
+    } finally {
+      setBusy(null);
+    }
+  }
   if (failed) return <Failed />;
   if (!month) return null;
   return (
@@ -115,8 +134,19 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
                   </span>
                   <Sample on={w.sample} />
                 </p>
-                <p className="gran-item-body">{w.status}</p>
+                <p className="gran-item-body">{slept[w.id] ?? w.status}</p>
+                {w.ends && <p className="gran-item-body">{w.ends}</p>}
                 <p className="gran-item-meta">Asked {ago(w.when, now).toLowerCase()}.</p>
+                {!w.asleep && !w.sample && !slept[w.id] && (
+                  <button type="button" className="gran-sleep" aria-disabled={busy === w.id || undefined} onClick={() => void sleepOn(w.id)}>
+                    {busy === w.id ? "Saving…" : "Not sure? Ask again tomorrow"}
+                  </button>
+                )}
+                {sleepError[w.id] && (
+                  <p className="gran-failed" role="alert">
+                    {sleepError[w.id]}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

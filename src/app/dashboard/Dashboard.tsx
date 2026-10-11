@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hand, ShieldCheck, Ban, Info, Repeat } from "lucide-react";
+import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock } from "lucide-react";
+import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
@@ -11,7 +12,20 @@ import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 
 
-export function Dashboard({ initial, names, unlocked, demo = false }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean; demo?: boolean }) {
+export function Dashboard({
+  initial,
+  names,
+  unlocked,
+  demo = false,
+  tz = DEFAULT_TZ,
+}: {
+  initial: Payment[];
+  names: Record<string, string>;
+  unlocked: boolean;
+  demo?: boolean;
+  /** The household's time zone, for "asks again tomorrow at 9am" and when a hold ends. */
+  tz?: string;
+}) {
   const [payments, setPayments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(!unlocked);
@@ -100,6 +114,7 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
               all={payments}
               who={names[p.spender_id] ?? "Someone"}
               demo={demo}
+              tz={tz}
               onSettled={refresh}
               onLocked={() => setLocked(true)}
               onDecided={(text) => setNotice((n) => ({ text, n: (n?.n ?? 0) + 1 }))}
@@ -222,6 +237,7 @@ function HeldCard({
   all,
   who,
   demo,
+  tz,
   onSettled,
   onLocked,
   onDecided,
@@ -230,11 +246,12 @@ function HeldCard({
   all: Payment[];
   who: string;
   demo: boolean;
+  tz: string;
   onSettled: () => void;
   onLocked: () => void;
   onDecided: (text: string) => void;
 }) {
-  const [busy, setBusy] = useState<"approve" | "deny" | "swap" | null>(null);
+  const [busy, setBusy] = useState<"approve" | "deny" | "swap" | "sleep" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -259,6 +276,24 @@ function HeldCard({
     if (wasConfirming.current && !confirming) approveRef.current?.focus();
     wasConfirming.current = confirming;
   }, [confirming]);
+
+  /** "Ask again tomorrow": the hold stays, nothing is paid or released, so no PIN. */
+  async function sleepOnIt() {
+    if (busy) return;
+    setBusy("sleep");
+    setError(null);
+    try {
+      const r = await fetch(`/api/payments/${p.id}/sleep`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+      const j = await readJson(r);
+      if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
+      onDecided(`${money(p.amount, p.currency)} to ${p.request.payee.name}: ${j.message ?? "Spotter asks again tomorrow."}`);
+      onSettled();
+    } catch (e) {
+      setError(plainError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function act(action: "approve" | "deny" | "swap") {
     // Busy buttons stay focusable (aria-disabled) so focus isn't lost; repeat presses stop here instead.
@@ -312,6 +347,8 @@ function HeldCard({
       ) : (
         <CasePending createdAt={p.created_at} />
       )}
+
+      <HoldClock p={p} who={who} tz={tz} />
 
       {/* The message check never saw the market listings, so its summary is hidden when it argues with them. */}
       {p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
@@ -391,6 +428,11 @@ function HeldCard({
               </button>
             </>
           )}
+          {!p.ask_again_at && (
+            <button type="button" className="btn btn-quiet btn-sleep" aria-disabled={busy !== null || undefined} onClick={sleepOnIt}>
+              {busy === "sleep" ? "Saving" : "Ask again tomorrow"}
+            </button>
+          )}
         </div>
       )}
       {pending && !confirming && <p className="held-wait">Approve opens once Spotter has finished looking into it (a few seconds). Deny works now.</p>}
@@ -403,7 +445,30 @@ function HeldCard({
   );
 }
 
-const ROW_ICON = { blocked: Ban, protected: ShieldCheck, held: Hand } as const;
+/** When Spotter asks again (if someone chose to sleep on it) and, always, when PayPal lets the hold go on its own. */
+function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
+  const until = p.ask_again_at ? new Date(p.ask_again_at) : null;
+  return (
+    <div className="hold-clock">
+      {until && (
+        <p className="hold-clock-sleep">
+          <Moon size={17} strokeWidth={2} aria-hidden="true" />
+          <span>
+            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held.
+          </span>
+        </p>
+      )}
+      {p.reauthorized_at && <p className="hold-clock-note">PayPal renewed the hold after 3 days, so the money is still set aside.</p>}
+      {p.reauth_note && <p className="hold-clock-note">{p.reauth_note}</p>}
+      <p className="hold-clock-end">
+        <Clock size={17} strokeWidth={2} aria-hidden="true" />
+        <span>{holdEndLine(p, who, tz)}</span>
+      </p>
+    </div>
+  );
+}
+
+const ROW_ICON ={ blocked: Ban, protected: ShieldCheck, held: Hand } as const;
 
 function FeedRow({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
   const s = trackState(p.status);

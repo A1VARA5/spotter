@@ -5,6 +5,7 @@ import type { Household } from "@/core/households";
 import { listSpenders } from "@/core/households";
 import { listPayments } from "@/core/lifecycle";
 import { networkCount } from "@/core/network";
+import { holdEndsAt, safeTz, whenText } from "@/core/holdtime";
 import { SIGN_LABEL, toPaypalRows, toSources, watchAlerts, type CaseNote, type PaypalRow, type Sources, type WatchAlert } from "./data";
 import { SAMPLE_NETWORK, sampleMonth } from "./sample";
 import { radarKey, type RadarCount } from "./widgetLogic";
@@ -65,11 +66,15 @@ export async function loadWatchtower(db: Db, household: Household, now = new Dat
   const payments = [...real, ...sample];
   const sources = toSources(payments, spenders, now);
   const [paypal, radar] = await Promise.all([loadPaypal(db, household.id), radarCounts(db, household.id, sources.payments)]);
+  const tz = safeTz(household.time_zone);
   const notes: CaseNote[] = payments.map((p) => ({
     id: p.id,
     reasons: p.decision?.reasons ?? [],
     signs: (p.decision?.flags ?? p.ai?.flags ?? []).map((f) => ({ sign: SIGN_LABEL[f.kind], severity: f.severity, why: f.why })),
     ...(p.case_file ? { caseHeadline: p.case_file.headline, caseFindings: p.case_file.findings.map((f) => f.text) } : {}),
+    ...(p.status === "needs_approval"
+      ? { wait: { holdEnds: whenText(holdEndsAt(p), tz), ...(p.ask_again_at ? { askAgain: whenText(new Date(p.ask_again_at), tz) } : {}) } }
+      : {}),
   }));
   return {
     sources: paypal ? { ...sources, paypal } : sources,

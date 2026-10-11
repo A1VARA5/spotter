@@ -11,6 +11,7 @@ import {
   swap,
   type Deps,
 } from "@/core/lifecycle";
+import { askAgainTomorrow, whenText } from "@/core/sleep";
 
 export const SubmitBody = z.object({
   spenderId: z.string().min(1).max(64),
@@ -82,6 +83,14 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
     approve: (householdId: string, id: string, by: string) => guarded("approve", async () => settle(await getDeps(), householdId, id, by, approve)),
 
     deny: (householdId: string, id: string, by: string) => guarded("deny", async () => settle(await getDeps(), householdId, id, by, deny)),
+
+    /** "Ask again tomorrow": never moves money (the hold just waits), so the signed in household is enough. */
+    sleep: (householdId: string, id: string, by: string) =>
+      guarded("sleep", async () => {
+        const r = await askAgainTomorrow(await getDeps(), { id, householdId, by });
+        if (!r.ok) return json({ error: r.error }, r.status);
+        return json({ payment: r.payment, message: `Spotter asks again ${whenText(r.until, r.tz)}. The money stays held.` });
+      }),
 
     swap: (householdId: string, id: string, by: string) =>
       guarded("swap", async () => {

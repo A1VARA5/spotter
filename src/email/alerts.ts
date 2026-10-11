@@ -4,6 +4,7 @@ import type { Db } from "@/db";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { send } from "./agentboxd";
+import { askingAgain } from "@/core/sleep";
 import { block, esc, layout, list, markedText, quoteBox, track } from "./template";
 
 export function alertEmail(p: Payment, spender: Spender, site: string): { subject: string; text: string; html: string } {
@@ -12,8 +13,11 @@ export function alertEmail(p: Payment, spender: Spender, site: string): { subjec
   const held = p.status === "needs_approval";
   const reasons = p.decision?.reasons ?? [];
   const link = `${site}/dashboard`;
-  const subject = held ? `${spender.name} wants to pay ${amount}. It's on hold` : `Spotter stopped ${amount} from ${spender.name}`;
-  const headline = held ? `${spender.name} wants to pay ${amount}` : `Spotter stopped ${amount} from ${spender.name}`;
+  const again = askingAgain(p);
+  const subject = held
+    ? `${again ? "Asking again: " : ""}${spender.name} wants to pay ${amount}. It's ${again ? "still " : ""}on hold`
+    : `Spotter stopped ${amount} from ${spender.name}`;
+  const headline = held ? `${again ? "Asking again: " : ""}${spender.name} wants to pay ${amount}` : `Spotter stopped ${amount} from ${spender.name}`;
   const sub = held
     ? `To ${to}. PayPal is holding the money until you decide. Nothing has left yet.`
     : p.status === "protected"
@@ -47,6 +51,7 @@ export function makeNotify(db: Db, site: string) {
     const [hh] = await db.query<{ alert_email: string | null }>("select alert_email from households where id = $1", [spender.household_id]);
     if (!hh?.alert_email) return;
     const e = alertEmail(p, spender, site);
-    await send(hh.alert_email, e.subject, e.text, e.html, `alert-${p.id}`);
+    // A morning "ask again" is a new email, not a repeat of the first alert the idempotency key would swallow.
+    await send(hh.alert_email, e.subject, e.text, e.html, askingAgain(p) ? `alert-${p.id}-again-${p.sleeps}` : `alert-${p.id}`);
   };
 }

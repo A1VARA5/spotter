@@ -212,4 +212,13 @@ create table if not exists peeks (
 create unique index if not exists peeks_one_open_idx on peeks (household_id) where closed_at is null;
 create index if not exists peeks_started_idx on peeks (started_at);
 create index if not exists peeks_household_started_idx on peeks (household_id, started_at);
+-- Sleep on it block (src/core/sleep.ts): a held payment can wait a day and be asked about again at 9am household time.
+-- The PayPal hold stays; the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
+alter table households add column if not exists time_zone text not null default 'Europe/London';
+alter table payments add column if not exists ask_again_at timestamptz;
+alter table payments add column if not exists sleeps int not null default 0;
+alter table payments add column if not exists reauthorized_at timestamptz;
+alter table payments add column if not exists reauth_tried_at timestamptz;
+alter table payments add column if not exists reauth_note text;
+create index if not exists payments_ask_again_idx on payments (ask_again_at) where ask_again_at is not null;
 `;

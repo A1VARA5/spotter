@@ -6,6 +6,7 @@ import { requirePageSession } from "@/server/page-session";
 import { listSpenders } from "@/core/households";
 import { listPayments, reconcileStuck, sweepStale } from "@/core/lifecycle";
 import { Dashboard } from "./Dashboard";
+import { safeTz } from "@/core/holdtime";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard | Spotter" };
@@ -76,7 +77,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           PayPal&apos;s sandbox didn&apos;t answer, so your demo family started without its example hold. <Link href="/demo">Try a payment</Link> to see one.
         </p>
       )}
-      <Dashboard names={names} unlocked={unlocked} demo={household.demo} initial={JSON.parse(JSON.stringify(payments))} />
+      <Dashboard names={names} unlocked={unlocked} demo={household.demo} tz={safeTz(household.time_zone)} initial={JSON.parse(JSON.stringify(payments))} />
     </AppShell>
   );
 }

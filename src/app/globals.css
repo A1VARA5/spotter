@@ -7359,3 +7359,12 @@ h3 {
 .held-confirm-warn { font-size: 15px; color: var(--stop); font-weight: 600; }
 .held-confirm .pin-input { max-width: 200px; }
 .held-wait { font-size: 14px; color: var(--ink-2); }
+
+/* Sleep on it: when Spotter asks again, and when the hold ends on its own (src/core/holdtime.ts). */
+.held-actions > .btn-sleep { grid-column: 1 / -1; }
+.hold-clock { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--chalk); border: 1px solid var(--line); font-size: 15px; line-height: 1.45; }
+.hold-clock p { display: flex; gap: 10px; align-items: flex-start; margin: 0; }
+.hold-clock svg { flex: none; margin-top: 2px; color: var(--ink-2); }
+.hold-clock-sleep b { font-weight: 650; }
+.hold-clock-note { color: var(--ink-2); padding-left: 27px; }
+.hold-clock-end { color: var(--ink-2); }

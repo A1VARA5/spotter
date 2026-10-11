@@ -20,6 +20,8 @@ export type Household = {
   pin_hash: string | null;
   demo: boolean;
   kind: HouseholdKind;
+  /** IANA time zone for "ask again tomorrow at 9am" (core/sleep.ts). Optional so older fixtures still type check. */
+  time_zone?: string;
   created_at: string;
 };
 

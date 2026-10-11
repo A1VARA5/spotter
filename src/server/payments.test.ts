@@ -122,4 +122,16 @@ describe("payments API", () => {
     expect(r.status).toBe(409);
     expect((await r.json()).error).toMatch(/no safer option/i);
   });
+
+  it("sleep: asks again tomorrow for the owner, keeps the hold, and says when", async () => {
+    const id = (await (await h.submit(hhId, post(valid))).json()).payment.id;
+    expect((await h.sleep(otherHh, id, "Other")).status).toBe(404);
+    const r = await h.sleep(hhId, id, "Aivaras");
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.payment.status).toBe("needs_approval");
+    expect(j.payment.ask_again_at).toBeTruthy();
+    expect(j.message).toMatch(/^Spotter asks again \w+day \d+ \w+ at 9am\. The money stays held\.$/);
+    expect(capture).not.toHaveBeenCalled();
+  });
 });

@@ -1,7 +1,7 @@
 // Real dependencies for the running app: Postgres, Claude, PayPal sandbox, Channel3.
 import { getDb } from "@/db";
 import { aiCheck } from "@/ai/check";
-import { captureAuthorization, createAuthorizeOrder, getAuthorization, voidAuthorization } from "@/paypal/client";
+import { captureAuthorization, createAuthorizeOrder, getAuthorization, reauthorizeAuthorization, voidAuthorization } from "@/paypal/client";
 import type { Deps } from "@/core/lifecycle";
 import { makeMarket, searchProducts } from "@/market/channel3";
 import { after } from "next/server";
@@ -72,7 +72,7 @@ export function getDeps(): Promise<Deps> {
           task().catch((err) => console.error("[spotter] follow up failed:", err));
         }
       },
-      paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization, getAuthorization },
+      paypal: { createAuthorizeOrder, captureAuthorization, voidAuthorization, getAuthorization, reauthorizeAuthorization },
     } satisfies Deps;
   })().catch((e) => {
     ready = null; // retry on the next request instead of failing forever

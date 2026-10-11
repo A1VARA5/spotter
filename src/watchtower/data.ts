@@ -40,7 +40,15 @@ export type PaymentRow = {
   marketItem: string;
 };
 /** Spotter's own words about one payment, for the case file widget and the open_case_file tool. */
-export type CaseNote = { id: string; reasons: string[]; signs: Array<{ sign: string; severity: string; why: string }>; caseHeadline?: string; caseFindings?: string[] };
+export type CaseNote = {
+  id: string;
+  reasons: string[];
+  signs: Array<{ sign: string; severity: string; why: string }>;
+  caseHeadline?: string;
+  caseFindings?: string[];
+  /** Held payments only, already in household time words: when Spotter asks again (sleep on it) and when the hold ends. */
+  wait?: { askAgain?: string; holdEnds: string };
+};
 /** One thing PayPal told us about a payment (a webhook or a status check). */
 export type PaypalRow = { id: string; when: Date; eventType: string; label: string; paymentId: string; amount: number };
 export type SignRow = { paymentId: string; when: Date; who: string; payee: string; sign: string; severity: string };

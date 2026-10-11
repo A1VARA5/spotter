@@ -4,6 +4,7 @@ import type { Db } from "@/db";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { esc } from "./inbound";
+import { askingAgain } from "@/core/sleep";
 
 type Send = (chatId: string, html: string, extra?: Record<string, unknown>) => Promise<void>;
 
@@ -11,7 +12,11 @@ const amountOf = (p: Payment) => formatMoney({ amount: Number(p.amount), currenc
 
 export function alertText(p: Payment, spender: Spender): string {
   const held = p.status === "needs_approval";
-  const head = held ? `${spender.name} wants to pay ${amountOf(p)}. It's on hold.` : `Spotter stopped ${amountOf(p)} from ${spender.name}.`;
+  const head = held
+    ? askingAgain(p)
+      ? `Asking again, as you wanted: ${spender.name} wants to pay ${amountOf(p)}. It's still on hold.`
+      : `${spender.name} wants to pay ${amountOf(p)}. It's on hold.`
+    : `Spotter stopped ${amountOf(p)} from ${spender.name}.`;
   const c = p.case_file;
   const lines = [
     `<b>${esc(head)}</b>`,

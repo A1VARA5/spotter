@@ -32,6 +32,8 @@ export type Deps = {
     voidAuthorization: typeof voidAuthorization;
     /** Looks up an authorisation's status at PayPal. Optional: only reconciliation needs it. */
     getAuthorization?: (authorizationId: string) => Promise<{ status: string; expiresAt?: string }>;
+    /** A fresh hold after the 3 day honor period (core/sleep.ts). Optional: only the daily job needs it. */
+    reauthorizeAuthorization?: (authorizationId: string, idempotencyKey: string) => Promise<{ authorizationId: string; expiresAt?: string }>;
   };
 };
 
@@ -65,6 +67,12 @@ export type Payment = {
   paypal_capture_id: string | null;
   /** When PayPal drops the hold if nobody captures it. Optional so older rows and samples still type check. */
   paypal_auth_expires_at?: string | Date | null;
+  /** "Ask again tomorrow" (core/sleep.ts): when Spotter asks the spotter again, and how many times someone slept on it. */
+  ask_again_at?: string | Date | null;
+  sleeps?: number;
+  /** Set once PayPal gave the hold a fresh honor period; reauth_note says why it couldn't, in plain words. */
+  reauthorized_at?: string | Date | null;
+  reauth_note?: string | null;
   approve_url: string | null;
   error: string | null;
   decided_by: string | null;
