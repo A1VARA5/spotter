@@ -3,6 +3,19 @@ import type { Db } from "@/db";
 import { findProductsInImage, searchByImage } from "@/market/channel3";
 import type { PhotoDeps } from "@/market/photo";
 import { cap } from "@/watchtower/llm";
+import { readScreenshot } from "@/ai/screenshot";
+import type { PictureDeps } from "@/core/picture";
+
+/** Screenshot reading: one Claude vision call per picture, capped per family and per day. */
+export function pictureDeps(db: Db, householdId: string): PictureDeps {
+  return {
+    db,
+    householdId,
+    read: (bytes, type) => readScreenshot(bytes, type),
+    perHousehold: cap("VISION_CHECKS_PER_FAMILY", 10),
+    overall: cap("VISION_CHECKS_PER_DAY", 200),
+  };
+}
 
 export function photoDeps(db: Db, householdId: string): PhotoDeps {
   return {

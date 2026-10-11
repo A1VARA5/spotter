@@ -318,4 +318,21 @@ create table if not exists photo_cache (
   scene jsonb not null,
   fetched_at timestamptz not null default now()
 );
+
+-- Read screenshots block (src/core/picture.ts): each Claude vision read counted per family per day, and a picture
+-- waiting for "message or prices?" remembered by Telegram's file id only, never the picture, for an hour.
+create table if not exists vision_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists vision_checks_household_idx on vision_checks (household_id, at);
+create index if not exists vision_checks_at_idx on vision_checks (at);
+create table if not exists pending_pictures (
+  token text primary key,
+  household_id text not null references households(id) on delete cascade,
+  chat text not null,
+  file_id text not null,
+  caption text not null default '',
+  created_at timestamptz not null default now()
+);
 `;

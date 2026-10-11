@@ -7,10 +7,12 @@ import { deny, getPayment, getSpender, submitPayment, type Deps, type Spender } 
 import { findCode, redeemPairingCode } from "@/core/pairing";
 import type { Extracted } from "@/ai/extract";
 import { outcomeText } from "@/email/inbound";
-import { scanMessage } from "@/ai/scan";
+import { checkWordsOnly, scanMessage } from "@/ai/scan";
 import { blockedText, warnSpotter } from "@/core/switchedoff";
 import { answerWasItYou, parseButton } from "@/core/was-it-you";
-import { captionAmount, householdCurrency, MAX_PHOTO_BYTES, photoMode, type PhotoAnswer, type PhotoInput, type PhotoResult } from "@/market/photo";
+import type { ImageType } from "@/ai/screenshot";
+import { savePending, screenshotText, takePending, type PictureChoice, type PictureRoute } from "@/core/picture";
+import { captionAmount, householdCurrency, imageFrom, MAX_PHOTO_BYTES, photoMode, type PhotoAnswer, type PhotoInput, type PhotoResult } from "@/market/photo";
 import { formatMoney, type Currency } from "@/core/types";
 
 type TgEntity = { type: string; offset: number; length: number; url?: string };
@@ -45,11 +47,13 @@ export type TgCtx = {
   /** Downloads a file Telegram holds (Bot API getFile), size checked; null when it can't. Photo checks need both of these. */
   download?: (fileId: string) => Promise<Buffer | null>;
   photoCheck?: (req: { householdId: string; input: PhotoInput }) => Promise<PhotoAnswer>;
+  /** Decides where a picture goes (reads screenshots). Without it, every picture is a price check. */
+  readPicture?: (req: { householdId: string; bytes: Buffer; type: ImageType; choice: PictureChoice | null }) => Promise<PictureRoute>;
 };
 
 export type TgOutcome =
   | "switched_off" | "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked"
-  | "failed" | "denied" | "refused" | "not_me" | "it_was_me" | "photo_checked" | "photo_failed";
+  | "failed" | "denied" | "refused" | "not_me" | "it_was_me" | "photo_checked" | "photo_failed" | "asked" | "checked_words";
 
 const PER_CHAT_PER_DAY = 12;
 
@@ -92,7 +96,7 @@ function helpFor(s: Spender) {
     "When a text, a message app or an email asks you for money, forward it here or paste it in. I check it, and if anything looks off, PayPal holds the money until " +
       `${esc(s.spotter_name)} says yes.`,
     "",
-    "Got a photo of a quote, an ad, or things someone wants to buy from you? Send me the photo and I'll price each thing at real shops.",
+    "Screenshots work too: send me a screenshot of a text or an email and I'll read it and check it. Got a photo of a quote, an ad, or things someone wants to buy from you? Send it and I'll price each thing at real shops.",
   ].join("\n");
 }
 
@@ -143,14 +147,14 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
       return "limited";
     }
     if (!ctx.download || !ctx.photoCheck) {
-      await say("I can't read pictures or files yet. Please copy the words of the message and send them to me instead. Nothing was paid.");
+      await say("I can't read pictures right now. Please copy the words of the message and send them to me instead. Nothing was paid.");
       return "unsupported";
     }
     if (picture === "refused") {
-      await say("I can only check photos (JPEG, PNG or WEBP) under 4 MB. Nothing was paid.");
+      await say("I can only check photos and screenshots (JPEG, PNG or WEBP) under 4 MB. Nothing was paid.");
       return "unsupported";
     }
-    return checkPhoto({ ...ctx, download: ctx.download, photoCheck: ctx.photoCheck }, say, { fileId: picture.fileId, householdId, spender, caption: text });
+    return handlePicture({ ...ctx, download: ctx.download, photoCheck: ctx.photoCheck }, say, { fileId: picture.fileId, householdId, spender, caption: text, chat, choice: null });
   }
 
   if (/^\/(start|help)\b/i.test(text)) {
@@ -167,9 +171,18 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
     return "limited";
   }
 
+  const body = [text, hiddenLinks(m)].filter(Boolean).join("\n\n").slice(0, 50_000);
+  return checkWords(ctx, say, spender, body, forwarded ? "forwarded" : "pasted", String(u.update_id));
+}
+
+/**
+ * The full check on a message's words: read the ask out, run the check and PayPal hold, answer in the chat. The same
+ * for words pasted, forwarded or read from a screenshot. retryKey: the update to forget on failure, so a retry works.
+ */
+async function checkWords(ctx: TgCtx, say: (html: string) => Promise<void>, spender: Spender, body: string, how: "forwarded" | "pasted" | "screenshot", retryKey?: string): Promise<TgOutcome> {
+  const { db } = ctx.deps;
   let paymentId: string | null = null;
   try {
-    const body = [text, hiddenLinks(m)].filter(Boolean).join("\n\n").slice(0, 50_000);
     const found = await ctx.extract(body);
     if (!found.ok) throw new Error(`extraction failed: ${found.error}`);
     if (!found.found) {
@@ -185,7 +198,10 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
       category: found.category,
       method: found.method,
       item: found.item,
-      context: `A message ${spender.name} ${forwarded ? "forwarded" : "pasted"} to Spotter on Telegram:\n\n${body}`,
+      context:
+        how === "screenshot"
+          ? `A screenshot ${spender.name} sent to Spotter on Telegram (the words were read from the picture):\n\n${body}`
+          : `A message ${spender.name} ${how} to Spotter on Telegram:\n\n${body}`,
     });
     paymentId = p.id;
     const final = (await getPayment(db, p.id)) ?? p;
@@ -194,9 +210,11 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
     return "checked";
   } catch (e) {
     console.error("[spotter] telegram check failed:", e instanceof Error ? e.message : e);
-    if (!paymentId) {
+    if (!paymentId && retryKey) {
       // Nothing was created, so the same update can be tried again.
-      await db.query("delete from inbound where provider = 'telegram' and message_id = $1", [String(u.update_id)]).catch(() => {});
+      await db.query("delete from inbound where provider = 'telegram' and message_id = $1", [retryKey]).catch((err) =>
+        console.error("[spotter] couldn't forget the failed telegram update:", err instanceof Error ? err.message : err),
+      );
     }
     await say(paymentId ? "Spotter checked this, but couldn't send the full answer. Your spotter can see it." : "Spotter couldn't check this right now. Nothing was paid. Try again in a few minutes.").catch((err) =>
       console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err),
@@ -235,22 +253,64 @@ export function photoText(r: PhotoResult, captioned: boolean): string {
     `<b>Photo price check${r.fallback ? " (whole photo)" : ""}</b>`,
     lines.join("\n"),
     `<b>${esc(r.total)}</b>${r.quote ? `\n${esc(r.quote)}` : ""}${r.verdict ? `\n${esc(r.verdict)}` : ""}`,
-    "Prices come from real shop listings. Nothing was paid." + (captioned ? " This checked the things in the photo. To check the words of a message, send them to me as text." : ""),
+    "Prices come from real shop listings. Nothing was paid." + (captioned ? " This checked the things in the photo. To check a message, send me a screenshot of it on its own, or paste its words." : ""),
   ].join("\n\n");
 }
 
-async function checkPhoto(
-  ctx: TgCtx & Required<Pick<TgCtx, "download" | "photoCheck">>,
-  say: (html: string) => Promise<void>,
-  p: { fileId: string; householdId: string; spender: Spender | null; caption: string },
-): Promise<TgOutcome> {
+type PictureCtx = TgCtx & Required<Pick<TgCtx, "download" | "photoCheck">>;
+type PictureJob = { fileId: string; householdId: string; spender: Spender | null; caption: string; chat: string; choice: PictureChoice | null };
+
+/**
+ * One way in for every picture: a screenshot of a message is read and checked like pasted words, a photo of things is
+ * priced, and an unclear one gets one question with two buttons. The picture lives only in memory for this call.
+ */
+async function handlePicture(ctx: PictureCtx, say: (html: string, extra?: Record<string, unknown>) => Promise<void>, p: PictureJob): Promise<TgOutcome> {
   try {
-    const currency: Currency = p.spender ? p.spender.allowance.weekly.currency : await householdCurrency(ctx.deps.db, p.householdId);
     const bytes = await ctx.download(p.fileId);
     if (!bytes) {
-      await say("I couldn't get that photo from Telegram. Nothing was paid. Try sending it again.");
+      await say("I couldn't get that picture from Telegram. Nothing was paid. Try sending it again.");
       return "photo_failed";
     }
+    const img = imageFrom(bytes);
+    if (!img) {
+      await say("That file isn't a photo I can open (JPEG, PNG or WEBP under 4 MB). Nothing was paid.");
+      return "photo_failed";
+    }
+    // Without a screenshot reader on this server, every picture is a price check, as before.
+    const route: PictureRoute = ctx.readPicture ? await ctx.readPicture({ householdId: p.householdId, bytes: img.bytes, type: img.type, choice: p.choice }) : { route: "prices" };
+    if (route.route === "error") {
+      await say(esc(route.error));
+      return "photo_failed";
+    }
+    if (route.route === "ask") {
+      const token = await savePending(ctx.deps.db, { householdId: p.householdId, chat: p.chat, fileId: p.fileId, caption: p.caption });
+      await say("Is this a message someone sent you, or things with prices (an ad, a quote, things for sale)?", {
+        reply_markup: { inline_keyboard: [[{ text: "Check this message", callback_data: `pic:m:${token}` }, { text: "Check these prices", callback_data: `pic:p:${token}` }]] },
+      });
+      return "asked";
+    }
+    if (route.route === "message") {
+      const body = [screenshotText(route.read), p.caption ? `[Note sent with the screenshot: ${p.caption.slice(0, 500)}]` : ""].filter(Boolean).join("\n\n");
+      if (p.spender) return checkWords(ctx, say, p.spender, body, "screenshot");
+      // The spotter's own screenshot: the check on its words, with nobody's money to hold.
+      const r = await checkWordsOnly(ctx.deps.check, ctx.extract, body);
+      await say([`<b>Read from your screenshot.</b> ${esc(r.text[0] ?? "")}`, ...r.text.slice(1).map(esc)].join("\n\n"));
+      return "checked_words";
+    }
+    return await pricePhoto(ctx, say, { ...p, bytes: img.bytes });
+  } catch (e) {
+    console.error(`[spotter] telegram picture failed for ${p.householdId}:`, e instanceof Error ? e.message : e);
+    await say("Spotter couldn't check this picture just now. Nothing was paid. Try again in a few minutes.").catch((err) =>
+      console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err),
+    );
+    return "photo_failed";
+  }
+}
+
+async function pricePhoto(ctx: PictureCtx, say: (html: string) => Promise<void>, p: PictureJob & { bytes: Buffer }): Promise<TgOutcome> {
+  try {
+    const currency: Currency = p.spender ? p.spender.allowance.weekly.currency : await householdCurrency(ctx.deps.db, p.householdId);
+    const bytes = p.bytes;
     const r = await ctx.photoCheck({ householdId: p.householdId, input: { bytes, mode: photoMode(p.caption), currency, quoted: captionAmount(p.caption, currency) } });
     if (!r.ok) {
       await say(`${esc(r.error)} Nothing was paid.`);
@@ -305,6 +365,26 @@ async function handleButton(ctx: TgCtx, q: NonNullable<TgUpdate["callback_query"
         .catch((err) => console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err));
       return "failed";
     }
+  }
+  // "Message or prices?": answers the question about a picture sent in this same chat, once.
+  const pic = /^pic:(m|p):([a-f0-9]{24})$/.exec(q.data ?? "");
+  if (pic) {
+    const waiting = await takePending(db, pic[2]!, chat);
+    if (!waiting || !ctx.download || !ctx.photoCheck) {
+      await answer("That question has expired. Send the picture again.");
+      return "refused";
+    }
+    await answer(pic[1] === "m" ? "Checking the message" : "Checking the prices");
+    const spender = (await db.query<Spender>("select * from spenders where telegram_chat_id = $1 and household_id = $2", [chat, waiting.householdId]))[0] ?? null;
+    const say = (html: string, extra: Record<string, unknown> = {}) => ctx.send(chat, html, { link_preview_options: { is_disabled: true }, ...extra });
+    return handlePicture({ ...ctx, download: ctx.download, photoCheck: ctx.photoCheck }, say, {
+      fileId: waiting.fileId,
+      householdId: waiting.householdId,
+      spender,
+      caption: waiting.caption,
+      chat,
+      choice: pic[1] === "m" ? "message" : "prices",
+    });
   }
   const id = /^deny:(pay_[a-z0-9]+)$/.exec(q.data ?? "")?.[1];
   if (!id) {

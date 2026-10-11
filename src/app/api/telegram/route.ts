@@ -6,7 +6,8 @@ import { extractPayment } from "@/ai/extract";
 import { answerCallback, downloadFile, secretOk, sendHtml, tg } from "@/telegram/api";
 import { handleTelegramUpdate, type TgUpdate } from "@/telegram/inbound";
 import { MAX_PHOTO_BYTES, photoCheck } from "@/market/photo";
-import { photoDeps } from "@/server/photo";
+import { pictureDeps, photoDeps } from "@/server/photo";
+import { routePicture } from "@/core/picture";
 
 export const maxDuration = 120;
 
@@ -34,6 +35,10 @@ export async function POST(req: Request) {
                 download: (fileId: string) => downloadFile(fileId, MAX_PHOTO_BYTES),
                 photoCheck: ({ householdId, input }) => photoCheck(photoDeps(deps.db, householdId), input),
               }
+            : {}),
+          // Read screenshots: Claude vision copies out the words, then the normal check runs on them.
+          ...(process.env.ANTHROPIC_API_KEY
+            ? { readPicture: ({ householdId, bytes, type, choice }) => routePicture(pictureDeps(deps.db, householdId), bytes, type, choice) }
             : {}),
         },
         update,

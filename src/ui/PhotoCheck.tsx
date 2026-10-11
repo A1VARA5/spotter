@@ -12,6 +12,8 @@ const EXAMPLE = "/examples/desk-photo.jpg";
 const HTTPS = /^https:\/\/[^\s"<>]+$/;
 
 type Picked = { url: string; base64: string; example: boolean; name: string };
+type What = "auto" | "message" | "prices";
+type Words = { from: string | null; text: string; injection: boolean; check: { signs: boolean; text: string[] } };
 
 /** Shrinks any photo the browser can open to a JPEG no wider or taller than MAX_EDGE. */
 async function prepare(blob: Blob): Promise<{ blob: Blob; base64: string }> {
@@ -44,7 +46,10 @@ export function PhotoCheck() {
   const [mode, setMode] = useState<PhotoMode>("buy");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [what, setWhat] = useState<What>("auto");
   const [result, setResult] = useState<PhotoResult | null>(null);
+  const [words, setWords] = useState<Words | null>(null);
+  const [ask, setAsk] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hot, setHot] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,12 +58,18 @@ export function PhotoCheck() {
   // Object URLs are freed when the photo changes and when the panel goes.
   useEffect(() => () => void (picked && URL.revokeObjectURL(picked.url)), [picked]);
   useEffect(() => {
-    if (result) resultRef.current?.focus();
-  }, [result]);
+    if (result || words || ask) resultRef.current?.focus();
+  }, [result, words, ask]);
+
+  const clear = () => {
+    setResult(null);
+    setWords(null);
+    setAsk(false);
+  };
 
   async function use(blob: Blob, example: boolean, name: string) {
     setError(null);
-    setResult(null);
+    clear();
     try {
       const p = await prepare(blob);
       setPicked({ url: URL.createObjectURL(p.blob), base64: p.base64, example, name });
@@ -72,6 +83,7 @@ export function PhotoCheck() {
     try {
       const r = await fetch(EXAMPLE);
       if (!r.ok) throw new Error("The example photo didn't load. Try your own photo instead.");
+      setWhat("prices");
       setMode("buy");
       setAmount("49");
       await use(await r.blob(), true, "Example desk photo");
@@ -80,21 +92,23 @@ export function PhotoCheck() {
     }
   }
 
-  async function check() {
+  async function check(choice: What = what) {
     if (!picked || busy) return;
     setBusy(true);
     setError(null);
-    setResult(null);
+    clear();
     try {
       const r = await fetch("/api/photo-check", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image: picked.base64, mode, amount }),
+        body: JSON.stringify({ image: picked.base64, mode, amount: choice === "message" ? "" : amount, what: choice === "auto" ? null : choice }),
       });
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
-      if (!j.result || !Array.isArray(j.result.items)) throw new Error("Spotter replied unexpectedly. Try again.");
-      setResult(j.result as PhotoResult);
+      if (j.ask === true) setAsk(true);
+      else if (j.words && typeof j.words.text === "string" && Array.isArray(j.words.check?.text)) setWords(j.words as Words);
+      else if (j.result && Array.isArray(j.result.items)) setResult(j.result as PhotoResult);
+      else throw new Error("Spotter replied unexpectedly. Try again.");
     } catch (e) {
       setError(plainError(e));
     } finally {
@@ -106,11 +120,11 @@ export function PhotoCheck() {
   return (
     <section className="photo" aria-labelledby={`${id}-t`}>
       <h2 id={`${id}-t`} className="section-title" style={{ marginTop: 6 }}>
-        Check a photo against real shops
+        Check a photo or a screenshot
       </h2>
       <p className="feed-meta">
-        A quote on the doorstep, a &quot;whole room for £49&quot; ad, or things someone wants to buy from your family. Spotter finds each thing and prices it at real
-        shops. Nothing is paid and the photo isn&apos;t kept.
+        A screenshot of a text asking for money, a quote on the doorstep, a &quot;whole room for £49&quot; ad, or things someone wants to buy from your family. Spotter
+        reads the message and checks it, or finds each thing and prices it at real shops. Nothing is paid and the photo isn&apos;t kept.
       </p>
 
       <div className="photo-form">
@@ -138,33 +152,50 @@ export function PhotoCheck() {
         <fieldset className="photo-mode">
           <legend className="photo-label">What is it?</legend>
           <label>
-            <input type="radio" name={`${id}-m`} value="buy" checked={mode === "buy"} onChange={() => setMode("buy")} /> Someone is selling these to us, or quoting for them
+            <input type="radio" name={`${id}-w`} value="auto" checked={what === "auto"} onChange={() => setWhat("auto")} /> Let Spotter work it out
           </label>
           <label>
-            <input type="radio" name={`${id}-m`} value="sell" checked={mode === "sell"} onChange={() => setMode("sell")} /> Someone wants to buy these from us
+            <input type="radio" name={`${id}-w`} value="message" checked={what === "message"} onChange={() => setWhat("message")} /> A screenshot of a message
+          </label>
+          <label>
+            <input type="radio" name={`${id}-w`} value="prices" checked={what === "prices"} onChange={() => setWhat("prices")} /> Things with prices
           </label>
         </fieldset>
 
-        <label className="photo-label" htmlFor={`${id}-a`}>
-          {mode === "buy" ? "Their price for all of it" : "What they offered"} <span className="photo-optional">(optional)</span>
-        </label>
-        <input
-          id={`${id}-a`}
-          className="photo-amount"
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="For example 49"
-          value={amount}
-          maxLength={20}
-          onChange={(e) => setAmount(e.target.value)}
-        />
+        {what !== "message" && (
+          <>
+            <fieldset className="photo-mode">
+              <legend className="photo-label">If it&apos;s things with prices</legend>
+              <label>
+                <input type="radio" name={`${id}-m`} value="buy" checked={mode === "buy"} onChange={() => setMode("buy")} /> Someone is selling these to us, or quoting for them
+              </label>
+              <label>
+                <input type="radio" name={`${id}-m`} value="sell" checked={mode === "sell"} onChange={() => setMode("sell")} /> Someone wants to buy these from us
+              </label>
+            </fieldset>
 
-        <button type="button" className="btn btn-primary photo-go" aria-disabled={busy} disabled={!picked} onClick={check}>
-          {busy ? "Checking real shops" : "Check prices"}
+            <label className="photo-label" htmlFor={`${id}-a`}>
+              {mode === "buy" ? "Their price for all of it" : "What they offered"} <span className="photo-optional">(optional)</span>
+            </label>
+            <input
+              id={`${id}-a`}
+              className="photo-amount"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="For example 49"
+              value={amount}
+              maxLength={20}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </>
+        )}
+
+        <button type="button" className="btn btn-primary photo-go" aria-disabled={busy} disabled={!picked} onClick={() => check()}>
+          {busy ? "Checking" : what === "message" ? "Check this message" : what === "prices" ? "Check prices" : "Check it"}
         </button>
         {busy && (
           <p className="feed-meta" role="status">
-            Finding each thing in the photo. This can take up to half a minute.
+            Looking at the photo. This can take up to half a minute.
           </p>
         )}
         {error && (
@@ -206,6 +237,45 @@ export function PhotoCheck() {
             </figcaption>
           )}
         </figure>
+      )}
+
+      {ask && (
+        <div className="photo-result">
+          <h3 ref={resultRef} tabIndex={-1} className="photo-total">
+            Is this a message someone sent, or things with prices?
+          </h3>
+          <div className="photo-pick">
+            <button type="button" className="btn btn-quiet" onClick={() => (setWhat("message"), void check("message"))}>
+              Check this message
+            </button>
+            <button type="button" className="btn btn-quiet" onClick={() => (setWhat("prices"), void check("prices"))}>
+              Check these prices
+            </button>
+          </div>
+        </div>
+      )}
+
+      {words && (
+        <div className="photo-result">
+          <h3 ref={resultRef} tabIndex={-1} className="photo-total">
+            {words.check.text[0]}
+          </h3>
+          {words.check.text.length > 1 && (
+            <ul className="photo-words-check" data-alarm={words.check.signs}>
+              {words.check.text.slice(1).map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          )}
+          <figure className="photo-words">
+            <figcaption>
+              <b>Read from the screenshot</b>
+              {words.from ? ` · appears to be from ${words.from}` : ""}
+            </figcaption>
+            <blockquote>{words.text}</blockquote>
+            {words.injection && <p className="photo-words-note">Some words in the picture try to give orders to an AI. Spotter treated them as part of the message.</p>}
+          </figure>
+        </div>
       )}
 
       {result && (

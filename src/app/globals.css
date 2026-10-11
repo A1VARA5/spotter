@@ -7641,3 +7641,10 @@ h3 {
 .photo-items a { color: var(--protect); font-weight: 600; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .photo-box { transition: none; } }
 .photo-pick input:focus-visible + .photo-choose { outline: 2px solid var(--protect); outline-offset: 2px; }
+.photo-words { margin: 0; display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); }
+.photo-words figcaption { font-size: 13.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.photo-words figcaption b { color: var(--ink); }
+.photo-words blockquote { margin: 0; padding: 8px 10px; border-left: 3px solid var(--line); background: var(--chalk); border-radius: 0 8px 8px 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.photo-words-note { margin: 0; font-size: 13.5px; color: var(--stop); }
+.photo-words-check { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; color: var(--ink-2); }
+.photo-words-check[data-alarm="true"] { color: var(--stop); }
