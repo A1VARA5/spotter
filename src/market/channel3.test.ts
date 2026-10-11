@@ -37,6 +37,11 @@ describe("offersFor", () => {
   it("returns nothing when no listing is the same product, so no price judgement is made", () => {
     expect(offersFor(airpods, "Apple AirPods Pro 2")).toEqual([]);
   });
+
+  it("leaves out a new listing far below the others, so every part of Spotter starts from the same cheapest shop", () => {
+    const listings = [p("Pulse wireless earbuds", 7995, 8499, 6999, 1799)];
+    expect(offersFor(listings, "Pulse wireless earbuds").map((o) => o.price)).toEqual([7995, 8499, 6999]);
+  });
 });
 
 describe("searchByImage", () => {

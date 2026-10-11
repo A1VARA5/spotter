@@ -1,5 +1,6 @@
 import type { PaymentStatus } from "@/db/schema";
 import type { Payment } from "@/core/lifecycle";
+import { OUTCOME_WORDS } from "./labels";
 
 export function money(minor: number | string, currency: string) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency, minimumFractionDigits: 2 }).format(Number(minor) / 100);
@@ -30,16 +31,8 @@ export function trackState(status: PaymentStatus): TrackState {
   }
 }
 
-export const STATE_LABEL: Record<TrackState, string> = {
-  checking: "Checking",
-  moving: "Paying",
-  held: "Waiting for you",
-  paid: "Paid",
-  blocked: "Stopped",
-  protected: "Not sent, pay with protection instead",
-  returned: "Denied, money released",
-  failed: "PayPal said no",
-};
+/** The status pill words, from the one vocabulary in labels.ts. */
+export const STATE_LABEL = Object.fromEntries(Object.entries(OUTCOME_WORDS).map(([k, v]) => [k, v.long])) as Record<TrackState, string>;
 
 type Linked = Pick<Payment, "id" | "status" | "amount" | "currency" | "request">;
 

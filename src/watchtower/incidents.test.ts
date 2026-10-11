@@ -60,14 +60,14 @@ describe("incident pages", () => {
     expect(incidentName(row({ who: "Gran", amount: 1250 }))).toBe("Incident: Gran £1,250");
   });
 
-  it("adds a page with the case file, money in mid air, scam radar and the person's payments, and selects it", () => {
+  it("adds a page with the case file, money in mid air, scam radar and the person's payments, and stays on This month", () => {
     const { state, added } = withIncidents(INITIAL, [row({ id: "pay_hi", who: "Gran", payee: "New number" })], NOW, []);
     const s = state as unknown as State;
     expect(added).toEqual(["pay_hi"]);
     expect(s.pages[0]!.id).toBe("month");
     const page = s.pages.find((p) => p.id === "incident-pay_hi")!;
     expect(page.name).toBe("Incident: Gran £400");
-    expect(s.selectedPageId).toBe("incident-pay_hi");
+    expect(s.selectedPageId).toBe("month");
     expect(Object.values(page.widgets).map((w) => w.type).sort()).toEqual(["case-file", "grid", "money-mid-air", "scam-radar"]);
     for (const id of Object.keys(page.widgets)) expect(page.widgetLayout[id]).toBeDefined();
     const filters = page.filter!.widget!;
@@ -79,18 +79,55 @@ describe("incident pages", () => {
   });
 
   it("leaves the board alone when there's nothing new, and never duplicates a page", () => {
-    expect(withIncidents(INITIAL, [row({ id: "paid", outcome: "Paid" })], NOW, [])).toEqual({ state: INITIAL, added: [] });
+    expect(withIncidents(INITIAL, [row({ id: "paid", outcome: "Paid" })], NOW, [])).toEqual({ state: INITIAL, added: [], changed: false });
     const once = withIncidents(INITIAL, [row({ id: "pay_hi" })], NOW, []).state;
     const twice = withIncidents(once, [row({ id: "pay_hi" })], NOW, []);
     expect(twice.added).toEqual([]);
     expect((twice.state as unknown as State).pages.filter((p) => p.id === "incident-pay_hi")).toHaveLength(1);
   });
 
-  it("selects the newest incident when several arrive at once, and is the same every time", () => {
+  it("keeps the family on the page they were on when several arrive at once, and is the same every time", () => {
     const rows = [row({ id: "a", when: hoursAgo(5) }), row({ id: "b", when: hoursAgo(1) })];
     const one = withIncidents(INITIAL, rows, NOW, []);
-    expect((one.state as unknown as State).selectedPageId).toBe("incident-b");
+    expect((one.state as unknown as State).selectedPageId).toBe("month");
     expect(withIncidents(INITIAL, rows, NOW, [])).toEqual(one);
+  });
+
+  const incidentIds = (s: unknown) => (s as State).pages.map((p) => p.id).filter((id) => id.startsWith("incident-"));
+
+  it("never piles up: at most three incident tabs, the newest kept", () => {
+    let board = INITIAL;
+    const seen: string[] = [];
+    // Five visits, a new waiting payment each time (a judge sending Hi Mum again and again).
+    for (let i = 1; i <= 5; i++) {
+      const rows = Array.from({ length: i }, (_, k) => row({ id: `w${k + 1}`, outcome: "Waiting", when: hoursAgo(10 - k) }));
+      const r = withIncidents(board, rows, NOW, seen);
+      seen.push(...r.added);
+      board = r.state;
+    }
+    expect(incidentIds(board)).toEqual(["incident-w3", "incident-w4", "incident-w5"]);
+  });
+
+  it("closes incident tabs that are over: paid, cleared by Start fresh, or stopped more than a day ago", () => {
+    const rows = [row({ id: "a", outcome: "Waiting" }), row({ id: "b", outcome: "Waiting" }), row({ id: "c", outcome: "Waiting" })];
+    const opened = withIncidents(INITIAL, rows, NOW, []);
+    const later = [row({ id: "a", outcome: "Paid" }), row({ id: "c", outcome: "Stopped", when: hoursAgo(30) })]; // b is gone
+    const r = withIncidents(opened.state, later, NOW, ["a", "b", "c"]);
+    expect(incidentIds(r.state)).toEqual([]);
+    expect(r.changed).toBe(true);
+  });
+
+  it("keeps a tab whose payment just isn't in a capped list of rows (not proof it's over)", () => {
+    const opened = withIncidents(INITIAL, [row({ id: "a", outcome: "Waiting" })], NOW, []);
+    expect(incidentIds(withIncidents(opened.state, [], NOW, ["a"], false).state)).toEqual(["incident-a"]);
+  });
+
+  it("never closes a tab the family renamed, and moves off a closed tab that was open", () => {
+    const opened = withIncidents(INITIAL, [row({ id: "a", outcome: "Waiting" }), row({ id: "b", outcome: "Waiting" })], NOW, []).state as unknown as State;
+    const board = { ...opened, selectedPageId: "incident-b", pages: opened.pages.map((p) => (p.id === "incident-a" ? { ...p, name: "Gran's big one" } : p)) } as never;
+    const r = withIncidents(board, [], NOW, ["a", "b"]);
+    expect(incidentIds(r.state)).toEqual(["incident-a"]);
+    expect((r.state as unknown as State).selectedPageId).toBe("month");
   });
 
   it("tells same named incidents apart by payee, then by time", () => {

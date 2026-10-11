@@ -2,13 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HoldTrack } from "@/ui/components";
-import { STATE_LABEL, trackState } from "@/ui/format";
+import { trackState } from "@/ui/format";
 import { scenariosFor, type Scenario } from "@/ui/scenarios";
-import { labelsFor, type Labels } from "@/ui/labels";
+import { labelsFor, OUTCOME_WORDS, type Labels } from "@/ui/labels";
 import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
 import { plainError, readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
+import "./demo.css";
 
 export type SpenderLite = { id: string; name: string; kind: string };
 
@@ -132,6 +133,15 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
         {s.title}
       </h3>
       <p className="scenario-body">{s.blurb}</p>
+      {s.shows && (
+        <ul className="scen-shows" aria-label="What this one shows">
+          {s.shows.map((t) => (
+            <li key={t.engine + t.what} className="scen-show">
+              Shows: <b>{t.engine}</b> {t.what}
+            </li>
+          ))}
+        </ul>
+      )}
       {state && (
         <HoldTrack state={state} from={spender?.name ?? s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />
       )}
@@ -164,29 +174,35 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
   );
 }
 
-function outcomeLine(p: Payment) {
+/** The outcome in the app's own words (labels.ts): the status, then the reason or the plain sentence for it. */
+function outcomeParts(p: Payment): [string, string] {
   const s = trackState(p.status);
-  const why = (s === "failed" ? p.error : p.decision?.reasons[0]) ?? "Within the rules, and nothing looked wrong.";
-  return s === "held" ? "Waiting for you. PayPal is holding the money until you approve or deny it." : `${STATE_LABEL[s]}. ${why}`;
+  const why = s === "failed" ? p.error : s === "held" ? OUTCOME_WORDS.held.explain : p.decision?.reasons[0];
+  return [OUTCOME_WORDS[s].long, why ?? OUTCOME_WORDS[s].explain];
+}
+
+function outcomeLine(p: Payment) {
+  const [status, why] = outcomeParts(p);
+  return `${status}. ${why}`;
 }
 
 /** The outcome in one line, and the one sensible next step for it. */
 function Outcome({ p, onAgain, running, nextRef }: { p: Payment; onAgain: () => void; running: boolean; nextRef: React.Ref<HTMLAnchorElement> }) {
   const s = trackState(p.status);
-  const why = (s === "failed" ? p.error : p.decision?.reasons[0]) ?? "Within the rules, and nothing looked wrong.";
+  const [status, why] = outcomeParts(p);
   const tone = s === "held" ? "held" : s === "paid" ? "paid" : "stop";
   return (
     <div className="scen-result" data-tone={tone}>
       <p>
-        <strong>{s === "held" ? "Waiting for you." : `${STATE_LABEL[s]}.`}</strong> {s === "held" ? "PayPal is holding the money until you approve or deny it." : why}
+        <strong>{status}.</strong> {why}
       </p>
       <div className="scen-next">
         {s === "held" ? (
-          <Link ref={nextRef} className="btn btn-primary" href="/dashboard">
+          <Link ref={nextRef} className="btn btn-primary" href={`/dashboard#pay-${p.id}`}>
             Review it now
           </Link>
         ) : (
-          <Link ref={nextRef} className="btn btn-quiet" href="/ledger">
+          <Link ref={nextRef} className="btn btn-quiet" href={s === "paid" ? "/ledger" : `/dashboard#pay-${p.id}`}>
             {s === "paid" ? "See it in Activity" : "See the full reasons"}
           </Link>
         )}

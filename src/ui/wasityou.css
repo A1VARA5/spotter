@@ -1,0 +1,15 @@
+/* "Was it you?" line on held cards and feed rows. A calm tinted box with a hairline border (no thick coloured
+   left edge, per the craft floor). Doubled class beats the older globals.css rule without editing it. */
+.wiy-line.wiy-line {
+  border: 1px solid var(--line);
+  border-left-width: 1px;
+}
+.wiy-line.wiy-line[data-tone="waiting"] { border-color: rgb(242 183 5 / 0.55); background: var(--hold-soft); }
+.wiy-line.wiy-line[data-tone="safe"] { border-color: rgb(31 122 85 / 0.35); }
+.wiy-line.wiy-line[data-tone="claimed"] { border-color: rgb(44 85 201 / 0.35); }
+.wiy-line.wiy-line[data-tone="ring"] { border-color: var(--line); }
+.wiy-line-body { display: grid; gap: 10px; min-width: 0; }
+.wiy-line-body p { margin: 0; }
+.wiy-line-answer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wiy-line-btn { min-height: 40px; padding: 8px 14px; font-size: 15px; }
+.wiy-line-note { color: var(--ink-2); font-size: 14px; flex-basis: 100%; }

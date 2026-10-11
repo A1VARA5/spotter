@@ -74,7 +74,7 @@ const TOOLSETS = {
     label: "Spotter's tools",
     path: "/api/mcp",
     server: "spotter",
-    sub: "Four tools: find products, request a payment, check a payment, check its allowance. There is no approve tool.",
+    sub: "Four tools: find products at real shops (Channel3), request a payment, check a payment, check its allowance. There is no approve tool.",
   },
   toolkit: {
     label: "PayPal's Agent Toolkit",
@@ -205,12 +205,12 @@ function AgentCard({ spender }: { spender: SpenderView }) {
           <h4 className="agent-step-title">Ask it to buy something</h4>
           {tools === "spotter" ? (
             <p className="connect-sub">
-              For example: &ldquo;Find me wireless earbuds under £30 and buy the best ones.&rdquo; It searches real shops, then asks Spotter to pay. Anything over{" "}
+              For example: &quot;Find me wireless earbuds under £30 and buy the best ones.&quot; It searches real shops (Channel3), then asks Spotter to pay. Anything over{" "}
               the ask me amount shows up on your dashboard to approve.
             </p>
           ) : (
             <p className="connect-sub">
-              For example: &ldquo;Use PayPal to order a $45 desk lamp from BrightHome and pay for it.&rdquo; The agent calls PayPal&apos;s create_order and pay_order as usual.
+              For example: &quot;Use PayPal to order a $45 desk lamp from BrightHome and pay for it.&quot; The agent calls PayPal&apos;s create_order and pay_order as usual.
               Spotter checks the order first, and anything over the ask me amount waits on your dashboard; pay_order only reports what Spotter decided.
             </p>
           )}

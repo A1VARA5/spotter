@@ -8,6 +8,8 @@ export type Scenario = {
   title: string;
   blurb: string;
   expect: string;
+  /** Which engines this one puts on screen, for the small "Shows:" tags on Try (and the /checks empty states). */
+  shows?: Array<{ engine: "KERNEL" | "Channel3"; what: string }>;
   /** Which of the household's people sends it: the first one of this kind. */
   spender: "agent" | "person" | "kid";
   body: {
@@ -26,7 +28,8 @@ export type Scenario = {
 export const DEMO_SHOP_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app"}/demo-shop/gadgetbarn`;
 
 /** The made up two faced Larkhill Parcels page (src/app/demo-shop/redelivery): harmless to desktops, a card form to UK phones. */
-export const DEMO_REDELIVERY_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app"}/demo-shop/redelivery`;
+export const DEMO_SKILLET_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app"}/demo-shop/skillet`;
+export const DEMO_REDELIVERY_URL =`${process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app"}/demo-shop/redelivery`;
 
 const tag =(s: string) => [...s].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join("");
 
@@ -37,7 +40,7 @@ export const SCENARIOS: Scenario[] = [
     spender: "agent",
     title: "Agent buys Mum a birthday mug",
     blurb: "A normal purchase under the limit, from a shop with good reviews.",
-    expect: "Goes straight through and gets paid.",
+    expect: "Paid: it goes straight through.",
     body: {
       amount: 2499, currency: "GBP", payee: "Clay & Kiln", payeeIsNew: false, category: "gifts", method: "paypal_order",
       context: "Handmade stoneware mug, speckled glaze, 350ml. £24.99. Ships in 3 to 5 days from Bristol. 4.9 stars from 1,203 reviews.",
@@ -49,7 +52,8 @@ export const SCENARIOS: Scenario[] = [
     spender: "agent",
     title: "Agent wants £249 earbuds",
     blurb: "Over the £30 ask me limit, from a new shop, and pricier than real retailers.",
-    expect: "Held, with the real shop price next to it.",
+    expect: "Waiting for you, with the real shop price next to it.",
+    shows: [{ engine: "Channel3", what: "real shop prices" }],
     body: {
       amount: 24900, currency: "GBP", payee: "SoundDepot UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
       item: "noise cancelling wireless earbuds",
@@ -62,7 +66,8 @@ export const SCENARIOS: Scenario[] = [
     spender: "agent",
     title: "Agent finds £249 earbuds for £24.99",
     blurb: "A shop selling brand new top end earbuds at a price no real retailer does.",
-    expect: "Held: real shops charge many times that.",
+    expect: "Waiting for you: real shops charge many times that.",
+    shows: [{ engine: "Channel3", what: "real shop prices" }],
     body: {
       amount: 2499, currency: "GBP", payee: "Earbud Outlet UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
       item: "premium noise cancelling wireless earbuds",
@@ -76,6 +81,11 @@ export const SCENARIOS: Scenario[] = [
     title: "Agent lands on a booby trapped shop",
     blurb: "The page hides an instruction for AI agents that people can't see.",
     expect: "Stopped. Spotter opens the shop in a cloud browser and shows what a person sees next to what the agent read.",
+    shows: [
+      { engine: "KERNEL", what: "seen vs read" },
+      { engine: "KERNEL", what: "tools for AI agents" },
+      { engine: "Channel3", what: "real shop prices" },
+    ],
     body: {
       amount: 1999, currency: "GBP", payee: "GadgetBarn", payeeIsNew: true, category: "electronics", method: "paypal_order",
       item: "Pulse wireless earbuds",
@@ -85,12 +95,29 @@ export const SCENARIOS: Scenario[] = [
     },
   },
   {
+    id: "agent-skillet",
+    who: "Shopping agent",
+    spender: "agent",
+    title: "Agent finds a cast iron skillet for £6.99",
+    blurb: "An everyday pan at a price no real shop can match.",
+    expect: "Waiting for you. Spotter opens the shop in a cloud browser (KERNEL) and puts its picture next to the same pan at real shops (Channel3).",
+    shows: [
+      { engine: "KERNEL", what: "seen vs read" },
+      { engine: "Channel3", what: "spot the difference" },
+    ],
+    body: {
+      amount: 699, currency: "GBP", payee: "Panmoor Kitchen", payeeIsNew: true, category: "home", method: "paypal_order",
+      item: "cast iron skillet",
+      context: `Shop page: ${DEMO_SKILLET_URL} Cast iron skillet, pre seasoned. £6.99, was £39.99. Free delivery today only.`,
+    },
+  },
+  {
     id: "gran-hi-mum",
     who: "Gran",
     spender: "person",
     title: "Gran forwards a \"Hi Mum\" text",
     blurb: "A \"new number\" can't get into their banking and asks for £250 to a mate's PayPal.",
-    expect: "Held at PayPal, waiting for you, with the warning signs quoted.",
+    expect: "Waiting for you, on hold at PayPal, with the warning signs quoted. The text calls her Mum, so it claims to be from you: Spotter asks you \"Was it you?\" on the held payment.",
     body: {
       amount: 25000, currency: "GBP", payee: "jamie.k1994@mail.example", payeeIsNew: true, category: "family", method: "paypal_order",
       context: "Forwarded from +44 7700 900461: Hi mum its me, new number. Not really, phones dead and I cant get into my banking on this one. I've got a bill that has to be paid today or I get a late fee. Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow. jamie.k1994@mail.example. Please hurry mum x",
@@ -102,7 +129,11 @@ export const SCENARIOS: Scenario[] = [
     spender: "person",
     title: "Gran gets a £1.99 redelivery fee text",
     blurb: "A courier says it missed her and wants £1.99. The link looks harmless to scanners and only shows phones the card form.",
-    expect: "Held. Spotter opens the link as a desktop and as Gran's phone at the same moment and shows the two faces side by side.",
+    expect: "Waiting for you. Spotter opens the link as a desktop and as Gran's phone at the same moment and shows the two faces side by side.",
+    shows: [
+      { engine: "KERNEL", what: "two faces" },
+      { engine: "KERNEL", what: "where the money goes" },
+    ],
     body: {
       amount: 199, currency: "GBP", payee: "Larkhill Parcels", payeeIsNew: true, category: "delivery", method: "paypal_order",
       context: `Text from LARKHILL: We missed you today. Your parcel LK 4471 0938 GB is waiting. A £1.99 redelivery fee is due within 24 hours or it goes back to the sender. Pay here: ${DEMO_REDELIVERY_URL}`,
@@ -114,7 +145,7 @@ export const SCENARIOS: Scenario[] = [
     spender: "person",
     title: "Gran buys a tablet from a local listing",
     blurb: "The seller can't meet, will post it, and wants PayPal Friends and Family to save the fees.",
-    expect: "Not sent: Friends and Family has no buyer protection.",
+    expect: "Protected, not sent: Friends and Family has no buyer protection.",
     body: {
       amount: 18000, currency: "GBP", payee: "dan.reeves.88@mail.example", payeeIsNew: true, category: "electronics", method: "friends_and_family", item: "10 inch tablet 64GB",
       context: "Local listings app, seller Dan Reeves: Hi yes still available. £180 and I can post it first class today, can't meet this week sorry. Pay me on PayPal as friends and family so we don't lose the fees. dan.reeves.88@mail.example",
@@ -154,7 +185,7 @@ export const BUSINESS_SCENARIOS: Scenario[] = [
     spender: "person",
     title: "A supplier invoice with new bank details",
     blurb: "Your packaging supplier's \"accounts team\" says the bank details changed and wants a bank transfer today.",
-    expect: "Not sent by bank transfer: pay through PayPal, after ringing the supplier on a number you already have.",
+    expect: "Protected, not sent by bank transfer: pay through PayPal, after ringing the supplier on a number you already have.",
     body: {
       amount: 28640, currency: "GBP", payee: "Harbourline Packaging", payeeIsNew: true, category: "supplies", method: "bank_transfer",
       context: "From: accounts@harbourline-packaging.co. Subject: Invoice HP-4471 OVERDUE. Hello, please find invoice HP-4471 for 12 cases of takeaway boxes, £286.40. Please note our bank details have changed, so pay the new account below by bank transfer, or PayPal Friends and Family if easier. New account name Harbourline Trading, account number ending 6819. Pay today or we stop deliveries tomorrow. Kind regards, Accounts, Harbourline Packaging",
@@ -166,7 +197,8 @@ export const BUSINESS_SCENARIOS: Scenario[] = [
     spender: "agent",
     title: "Buying agent reorders printer paper",
     blurb: "40 boxes at three times the usual price, from a shop it has never used.",
-    expect: "Held for the owner, with the usual price next to it.",
+    expect: "Waiting for the owner, with the usual price next to it.",
+    shows: [{ engine: "Channel3", what: "real shop prices" }],
     body: {
       amount: 35960, currency: "GBP", payee: "Papertrail Office Direct", payeeIsNew: true, category: "office supplies", method: "paypal_order",
       item: "A4 copy paper 80gsm, box of 500 sheets",

@@ -22,13 +22,16 @@ export default async function WatchtowerPage() {
   if (!usable) console.error(`[spotter] saved Watchtower board for ${household.id} isn't a board; showing the starting board and leaving the saved one alone`);
   const start = startingBoard(household.kind);
   const base = saved && usable ? saved.state : start;
-  const { state, added } = withIncidents(base as typeof start, board.sources.payments, now, saved?.seen ?? []);
-  if (added.length && usable) {
+  // loadWatchtower reads at most 500 of the family's own payments; past that, a missing row isn't proof a payment is gone.
+  const complete = board.sources.payments.filter((r) => r.sample === "No").length < 500;
+  const { state, added, changed } = withIncidents(base as typeof start, board.sources.payments, now, saved?.seen ?? [], complete);
+  // Saved when tabs opened or closed (closed ones are over or past the cap of three).
+  if (changed && usable) {
     try {
       await markIncidentsSeen(db, household.id, state, added);
     } catch (e) {
-      // The page still shows; the incident may just come back on the next visit.
-      console.error(`[spotter] couldn't save incident pages for ${household.id}:`, e instanceof Error ? e.message : e);
+      // The page still shows this visit's tabs; unsaved, new ones may open again and closed ones may come back next visit.
+      console.error(`[spotter] couldn't save incident pages for ${household.id}:`, e);
     }
   }
 

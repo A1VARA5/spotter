@@ -40,6 +40,12 @@
 .wt-look:disabled { color: var(--ink-2); cursor: progress; }
 .wt-look:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
 
+/* Widget text never clips sideways: a long payee (an email address) used to stretch the grid column past the
+   widget's edge, cutting "held at PayPal" off. One shrinkable column, and long words break. */
+.wt-air, .wt-air-list, .wt-alerts, .wt-case, .wt-fair, .wt-radar { grid-template-columns: minmax(0, 1fr); }
+.wt-alert { grid-template-columns: 14px minmax(0, 1fr); }
+.wt-air-total, .wt-air-note, .wt-alerts-title, .wt-alerts-detail { overflow-wrap: anywhere; }
+
 /* money in mid air */
 .wt-air { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; container-type: inline-size; }
 .wt-air-empty { align-content: center; }

@@ -4,11 +4,12 @@
 // sandbox authorisation for the demo family, and Not me on Tom's phone really voids it.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { MessageCircleOff, ShieldCheck } from "lucide-react";
 import { Iphone, SmsScreen } from "@/app/landing/Devices";
 import { BrandMark } from "@/ui/components";
 import { plainError, readJson } from "@/ui/http";
 import type { WasItYou } from "@/core/was-it-you";
+import "./demo.css";
 
 type Phase = "idle" | "starting" | "asked" | "answering" | "not_me" | "it_was_me";
 type PublicPayment = { id: string; status: string; amount: number | string; payee: string; was_it_you: WasItYou | null };
@@ -31,11 +32,12 @@ function usePhoneScale() {
   return scale;
 }
 
-export function WasItYouDemo({ spotter }: { spotter: string }) {
+export function WasItYouDemo({ spotter, resume }: { spotter: string; resume?: { payment: PublicPayment; token: string } | null }) {
   const scale = usePhoneScale();
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [payment, setPayment] = useState<PublicPayment | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  // An example still waiting for Tom (a reload, or coming back from the dashboard) picks up where it was left.
+  const [phase, setPhase] = useState<Phase>(resume ? "asked" : "idle");
+  const [payment, setPayment] = useState<PublicPayment | null>(resume?.payment ?? null);
+  const [token, setToken] = useState<string | null>(resume?.token ?? null);
   const [reply, setReply] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [n, setN] = useState(0);
@@ -44,6 +46,7 @@ export function WasItYouDemo({ spotter }: { spotter: string }) {
 
   // After each step, focus lands where the news is: Tom's Not me button, then the result line.
   useEffect(() => {
+    if (n === 0) return; // never steal focus on page load, even when resuming
     if (phase === "asked") notMe.current?.focus();
     if (phase === "not_me" || phase === "it_was_me") result.current?.focus();
   }, [phase, n]);
@@ -121,7 +124,11 @@ export function WasItYouDemo({ spotter }: { spotter: string }) {
           Was it you?
         </h2>
         <p className="wiy-lede">
-          A text says it&apos;s Tom and asks Gran for £250. Banks ask the person paying &quot;was this you?&quot;. Spotter asks Tom.
+          A text says it&apos;s Tom, Gran&apos;s son, and asks her for £250. Banks ask the person paying &quot;was this you?&quot;. Spotter asks Tom.
+        </p>
+        <p className="wiy-lede wiy-lede-small">
+          Here the text names Tom, so Tom is asked on his phone. When a text just says &quot;Hi Mum&quot;, it claims to be from you, {spotter}, so
+          Spotter asks you on the held payment instead. That&apos;s the Hi Mum example below.
         </p>
       </div>
 
@@ -168,7 +175,12 @@ export function WasItYouDemo({ spotter }: { spotter: string }) {
                 </span>
               </div>
               <div className="tg-chat wiy-tom-chat">
-                {phase === "idle" && <p className="wiy-empty">Tom hasn&apos;t heard anything. He doesn&apos;t know about the text.</p>}
+                {phase === "idle" && (
+                  <div className="wiy-empty">
+                    <MessageCircleOff size={28} strokeWidth={1.8} aria-hidden="true" />
+                    <p>No messages yet. Tom doesn&apos;t know about the text.</p>
+                  </div>
+                )}
                 {phase === "starting" && (
                   <div className="tg-msg tg-bot tg-typing" aria-label="Spotter is typing">
                     <span className="tg-dots">
