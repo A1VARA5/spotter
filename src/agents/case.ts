@@ -24,8 +24,10 @@ const MAX_TURNS = 5;
 const MAX_CALLS = 6;
 // Spot the difference runs after the case: one image search (8 s timeout) and maybe one price history call.
 const SPOT_MS = 12_000;
-/** Kept back from the model for the checks made by code (at most a third of the budget). */
+/** Kept back from the model for the checks made by code (at most a third of the budget), while a slow one is left. */
 const CODE_RESERVE_MS = 8_000;
+/** Kept back once only the quick checks made by code are left (at most a twelfth of the budget). */
+const QUICK_RESERVE_MS = 2_000;
 
 type TextBlock = { type: "text"; text: string };
 type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: unknown };
@@ -123,10 +125,12 @@ export function caseBrief(p: Payment, who?: { name: string; kind: string }): str
 
 export { AI_DOWN_LINE };
 
+/** A tool's summary as a finding a person reads: it is written for the model (it cites offer ids), so ids come out. */
+const toolLine = (c: CaseCall) => upTo(withoutIds(c.summary), 320);
+
 function fallback(calls: CaseCall[], started: number, error?: string, aiDown = false): Case {
   console.error(`[spotter] case agent fell back after ${calls.length} tool calls: ${error ?? "unknown"}`);
-  // A tool's summary is written for the model (it cites offer ids), so ids come out before a person reads it.
-  const findings = calls.filter((c) => c.ok).map((c) => ({ text: upTo(withoutIds(c.summary), 320), tool: c.tool, source: c.id }));
+  const findings = calls.filter((c) => c.ok).map((c) => ({ text: toolLine(c), tool: c.tool, source: c.id }));
   const done = findings.length > 0;
   return {
     status: done ? "partial" : "failed",
@@ -155,6 +159,19 @@ function fallback(calls: CaseCall[], started: number, error?: string, aiDown = f
  * Arguments come from the payment itself, not from a model.
  */
 async function codeChecks(ctx: CaseCtx, calls: CaseCall[], deadline: number): Promise<void> {
+  await Promise.all(
+    codePlan(ctx, calls).map(async ([tool, args]) => {
+      const call: CaseCall = { id: `code_${tool}`, tool, args, ok: false, summary: "" };
+      calls.push(call);
+      const out = await within(deadline - Date.now(), runTool(tool, args, ctx), { ok: false, summary: `${tool} ran out of time.` });
+      call.ok = out.ok;
+      call.summary = out.summary;
+    }),
+  );
+}
+
+/** The checks code would still run if the model stopped now (a tool anyone already called isn't run again). */
+function codePlan(ctx: CaseCtx, calls: CaseCall[]): Array<[string, unknown]> {
   const r = ctx.payment.request;
   const ran = new Set(calls.map((c) => c.tool));
   const urls = extractUrls(r.context);
@@ -167,15 +184,19 @@ async function codeChecks(ctx: CaseCtx, calls: CaseCall[], deadline: number): Pr
   if (urls.length && ctx.visit && !ran.has("open_link") && !ran.has("inspect_shop")) plan.push(["open_link", { url: urls[0] }]);
   if (item && item.length >= 2 && !ran.has("find_genuine_offer")) plan.push(["find_genuine_offer", { item }]);
   if (ctx.payment.paypal_authorization_id && !ran.has("paypal_hold")) plan.push(["paypal_hold", {}]);
-  await Promise.all(
-    plan.map(async ([tool, args]) => {
-      const call: CaseCall = { id: `code_${tool}`, tool, args, ok: false, summary: "" };
-      calls.push(call);
-      const out = await within(deadline - Date.now(), runTool(tool, args, ctx), { ok: false, summary: `${tool} ran out of time.` });
-      call.ok = out.ok;
-      call.summary = out.summary;
-    }),
-  );
+  return plan;
+}
+
+/** Checks that can take seconds (outside lookups, Channel3, a cloud browser); the rest are a database row or one PayPal call. */
+const SLOW_CODE_CHECKS: ReadonlySet<string> = new Set(["check_links", "open_link", "find_genuine_offer"]);
+
+/**
+ * How much of the budget the model must leave for the checks made by code: a third (at most 8 s) while a slow one
+ * hasn't been started by anyone, a twelfth (at most 2 s) once only quick ones are left. Holding 8 s back after the
+ * slow checks had already run is what cut off the parcel case's last turn on 2026-10-11.
+ */
+export function codeReserveMs(budgetMs: number, slowLeft: boolean): number {
+  return slowLeft ? Math.min(CODE_RESERVE_MS, Math.floor(budgetMs / 3)) : Math.min(QUICK_RESERVE_MS, Math.floor(budgetMs / 12));
 }
 
 /** Runs work with a time limit; the timer is always cleared. */
@@ -278,8 +299,11 @@ function withPage(c: Case, ctx: CaseCtx): Case {
   if (offsite) proof.push({ kind: "money_offsite", severity: "high", tool: from.tool, source: from.id, text: offsite });
   // The model often repeats a code made fact in its own words (the hidden line, the poisoned tool, the two faces
   // result); the code made finding is the better sourced one and its panel shows it, so the repeat goes.
+  // A fallback shows the browser tool's own line (where the link went, what each face asked for): that is code's
+  // words, not the model's repeat, so it stays.
   const browserIds = new Set(browser.map((x) => x.id));
-  const repeats = (f: Finding) => browserIds.has(f.source) && restates(f.text, proof, ctx.page!);
+  const ownLines = new Set(browser.map(toolLine));
+  const repeats = (f: Finding) => browserIds.has(f.source) && !ownLines.has(f.text) && restates(f.text, proof, ctx.page!);
   // Hidden orders, poisoned tools and two faces make it likely a scam. A card form posting elsewhere alone is a strong
   // sign but payment providers can do that too, so it only stops the case from reading "fine".
   const verdict = trap || poisoned || faces ? "likely_scam" : c.verdict === "looks_fine" ? "unclear" : c.verdict;
@@ -361,30 +385,42 @@ async function runCase(ctx: CaseCtx, opts: CaseOpts): Promise<Case> {
   const calls: CaseCall[] = [];
   let brief = caseBrief(ctx.payment, opts.who);
 
-  // When an AI agent pays a shop, Spotter always looks at the shop page itself, before the model starts, so the
-  // seen vs read check never depends on the model choosing to run it.
-  const shop = agentShop(ctx, opts.who);
-  if (shop) {
-    const call: CaseCall = { id: "auto_inspect_shop", tool: "inspect_shop", args: { url: shop }, ok: false, summary: "" };
+  // The case's one cloud browser visit starts now, alongside the model's first turn, because it is the slowest check
+  // (two faces took about 7 s on 2026-10-11). An AI agent's shop page gets the seen vs read check (inspect_shop), so
+  // that never depends on the model choosing it; any other payment's first link is opened (open_link). The model gets
+  // the result with its first tool results and cites it like any other tool.
+  const early = earlyVisit(ctx, opts.who);
+  let earlyResult: Promise<string> | null = null;
+  if (early) {
+    const call: CaseCall = { id: early.id, tool: early.tool, args: { url: early.url }, ok: false, summary: "" };
     calls.push(call);
-    const out = await within(deadline - Date.now(), runTool("inspect_shop", { url: shop }, ctx), { ok: false, summary: "inspect_shop ran out of time." });
-    call.ok = out.ok;
-    call.summary = out.summary;
-    brief += `\n\nSpotter already opened the shop page the agent was paying, before you started (cite it like any tool result):\n[source ${call.id}]\n${out.summary}`;
+    earlyResult = within(deadline - Date.now(), runTool(early.tool, { url: early.url }, ctx), { ok: false, summary: `${early.tool} ran out of time.` }).then((out) => {
+      call.ok = out.ok;
+      call.summary = out.summary;
+      return `${early.done} (cite it like any tool result):\n[source ${call.id}]\n${out.summary}`;
+    });
+    brief += `\n\n${early.doing} in a cloud browser right now. What it finds comes with your first tool results as [source ${call.id}]; don't open that page again yourself.`;
   }
+  /** The early visit's result for the next message to the model, once; empty after it was handed over. */
+  const takeEarly = async (): Promise<TextBlock[]> => {
+    if (!earlyResult) return [];
+    const text = await earlyResult;
+    earlyResult = null;
+    return [{ type: "text", text }];
+  };
   const messages: Message[] = [{ role: "user", content: brief }];
-  // The model never gets the last part of the budget: that time is kept for the checks made by code, so a hung
-  // model still leaves room for history, network, links, KERNEL and Channel3.
-  const reserve = Math.min(CODE_RESERVE_MS, Math.floor((deadline - started) / 3));
-  const modelDeadline = deadline - reserve;
+  const budget = deadline - started;
   // The model is out (failed, hung or never filed), but the checks made by code still run in the time left.
   const giveUp = async (error: string, aiDown = false) => {
-    if (deadline - Date.now() > 0) await codeChecks(ctx, calls, deadline);
+    await Promise.all([takeEarly(), deadline - Date.now() > 0 ? codeChecks(ctx, calls, deadline) : null]);
     return fallback(calls, started, error, aiDown);
   };
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const left = modelDeadline - Date.now();
+    // The model never gets the last part of the budget, so a hung model still leaves room for the checks made by code
+    // (history, network, links, KERNEL and Channel3); how much depends on whether a slow one is still to run.
+    const slowLeft = codePlan(ctx, calls).some(([tool]) => SLOW_CODE_CHECKS.has(tool));
+    const left = deadline - codeReserveMs(budget, slowLeft) - Date.now();
     if (left <= 0) return giveUp("ran out of time");
     let res: ModelTurn;
     try {
@@ -396,33 +432,59 @@ async function runCase(ctx: CaseCtx, opts: CaseOpts): Promise<Case> {
     const uses = res.content.filter((b): b is ToolUseBlock => b.type === "tool_use");
 
     const filed = uses.find((u) => u.name === "file_case");
+    if (filed && earlyResult) {
+      // It filed before the page Spotter opened came back, so it could only have guessed about it: it gets the page
+      // and files again. Every tool_use in the turn needs its result.
+      const page = await takeEarly();
+      const refused = uses.map((u): ToolResultBlock => ({
+        type: "tool_result",
+        tool_use_id: u.id,
+        content: u.name === "file_case" ? "Not filed yet: the page Spotter opened just came back (below). Read it, then call file_case again." : "Not run. Read the page below, then call file_case.",
+        is_error: true,
+      }));
+      messages.push({ role: "user", content: [...refused, ...page] });
+      continue;
+    }
     if (filed) return finish(filed.input, ctx, calls, started);
 
     if (!uses.length) {
-      messages.push({ role: "user", content: "Call file_case now with what you found." });
+      messages.push({ role: "user", content: [...(await takeEarly()), { type: "text", text: "Call file_case now with what you found." }] });
       continue;
     }
-    const results = await Promise.all(
-      uses.map(async (u): Promise<ToolResultBlock> => {
-        if (calls.length >= MAX_CALLS) {
-          return { type: "tool_result", tool_use_id: u.id, content: "No checks left. Call file_case now.", is_error: true };
-        }
-        const call: CaseCall = { id: u.id, tool: u.name, args: u.input, ok: false, summary: "" };
-        calls.push(call);
-        const out: ToolOutput = await within(deadline - Date.now(), runTool(u.name, u.input, ctx), {
-          ok: false,
-          summary: `${u.name} ran out of time.`,
-        });
-        call.ok = out.ok;
-        call.summary = out.summary;
-        // The id is repeated in the text so the model can cite it as the finding's source.
-        return { type: "tool_result", tool_use_id: u.id, content: `[source ${u.id}]
+    const [results, earlyBlocks] = await Promise.all([
+      Promise.all(
+        uses.map(async (u): Promise<ToolResultBlock> => {
+          if (calls.length >= MAX_CALLS) {
+            return { type: "tool_result", tool_use_id: u.id, content: "No checks left. Call file_case now.", is_error: true };
+          }
+          const call: CaseCall = { id: u.id, tool: u.name, args: u.input, ok: false, summary: "" };
+          calls.push(call);
+          const out: ToolOutput = await within(deadline - Date.now(), runTool(u.name, u.input, ctx), {
+            ok: false,
+            summary: `${u.name} ran out of time.`,
+          });
+          call.ok = out.ok;
+          call.summary = out.summary;
+          // The id is repeated in the text so the model can cite it as the finding's source.
+          return { type: "tool_result", tool_use_id: u.id, content: `[source ${u.id}]
 ${out.summary}`, ...(out.ok ? {} : { is_error: true }) };
-      }),
-    );
-    messages.push({ role: "user", content: results });
+        }),
+      ),
+      takeEarly(),
+    ]);
+    // Tool results first (the API wants them before any text), then the early visit the first time.
+    messages.push({ role: "user", content: [...results, ...earlyBlocks] });
   }
   return giveUp("the model never filed a case");
+}
+
+/** The page Spotter opens before the model asks: the agent's shop (seen vs read), else the message's first link. */
+function earlyVisit(ctx: CaseCtx, who?: { kind: string }): { id: string; tool: "inspect_shop" | "open_link"; url: string; doing: string; done: string } | null {
+  if (!ctx.visit) return null;
+  const shop = agentShop(ctx, who);
+  if (shop) return { id: "auto_inspect_shop", tool: "inspect_shop", url: shop, doing: "Spotter is opening the shop page the agent was paying", done: "Spotter opened the shop page the agent was paying" };
+  const url = extractUrls(ctx.payment.request.context)[0];
+  return url ? { id: "auto_open_link", tool: "open_link", url, doing: "Spotter is opening the link in the message", done: "Spotter opened the link in the message" } : null;
 }
 
 const PRICE_HEADLINE = {
@@ -492,7 +554,7 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
   };
 }
 
-async function defaultModel({ system, messages, tools, signal }: Parameters<CaseModel>[0]): Promise<ModelTurn> {
+export async function defaultModel({ system, messages, tools, signal }: Parameters<CaseModel>[0]): Promise<ModelTurn> {
   const cached = tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t));
   const res = await withClaude("case", { maxRetries: 1 }, (client) =>
     client.messages.create(

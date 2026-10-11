@@ -227,6 +227,46 @@ describe("open_link", () => {
     expect(c.page).toBeUndefined();
   });
 
+  it("never says the page doesn't ask for card details when the phone version asked for them", async () => {
+    const now = await pay("gran", "Larkhill Parcels", 199, "Pay the fee here: https://bit.ly/x1");
+    const v = visit({
+      finalUrl: "https://bit.ly/x1",
+      asks: { card: false, login: false, giftCard: false },
+      phone: { finalUrl: "https://collect-x.example/pay", title: "Fee due", asks: { card: true, login: false, giftCard: false }, network: "uk_mobile" },
+      faces: { compared: true, differs: true, verdict: "Only the phone was asked for card details.", differences: [], textOverlap: 0.1, lookSimilarity: 0.3 },
+    } as Partial<PageVisit>);
+    const out = await runTool("open_link", { url: "https://bit.ly/x1" }, ctx(now, { visit: v }));
+    expect(out.summary).not.toContain("The page doesn't ask for card details");
+    expect(out.summary).toContain("On a desktop the page doesn't ask for card details, a log in or a gift card code, but on a phone it asks for card details.");
+    expect(out.summary).toContain("On a phone it went to collect-x.example.");
+  });
+
+  it("says what the phone asked for on top of what the desktop asked for", async () => {
+    const now = await pay("gran", "PayPal Support", 4000, msg);
+    const v = visit({
+      asks: { card: false, login: true, giftCard: false },
+      phone: { finalUrl: "https://login-paypa1.example/verify", title: "Verify", asks: { card: true, login: true, giftCard: false }, network: "direct" },
+    } as Partial<PageVisit>);
+    const out = await runTool("open_link", { url: "https://bit.ly/x1" }, ctx(now, { visit: v }));
+    expect(out.summary).toContain("The page asks for a log in. On a phone it also asks for card details.");
+    expect(out.summary).not.toContain("On a phone it went to");
+  });
+
+  it("says the phone version wasn't checked when two faces couldn't compare", async () => {
+    const now = await pay("gran", "PayPal Support", 4000, msg);
+    const v = visit({ asks: { card: false, login: false, giftCard: false }, faces: { compared: false, verdict: "Spotter couldn't open it both ways." } } as Partial<PageVisit>);
+    const out = await runTool("open_link", { url: "https://bit.ly/x1" }, ctx(now, { visit: v }));
+    expect(out.summary).toContain("On a desktop the page doesn't ask for card details, a log in or a gift card code; the phone version couldn't be checked.");
+  });
+
+  it("keeps the plain line when the phone was asked for the same things", async () => {
+    const now = await pay("gran", "PayPal Support", 4000, msg);
+    const none = { card: false, login: false, giftCard: false };
+    const v = visit({ asks: none, phone: { finalUrl: "https://login-paypa1.example/verify", title: "x", asks: none, network: "direct" } } as Partial<PageVisit>);
+    const out = await runTool("open_link", { url: "https://bit.ly/x1" }, ctx(now, { visit: v }));
+    expect(out.summary).toContain("The page doesn't ask for card details, a log in or a gift card code.");
+  });
+
   it("is only offered to the model when the cloud browser is set up", () => {
     expect(toolDefinitions({ visit: undefined }).map((t) => t.name)).not.toContain("open_link");
     expect(toolDefinitions({ visit: visit() }).map((t) => t.name)).toContain("open_link");
