@@ -24,6 +24,8 @@ export type Deps = {
   decided?: (payment: Payment, spender: Spender) => Promise<void>;
   /** Tells the spotter PayPal confirmed a held payment was paid or released (from a PayPal webhook). Optional. */
   confirmed?: (payment: Payment, spender: Spender) => Promise<void>;
+  /** Tells a household's spotter that someone switched a protection off (core/switchedoff.ts). Optional. */
+  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked"; text: string }) => Promise<void>;
   /** Runs work after the response is sent (Next's after()). Without it, follow up work runs inline. */
   defer?: (task: () => Promise<void>) => void;
   paypal: {

@@ -4,6 +4,7 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import type { Db } from "@/db";
 import { getSpender, type Spender } from "./lifecycle";
+import { disconnectedText, warnSpotter, type Warn } from "./switchedoff";
 
 export type Channel = "email" | "telegram" | "discord";
 export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
@@ -35,6 +36,8 @@ export async function redeemPairingCode(
   rawCode: string,
   channel: Channel,
   rawIdentity: string,
+  /** Tells another family's spotter when this takes their person's chat or email (core/switchedoff.ts). */
+  warn?: Warn,
 ): Promise<{ householdId: string; spender: Spender | null } | null> {
   const identity = `${channel}:${rawIdentity.trim().toLowerCase()}`;
   const value = channel === "email" ? rawIdentity.trim().toLowerCase() : rawIdentity.trim();
@@ -56,9 +59,21 @@ export async function redeemPairingCode(
   }
   const column = channel === "email" ? "email" : channel === "telegram" ? "telegram_chat_id" : "discord_user_id";
   if (hit.spender_id) {
+    // Taken from a person in ANOTHER family: a scammer with their own Spotter account can send a code like this.
+    const takenFrom = await db.query<{ id: string; name: string; household_id: string }>(
+      `select id, name, household_id from spenders where lower(${column}) = lower($1) and household_id <> $2`,
+      [value, hit.household_id],
+    );
     // An address or chat belongs to one person at a time: pairing it here unpairs it anywhere else.
     await db.query(`update spenders set ${column} = null where lower(${column}) = lower($1)`, [value]);
     await db.query(`update spenders set ${column} = $2 where id = $1`, [hit.spender_id, value]);
+    for (const s of takenFrom) {
+      try {
+        await warnSpotter({ db, warn }, s.household_id, `moved:${code}:${s.id}`, { kind: "channel_moved", text: disconnectedText(s.name, channel === "email" ? "email" : "chat") });
+      } catch (e) {
+        console.error(`[spotter] couldn't warn ${s.household_id} that ${s.id}'s ${channel} moved:`, e instanceof Error ? e.message : e);
+      }
+    }
     return { householdId: hit.household_id, spender: await getSpender(db, hit.spender_id) };
   }
   // The spotter's own email is where alerts go, so it lives in its own column (PayPal's email may be a sandbox one).

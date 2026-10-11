@@ -13,6 +13,8 @@ import { sendDm } from "@/discord/api";
 import { makeDiscordConfirmed, makeDiscordDecided, makeDiscordNotify } from "@/discord/notify";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { makeNotify } from "@/email/alerts";
+import { send as sendEmail } from "@/email/agentboxd";
+import { makeWarn } from "./warn";
 
 let ready: Promise<Deps> | null = null;
 
@@ -50,6 +52,11 @@ export function getDeps(): Promise<Deps> {
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramConfirmed(db, sendHtml) : null,
         process.env.DISCORD_BOT_TOKEN ? makeDiscordConfirmed(db, sendDm) : null,
       ]),
+      warn: makeWarn(db, site, {
+        ...(process.env.TELEGRAM_BOT_TOKEN ? { telegram: sendHtml } : {}),
+        ...(process.env.DISCORD_BOT_TOKEN ? { discord: sendDm } : {}),
+        ...(process.env.AGENTBOXD_API_KEY ? { email: sendEmail } : {}),
+      }),
       investigate: (payment, spender) =>
         buildCase(
           {

@@ -10,7 +10,7 @@ const call = async (method: string, body: object) => {
   console.log(method, res.status, (await res.text()).slice(0, 300));
 };
 
-await call("setWebhook", { url: `${site}/api/telegram`, secret_token: secret, allowed_updates: ["message", "callback_query"], drop_pending_updates: true });
+await call("setWebhook", { url: `${site}/api/telegram`, secret_token: secret, allowed_updates: ["message", "callback_query", "my_chat_member"], drop_pending_updates: true });
 await call("setMyCommands", {
   commands: [
     { command: "start", description: "Connect with the code your spotter gave you" },

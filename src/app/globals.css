@@ -7374,3 +7374,12 @@ h3 {
 .evidence-links a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; min-height: 24px; display: inline-flex; align-items: center; }
 .evidence-links a:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
 .evidence-for { color: var(--ink-2); }
+/* "A protection was just switched off" (src/ui/Warnings.tsx). */
+.warnings { margin: 0 0 20px; padding: 14px 16px; border-radius: var(--r-card); background: var(--stop-soft); border: 1px solid var(--stop); }
+.warnings-title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--ink); }
+.warnings-title svg { color: var(--stop); flex: none; }
+.warnings-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.warnings-list p { margin: 0; font-size: 15.5px; line-height: 1.5; max-width: 70ch; }
+.warnings-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; color: var(--ink-2); font-size: 14px !important; margin-top: 4px !important; }
+.warnings-seen { all: unset; cursor: pointer; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; min-height: 24px; display: inline-flex; align-items: center; }
+.warnings-seen:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
