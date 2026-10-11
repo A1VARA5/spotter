@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb } from "@/db";
-import { createSpender, type Deps } from "@/core/lifecycle";
-import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment } from "./agent";
+import { createSpender, LATE_HOLD, type Deps, type Payment } from "@/core/lifecycle";
+import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, reply } from "./agent";
 import type { AiCheckResult } from "@/ai/check";
 
 let deps: Deps;
@@ -158,5 +158,22 @@ describe("agent tools", () => {
       expect(r.status).toBe("blocked");
       expect(r.safer_option).toBeUndefined();
     });
+  });
+});
+
+describe("reply for a hold PayPal never answered", () => {
+  const base = { id: "pay_1", amount: 2500, currency: "GBP", request: { payee: { name: "Clay & Kiln" } }, decision: null, decided_by: null } as unknown as Payment;
+
+  it("while Spotter is still asking PayPal, the agent is told not paid and not to retry another way", () => {
+    const r = reply({ ...base, status: "authorising", error: "PayPal didn't confirm yet" }, "Sam");
+    expect(r.status).toBe("in_progress");
+    expect(r.message).toMatch(/Not paid/);
+    expect(r.message).toMatch(/Don't retry/);
+  });
+
+  it("a late hold Spotter let go is never reported as the spotter saying no", () => {
+    const r = reply({ ...base, status: "voided", error: LATE_HOLD }, "Sam");
+    expect(r.message).not.toMatch(/Sam said no/);
+    expect(r.message).toMatch(/Nothing was paid/);
   });
 });

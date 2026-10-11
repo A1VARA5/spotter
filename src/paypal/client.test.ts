@@ -88,6 +88,18 @@ describe("paypal client", () => {
     expect(JSON.parse(String(calls[1]!.init.body)).payment_source).toBeUndefined();
   });
 
+  it("a replay repeats the create's PayPal-Request-Id without the card, so it can only find the order PayPal made", async () => {
+    // Sandbox, 2026-10-11: repeating the card body with the same id answers 422 TRANSACTION_REFUSED; without the
+    // card PayPal answers 200 with the original order and its authorisation (docs/paypal-notes.md).
+    mockFetch([TOKEN, { status: 200, body: { id: "O1", status: "CREATED", purchase_units: [{ payments: { authorizations: [{ id: "A1", expiration_time: "x" }] } }] } }]);
+    const r = await createAuthorizeOrder(req, { source: "replay", customId: "spt-abcd:p1" });
+    const body = JSON.parse(String(calls[1]!.init.body));
+    expect(header(calls[1]!, "PayPal-Request-Id")).toBe("create-p1");
+    expect(body.payment_source).toBeUndefined();
+    expect(body.purchase_units[0]).toMatchObject({ invoice_id: "spotter-p1", custom_id: "spt-abcd:p1" });
+    expect(r).toMatchObject({ orderId: "O1", authorizationId: "A1" });
+  });
+
   it("uses the given idempotency key on capture", async () => {
     mockFetch([TOKEN, { status: 201, body: { id: "C1", status: "COMPLETED" } }]);
     const r = await captureAuthorization("A1", "capture-p1");

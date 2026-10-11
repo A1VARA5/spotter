@@ -11,6 +11,7 @@ export type TrackState = "checking" | "moving" | "held" | "paid" | "blocked" | "
 export function trackState(status: PaymentStatus): TrackState {
   switch (status) {
     case "checking":
+    case "authorising":
       return "checking";
     case "needs_approval":
       return "held";

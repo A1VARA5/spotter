@@ -250,6 +250,12 @@ describe("a selling agent's own orders", () => {
     expect(Number(sale!.amount)).toBe(2500);
   });
 
+  it("create_order sends a PayPal-Request-Id made from the sale row's id", async () => {
+    await sellCreateOrder(deps, run, "seller", { currencyCode: "USD", items: [{ name: "Cap", quantity: 1, itemCost: 25, taxPercent: 0, itemTotal: 25 }] });
+    const [sale] = await deps.db.query<{ id: string }>("select id from sales where paypal_order_id = '4NEW3456CD789012E'");
+    expect(run).toHaveBeenCalledWith("create_order", expect.anything(), { requestId: `order-${sale!.id}` });
+  });
+
   it("pay_order takes the buyer's payment only for this family's sale, and records the capture", async () => {
     await sellCreateOrder(deps, run, "seller", { currencyCode: "USD", items: [{ name: "Cap", quantity: 1, itemCost: 25, taxPercent: 0, itemTotal: 25 }] });
     expect(parse(await sellPayOrder(deps, run, "theirs", "4NEW3456CD789012E")).error).toBeTruthy();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { aiFailedLine, checkComplete, feedEmpty, firstToOpen, withoutHoldFinding } from "./Dashboard";
+import { aiFailedLine, checkComplete, feedEmpty, firstToOpen, waitingChanged, withoutHoldFinding } from "./Dashboard";
 import type { Case } from "@/agents/case";
 
 describe("checkComplete (Deny leads until the AI has looked)", () => {
@@ -81,5 +81,19 @@ describe("relative times use one clock (hydration error 418)", () => {
     expect(timeAgo(created, serverNow)).toBe("5 min ago");
     // A browser clock 150 seconds ahead used to render "8 min ago" on the first client render.
     expect(timeAgo(created, serverNow + 150_000)).not.toBe(timeAgo(created, serverNow));
+  });
+});
+
+describe("waitingChanged (the sidebar's Waiting for you count follows the queue)", () => {
+  const at = (...statuses: string[]) => statuses.map((status) => ({ status }) as Pick<Payment, "status">);
+  it("gives the new count when a payment left needs_approval (a Deny), so the shell is refreshed", () => {
+    expect(waitingChanged(1, at("voided", "captured"))).toBe(0);
+    expect(waitingChanged(1, at("voiding"))).toBe(0);
+  });
+  it("gives the new count when a new hold arrives", () => {
+    expect(waitingChanged(1, at("needs_approval", "needs_approval"))).toBe(2);
+  });
+  it("is null when the count didn't change, so the shell isn't refreshed every poll", () => {
+    expect(waitingChanged(1, at("needs_approval", "voided"))).toBeNull();
   });
 });

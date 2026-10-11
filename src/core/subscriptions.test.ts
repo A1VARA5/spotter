@@ -90,11 +90,17 @@ describe("create_subscription through Spotter", () => {
     const r = JSON.parse(raw);
     expect(r).toMatchObject({ id: "I-BW452GLLEP1G", status: "APPROVAL_PENDING" });
     expect(r.spotter.message).toMatch(/Sam/);
-    expect(run).toHaveBeenCalledWith("create_subscription", { plan_id: "P-5ML4271244454362WXNWU5NQ" });
+    expect(run).toHaveBeenCalledWith("create_subscription", { plan_id: "P-5ML4271244454362WXNWU5NQ" }, expect.anything());
     expect(String(warn.mock.calls[0]![1].text)).toContain("US$0.00 now, US$39.99 in 7 days");
     const [held] = await listHeldSubscriptions(deps.db, hh);
     expect(held).toMatchObject({ status: "held", plan_name: "Example: StreamBox Premium (sandbox)" });
     expect(held).not.toHaveProperty("approve_url");
+  });
+
+  it("create_subscription sends a PayPal-Request-Id made from the held subscription row's id", async () => {
+    await holdSubscription(deps, run, "agent", { plan_id: "P-5ML4271244454362WXNWU5NQ" });
+    const [row] = await deps.db.query<{ id: string }>("select id from held_subscriptions");
+    expect(run).toHaveBeenCalledWith("create_subscription", expect.anything(), { requestId: `subscription-${row!.id}` });
   });
 
   it("show_subscription_details only for the agent's own, and never with the approval link", async () => {

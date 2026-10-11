@@ -98,10 +98,13 @@ export type CreatedOrder = { orderId: string; authorizationId?: string; expiresA
  * Every order carries invoice_id = spotter-<payment id>: PayPal refuses a second order with the same invoice_id, so a
  * duplicate can't be made even past our own checks. customId (an agent's key and the payment id) is PayPal's own record
  * of which agent key asked for the order: PayPal returns it in get_order and its reports, and never shows it to the payer.
+ * "replay" asks again for a card order whose answer never arrived: the same PayPal-Request-Id without the card. PayPal
+ * then answers with the order it already made, and the authorisation (sandbox, 2026-10-11). Repeating the card itself
+ * was refused (422 TRANSACTION_REFUSED). Without the card a replay can never make a new hold.
  */
 export async function createAuthorizeOrder(
   req: PaymentRequest,
-  opts: { source: "card" | "approval_link"; customId?: string },
+  opts: { source: "card" | "approval_link" | "replay"; customId?: string },
 ): Promise<CreatedOrder> {
   const body = {
     intent: "AUTHORIZE",

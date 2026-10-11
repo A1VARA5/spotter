@@ -123,7 +123,9 @@ export async function holdSubscription(deps: Deps, run: Run, agentId: string, ar
   // Only the toolkit's own arguments go to PayPal.
   const { payee: _payee, ...official } = args;
   void _payee;
-  const created = readRun(await run("create_subscription", official));
+  // The row's id is made first so the subscription carries a PayPal-Request-Id tied to it: a repeat is one subscription.
+  const id = `sub_${randomBytes(8).toString("hex")}`;
+  const created = readRun(await run("create_subscription", official, { requestId: `subscription-${id}` }));
   if (!created.ok || typeof created.data?.id !== "string") return err(`PayPal didn't start the subscription (${created.ok ? "no id" : created.message}). Nothing will be charged.`);
   const links: Array<{ rel?: string; href?: string }> = Array.isArray(created.data.links) ? created.data.links : [];
   const approve = links.find((l) => l.rel === "approve" && typeof l.href === "string" && l.href.startsWith("https://"))?.href ?? null;
@@ -131,7 +133,6 @@ export async function holdSubscription(deps: Deps, run: Run, agentId: string, ar
     console.error(`[spotter] subscription ${created.data.id}: PayPal gave no approval link`);
     return err("PayPal started the subscription but gave no approval link, so it can never be approved and nothing will be charged. Tell the user to try again later.");
   }
-  const id = `sub_${randomBytes(8).toString("hex")}`;
   await db.query(
     "insert into held_subscriptions (id, household_id, spender_id, plan_id, plan_name, payee, paypal_subscription_id, approve_url, tail, cut_up, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'held')",
     [id, agent.household_id, agentId, String(args.plan_id).slice(0, 64), planName, payee.slice(0, 120), created.data.id.slice(0, 64), approve, JSON.stringify(tail), cutUp ? JSON.stringify(cutUp) : null],

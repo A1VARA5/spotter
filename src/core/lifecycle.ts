@@ -186,7 +186,7 @@ async function spentThisWeek(db: Db, spenderId: string, currency: string, before
      where me.id = $4 and p.spender_id = $1 and p.currency = $2 and p.status = any($3)
        and p.created_at > now() - interval '7 days'
        and (p.created_at, p.id) < (me.created_at, me.id)`,
-    [spenderId, currency, [...HOLDING, "checking"], beforeId],
+    [spenderId, currency, [...HOLDING, "checking", "authorising"], beforeId],
   );
   return Number(rows[0]?.total ?? 0);
 }
@@ -195,7 +195,7 @@ async function spentThisWeek(db: Db, spenderId: string, currency: string, before
 export async function weekSpend(db: Db, spenderId: string, currency: string): Promise<number> {
   const rows = await db.query<{ total: string | null }>(
     "select sum(amount)::text as total from payments where spender_id = $1 and currency = $2 and status = any($3) and created_at > now() - interval '7 days'",
-    [spenderId, currency, [...HOLDING, "checking"]],
+    [spenderId, currency, [...HOLDING, "checking", "authorising"]],
   );
   return Number(rows[0]?.total ?? 0);
 }
@@ -253,9 +253,20 @@ async function report(db: Db, paymentId: string, householdId: string, identifier
   }
 }
 
-/** Record a failure on a payment. Never throws: the original error matters more than a logging hiccup. */
-async function fail(db: Db, id: string, step: string, e: unknown, extra: Record<string, unknown> = {}): Promise<Payment> {
+/** Record a failure on a payment. Never throws: the original error matters more than a logging hiccup. With `from`, it
+ * only fails a payment still in that status (a webhook may have settled it meanwhile) and otherwise returns it as it is. */
+async function fail(db: Db, id: string, step: string, e: unknown, extra: Record<string, unknown> = {}, from?: PaymentStatus): Promise<Payment> {
   const error = errText(e);
+  if (from) {
+    const moved = await move(db, id, from, "failed", { ...extra, error });
+    if (!moved) {
+      console.error(`[spotter] payment ${id} hit an error at ${step} but had already left ${from}; left as it is: ${error}`);
+      return (await getPayment(db, id))!;
+    }
+    console.error(`[spotter] payment ${id} failed at ${step}: ${error}`);
+    await event(db, id, "failed", { step, error }).catch(() => {});
+    return moved;
+  }
   console.error(`[spotter] payment ${id} failed at ${step}: ${error}`);
   await event(db, id, "failed", { step, error }).catch(() => {});
   return setStatus(db, id, "failed", { ...extra, error });
@@ -395,18 +406,18 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
   }
 
   const customId = agentKey ? `${agentKey}:${id}` : undefined;
+  // Saved before PayPal is asked: if PayPal's answer never arrives, the row still says a hold may exist, and reconcile
+  // asks again with the same PayPal-Request-Id (create-<id>) to find out.
+  await setStatus(db, id, "authorising", { decision, ai, ...(customId ? { paypal_custom_id: customId } : {}) });
   let hold;
   try {
-    hold = await deps.paypal.createAuthorizeOrder(req, customId ? { source: "card", customId } : { source: "card" });
+    hold = await createHold(deps, req, customId);
   } catch (e) {
-    return fail(db, id, "authorise", e, { decision, ai });
+    if (isFirm(e)) return fail(db, id, "authorise", e, {}, "authorising");
+    return unconfirmed(db, id, "authorising", "authorise", e);
   }
   if (!hold.authorizationId) {
-    return fail(db, id, "authorise", new Error("PayPal declined the card, so there is no hold to approve."), {
-      decision,
-      ai,
-      paypal_order_id: hold.orderId,
-    });
+    return fail(db, id, "authorise", new Error(NO_HOLD), { paypal_order_id: hold.orderId }, "authorising");
   }
   await event(db, id, "authorised", { orderId: hold.orderId });
   const held = await setStatus(db, id, decision.outcome === "allow" ? "authorised" : "needs_approval", {
@@ -429,6 +440,24 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
 }
 
 export const PAUSED_BY = "Spotter (the agent was paused)";
+
+const holdOpts = (source: "card" | "replay", customId?: string | null) => (customId ? { source, customId } : { source });
+
+/** A hold PayPal made no authorisation for: a declined card, or (on a replay) PayPal never got the first request. */
+const NO_HOLD = "PayPal made no hold for this payment (the card was declined, or PayPal never got the request). Nothing was paid.";
+
+/** Asks PayPal for the hold. No answer (timeout, 5xx, network) is asked once more at once as a replay: the same
+ * PayPal-Request-Id (create-<payment id>) without the card, so PayPal returns the order it already made and can never
+ * make a second hold. */
+async function createHold(deps: Deps, req: PaymentRequest, customId?: string) {
+  try {
+    return await deps.paypal.createAuthorizeOrder(req, holdOpts("card", customId));
+  } catch (e) {
+    if (isFirm(e)) throw e;
+    console.error(`[spotter] payment ${req.id}: PayPal didn't answer the hold, asking again with the same request: ${errText(e)}`);
+    return deps.paypal.createAuthorizeOrder(req, holdOpts("replay", customId));
+  }
+}
 
 async function isFrozen(db: Db, spenderId: string): Promise<boolean> {
   return !!(await getSpender(db, spenderId))?.frozen_at;
@@ -472,7 +501,7 @@ async function move(db: Db, id: string, from: PaymentStatus, to: PaymentStatus, 
 }
 
 /** PayPal didn't say yes or no (timeout, 5xx, network). The payment stays where it is, with the reason, for reconcile. */
-async function unconfirmed(db: Db, id: string, status: PaymentStatus, step: "void" | "capture", e: unknown): Promise<Payment> {
+async function unconfirmed(db: Db, id: string, status: PaymentStatus, step: "void" | "capture" | "authorise", e: unknown): Promise<Payment> {
   const error = `${UNCONFIRMED}: ${errText(e)}`.slice(0, 500);
   console.error(`[spotter] payment ${id}: PayPal didn't confirm the ${step}, left ${status} for reconcile: ${errText(e)}`);
   await event(db, id, `${step}_unconfirmed`, { error: errText(e).slice(0, 300) }).catch(() => {});
@@ -507,7 +536,7 @@ async function captureFailed(deps: Deps, p: Payment, e: unknown): Promise<Paymen
     return (await move(db, p.id, "capturing", "needs_approval", { error })) ?? (await getPayment(db, p.id))!;
   }
   const issue = e instanceof PayPalError ? e.issue : undefined;
-  if ((status && GONE.has(status)) || (!status && HOLD_GONE_ISSUES.has(issue ?? ""))) return fail(db, p.id, "capture", e);
+  if ((status && GONE.has(status)) || (!status && HOLD_GONE_ISSUES.has(issue ?? ""))) return fail(db, p.id, "capture", e, {}, "capturing");
   return unconfirmed(db, p.id, "capturing", "capture", e);
 }
 
@@ -664,7 +693,62 @@ export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
       console.error(`[spotter] reconcile for ${p.id} crashed:`, errText(e));
     }
   }
+  // Holds PayPal never answered: PayPal may have made them, so ask again with the same request.
+  const lost = await db.query<Payment>("select * from payments where status = 'authorising' and updated_at < now() - make_interval(mins => $1)", [minutes]);
+  for (const p of lost) {
+    try {
+      if (await recoverHold(deps, p)) settled++;
+    } catch (e) {
+      console.error(`[spotter] reconcile for ${p.id} crashed:`, errText(e));
+    }
+  }
   return settled;
+}
+
+export const LATE_HOLD ="PayPal's answer came too late, so Spotter let the hold go. Nothing was paid.";
+
+/**
+ * A hold whose answer never arrived. Replayed (same PayPal-Request-Id, no card), PayPal returns the order it made, or
+ * makes an order with no hold if it never got the first request. A hold it made is let go: the person was told PayPal didn't answer, and paying (or asking) minutes or
+ * hours later could double up with a retry. True when the payment reached a final status.
+ */
+async function recoverHold(deps: Deps, p: Payment): Promise<boolean> {
+  const { db, paypal } = deps;
+  let hold;
+  try {
+    hold = await paypal.createAuthorizeOrder(p.request, holdOpts("replay", p.paypal_custom_id));
+  } catch (e) {
+    if (!isFirm(e)) {
+      await unconfirmed(db, p.id, "authorising", "authorise", e);
+      return false;
+    }
+    const why = new Error(`PayPal refused to look up the hold again (${errText(e)}). If PayPal made it the first time, PayPal lets it go when it expires. Nothing was paid.`);
+    return (await fail(db, p.id, "authorise", why, {}, "authorising")).status === "failed";
+  }
+  if (!hold.authorizationId) {
+    const why = new Error(NO_HOLD);
+    return (await fail(db, p.id, "authorise", why, { paypal_order_id: hold.orderId }, "authorising")).status === "failed";
+  }
+  const auth = hold.authorizationId;
+  const claimed = await move(db, p.id, "authorising", "voiding", {
+    paypal_order_id: hold.orderId,
+    paypal_authorization_id: auth,
+    paypal_auth_expires_at: hold.expiresAt ?? null,
+    error: null,
+  });
+  // Another reconcile run got there first (the same request id gives it the same hold), and it lets the hold go.
+  if (!claimed) return false;
+  await event(db, p.id, "hold_recovered", { orderId: hold.orderId });
+  try {
+    await paypal.voidAuthorization(auth, voidKey(p.id, auth));
+  } catch (e) {
+    await voidFailed(deps, p.id, e);
+    return false;
+  }
+  const done = await move(db, p.id, "voiding", "voided", { error: LATE_HOLD });
+  if (!done) return false;
+  await event(db, p.id, "voided", { by: "reconcile", reason: "late hold" });
+  return true;
 }
 
 /**

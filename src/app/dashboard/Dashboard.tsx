@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock, FileText, Camera, TrendingDown, ChevronRight, ChevronDown, X, ExternalLink, ScanEye } from "lucide-react";
 import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
@@ -65,6 +66,13 @@ function useNow(serverNow: number) {
   return now;
 }
 
+/** The new number of payments waiting for the spotter, or null when it is still `shown`. The sidebar's count is
+ * rendered by the server (AppShell), so a change means the shell needs a refresh. */
+export function waitingChanged(shown: number, payments: Pick<Payment, "status">[]): number | null {
+  const n = payments.filter((p) => p.status === "needs_approval").length;
+  return n === shown ? null : n;
+}
+
 /**
  * The dashboard's live state (payments and price watches, polled every 3 seconds), shared by the two parts the app
  * shell lays out: the waiting queue in the primary column, and Everything today plus the tools in the rail.
@@ -97,6 +105,9 @@ export function DashboardState({
   const [watches, setWatches] = useState<WatchView[]>([]);
   const [watchUpdates, setWatchUpdates] = useState<WatchUpdates | undefined>(undefined);
   const now = useNow(serverNow);
+  const router = useRouter();
+  // What the sidebar's "Waiting for you" count showed when the server last rendered it.
+  const shownWaiting = useRef(initial.filter((p) => p.status === "needs_approval").length);
 
   const refresh = useCallback(async () => {
     try {
@@ -115,12 +126,18 @@ export function DashboardState({
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Couldn't load payments (${r.status}).`);
       setPayments(j.payments);
+      // A deny, approve or new hold changed the queue: re-render the server shell so the sidebar count follows.
+      const waiting = waitingChanged(shownWaiting.current, j.payments);
+      if (waiting !== null) {
+        shownWaiting.current = waiting;
+        router.refresh();
+      }
       await watchesCall;
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load payments.");
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     void refresh();

@@ -62,11 +62,13 @@ export type Sale = {
   example: boolean;
 };
 
+const newSaleId = () => `sale_${randomBytes(8).toString("hex")}`;
+
 export async function recordSale(
   db: Db,
-  s: { householdId: string; spenderId: string | null; orderId: string; captureId: string | null; amount: number; currency: Currency; item: string; example: boolean },
+  s: { householdId: string; spenderId: string | null; orderId: string; captureId: string | null; amount: number; currency: Currency; item: string; example: boolean; id?: string },
 ): Promise<string> {
-  const id = `sale_${randomBytes(8).toString("hex")}`;
+  const id = s.id ?? newSaleId();
   await db.query(
     "insert into sales (id, household_id, spender_id, paypal_order_id, capture_id, amount, currency, item, example) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
     [id, s.householdId, s.spenderId, s.orderId, s.captureId, s.amount, s.currency, s.item.slice(0, 200), s.example],
@@ -324,10 +326,12 @@ export async function sellCreateOrder(deps: Deps, run: Run, agentId: string, inp
   // Only the toolkit's own arguments go to PayPal; Spotter's extras stay here.
   const { payee: _p, category: _c, page_text: _t, offer_id: _o, ...official } = input;
   void _p, _c, _t, _o;
-  const raw = await run("create_order", official as Record<string, unknown>);
+  // The sale's id is made first so the order carries a PayPal-Request-Id tied to it: a repeat is one order at PayPal.
+  const saleId = newSaleId();
+  const raw = await run("create_order", official as Record<string, unknown>, { requestId: `order-${saleId}` });
   const r = readRun(raw);
   if (!r.ok || typeof r.data?.id !== "string") return raw;
-  await recordSale(deps.db, { householdId: agent.household_id, spenderId: agentId, orderId: r.data.id, captureId: null, amount: total.amount, currency: "USD", item: input.items.map((i) => i.name).join(", "), example: false });
+  await recordSale(deps.db, { id: saleId, householdId: agent.household_id, spenderId: agentId, orderId: r.data.id, captureId: null, amount: total.amount, currency: "USD", item: input.items.map((i) => i.name).join(", "), example: false });
   return raw;
 }
 
