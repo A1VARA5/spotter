@@ -21,6 +21,12 @@ describe("starting board", () => {
     expect(startingBoard("family")).toBe(INITIAL);
   });
 
+  it("shows price watches near the top, beside the scam radar", () => {
+    const page = (INITIAL as unknown as { pages: Array<{ widgets: Record<string, W>; widgetLayout: Record<string, { yTrack: number; xTrack: number }> }> }).pages[0]!;
+    expect(page.widgets.watches?.type).toBe("price-watches");
+    expect(page.widgetLayout.watches!.yTrack).toBe(page.widgetLayout.radar!.yTrack);
+  });
+
   it("a business gets the same widgets with business titles, and suppliers by payee", () => {
     const b = startingBoard("business");
     expect(Object.keys(widgets(b))).toEqual(Object.keys(widgets(INITIAL)));

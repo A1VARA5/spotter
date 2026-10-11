@@ -194,4 +194,35 @@ create table if not exists safer_options (
   used_by text
 );
 create index if not exists safer_options_payment_idx on safer_options (payment_id, created_at desc);
+-- Price watch block, one table: a product Spotter watches at Channel3 (price tracking, 1 credit per product per day)
+-- after a payment for it was too dear, held or denied. Money amounts in minor units. household_id is set to null
+-- (not deleted) when a demo family goes, so the daily job can still stop the Channel3 subscription, then deletes it.
+create table if not exists price_watches (
+  id text primary key,
+  household_id text references households(id) on delete set null,
+  payment_id text references payments(id) on delete set null,
+  spender_id text references spenders(id) on delete set null,
+  product_id text not null,
+  item text not null,
+  title text not null,
+  currency text not null check (currency in ('GBP', 'USD')),
+  nearly_paid bigint not null check (nearly_paid > 0),
+  target bigint not null check (target > 0),
+  best_price bigint,
+  best_shop text,
+  best_url text,
+  history jsonb,
+  status text not null default 'watching' check (status in ('watching', 'dropped', 'stopped', 'expired')),
+  tracking boolean not null default false,
+  example boolean not null default false,
+  created_by text not null default 'spotter',
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  last_checked_at timestamptz,
+  notified_at timestamptz
+);
+create index if not exists price_watches_household_idx on price_watches (household_id, created_at desc);
+create index if not exists price_watches_product_idx on price_watches (product_id) where status = 'watching';
+create index if not exists price_watches_created_idx on price_watches (created_at);
+create unique index if not exists price_watches_one_active_idx on price_watches (household_id, product_id) where status = 'watching' and household_id is not null;
 `;

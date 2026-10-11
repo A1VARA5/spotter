@@ -9,19 +9,31 @@ import { plainError, readJson } from "@/ui/http";
 import { contradictsPrice, priceVerdict } from "@/core/market";
 import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
+import { PriceWatch, watchable } from "@/ui/PriceWatch";
+import type { WatchView } from "@/core/watch";
 
 
 export function Dashboard({ initial, names, unlocked, demo = false }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean; demo?: boolean }) {
   const [payments, setPayments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(!unlocked);
+  const [watches, setWatches] = useState<WatchView[]>([]);
 
   const refresh = useCallback(async () => {
     try {
+      // Price watches are extra: if they don't load, payments still show and the next poll tries again.
+      const watchesCall = fetch("/api/watches", { cache: "no-store" })
+        .then(async (w) => {
+          const jw = await readJson(w);
+          if (w.ok && Array.isArray(jw.watches)) setWatches(jw.watches);
+          else console.warn("[spotter] price watches didn't load:", jw.error ?? w.status);
+        })
+        .catch((e: unknown) => console.warn("[spotter] price watches didn't load:", e));
       const r = await fetch("/api/payments", { cache: "no-store" });
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Couldn't load payments (${r.status}).`);
       setPayments(j.payments);
+      await watchesCall;
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load payments.");
@@ -29,9 +41,13 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
   }, []);
 
   useEffect(() => {
+    void refresh();
     const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
   }, [refresh]);
+  const watchFor = (id: string) => watches.find((w) => w.paymentId === id);
+  // Watches without a payment on this page: the demo family's example, or one an AI agent started.
+  const loose = watches.filter((w) => !w.paymentId || !payments.some((p) => p.id === w.paymentId));
 
   const waiting = payments.filter((p) => p.status === "needs_approval");
   const rest = payments.filter((p) => p.status !== "needs_approval");
@@ -100,6 +116,7 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
               all={payments}
               who={names[p.spender_id] ?? "Someone"}
               demo={demo}
+              watch={watchFor(p.id)}
               onSettled={refresh}
               onLocked={() => setLocked(true)}
               onDecided={(text) => setNotice((n) => ({ text, n: (n?.n ?? 0) + 1 }))}
@@ -113,6 +130,26 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
         )}
       </section>
 
+      {loose.length > 0 && (
+        <section aria-labelledby="watches">
+          <h2 id="watches" className="section-title" style={{ marginTop: 6 }}>
+            Price watches
+          </h2>
+          <p className="feed-meta">Spotter watches real shops and tells you when a price comes down. It never buys anything.</p>
+          <ul className="watch-list">
+            {loose.map((w) => (
+              <li key={w.id}>
+                <p className="watch-for">
+                  {w.who ?? "Someone"} nearly paid {money(w.nearlyPaid, w.currency)} for {w.item}
+                  {w.createdBy === "agent" ? " (the agent asked Spotter to watch it)" : ""}
+                </p>
+                <PriceWatch watch={w} onChanged={refresh} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section aria-labelledby="feed">
         <h2 id="feed" className="section-title" style={{ marginTop: 6 }}>
           Everything today
@@ -124,7 +161,7 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
         ) : (
           <ul className="feed">
             {rest.map((p) => (
-              <FeedRow key={p.id} p={p} all={payments} who={names[p.spender_id] ?? "Someone"} />
+              <FeedRow key={p.id} p={p} all={payments} who={names[p.spender_id] ?? "Someone"} watch={watchFor(p.id)} onWatchChanged={refresh} />
             ))}
           </ul>
         )}
@@ -222,6 +259,7 @@ function HeldCard({
   all,
   who,
   demo,
+  watch,
   onSettled,
   onLocked,
   onDecided,
@@ -230,6 +268,7 @@ function HeldCard({
   all: Payment[];
   who: string;
   demo: boolean;
+  watch?: WatchView;
   onSettled: () => void;
   onLocked: () => void;
   onDecided: (text: string) => void;
@@ -308,9 +347,19 @@ function HeldCard({
       <ReplacedLink p={p} all={all} who={who} />
 
       {p.case_file ? (
-        <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} busy={busy === "swap"} onSwap={busy ? undefined : () => act("swap")} />
+        <CaseFile
+          c={p.case_file}
+          currency={p.currency}
+          paymentId={p.id}
+          busy={busy === "swap"}
+          onSwap={busy ? undefined : () => act("swap")}
+          footer={watchable(p) || watch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} /> : null}
+        />
       ) : (
-        <CasePending createdAt={p.created_at} />
+        <>
+          <CasePending createdAt={p.created_at} />
+          {(watchable(p) || watch) && <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} />}
+        </>
       )}
 
       {/* The message check never saw the market listings, so its summary is hidden when it argues with them. */}
@@ -405,7 +454,7 @@ function HeldCard({
 
 const ROW_ICON = { blocked: Ban, protected: ShieldCheck, held: Hand } as const;
 
-function FeedRow({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
+function FeedRow({ p, all, who, watch, onWatchChanged }: { p: Payment; all: Payment[]; who: string; watch?: WatchView; onWatchChanged: () => void }) {
   const s = trackState(p.status);
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
   const firstReason = p.decision?.reasons[0];
@@ -430,6 +479,11 @@ function FeedRow({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
           <summary>What Spotter found</summary>
           <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} />
         </details>
+      )}
+      {(watchable(p) || watch) && (
+        <div className="feed-watch">
+          <PriceWatch watch={watch} paymentId={p.id} onChanged={onWatchChanged} />
+        </div>
       )}
     </li>
   );

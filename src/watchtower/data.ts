@@ -5,6 +5,7 @@
 import type { Payment, Spender } from "@/core/lifecycle";
 import type { FlagKind, Severity } from "@/core/grounding";
 import { money, trackState } from "@/ui/format";
+import type { WatchView } from "@/core/watch";
 
 export type PaymentRow = {
   id: string;
@@ -45,7 +46,46 @@ export type CaseNote = { id: string; reasons: string[]; signs: Array<{ sign: str
 export type PaypalRow = { id: string; when: Date; eventType: string; label: string; paymentId: string; amount: number };
 export type SignRow = { paymentId: string; when: Date; who: string; payee: string; sign: string; severity: string };
 export type PersonRow = { name: string; kind: string; weeklyAllowance: number; spentThisWeek: number };
-export type Sources = { payments: PaymentRow[]; signs: SignRow[]; people: PersonRow[]; paypal?: PaypalRow[] };
+/** One price watch (src/core/watch.ts), in pounds. saving is what they nearly paid minus the drop price, else 0. */
+export type WatchRow = {
+  id: string;
+  started: Date;
+  who: string;
+  item: string;
+  status: "Watching" | "Dropped" | "Stopped" | "Expired";
+  nearlyPaid: number;
+  target: number;
+  bestPrice: number | null;
+  shop: string;
+  saving: number;
+  example: "Yes" | "No";
+  sample: "Yes" | "No";
+};
+export type Sources = { payments: PaymentRow[]; signs: SignRow[]; people: PersonRow[]; paypal?: PaypalRow[]; watches?: WatchRow[] };
+
+const WATCH_STATUS: Record<WatchView["status"], WatchRow["status"]> = { dropped: "Dropped", watching: "Watching", expired: "Expired", stopped: "Stopped" };
+const WATCH_ORDER: WatchRow["status"][] = ["Dropped", "Watching", "Expired", "Stopped"];
+/** Sample watches (demo families only) carry this marker on their id. */
+export const SAMPLE_WATCH_PREFIX = "watch_sample_";
+
+export function toWatchRows(watches: WatchView[]): WatchRow[] {
+  return watches
+    .map((w) => ({
+      id: w.id,
+      started: new Date(w.createdAt),
+      who: w.who ?? "Someone",
+      item: w.item,
+      status: WATCH_STATUS[w.status],
+      nearlyPaid: pounds(w.nearlyPaid),
+      target: pounds(w.target),
+      bestPrice: w.best ? pounds(w.best.price) : null,
+      shop: w.best?.shop ?? "",
+      saving: w.saving ? pounds(w.saving) : 0,
+      example: w.example ? ("Yes" as const) : ("No" as const),
+      sample: w.id.startsWith(SAMPLE_WATCH_PREFIX) ? ("Yes" as const) : ("No" as const),
+    }))
+    .sort((a, b) => WATCH_ORDER.indexOf(a.status) - WATCH_ORDER.indexOf(b.status) || b.started.getTime() - a.started.getTime());
+}
 
 export const SIGN_LABEL: Record<FlagKind, string> = {
   pressure: "Pressure to hurry",
