@@ -8,6 +8,8 @@ import { findCode, redeemPairingCode } from "@/core/pairing";
 import type { Extracted } from "@/ai/extract";
 import { outcomeText } from "@/email/inbound";
 import { scanMessage } from "@/ai/scan";
+import { blockedText, warnSpotter } from "@/core/switchedoff";
+import { answerWasItYou, parseButton } from "@/core/was-it-you";
 
 type TgEntity = { type: string; offset: number; length: number; url?: string };
 export type TgMessage = {
@@ -27,6 +29,8 @@ export type TgUpdate = {
   update_id: number;
   message?: TgMessage;
   callback_query?: { id: string; from: { id: number }; data?: string; message?: { message_id: number; chat: { id: number; type: string } } };
+  /** The bot's own membership changed: in a private chat, "kicked" means the person blocked the bot. */
+  my_chat_member?: { chat: { id: number; type: string }; from: { id: number }; date: number; old_chat_member: { status: string }; new_chat_member: { status: string } };
 };
 
 export type TgCtx = {
@@ -38,7 +42,7 @@ export type TgCtx = {
   answer?: (callbackId: string, text: string) => Promise<void>;
 };
 
-export type TgOutcome = "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked" | "failed" | "denied" | "refused";
+export type TgOutcome = "switched_off" | "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked" | "failed" | "denied" | "refused" | "not_me" | "it_was_me";
 
 const PER_CHAT_PER_DAY = 12;
 
@@ -86,6 +90,7 @@ function helpFor(s: Spender) {
 export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgOutcome> {
   const { db } = ctx.deps;
   if (u.callback_query) return handleButton(ctx, u.callback_query);
+  if (u.my_chat_member) return handleMembership(ctx, u.update_id, u.my_chat_member);
   const m = u.message;
   if (!m || m.from?.is_bot || m.chat.type !== "private") return "ignored";
   if (await seen(db, u.update_id)) return "duplicate";
@@ -101,7 +106,7 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
   // A code counts only in the person's own words, never inside something they forwarded.
   const code = forwarded ? null : findCode(text);
   if (code) {
-    const paired = await redeemPairingCode(db, code, "telegram", chat);
+    const paired = await redeemPairingCode(db, code, "telegram", chat, ctx.deps);
     if (!paired) {
       await say("That code didn't work. It may be used or more than a day old. Ask your spotter for a new one.");
       return "unpaired";
@@ -170,11 +175,46 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
   }
 }
 
+/** A protected person blocked the bot: Spotter can't answer them any more, which is exactly what a scammer wants. */
+async function handleMembership(ctx: TgCtx, updateId: number, m: NonNullable<TgUpdate["my_chat_member"]>): Promise<TgOutcome> {
+  const { db } = ctx.deps;
+  if (m.chat.type !== "private" || m.new_chat_member.status !== "kicked") return "ignored";
+  if (await seen(db, updateId)) return "duplicate";
+  const spender = (await db.query<Spender>("select * from spenders where telegram_chat_id = $1", [String(m.chat.id)]))[0];
+  if (!spender) return "ignored"; // the spotter's own alerts chat, or nobody Spotter knows
+  try {
+    await warnSpotter(ctx.deps, spender.household_id, `blocked:telegram:${updateId}`, { kind: "chat_blocked", text: blockedText(spender.name) });
+  } catch (e) {
+    // Not stored: forget the update so Telegram's retry (or a replay) gets a real second chance.
+    console.error(`[spotter] couldn't store the blocked chat warning for ${spender.id} in ${spender.household_id}:`, e instanceof Error ? e.message : e);
+    await db.query("delete from inbound where provider = 'telegram' and message_id = $1", [String(updateId)]).catch(() => {});
+    return "failed";
+  }
+  return "switched_off";
+}
+
 async function handleButton(ctx: TgCtx, q: NonNullable<TgUpdate["callback_query"]>): Promise<TgOutcome> {
   const { db } = ctx.deps;
   const answer = (t: string) => ctx.answer?.(q.id, t) ?? Promise.resolve();
-  const id = /^deny:(pay_[a-z0-9]+)$/.exec(q.data ?? "")?.[1];
   const chat = String(q.message?.chat.id ?? q.from.id);
+  // "Was it you?": bound to this chat (it must be the asked person's own) and to a signed single use token.
+  const wiy = parseButton(q.data);
+  if (wiy) {
+    try {
+      const r = await answerWasItYou(ctx.deps, { token: wiy.token, answer: wiy.answer, as: { channel: "telegram", id: chat } });
+      await answer(r.ok ? (wiy.answer === "not_me" ? "Thanks. Answer saved." : "Noted. Nothing is paid.") : "Nothing changed.");
+      await ctx.send(chat, esc(r.reply));
+      return r.ok ? wiy.answer : "refused";
+    } catch (e) {
+      console.error("[spotter] telegram was it you? answer failed:", e instanceof Error ? e.message : e);
+      await answer("Spotter couldn't save that.").catch(() => {});
+      await ctx
+        .send(chat, "Spotter couldn't save your answer just now. Nothing was paid. Press the button again in a moment.")
+        .catch((err) => console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err));
+      return "failed";
+    }
+  }
+  const id = /^deny:(pay_[a-z0-9]+)$/.exec(q.data ?? "")?.[1];
   if (!id) {
     await answer("That button has expired.");
     return "refused";

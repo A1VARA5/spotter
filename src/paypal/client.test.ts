@@ -3,6 +3,7 @@ import {
   captureAuthorization,
   createAuthorizeOrder,
   PayPalError,
+  reauthorizeAuthorization,
   resetTokenCache,
   toDecimal,
   verifyWebhookSignature,
@@ -158,5 +159,22 @@ describe("webhook signature check", () => {
   it("throws when PayPal can't be asked, so the route can ask PayPal to retry", async () => {
     mockFetch([TOKEN, { status: 500, body: { name: "INTERNAL_SERVICE_ERROR" } }]);
     await expect(verifyWebhookSignature(headers, "WEBHOOK-1", raw)).rejects.toBeInstanceOf(PayPalError);
+  });
+});
+
+describe("reauthorizeAuthorization", () => {
+  it("posts to the reauthorize endpoint with an idempotency key and returns the NEW authorisation id", async () => {
+    mockFetch([TOKEN, { status: 201, body: { id: "8AA831015G517922L", status: "CREATED", expiration_time: "2026-11-09T00:11:31Z" } }]);
+    const r = await reauthorizeAuthorization("0VF52814937998046", "reauth-pay_1");
+    expect(r).toEqual({ authorizationId: "8AA831015G517922L", expiresAt: "2026-11-09T00:11:31Z" });
+    expect(calls[1]!.url).toBe("https://api-m.sandbox.paypal.com/v2/payments/authorizations/0VF52814937998046/reauthorize");
+    expect(calls[1]!.init.method).toBe("POST");
+    expect(header(calls[1]!, "PayPal-Request-Id")).toBe("reauth-pay_1");
+    expect(calls[1]!.init.body).toBe("{}");
+  });
+
+  it("surfaces PayPal's issue, e.g. too soon inside the honor period", async () => {
+    mockFetch([TOKEN, { status: 422, body: { name: "UNPROCESSABLE_ENTITY", details: [{ issue: "REAUTHORIZATION_TOO_SOON" }] } }]);
+    await expect(reauthorizeAuthorization("A1", "k")).rejects.toMatchObject({ status: 422, issue: "REAUTHORIZATION_TOO_SOON" });
   });
 });

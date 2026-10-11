@@ -101,6 +101,17 @@ describe("the month as Gran sees it", () => {
     }
   });
 
+  it("a held payment someone is sleeping on says when Spotter asks again, and when the money comes back on its own", () => {
+    const n = new Map([["w1", { ...note("w1", []), wait: { askAgain: "Monday 12 October at 9am", holdEnds: "Monday 9 November at 12:11am" } }]]);
+    const [w] = granMonth([row({ id: "w1", outcome: "Waiting" })], n, { who: null, spotter: "Sam", now: NOW }).waiting;
+    expect(w!.status).toBe("Sleeping on it. Spotter asks Sam again Monday 12 October at 9am. The money stays put until then.");
+    expect(w!.ends).toBe("If nobody says yes by Monday 9 November at 12:11am, the money comes back to you.");
+    expect(w!.asleep).toBe(true);
+    const [plain] = granMonth([row({ id: "w2", outcome: "Waiting" })], new Map([["w2", { ...note("w2", []), wait: { holdEnds: "Monday 9 November at 12:11am" } }]]), { who: null, spotter: "Sam", now: NOW }).waiting;
+    expect(plain!.asleep).toBe(false);
+    expect(plain!.status).toMatch(/Sam has been asked/);
+  });
+
   it("turns scam signs into the tricks they used, most common first, in plain words", () => {
     expect(m.tricks[0]).toMatchObject({ sign: "Pretending to be someone", count: 2 });
     expect(m.tricks[0]!.plain).toMatch(/pretended to be someone you trust/i);

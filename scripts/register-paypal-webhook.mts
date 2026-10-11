@@ -1,6 +1,9 @@
 // Points the PayPal sandbox app's webhook at Spotter and prints the webhook id for PAYPAL_WEBHOOK_ID. Run after deploying:
 // npx tsx --env-file=.env.local scripts/register-paypal-webhook.mts [https://spotter-pay.vercel.app]
 // Safe to run twice: if a webhook for this URL already exists, it prints that one instead of making another.
+// An existing webhook keeps its old event list: add new events with scripts/update-paypal-webhook-events.mts.
+import { EVENTS } from "./paypal-webhook-events.mts";
+
 const id = process.env.PAYPAL_CLIENT_ID;
 const secret = process.env.PAYPAL_CLIENT_SECRET;
 const site = process.argv[2] ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app";
@@ -9,16 +12,6 @@ if (!site.startsWith("https://")) throw new Error(`PayPal only calls https URLs,
 
 const BASE = "https://api-m.sandbox.paypal.com";
 const url = `${site.replace(/\/$/, "")}/api/paypal/webhook`;
-const EVENTS = [
-  "PAYMENT.AUTHORIZATION.CREATED",
-  "PAYMENT.AUTHORIZATION.VOIDED",
-  "PAYMENT.CAPTURE.COMPLETED",
-  "PAYMENT.CAPTURE.DECLINED",
-  "PAYMENT.CAPTURE.DENIED",
-  "PAYMENT.CAPTURE.PENDING",
-  "PAYMENT.CAPTURE.REFUNDED",
-  "CHECKOUT.ORDER.APPROVED",
-];
 
 const tokenRes = await fetch(`${BASE}/v1/oauth2/token`, {
   method: "POST",
@@ -39,7 +32,7 @@ for (const w of webhooks) console.log(`  ${w.id}  ${w.url}`);
 const existing = webhooks.find((w) => w.url === url);
 if (existing) {
   const missing = EVENTS.filter((e) => !existing.event_types.some((t) => t.name === e || t.name === "*"));
-  if (missing.length) console.log(`Already registered, but missing: ${missing.join(", ")}. Add them in the developer dashboard.`);
+  if (missing.length) console.log(`Already registered, but missing: ${missing.join(", ")}. Add them with: npx tsx --env-file=.env.local scripts/update-paypal-webhook-events.mts ${site}`);
   console.log(`\nPAYPAL_WEBHOOK_ID=${existing.id}`);
 } else {
   const res = await fetch(`${BASE}/v1/notifications/webhooks`, {

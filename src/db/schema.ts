@@ -243,6 +243,45 @@ create index if not exists price_watches_household_idx on price_watches (househo
 create index if not exists price_watches_product_idx on price_watches (product_id) where status = 'watching';
 create index if not exists price_watches_created_idx on price_watches (created_at);
 create unique index if not exists price_watches_one_active_idx on price_watches (household_id, product_id) where status = 'watching' and household_id is not null;
+-- Was it you? block, one column: when a held payment's message claims to come from someone in the family,
+-- Spotter asks that real person. The ask, who it went to and their answer (never a secret: tokens are HMACs).
+alter table payments add column if not exists was_it_you jsonb;
+create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
+-- Sleep on it block (src/core/sleep.ts): a held payment can wait a day and be asked about again at 9am household time.
+-- The PayPal hold stays; the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
+alter table households add column if not exists time_zone text not null default 'Europe/London';
+alter table payments add column if not exists ask_again_at timestamptz;
+alter table payments add column if not exists sleeps int not null default 0;
+alter table payments add column if not exists reauthorized_at timestamptz;
+alter table payments add column if not exists reauth_tried_at timestamptz;
+alter table payments add column if not exists reauth_note text;
+create index if not exists payments_ask_again_idx on payments (ask_again_at) where ask_again_at is not null;
+-- Switched off block (src/core/switchedoff.ts): "someone switched Spotter off" warnings for the spotter, shown in the app
+-- as well as sent on their channels. key makes each one happen once (a PayPal event id, a pairing code, a chat update).
+create table if not exists warnings (
+  id bigint generated always as identity primary key,
+  household_id text not null references households(id) on delete cascade,
+  key text not null unique,
+  kind text not null,
+  text text not null,
+  at timestamptz not null default now(),
+  seen_at timestamptz
+);
+create index if not exists warnings_household_idx on warnings (household_id, at);
+
+-- Spot the difference block, two tables: each Channel3 image search made for a case (counted per family per day,
+-- like price_checks), and its products cached by a hash of the picture, so the same screenshot costs one credit.
+create table if not exists image_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists image_checks_household_idx on image_checks (household_id, at);
+create index if not exists image_checks_at_idx on image_checks (at);
+create table if not exists image_search_cache (
+  key text primary key,
+  products jsonb not null,
+  fetched_at timestamptz not null default now()
+);
 -- AI receipt block, one table: what Watchtower's assistant did in each run, folded from AG Studio's harness
 -- telemetry in the page (src/watchtower/receipt.ts): tool names, counts, times, money actions, board changes.
 -- Never the question, the prompt, tool arguments or results. The newest 50 per family are kept.

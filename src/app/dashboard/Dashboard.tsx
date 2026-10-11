@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hand, ShieldCheck, Ban, Info, Repeat } from "lucide-react";
+import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock, FileText } from "lucide-react";
+import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
@@ -11,9 +12,23 @@ import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 import { PriceWatch, watchable } from "@/ui/PriceWatch";
 import type { WatchView } from "@/core/watch";
+import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 
 
-export function Dashboard({ initial, names, unlocked, demo = false }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean; demo?: boolean }) {
+export function Dashboard({
+  initial,
+  names,
+  unlocked,
+  demo = false,
+  tz = DEFAULT_TZ,
+}: {
+  initial: Payment[];
+  names: Record<string, string>;
+  unlocked: boolean;
+  demo?: boolean;
+  /** The household's time zone, for "asks again tomorrow at 9am" and when a hold ends. */
+  tz?: string;
+}) {
   const [payments, setPayments] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(!unlocked);
@@ -75,6 +90,19 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
     );
   }, [payments, names]);
 
+  // "Was it you?" answers arrive by polling too: say them out loud once (never on first load).
+  const answers = useRef(new Map(initial.map((p) => [p.id, p.was_it_you?.state])));
+  useEffect(() => {
+    for (const p of payments) {
+      const w = p.was_it_you;
+      const before = answers.current.get(p.id);
+      answers.current.set(p.id, w?.state);
+      if (!w || before === w.state || (w.state !== "not_me" && w.state !== "it_was_me")) continue;
+      const s = wiyStatus(w, p.status);
+      setHeard(`${s.state}. ${s.detail}`);
+    }
+  }, [payments]);
+
   return (
     <div className="dash">
       <section aria-labelledby="waiting">
@@ -116,6 +144,7 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
               all={payments}
               who={names[p.spender_id] ?? "Someone"}
               demo={demo}
+              tz={tz}
               watch={watchFor(p.id)}
               onSettled={refresh}
               onLocked={() => setLocked(true)}
@@ -259,6 +288,7 @@ function HeldCard({
   all,
   who,
   demo,
+  tz,
   watch,
   onSettled,
   onLocked,
@@ -268,12 +298,13 @@ function HeldCard({
   all: Payment[];
   who: string;
   demo: boolean;
+  tz: string;
   watch?: WatchView;
   onSettled: () => void;
   onLocked: () => void;
   onDecided: (text: string) => void;
 }) {
-  const [busy, setBusy] = useState<"approve" | "deny" | "swap" | null>(null);
+  const [busy, setBusy] = useState<"approve" | "deny" | "swap" | "sleep" | null>(null);
   const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -298,6 +329,24 @@ function HeldCard({
     if (wasConfirming.current && !confirming) approveRef.current?.focus();
     wasConfirming.current = confirming;
   }, [confirming]);
+
+  /** "Ask again tomorrow": the hold stays, nothing is paid or released, so no PIN. */
+  async function sleepOnIt() {
+    if (busy) return;
+    setBusy("sleep");
+    setError(null);
+    try {
+      const r = await fetch(`/api/payments/${p.id}/sleep`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+      const j = await readJson(r);
+      if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
+      onDecided(`${money(p.amount, p.currency)} to ${p.request.payee.name}: ${j.message ?? "Spotter asks again tomorrow."}`);
+      onSettled();
+    } catch (e) {
+      setError(plainError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function act(action: "approve" | "deny" | "swap") {
     // Busy buttons stay focusable (aria-disabled) so focus isn't lost; repeat presses stop here instead.
@@ -346,6 +395,8 @@ function HeldCard({
 
       <ReplacedLink p={p} all={all} who={who} />
 
+      <WasItYouLine w={p.was_it_you} status={p.status} />
+
       {p.case_file ? (
         <CaseFile
           c={p.case_file}
@@ -361,6 +412,9 @@ function HeldCard({
           {(watchable(p) || watch) && <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} />}
         </>
       )}
+
+      <HoldClock p={p} who={who} tz={tz} />
+      <EvidenceLinks p={p} />
 
       {/* The message check never saw the market listings, so its summary is hidden when it argues with them. */}
       {p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
@@ -440,6 +494,11 @@ function HeldCard({
               </button>
             </>
           )}
+          {!p.ask_again_at && (
+            <button type="button" className="btn btn-quiet btn-sleep" aria-disabled={busy !== null || undefined} onClick={sleepOnIt}>
+              {busy === "sleep" ? "Saving" : "Ask again tomorrow"}
+            </button>
+          )}
         </div>
       )}
       {pending && !confirming && <p className="held-wait">Approve opens once Spotter has finished looking into it (a few seconds). Deny works now.</p>}
@@ -452,7 +511,51 @@ function HeldCard({
   );
 }
 
-const ROW_ICON = { blocked: Ban, protected: ShieldCheck, held: Hand } as const;
+const EVIDENCE_FOR = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
+
+/** One click to a printable evidence page for the bank, PayPal or the police, and a plain text copy. */
+function EvidenceLinks({ p }: { p: Payment }) {
+  if (!EVIDENCE_FOR.has(p.status)) return null;
+  const href = `/api/payments/${encodeURIComponent(p.id)}/evidence`;
+  return (
+    <p className="evidence-links">
+      <FileText size={16} strokeWidth={2} aria-hidden="true" />
+      <a href={href} target="_blank" rel="noopener">
+        Evidence pack<span className="sr-only"> (opens a printable page in a new tab)</span>
+      </a>
+      <span aria-hidden="true">·</span>
+      <a href={`${href}?format=txt`} download>
+        Plain text<span className="sr-only"> copy of the evidence pack</span>
+      </a>
+      <span className="evidence-for">for your bank, PayPal or the police</span>
+    </p>
+  );
+}
+
+/** When Spotter asks again (if someone chose to sleep on it) and, always, when PayPal lets the hold go on its own. */
+function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
+  const until = p.ask_again_at ? new Date(p.ask_again_at) : null;
+  return (
+    <div className="hold-clock">
+      {until && (
+        <p className="hold-clock-sleep">
+          <Moon size={17} strokeWidth={2} aria-hidden="true" />
+          <span>
+            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held.
+          </span>
+        </p>
+      )}
+      {p.reauthorized_at && <p className="hold-clock-note">PayPal renewed the hold after 3 days, so the money is still set aside.</p>}
+      {p.reauth_note && <p className="hold-clock-note">{p.reauth_note}</p>}
+      <p className="hold-clock-end">
+        <Clock size={17} strokeWidth={2} aria-hidden="true" />
+        <span>{holdEndLine(p, who, tz)}</span>
+      </p>
+    </div>
+  );
+}
+
+const ROW_ICON ={ blocked: Ban, protected: ShieldCheck, held: Hand } as const;
 
 function FeedRow({ p, all, who, watch, onWatchChanged }: { p: Payment; all: Payment[]; who: string; watch?: WatchView; onWatchChanged: () => void }) {
   const s = trackState(p.status);
@@ -473,6 +576,8 @@ function FeedRow({ p, all, who, watch, onWatchChanged }: { p: Payment; all: Paym
         {STATE_LABEL[s]}
       </span>
       <ReplacedLink p={p} all={all} who={who} />
+      <EvidenceLinks p={p} />
+      <WasItYouLine w={p.was_it_you} status={p.status} />
       {p.case_file && (
         // Stopped payments have a case file too; one that caught hidden orders for an AI agent starts open.
         <details className="feed-case" open={p.case_file.findings.some((f) => f.kind === "prompt_injection")}>

@@ -10,6 +10,7 @@ import type { Allowance, Currency, Money, PaymentMethod, PaymentRequest } from "
 import { priceCheck, type MarketResult, type Offer } from "./market";
 import { fileReport } from "./network";
 import type { Case } from "@/agents/case";
+import { startWasItYou, type WasItYou } from "./was-it-you";
 
 export type Deps = {
   db: Db;
@@ -24,6 +25,12 @@ export type Deps = {
   decided?: (payment: Payment, spender: Spender) => Promise<void>;
   /** Tells the spotter PayPal confirmed a held payment was paid or released (from a PayPal webhook). Optional. */
   confirmed?: (payment: Payment, spender: Spender) => Promise<void>;
+  /** Tells a household's spotter that someone switched a protection off (core/switchedoff.ts). Optional. */
+  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked"; text: string }) => Promise<void>;
+  /** Asks the real person a message claims to be from ("Was it you?") on their own linked channel. Optional. */
+  ask?: (payment: Payment, payer: Spender, ask: WasItYou, to: Spender) => Promise<void>;
+  /** A short plain note to the spotter (e.g. "Tom says it wasn't him"). Failures are logged, never fatal. Optional. */
+  note?: (payment: Payment, payer: Spender, text: string) => Promise<boolean>;
   /** Runs work after the response is sent (Next's after()). Without it, follow up work runs inline. */
   defer?: (task: () => Promise<void>) => void;
   paypal: {
@@ -32,6 +39,8 @@ export type Deps = {
     voidAuthorization: typeof voidAuthorization;
     /** Looks up an authorisation's status at PayPal. Optional: only reconciliation needs it. */
     getAuthorization?: (authorizationId: string) => Promise<{ status: string; expiresAt?: string }>;
+    /** A fresh hold after the 3 day honor period (core/sleep.ts). Optional: only the daily job needs it. */
+    reauthorizeAuthorization?: (authorizationId: string, idempotencyKey: string) => Promise<{ authorizationId: string; expiresAt?: string }>;
   };
 };
 
@@ -57,6 +66,8 @@ export type Payment = {
   ai: AiCheckResult | null;
   market: (MarketResult & { item: string }) | null;
   case_file: Case | null;
+  /** "Was it you?": the ask to the person the message claims to be from, and their answer. Optional for older rows. */
+  was_it_you?: WasItYou | null;
   status: PaymentStatus;
   amount: string | number;
   currency: string;
@@ -65,6 +76,12 @@ export type Payment = {
   paypal_capture_id: string | null;
   /** When PayPal drops the hold if nobody captures it. Optional so older rows and samples still type check. */
   paypal_auth_expires_at?: string | Date | null;
+  /** "Ask again tomorrow" (core/sleep.ts): when Spotter asks the spotter again, and how many times someone slept on it. */
+  ask_again_at?: string | Date | null;
+  sleeps?: number;
+  /** Set once PayPal gave the hold a fresh honor period; reauth_note says why it couldn't, in plain words. */
+  reauthorized_at?: string | Date | null;
+  reauth_note?: string | null;
   approve_url: string | null;
   error: string | null;
   decided_by: string | null;
@@ -272,13 +289,14 @@ const CASE_CAP_MS = 45_000;
 async function investigateAndAlert(deps: Deps, payment: Payment, spender: Spender): Promise<void> {
   const { db } = deps;
   const id = payment.id;
-  let current = payment;
+  // Ask the person the message claims to be from first: they can answer while the case is still being built.
+  let current = payment.status === "needs_approval" ? await startWasItYou(deps, payment, spender) : payment;
   if (deps.investigate) {
     try {
       // Hard cap on top of the agent's own budget, so a stuck case can never hold back the alert for long.
       let timer: ReturnType<typeof setTimeout> | undefined;
       const c = await Promise.race([
-        deps.investigate(payment, spender),
+        deps.investigate(current, spender),
         new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("the case took too long")), CASE_CAP_MS))),
       ]).finally(() => clearTimeout(timer));
       const rows = await db.query<Payment>("update payments set case_file = $2 where id = $1 returning *", [id, JSON.stringify(c)]);
@@ -291,6 +309,8 @@ async function investigateAndAlert(deps: Deps, payment: Payment, spender: Spende
     }
   }
   if (deps.notify) {
+    // The asked person may have answered already ("Not me" voids it): alert from the payment as it is now.
+    current = (await getPayment(db, id).catch(() => null)) ?? current;
     await deps.notify(current, spender).catch(async (e) => {
       const error = e instanceof Error ? e.message : String(e);
       console.error(`[spotter] alert for ${id} failed:`, error);

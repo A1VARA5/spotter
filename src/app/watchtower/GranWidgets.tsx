@@ -92,6 +92,27 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
 export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
   const { month, failed, labels, now, lang } = useGranMonth(p as never);
   const scroll = useScrollBox<HTMLElement>();
+  // "Ask again tomorrow" only makes the hold wait a day: it never pays or releases anything, so Gran can choose it too.
+  const [slept, setSlept] = useState<Record<string, string>>({});
+  const [sleepError, setSleepError] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  async function sleepOn(id: string) {
+    if (busy) return;
+    setBusy(id);
+    setSleepError((e) => ({ ...e, [id]: "" }));
+    try {
+      const r = await fetch(`/api/payments/${encodeURIComponent(id)}/sleep`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ as: "person" }) });
+      const j = (await r.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!r.ok) throw new Error(j.error ?? `That didn't work (${r.status}).`);
+      // The server's message is in English; in another language Spotter's own fixed words say the same.
+      setSlept((s) => ({ ...s, [id]: lang === "en" ? `Sleeping on it. ${j.message ?? "Spotter asks again tomorrow."}` : gt(lang, "sleptFallback") }));
+    } catch (e) {
+      console.warn("[watchtower] ask again tomorrow failed:", e);
+      setSleepError((s) => ({ ...s, [id]: lang === "en" && e instanceof Error ? e.message : gt(lang, "sleepFailed", { spotter: labels.spotter }) }));
+    } finally {
+      setBusy(null);
+    }
+  }
   if (failed) return <Failed lang={lang} spotter={labels.spotter} />;
   if (!month) return null;
   return (
@@ -119,8 +140,19 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
                   </span>
                   <Sample on={w.sample} lang={lang} />
                 </p>
-                <p className="gran-item-body">{w.status}</p>
+                <p className="gran-item-body">{slept[w.id] ?? w.status}</p>
+                {w.ends && <p className="gran-item-body">{w.ends}</p>}
                 <p className="gran-item-meta">{gt(lang, "asked", { ago: ago(w.when, now, lang).toLocaleLowerCase(lang) })}</p>
+                {!w.asleep && !w.sample && !slept[w.id] && (
+                  <button type="button" className="gran-sleep" aria-disabled={busy === w.id || undefined} onClick={() => void sleepOn(w.id)}>
+                    {busy === w.id ? gt(lang, "sleepSaving") : gt(lang, "sleepButton")}
+                  </button>
+                )}
+                {sleepError[w.id] && (
+                  <p className="gran-failed" role="alert">
+                    {sleepError[w.id]}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

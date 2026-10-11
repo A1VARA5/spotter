@@ -39,9 +39,19 @@ export type PaymentRow = {
   marketShop: string;
   /** The item that was price checked. */
   marketItem: string;
+  /** "Was it you?": who the message claimed to be, whether Spotter asked them and what they said. */
+  wasItYou: string;
 };
 /** Spotter's own words about one payment, for the case file widget and the open_case_file tool. */
-export type CaseNote = { id: string; reasons: string[]; signs: Array<{ sign: string; severity: string; why: string }>; caseHeadline?: string; caseFindings?: string[] };
+export type CaseNote = {
+  id: string;
+  reasons: string[];
+  signs: Array<{ sign: string; severity: string; why: string }>;
+  caseHeadline?: string;
+  caseFindings?: string[];
+  /** Held payments only, already in household time words: when Spotter asks again (sleep on it) and when the hold ends. */
+  wait?: { askAgain?: string; holdEnds: string };
+};
 /** One thing PayPal told us about a payment (a webhook or a status check). */
 export type PaypalRow = { id: string; when: Date; eventType: string; label: string; paymentId: string; amount: number };
 export type SignRow = { paymentId: string; when: Date; who: string; payee: string; sign: string; severity: string };
@@ -127,6 +137,13 @@ export const SAMPLE_PREFIX = "pay_sample_";
 const pounds = (minor: string | number) => Number(minor) / 100;
 const flagsOf = (p: Payment) => p.decision?.flags ?? p.ai?.flags ?? [];
 
+function wasItYouWords(p: Payment): string {
+  const w = p.was_it_you;
+  if (!w) return "Not asked";
+  const who = w.who;
+  return { asked: `Asked ${who}`, not_me: `${who}: not me`, it_was_me: `${who}: it was me`, no_channel: `${who} not linked`, send_failed: `Couldn't reach ${who}` }[w.state];
+}
+
 export function toSources(payments: Payment[], spenders: Spender[], now = new Date()): Sources {
   const byId = new Map(spenders.map((s) => [s.id, s]));
   const rows: PaymentRow[] = [];
@@ -167,6 +184,7 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
       priceGap: cheapest === null ? null : Math.round((amount - cheapest) * 100) / 100,
       marketShop: m?.cheapest?.domain ?? "",
       marketItem: m?.item ?? "",
+      wasItYou: wasItYouWords(p),
     });
     for (const f of flags) {
       signs.push({ paymentId: p.id, when, who: who?.name ?? "Someone", payee: p.request.payee.name, sign: SIGN_LABEL[f.kind], severity: SEVERITY_LABEL[f.severity] });

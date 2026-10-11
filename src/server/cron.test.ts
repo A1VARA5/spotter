@@ -1,61 +1,56 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleReconcile } from "./cron";
+import { handleDaily } from "./cron";
 
 const req = (auth?: string) => new Request("https://x/api/cron/reconcile", { headers: auth ? { authorization: auth } : {} });
 
-describe("daily reconcile job", () => {
+describe("daily jobs", () => {
   it("refuses to run without a configured secret", async () => {
-    expect((await handleReconcile(req("Bearer x"), undefined, async () => 0)).status).toBe(503);
+    expect((await handleDaily(req("Bearer x"), undefined, { settled: async () => 0 })).status).toBe(503);
   });
 
   it("refuses a caller without the secret", async () => {
     let ran = false;
-    const res = await handleReconcile(req("Bearer wrong"), "right", async () => ((ran = true), 0));
+    const res = await handleDaily(req("Bearer wrong"), "right", { settled: async () => ((ran = true), 0) });
     expect(res.status).toBe(401);
     expect(ran).toBe(false);
   });
 
-  it("settles stuck payments and says how many", async () => {
-    const res = await handleReconcile(req("Bearer right"), "right", async () => 2);
+  it("runs every job and says what each did (counts, or a price watch summary)", async () => {
+    const res = await handleDaily(req("Bearer right"), "right", {
+      settled: async () => 2,
+      renewed: async () => 1,
+      askedAgain: async () => 3,
+      watches: async () => ({ expired: 1, stopped: 1, checked: 3, dropped: 1 }),
+    });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ settled: 2 });
+    expect(await res.json()).toEqual({ settled: 2, renewed: 1, askedAgain: 3, watches: { expired: 1, stopped: 1, checked: 3, dropped: 1 } });
   });
 
-  it("reports a failure as JSON instead of throwing", async () => {
-    const res = await handleReconcile(req("Bearer right"), "right", async () => {
-      throw new Error("PayPal down");
-    });
-    expect(res.status).toBe(500);
-  });
-
-  it("also polls price watches and reports what it did", async () => {
-    const watches = async () => ({ expired: 1, stopped: 1, checked: 3, dropped: 1 });
-    const res = await handleReconcile(req("Bearer right"), "right", async () => 0, watches);
-    expect(await res.json()).toEqual({ settled: 0, watches: { expired: 1, stopped: 1, checked: 3, dropped: 1 } });
-  });
-
-  it("still settles payments when the price watches fail, and says so with a 500 for monitoring", async () => {
+  it("one failing job doesn't stop the others, and the failure is reported as JSON with a 500", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = await handleReconcile(req("Bearer right"), "right", async () => 2, async () => {
-      throw new Error("Channel3 down");
-    });
-    expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ settled: 2, watches: { error: "Price watches failed." } });
-  });
-
-  it("still runs the price watches when settling payments fails", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    let ran = false;
-    const res = await handleReconcile(
-      req("Bearer right"),
-      "right",
-      async () => {
+    let asked = false;
+    let watched = false;
+    const res = await handleDaily(req("Bearer right"), "right", {
+      settled: async () => {
         throw new Error("PayPal down");
       },
-      async () => ((ran = true), { checked: 0 }),
-    );
-    expect(ran).toBe(true);
+      askedAgain: async () => ((asked = true), 1),
+      watches: async () => ((watched = true), { checked: 0 }),
+    });
+    expect(asked && watched).toBe(true);
     expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Reconcile failed.", watches: { checked: 0 } });
+    expect(await res.json()).toEqual({ settled: { error: "settled failed." }, askedAgain: 1, watches: { checked: 0 }, error: "Failed: settled." });
+  });
+
+  it("still settles payments when the price watches fail", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await handleDaily(req("Bearer right"), "right", {
+      settled: async () => 2,
+      watches: async () => {
+        throw new Error("Channel3 down");
+      },
+    });
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ settled: 2, watches: { error: "watches failed." }, error: "Failed: watches." });
   });
 });

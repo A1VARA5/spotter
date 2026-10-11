@@ -7,6 +7,7 @@ import type { Extracted } from "@/ai/extract";
 import { outcomeText } from "@/email/inbound";
 import { scanMessage } from "@/ai/scan";
 import { formatMoney } from "@/core/types";
+import { answerWasItYou, parseButton } from "@/core/was-it-you";
 
 type Embed = { title?: string; description?: string; url?: string; fields?: Array<{ name?: string; value?: string }>; author?: { name?: string; url?: string }; footer?: { text?: string } };
 type Component = { url?: string; label?: string; components?: Component[] };
@@ -106,6 +107,9 @@ export async function runInteraction(ctx: DcCtx, i: Interaction): Promise<DcRepl
   if (!userId) return { content: "Couldn't tell who you are." };
 
   if (i.type === 3) {
+    // "Was it you?": bound to this Discord account (the asked person's own) and to a signed single use token.
+    const wiy = parseButton(i.data?.custom_id);
+    if (wiy) return { content: (await answerWasItYou(ctx.deps, { token: wiy.token, answer: wiy.answer, as: { channel: "discord", id: userId } })).reply };
     const id = /^deny:(pay_[a-z0-9]+)$/.exec(i.data?.custom_id ?? "")?.[1];
     return id ? denyButton(ctx, userId, id) : { content: "That button has expired." };
   }
@@ -124,7 +128,7 @@ export async function runInteraction(ctx: DcCtx, i: Interaction): Promise<DcRepl
     const sub = i.data.options?.[0];
     if (sub?.name === "connect") {
       const code = findCode(String(sub.options?.find((o) => o.name === "code")?.value ?? ""));
-      const paired = code ? await redeemPairingCode(db, code, "discord", userId) : null;
+      const paired = code ? await redeemPairingCode(db, code, "discord", userId, ctx.deps) : null;
       if (!paired) return { content: "That code didn't work. It may be used or more than a day old. Ask your spotter for a new one." };
       return {
         content: paired.spender

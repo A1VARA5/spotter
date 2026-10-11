@@ -4,9 +4,10 @@
 import { getSpender, settleFromPayPal, type Deps, type Payment } from "@/core/lifecycle";
 import type { PaymentStatus } from "@/db/schema";
 import { PayPalError, type WebhookHeaders } from "./client";
+import { CONSENT_REVOKED, consentRevoked } from "@/core/switchedoff";
 
 export type PayPalEvent = { id: string; event_type: string; resource?: Record<string, unknown> };
-export type WebhookDeps = Pick<Deps, "db" | "confirmed" | "defer">;
+export type WebhookDeps = Pick<Deps, "db" | "confirmed" | "defer" | "warn">;
 export type HandleResult = { outcome: string; paymentId: string | null };
 
 // Signed doesn't mean well formed: ids go into SQL parameters and logs, so only plain PayPal style ids pass.
@@ -56,6 +57,7 @@ const wasHeld = (p: Payment) => p.status === "needs_approval" || p.status === "v
 export async function handlePayPalEvent(deps: WebhookDeps, evt: PayPalEvent): Promise<HandleResult> {
   const { db } = deps;
   const resource = evt.resource ?? {};
+  if (evt.event_type === CONSENT_REVOKED) return revoked(deps, evt, resource);
   const { resourceId, candidates } = idsOf(resource);
   const payment = candidates.length
     ? ((
@@ -80,6 +82,27 @@ export async function handlePayPalEvent(deps: WebhookDeps, evt: PayPalEvent): Pr
     // Forget the event so PayPal's retry gets a real second chance instead of being skipped as a duplicate.
     await db.query("delete from paypal_events where id = $1", [evt.id]).catch((del) => {
       // Now the retry will be skipped as a duplicate, so this must be loud.
+      console.error(`[spotter] paypal event ${evt.id} failed and could not be forgotten; PayPal's retry will be skipped:`, del instanceof Error ? del.message : del);
+    });
+    throw e;
+  }
+}
+
+/** Someone disconnected a household's PayPal login from Spotter: its spotter hears straight away. Never touches payments. */
+async function revoked(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string, unknown>): Promise<HandleResult> {
+  // Only that an account id was there, never the id itself: it identifies a person.
+  const summary = { status: null, amount: null, currency: null, expires: null, account: ["user_id", "payer_id", "merchant_id", "sub"].filter((k) => typeof resource[k] === "string") };
+  const inserted = await deps.db.query(
+    "insert into paypal_events (id, event_type, resource_id, payment_id, summary) values ($1, $2, null, null, $3) on conflict (id) do nothing returning id",
+    [evt.id, evt.event_type, JSON.stringify(summary)],
+  );
+  if (!inserted.length) return { outcome: "duplicate", paymentId: null };
+  try {
+    const warned = await consentRevoked(deps, evt.id, resource);
+    return { outcome: warned ? "spotter_warned" : "unknown_account", paymentId: null };
+  } catch (e) {
+    // Let PayPal's retry try again rather than skip it as a duplicate.
+    await deps.db.query("delete from paypal_events where id = $1", [evt.id]).catch((del) => {
       console.error(`[spotter] paypal event ${evt.id} failed and could not be forgotten; PayPal's retry will be skipped:`, del instanceof Error ? del.message : del);
     });
     throw e;

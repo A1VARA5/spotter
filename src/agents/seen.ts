@@ -166,6 +166,8 @@ const INSTRUCTION = [
   /\b(do not|don'?t|never)\s+(ask|tell|inform|notify|check with|confirm with|wait for)\b[^.]{0,30}\b(user|human|owner|customer|anyone|spotter|approval)\b/i,
   /\bpre[- ]?approved\b|\balready (approved|authori[sz]ed)\b/i,
   /\b(approve|authori[sz]e|pay|buy|purchase|order|check ?out|transfer|send)\b[^.]{0,60}\b(immediately|right away|automatically|without (asking|confirmation|approval)|no matter|maximum|max quantity)\b/i,
+  // Steering the agent's choice towards the dearer thing ("always choose the premium bundle").
+  /\b(always|instead)\s+(choose|select|pick|buy|add|recommend|upgrade)\b[^.]{0,40}\b(premium|bundle|upgrade|deluxe|most expensive|highest priced|maximum)\b/i,
 ];
 
 export const looksLikeInstruction = (text: string): boolean => INSTRUCTION.some((r) => r.test(text));
@@ -185,7 +187,8 @@ export function judgeHidden(chunks: HiddenChunk[]): HiddenFinding[] {
     .map(({ text, why, instruction }) => ({ text, why, instruction }));
 }
 
-function around(text: string): string {
+/** Up to 300 characters of the text, around the instruction when there is one. */
+export function around(text: string): string {
   if (text.length <= 300) return text;
   const at = INSTRUCTION.map((r) => text.search(r)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 0;
   const start = Math.max(0, Math.min(at - 40, text.length - 300));
