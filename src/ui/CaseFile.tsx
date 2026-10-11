@@ -190,7 +190,7 @@ function TwoFaces({ page }: { page: CasePageT }) {
               <Outline box={page.phone?.moneyBox} />
             </div>
             <figcaption>
-              <b>Gran&apos;s phone</b>, {uk ? "on a UK mobile network" : "set to UK English and time (not on a UK network)"}
+              <b>Gran&apos;s phone</b>, {uk ? `on a UK ${page.phone?.network === "uk_residential" ? "home" : "mobile"} network` : "set to UK English and time (not on a UK network)"}
             </figcaption>
           </figure>
         </div>
@@ -264,7 +264,7 @@ function ProofCard({ proof, peekScrolls }: { proof: NonNullable<CasePageT["proof
     ["Clicks", n(proof.clicks), proof.clicks === null],
     ["Keys typed", n(proof.keys), proof.keys === null],
     ["Scrolls by Spotter", n(proof.scrolls), proof.scrolls === null],
-    ["Your scrolls looking at it", typeof peekScrolls === "number" ? String(peekScrolls) : "None", typeof peekScrolls !== "number"],
+    ["Scrolls you asked for looking at it", typeof peekScrolls === "number" ? String(peekScrolls) : peekScrolls === null ? "None" : "Not recorded", typeof peekScrolls !== "number"],
     ["Downloads", proof.downloadsBlocked === true ? "Blocked" : proof.downloadsBlocked === false ? "Not confirmed blocked" : "Not recorded", proof.downloadsBlocked !== true],
     ["Calls to the cloud browser", String(proof.apiCalls), false],
   ];

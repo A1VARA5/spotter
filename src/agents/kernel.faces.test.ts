@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { visitInCloud, visitTwoFaces, type KernelLike } from "./kernel";
+import { routeFromProxy, visitInCloud, visitTwoFaces, type KernelLike } from "./kernel";
 
 const smallShot = Buffer.alloc(2000, 1).toString("base64");
 const TRACKING = "Parcel tracking. Your parcel is on its way and should arrive tomorrow between 9am and 5pm. Track another parcel.";
@@ -109,6 +109,42 @@ describe("visitInCloud as Gran's phone", () => {
     expect(k.browsers.create.mock.calls[1]![0]).not.toHaveProperty("proxy");
     expect(k.browsers.create.mock.calls[1]![0]).not.toHaveProperty("region");
     expect(v.ok && v.network).toBe("direct");
+  });
+});
+
+describe("honest edges", () => {
+  it("only a GB mobile or residential proxy that is available counts as a UK network", () => {
+    expect(routeFromProxy({ id: "p", type: "mobile", status: "available", config: { country: "gb" } })).toEqual({ proxyId: "p", kind: "uk_mobile", region: "eu-west" });
+    expect(routeFromProxy({ id: "p", type: "residential", config: { country: "GB" } })).toMatchObject({ kind: "uk_residential" });
+    expect(routeFromProxy({ id: "p", type: "mobile", config: { country: "US" } })).toEqual({ kind: "direct" });
+    expect(routeFromProxy({ id: "p", type: "datacenter", config: { country: "GB" } })).toEqual({ kind: "direct" });
+    expect(routeFromProxy({ id: "p", type: "mobile", status: "unavailable", config: { country: "GB" } })).toEqual({ kind: "direct" });
+  });
+
+  it("doesn't retry without the proxy after a timeout or server error (a browser may exist), the phone visit just fails", async () => {
+    const k = fake(async () => result());
+    k.browsers.create.mockRejectedValueOnce(Object.assign(new Error("502 bad gateway"), { status: 502 }));
+    const v = await visitInCloud("https://parcels.example/track", { client: k, face: "phone", network: { proxyId: "px1", kind: "uk_mobile" } });
+    expect(k.browsers.create).toHaveBeenCalledTimes(1);
+    expect(v.ok).toBe(false);
+  });
+
+  it("treats a cut off telemetry log as not recorded", async () => {
+    const many = Array.from({ length: 1000 }, () => ourNav);
+    const k = fake(async () => result(), { telemetry: { events: vi.fn(async () => ({ items: many })) } });
+    const v = await visitInCloud("https://parcels.example/track", { client: k, record: false });
+    expect(v.ok && v.proof?.clicks).toBeNull();
+    const k2 = fake(async () => result(), { telemetry: { events: vi.fn(async () => ({ items: [ourNav], has_more: true })) } });
+    const v2 = await visitInCloud("https://parcels.example/track", { client: k2, record: false });
+    expect(v2.ok && v2.proof?.keys).toBeNull();
+  });
+
+  it("when the phone visit failed, the proof doesn't claim zero clicks or deletes for both browsers", async () => {
+    const events = vi.fn(async () => ({ items: [ourNav] }));
+    const k = fake(async (_id, body) => (body.code.includes("Emulation.setUserAgentOverride") ? { success: false, error: "boom" } : result()), { telemetry: { events } });
+    const v = await visitTwoFaces("https://parcels.example/track", { client: k, network: { kind: "direct" } });
+    expect(v.ok && v.proof).toMatchObject({ clicks: null, keys: null, scrolls: null, downloadsBlocked: null });
+    expect(v.ok && v.proof?.deleted).toBeUndefined();
   });
 });
 

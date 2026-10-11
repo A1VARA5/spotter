@@ -297,7 +297,7 @@ function toolLines(tools: ShopTools | undefined): string[] {
 /** What the second (phone) visit and KERNEL's network log added, in plain words the model can cite. */
 function visitLines(v: Extract<PageVisit, { ok: true }>): string[] {
   return [
-    v.faces ? `Spotter also opened it at the same moment as a phone${v.phone && v.phone.network !== "direct" ? " on a UK mobile network" : ""}: ${v.faces.verdict}` : "",
+    v.faces ? `Spotter also opened it at the same moment as a phone${v.phone && v.phone.network !== "direct" ? ` on a UK ${v.phone.network === "uk_residential" ? "home" : "mobile"} network` : ""}: ${v.faces.verdict}` : "",
     v.trail?.line ?? "",
     v.trail && v.trail.steps.length > 1 ? `The link went: ${v.trail.steps.map((s) => s.host).join(" then ")}.` : "",
   ].filter(Boolean);

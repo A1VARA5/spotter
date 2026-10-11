@@ -25,7 +25,10 @@ describe("the case file's proof card", () => {
     expect(out).toMatch(/<dt>Clicks<\/dt><dd>0<\/dd>/);
     expect(out).toMatch(/<dt>Keys typed<\/dt><dd>Not recorded<\/dd>/);
     expect(out).toMatch(/<dt>Downloads<\/dt><dd>Not recorded<\/dd>/);
-    expect(out).toMatch(/<dt>Your scrolls looking at it<\/dt><dd>3<\/dd>/);
+    expect(out).toMatch(/<dt>Scrolls you asked for looking at it<\/dt><dd>3<\/dd>/);
+    // Without the count (other callers) it says so, rather than "none".
+    const noCount = html({ ...base, page: { ...base.page!, proof: { clicks: 0, keys: 0, scrolls: 0, downloadsBlocked: true, apiCalls: 1, hashes: {} } } });
+    expect(noCount).toMatch(/<dt>Scrolls you asked for looking at it<\/dt><dd>Not recorded<\/dd>/);
     expect(out).toContain("f".repeat(64));
   });
 

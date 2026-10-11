@@ -10,8 +10,8 @@ export type FaceAsks = { card: boolean; bank: boolean; login: boolean; giftCard:
 export type FaceSnap = {
   finalUrl: string;
   title: string;
-  /** The text a person can see on the page (seen.ts), up to a few thousand characters. */
-  text: string;
+  /** The text a person can see on the page (seen.ts), up to a few thousand characters. Undefined when that check failed. */
+  text?: string;
   visibleChars: number;
   asks: FaceAsks;
   /** A 64 bin colour histogram of a tiny screenshot (palette()), when one was taken. */
@@ -139,10 +139,12 @@ export function compareFaces(desktop: FaceSnap | null, phone: FaceSnap | null, n
     differences.push({ kind: "asks_gift_card", desktop: desktop.asks.giftCard ? "Asks for a gift card" : "No gift card", phone: phone.asks.giftCard ? "Asks for a gift card" : "No gift card", strong: true });
   }
 
-  const overlap = textOverlap(desktop.text, phone.text);
-  const blank = (f: FaceSnap) => words(f.text).size < 3;
+  // Text is only compared when both visits could read it: a check that failed is not a blank page.
+  const textRead = desktop.text !== undefined && phone.text !== undefined;
+  const overlap = textRead ? textOverlap(desktop.text!, phone.text!) : null;
+  const blank = (f: FaceSnap) => words(f.text ?? "").size < 3;
   const chars = (f: FaceSnap) => (blank(f) ? "Almost no text" : `${f.visibleChars} characters of text`);
-  if (blank(desktop) !== blank(phone)) differences.push({ kind: "text", desktop: chars(desktop), phone: chars(phone), strong: true });
+  if (textRead && blank(desktop) !== blank(phone)) differences.push({ kind: "text", desktop: chars(desktop), phone: chars(phone), strong: true });
   else if (overlap !== null && overlap < 0.6) {
     differences.push({ kind: "text", desktop: "Different wording", phone: `Only ${Math.round(overlap * 100)}% of the words match`, strong: overlap < 0.35 });
   }
@@ -161,6 +163,10 @@ export function compareFaces(desktop: FaceSnap | null, phone: FaceSnap | null, n
   if (look !== null && look < 0.5) differences.push({ kind: "look", desktop: "One look", phone: `Only ${Math.round(look * 100)}% of the colours match`, strong: false });
 
   const differs = differences.some((x) => x.strong);
+  // "The same" needs something to have been the same: wording on both pages, or a picture of both.
+  if (!differs && overlap === null && look === null) {
+    return { compared: false, verdict: "Spotter opened it both ways, but there wasn't enough on the pages to say whether they match." };
+  }
   const who = network === "direct" ? "phones" : "phones in the UK";
   const why = !dMoney && pMoney ? `: only the phone was asked for ${moneyWords(phone.asks).replace("Asks for ", "")}` : d !== p ? `: the phone was sent on to ${p}` : "";
   const verdict = differs

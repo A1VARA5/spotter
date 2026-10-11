@@ -355,11 +355,17 @@ export async function peekScroll(db: Db, householdId: string, paymentId: string,
   const peek = await livePeek(db, kernel, householdId, paymentId);
   if (!peek) return fail(410, ENDED);
   const v = VIEWPORT[peek.view] ?? VIEWPORT.desktop;
+  // Counted before it is sent, for the "Spotter never touched it" proof: the count is every scroll asked for, so it
+  // is never lower than what reached the page. If the count can't be stored, the scroll isn't sent.
+  try {
+    await db.query("update peeks set scrolls = scrolls + 1 where id = $1", [peek.id]);
+  } catch (e) {
+    console.error(`[spotter] peek: counting a scroll for ${paymentId} failed, so it wasn't sent:`, msg(e));
+    return fail(503, "The page didn't scroll.");
+  }
   try {
     // The mouse wheel in the middle of the screen: no click, no key, nothing typed.
     await withTimeout(kernel.browsers.computer.scroll(peek.sessionId, { x: Math.round(v.width / 2), y: Math.round(v.height / 2), delta_y: direction === "down" ? 5 : -5 }), CALL_MS, "scrolling");
-    // Counted for the "Spotter never touched it" proof. A failed count doesn't undo a scroll that happened; it is logged.
-    await db.query("update peeks set scrolls = scrolls + 1 where id = $1", [peek.id]).catch((e) => console.error(`[spotter] peek: counting a scroll for ${paymentId} failed:`, msg(e)));
     return json(200, { ok: true });
   } catch (e) {
     if (isGone(e)) {

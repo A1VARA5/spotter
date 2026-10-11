@@ -186,7 +186,9 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
   const faces = pg?.faces
     ? {
         verdict: str(pg.faces.verdict, 300),
-        how: `Spotter opened the link twice at the same moment: as a desktop, the way security scanners see it, and as a phone${pg.phone?.network && pg.phone.network !== "direct" ? " on a UK mobile network" : " set to UK English and UK time (not on a UK network)"}.`,
+        how: !pg.phone
+          ? "Spotter tried to open the link as a desktop and as a phone at the same moment, but the phone visit didn't work, so the two couldn't be compared."
+          : `Spotter opened the link twice at the same moment: as a desktop, the way security scanners see it, and as a phone${pg.phone.network !== "direct" ? ` on a UK ${pg.phone.network === "uk_residential" ? "home" : "mobile"} network` : " set to UK English and UK time (not on a UK network)"}.`,
         differences: pg.faces.compared ? pg.faces.differences.slice(0, 6).map((d): [string, string, string] => [FACE_DIFF[d.kind] ?? "Difference", str(d.desktop, 120), str(d.phone, 120)]) : [],
         phoneShot: pg.phone?.screenshot && SHOT.test(pg.phone.screenshot) ? pg.phone.screenshot : null,
       }
@@ -205,8 +207,8 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
         ["Clicks", n(pr.clicks)],
         ["Keys typed", n(pr.keys)],
         ["Scrolls during Spotter's visit", n(pr.scrolls)],
-        ["Looking at it yourself", peeks === null ? "Not recorded" : peeks.peeks ? `${peeks.peeks} ${peeks.peeks === 1 ? "look" : "looks"}, ${peeks.scrolls} scrolls (scrolling is the only thing possible there)` : "Not used"],
-        ["Downloads", pr.downloadsBlocked === true ? "Blocked (the cloud browser confirmed Chrome's block on every download)" : pr.downloadsBlocked === false ? "Not confirmed blocked" : "Not recorded"],
+        ["Looking at it yourself", peeks === null ? "Not recorded" : peeks.peeks ? `${peeks.peeks} ${peeks.peeks === 1 ? "look" : "looks"}, ${peeks.scrolls} scrolls asked for (scrolling is the only thing possible there)` : "Not used"],
+        ["Downloads", pr.downloadsBlocked === true ? "Blocked by a Chrome policy that blocks every download (the cloud browser reported it as applied)" : pr.downloadsBlocked === false ? "Not confirmed blocked" : "Not recorded"],
         ["Calls Spotter made to the cloud browser", String(pr.apiCalls)],
         ["Browser deleted afterwards", pr.deleted === true ? "Yes" : pr.deleted === false ? "Not confirmed (the cloud browser ends itself after 20 seconds idle)" : "Not recorded"],
         ["SHA-256 of the screenshot", pr.hashes.screenshot && /^[0-9a-f]{64}$/.test(pr.hashes.screenshot) ? pr.hashes.screenshot : "No screenshot stored"],

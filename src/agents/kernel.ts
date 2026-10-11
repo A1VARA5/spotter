@@ -91,6 +91,7 @@ const TIMEOUT_MS = 15_000;
 const MAX_SHOT_BYTES = 60_000;
 const MAX_THUMB_BYTES = 20_000;
 const PHONE = { width: 390, height: 844 };
+const TELEMETRY_LIMIT = 1000;
 
 // Chrome enterprise policy: DownloadRestrictions 3 blocks every download. KERNEL echoes the policies it applied.
 const CHROME_POLICY = { DownloadRestrictions: 3 };
@@ -262,7 +263,10 @@ export async function visitInCloud(url: string, opts: VisitOpts = {}): Promise<P
           browser = await client.browsers.create(routed);
           network = route.proxyId ? route.kind : "direct";
         } catch (e) {
-          if (!route.proxyId && !route.region) throw e;
+          // Only a refusal (4xx: the plan or the proxy said no) falls back. A timeout or server error may have made the
+          // browser anyway, so trying again would leave one nobody counts or deletes; that visit fails instead.
+          const status = (e as { status?: unknown })?.status;
+          if ((!route.proxyId && !route.region) || typeof status !== "number" || status < 400 || status >= 500) throw e;
           // The plan or the proxy said no: still open it as a phone, without the UK network, and say so.
           console.error("[spotter] KERNEL refused the UK phone network, opening as a plain phone instead:", e instanceof Error ? e.message : e);
           calls++;
@@ -354,7 +358,7 @@ export async function visitInCloud(url: string, opts: VisitOpts = {}): Promise<P
         snap: {
           finalUrl,
           title: plainText(title, 200),
-          text: seen ? plainText(seen.visibleText ?? seen.visibleSample, 4000) : "",
+          ...(seen ? { text: plainText(seen.visibleText ?? seen.visibleSample, 4000) } : {}),
           visibleChars: seen?.visibleChars ?? 0,
           asks: { card: asks.card, bank: !!asks.bank, login: asks.login, giftCard: asks.giftCard },
           ...(pal ? { palette: pal } : {}),
@@ -399,7 +403,13 @@ export async function visitTwoFaces(url: string, opts: Omit<VisitOpts, "face"> =
   if (!phone.ok) console.error(`[spotter] the phone face visit failed, so two faces couldn't compare: ${phone.error}`);
   // The proof covers both browsers; the money trail is the phone's when only the phone was shown a card form.
   const trail = phone.ok && desk.trail ? phoneTrail(desk.trail, phone.trail) : desk.trail;
-  const proof = desk.proof && phone.ok && phone.proof ? mergeProof(desk.proof, phone.proof) : desk.proof;
+  // A phone visit that failed may still have had a browser: its clicks, keys and delete weren't recorded, so the
+  // proof doesn't claim them for both.
+  const proof = !desk.proof
+    ? undefined
+    : phone.ok && phone.proof
+      ? mergeProof(desk.proof, phone.proof)
+      : { clicks: null, keys: null, scrolls: null, downloadsBlocked: null, apiCalls: desk.proof.apiCalls, hashes: desk.proof.hashes };
   return {
     ...desk,
     faces,
@@ -448,11 +458,27 @@ async function findProxy(name: string, opts: { client?: KernelLike; apiKey?: str
   if (opts.client || !apiKey) return { kind: "direct" };
   const { default: Kernel } = await import("@onkernel/sdk");
   const proxies = (new Kernel({ apiKey, maxRetries: 0, timeout: 5000 }) as unknown as { proxies: ProxyApi }).proxies;
-  const listed = (await proxies.list()) as { items?: Array<{ id?: string; name?: string; type?: string; status?: string }> };
+  const listed = (await proxies.list()) as { items?: ProxyInfo[] };
   const found = listed.items?.find((p) => p.name === name);
-  const id = found?.id ?? (name === PROXY_NAME ? (await proxies.create({ type: "mobile", name, config: { country: "GB" } })).id : undefined);
-  if (!id) return { kind: "direct" };
-  return { proxyId: id, kind: found?.type === "residential" ? "uk_residential" : "uk_mobile", region: "eu-west" };
+  if (found) return routeFromProxy(found);
+  // Only Spotter's own proxy is made when missing (a GB mobile proxy, made once and reused).
+  if (name !== PROXY_NAME) return { kind: "direct" };
+  return routeFromProxy(await proxies.create({ type: "mobile", name, config: { country: "GB" } }));
+}
+
+type ProxyInfo = { id?: string; name?: string; type?: string; status?: string; config?: { country?: string } };
+
+/**
+ * The phone route a KERNEL proxy gives: only a mobile or residential proxy in Great Britain that is available counts as
+ * a UK network. Anything else isn't used, so the case file never claims a UK network it didn't have.
+ */
+export function routeFromProxy(p: ProxyInfo): PhoneRoute {
+  const uk = String(p.config?.country ?? "").toUpperCase() === "GB";
+  const ok = !p.status || p.status === "available";
+  if (!p.id || !uk || !ok) return { kind: "direct" };
+  if (p.type === "mobile") return { proxyId: p.id, kind: "uk_mobile", region: "eu-west" };
+  if (p.type === "residential") return { proxyId: p.id, kind: "uk_residential", region: "eu-west" };
+  return { kind: "direct" };
 }
 
 /**
@@ -464,11 +490,13 @@ async function readTelemetry(client: KernelLike, session: string, finalUrl: stri
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const page = (await Promise.race([
-      client.browsers.telemetry.events(session, { category: ["network", "page", "interaction", "control"], since: "5m", limit: 1000 }),
+      client.browsers.telemetry.events(session, { category: ["network", "page", "interaction", "control"], since: "5m", limit: TELEMETRY_LIMIT }),
       new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms))),
     ])) as { items?: unknown; data?: unknown };
     const raw = Array.isArray(page?.items) ? page.items : Array.isArray(page?.data) ? page.data : null;
     if (!raw) throw new Error("no events list in the answer");
+    // A cut off log could leave out the clicks or keys at its end, and zero would then be a guess.
+    if (raw.length >= TELEMETRY_LIMIT || (page as { has_more?: unknown }).has_more === true) throw new Error(`the log has more than ${TELEMETRY_LIMIT} events`);
     const items = raw.filter((i): i is TelemetryItem => !!i && typeof i === "object" && typeof (i as TelemetryItem).event?.type === "string");
     const host = (u: string) => {
       try {

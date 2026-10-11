@@ -137,6 +137,7 @@ describe("buildProof", () => {
     // Control off: the page log still counts, but Spotter's own typing can't be ruled out, so keys aren't claimed.
     const noControl = buildProof({ telemetry: { enabled: { ...allOn, control: false }, items: [] }, policyEcho: null, apiCalls: 3 });
     expect(noControl.keys).toBeNull();
+    expect(noControl.clicks).toBeNull();
   });
 
   it("only says downloads were blocked when KERNEL echoed the block back", () => {

@@ -164,7 +164,8 @@ export function buildProof(input: {
   // A click is one the page saw, or a press, tap or touch Spotter's own automation sent through KERNEL.
   const sentClicks = count((e) => e.type === "cdp_command" && ((method(e) === "Input.dispatchMouseEvent" && kind(e) === "mousePressed") || method(e) === "Input.synthesizeTapGesture" || (method(e) === "Input.dispatchTouchEvent" && kind(e) === "touchStart")));
   const sentKeys = count((e) => e.type === "cdp_command" && ((method(e) === "Input.dispatchKeyEvent" && /^(keyDown|rawKeyDown|char)$/.test(kind(e))) || method(e) === "Input.insertText" || method(e) === "Input.imeSetComposition"));
-  const clicks = pageOn ? count((e) => e.type === "interaction_click") + (controlOn ? sentClicks : 0) : null;
+  // Clicks in a frame from another site may not show in the page's own log, so clicks need the control log too.
+  const clicks = pageOn && controlOn ? count((e) => e.type === "interaction_click") + sentClicks : null;
   // Typing into a password field never shows in the page's own log, so keys need the control log too.
   const keys = pageOn && controlOn ? count((e) => e.type === "interaction_key") + sentKeys : null;
   const scrolls = pageOn ? count((e) => e.type === "interaction_scroll_settled") : null;

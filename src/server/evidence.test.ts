@@ -102,6 +102,13 @@ describe("evidence pack: two faces, where the money goes, and proof", () => {
     expect(txt).toContain("a".repeat(64));
   });
 
+  it("says plainly when the phone visit didn't work, instead of claiming two visits", async () => {
+    await withPage({ faces: { compared: false, verdict: "Spotter couldn't open it both ways, so it can't say whether this page hides from scanners." } });
+    const html = await (await get()).text();
+    expect(html).toContain("the phone visit didn&#39;t work");
+    expect(html).not.toContain("opened the link twice");
+  });
+
   it("says 'not recorded', never zero, when a count is missing", async () => {
     await withPage({ proof: { clicks: null, keys: null, scrolls: null, downloadsBlocked: null, apiCalls: 3, hashes: {} } });
     const html = await (await get()).text();

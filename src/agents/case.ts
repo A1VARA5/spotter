@@ -196,7 +196,7 @@ function withPage(c: Case, ctx: CaseCtx): Case {
       severity: "high",
       tool: from.tool,
       source: from.id,
-      text: `${faces.verdict} Spotter opened the same link twice at the same moment: once as a desktop, the way security scanners see it, and once as a phone${ctx.page.phone && ctx.page.phone.network !== "direct" ? " on a UK mobile network" : ""}.`,
+      text: `${faces.verdict} Spotter opened the same link twice at the same moment: once as a desktop, the way security scanners see it, and once as a phone${ctx.page.phone && ctx.page.phone.network !== "direct" ? ` on a UK ${ctx.page.phone.network === "uk_residential" ? "home" : "mobile"} network` : ""}.`,
     });
   }
   if (offsite) proof.push({ kind: "money_offsite", severity: "high", tool: from.tool, source: from.id, text: offsite });

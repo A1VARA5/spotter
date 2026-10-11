@@ -358,14 +358,15 @@ describe("peekScroll", () => {
     expect(calls[0]).toMatchObject({ x: 512, y: 384 });
   });
 
-  it("counts every scroll that worked, for the proof that the spotter only ever scrolled", async () => {
+  it("counts every scroll asked for, before it is sent, so the proof is never lower than what reached the page", async () => {
     const k = fakeKernel();
     await startPeek(db, hh, paymentId, "desktop", opts(k));
     await peekScroll(db, hh, paymentId, "down", { kernel: k });
     await peekScroll(db, hh, paymentId, "down", { kernel: k });
+    // A scroll that errors may still have reached the page, so it stays counted.
     k.browsers.computer.scroll.mockRejectedValueOnce(new Error("500"));
     await peekScroll(db, hh, paymentId, "up", { kernel: k });
-    expect(await peekActivity(db, paymentId)).toEqual({ peeks: 1, scrolls: 2 });
+    expect(await peekActivity(db, paymentId)).toEqual({ peeks: 1, scrolls: 3 });
   });
 
   it("refuses anything that isn't up or down", async () => {

@@ -106,6 +106,18 @@ describe("compareFaces", () => {
     expect(r.compared && r.differences).toEqual([expect.objectContaining({ kind: "look", strong: false })]);
   });
 
+  it("a text check that failed on one visit is not a blank page, so it never reads as cloaking", () => {
+    const r = compareFaces({ ...desktop, text: undefined, visibleChars: 0, palette: [1, ...Array(63).fill(0)] }, { ...desktop, palette: [1, ...Array(63).fill(0)] }, "uk_mobile");
+    expect(r.compared && r.differs).toBe(false);
+  });
+
+  it("doesn't say 'the same' when there was nothing to compare (both near empty, no pictures)", () => {
+    const empty = { ...desktop, title: "", text: "Hi", visibleChars: 2 };
+    const r = compareFaces(empty, empty, "uk_mobile");
+    expect(r.compared).toBe(false);
+    expect(r.verdict).not.toMatch(/same/i);
+  });
+
   it("says it couldn't compare when either visit failed, never 'the same'", () => {
     for (const r of [compareFaces(null, desktop, "uk_mobile"), compareFaces(desktop, null, "uk_mobile")]) {
       expect(r.compared).toBe(false);
