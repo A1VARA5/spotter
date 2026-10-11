@@ -5,7 +5,10 @@
 import type { Payment, Spender } from "@/core/lifecycle";
 import type { Flag } from "@/core/grounding";
 import type { PaymentMethod } from "@/core/types";
-import { SAMPLE_PREFIX } from "./data";
+import { SAMPLE_PREFIX, SAMPLE_WATCH_PREFIX } from "./data";
+import type { WatchView } from "@/core/watch";
+
+export { SAMPLE_WATCH_PREFIX };
 
 type Kind = Spender["kind"];
 type Entry = {
@@ -126,4 +129,35 @@ export function sampleMonth(spenders: Spender[], now = new Date()): Payment[] {
       },
     ];
   });
+}
+
+/**
+ * The sample month's price watch: after Sam denied the agent's £219 earbuds (sold at real shops for about £159),
+ * Spotter is watching the price. Made up like the rest of the sample and marked Sample; never at Channel3.
+ */
+export function sampleWatches(spenders: Spender[], now = new Date()): WatchView[] {
+  const agent = spenders.find((s) => s.kind === "agent");
+  if (!agent) return [];
+  const day = (n: number) => new Date(now.getTime() - n * 24 * 3600_000).toISOString();
+  return [
+    {
+      id: `${SAMPLE_WATCH_PREFIX}00`,
+      paymentId: null,
+      who: agent.name,
+      item: "Pro wireless earbuds 2",
+      title: "Pro wireless earbuds 2",
+      currency: "GBP",
+      nearlyPaid: 21900,
+      target: 15400,
+      best: { price: 15900, shop: "harbourline-audio.co.uk", url: "" },
+      saving: null,
+      status: "watching",
+      history: { source: "checks", points: [16900, 16900, 16500, 15900].map((price, i) => ({ at: day(12 - i * 4), price })) },
+      createdAt: day(14),
+      expiresAt: day(-1),
+      lastCheckedAt: day(0),
+      example: false,
+      createdBy: "spotter",
+    },
+  ];
 }

@@ -51,6 +51,7 @@ export function CaseFile({
   onSwap,
   busy,
   pageShot,
+  footer,
 }: {
   c: Case;
   currency: string;
@@ -60,6 +61,8 @@ export function CaseFile({
   busy?: boolean;
   /** A drawn stand in for the screenshot, for mock ups on the landing page. */
   pageShot?: React.ReactNode;
+  /** Shown last, inside the case file: the price watch line on the dashboard. */
+  footer?: React.ReactNode;
 }) {
   return (
     <section className="case" data-verdict={c.verdict} aria-label="What Spotter found">
@@ -117,6 +120,7 @@ export function CaseFile({
           </button>
         </div>
       )}
+      {footer}
     </section>
   );
 }

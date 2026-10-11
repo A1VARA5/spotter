@@ -23,6 +23,12 @@ describe("watchtower wire data", () => {
     expect(s.people).toEqual([{ name: "Gran" }]);
   });
 
+  it("keeps the price watches, with their start dates as Dates", () => {
+    const wire = JSON.parse(JSON.stringify({ payments: [], signs: [], people: [], watches: [{ id: "w", started: new Date("2026-10-01T00:00:00Z"), status: "Dropped" }] }));
+    const s = revive(wire);
+    expect(s.watches).toEqual([{ id: "w", started: new Date("2026-10-01T00:00:00Z"), status: "Dropped" }]);
+  });
+
   it("leaves the PayPal source out when the server didn't send one", () => {
     expect(revive({ payments: [], signs: [], people: [] } as never).paypal).toBeUndefined();
   });

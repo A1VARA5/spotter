@@ -78,6 +78,22 @@ describe("watchtower live", () => {
     await expect(makeLive(db)(req(a, new Date().toISOString()))).rejects.toThrow(/payment_id/);
   });
 
+  it("brings a price drop found since the last poll, for this family only", async () => {
+    const since = new Date(Date.now() - 60_000).toISOString();
+    const insert = (id: string, hh: string, spender: string) =>
+      db.query(
+        `insert into price_watches (id, household_id, spender_id, product_id, item, title, currency, nearly_paid, target, best_price, best_shop, status, expires_at, notified_at)
+         values ($1, $2, $3, 'P1', 'Over ear headphones', 'Over ear headphones', 'GBP', 8900, 7600, 6900, 'fair.co.uk', 'dropped', now() + interval '1 day', now())`,
+        [id, hh, spender],
+      );
+    await insert("w_a", a, "sp_gran");
+    await insert("w_b", b, "sp_other");
+    const j = await (await makeLive(db)(req(a, since))).json();
+    expect(j.changed).toBe(true);
+    expect(j.sources.watches.map((w: { id: string }) => w.id)).toEqual(["w_a"]);
+    expect(j.notices).toEqual(["Price drop: Over ear headphones is £69.00 at fair.co.uk"]);
+  });
+
   it("includes PayPal's own events when the table exists", async () => {
     await pay(db, "pay_1", "sp_gran", "captured", 2499);
     const since = new Date(Date.now() - 60_000).toISOString();

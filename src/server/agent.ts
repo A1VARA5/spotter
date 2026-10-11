@@ -4,6 +4,7 @@
 import { getPayment, getSpender, submitPayment, weekSpend, type Deps, type Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { offerSaferOption, paySaferOption, stopReason, type SaferOption } from "@/core/safer";
+import { startWatch, watchFromPayment, type WatchDeps, type WatchResult } from "@/core/watch";
 
 export type AgentPaymentInput = {
   item?: string;
@@ -107,6 +108,42 @@ export async function agentAllowance(deps: Deps, agentId: string): Promise<{ mes
       `${formatMoney(left)} left of ${formatMoney(s.allowance.weekly)} this week. ` +
       `Payments over ${formatMoney(s.allowance.askAbove)} wait for ${s.spotter_name}. ` +
       `Never allowed: ${s.allowance.blockedCategories.join(", ").replace(/_/g, " ") || "nothing"}.`,
+  };
+}
+
+export type AgentWatchInput = { payment_id?: string; item?: string; price_pence?: number; currency?: "GBP" | "USD" };
+
+/**
+ * After "too expensive" or "not now", an agent can ask Spotter to watch the price for its spotter. Only its own
+ * payments. When the price drops the spotter is told; the agent is never told to buy and can't buy on its own.
+ */
+export async function agentWatchPrice(deps: WatchDeps, agentId: string, input: AgentWatchInput): Promise<{ ok: boolean; message: string }> {
+  const spender = await getSpender(deps.db, agentId);
+  if (!spender) return { ok: false, message: "This agent isn't set up in Spotter any more. Ask the user to reconnect it." };
+  let r: WatchResult;
+  if (input.payment_id) {
+    r = await watchFromPayment(deps, spender.household_id, input.payment_id, { createdBy: "agent", onlySpender: agentId });
+  } else if (input.item && input.price_pence) {
+    r = await startWatch(deps, {
+      householdId: spender.household_id,
+      spenderId: agentId,
+      item: input.item,
+      currency: input.currency ?? spender.allowance.weekly.currency,
+      nearly: input.price_pence,
+      createdBy: "agent",
+    });
+  } else {
+    return { ok: false, message: "Pass payment_id (one of your payments), or item with price_pence (the price you were going to pay)." };
+  }
+  if ("error" in r) return { ok: false, message: `${r.error} Nothing is being watched.` };
+  const w = r.watch;
+  const target = formatMoney({ amount: w.target, currency: w.currency });
+  return {
+    ok: true,
+    message:
+      `Spotter is watching the price of ${w.title} for ${spender.spotter_name} until ${w.expiresAt.slice(0, 10)}. ` +
+      `If a real shop sells it for ${target} or less, ${spender.spotter_name} is told and decides. ` +
+      `You can't buy it when the price drops and you shouldn't try: don't order it again yourself. Tell the user the price is being watched.`,
   };
 }
 
