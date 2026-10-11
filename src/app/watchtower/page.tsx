@@ -50,7 +50,7 @@ export default async function WatchtowerPage() {
           </p>
         )}
       </div>
-      <Watchtower board={JSON.parse(JSON.stringify(board))} initialState={state} since={now.toISOString()} kind={household.kind} spotterName={household.spotter_name} />
+      <Watchtower board={JSON.parse(JSON.stringify(board))} initialState={state} since={now.toISOString()} kind={household.kind} spotterName={household.spotter_name} demo={household.demo === true} />
     </AppShell>
   );
 }

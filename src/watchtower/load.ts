@@ -42,7 +42,8 @@ export async function loadPaypal(db: Db, householdId: string): Promise<PaypalRow
   }
 }
 
-async function radarCounts(db: Db, householdId: string, rows: Sources["payments"]): Promise<Record<string, RadarCount>> {
+// demo: a demo family's counts are other demo families only (networkCount), and the words say so (networkLine).
+async function radarCounts(db: Db, householdId: string, demo: boolean, rows: Sources["payments"]): Promise<Record<string, RadarCount>> {
   const payees = new Map<string, { payee: string; sample: boolean }>();
   for (const r of rows) {
     if (r.outcome !== "Stopped" && r.outcome !== "Denied") continue;
@@ -52,8 +53,11 @@ async function radarCounts(db: Db, householdId: string, rows: Sources["payments"
   const out: Record<string, RadarCount> = {};
   await Promise.all(
     [...payees.entries()].slice(0, MAX_RADAR_PAYEES).map(async ([key, { payee, sample }]) => {
-      if (sample) out[key] = { families: SAMPLE_NETWORK[key] ?? 0, sample: true };
-      else out[key] = { families: (await networkCount(db, payee, householdId)).families };
+      if (sample) out[key] = { families: SAMPLE_NETWORK[key] ?? 0, sample: true, demo };
+      else {
+        const n = await networkCount(db, payee, householdId);
+        out[key] = { families: n.families, demo: n.demo };
+      }
     }),
   );
   return out;
@@ -68,7 +72,7 @@ export async function loadWatchtower(db: Db, household: Household, now = new Dat
   // Price watches: the family's own (the demo family's example is labelled in the row), plus a sample one for demos.
   const watches = toWatchRows([...(await listWatches(db, household.id, 50)), ...(household.demo ? sampleWatches(spenders, now) : [])]);
   const sources = { ...toSources(payments, spenders, now), watches };
-  const [paypal, radar] = await Promise.all([loadPaypal(db, household.id), radarCounts(db, household.id, sources.payments)]);
+  const [paypal, radar] = await Promise.all([loadPaypal(db, household.id), radarCounts(db, household.id, household.demo === true, sources.payments)]);
   const tz = safeTz(household.time_zone);
   const notes: CaseNote[] = payments.map((p) => ({
     id: p.id,

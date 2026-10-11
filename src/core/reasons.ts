@@ -7,7 +7,7 @@ import type { Decision } from "./decide";
 import { CHANGED_BANK_ADVICE, SCAM_ADVICE } from "./decide";
 import type { Flag, FlagKind, Severity } from "./grounding";
 import { tripReason, type TripInput } from "./tripped";
-import { settledAs, type SettledInput } from "./settled";
+import { outcomeLine, settledAs, type SettledInput } from "./settled";
 
 type ProofFinding = { kind?: "prompt_injection" | "cloaking" | "money_offsite"; severity?: "high"; toolName?: string };
 export type ReasonInput = { decision: Decision | null | undefined; case_file?: { findings: ProofFinding[] } | null } & Partial<TripInput>;
@@ -105,6 +105,8 @@ export function decidedReason(p: DecidedInput): string | null {
   const s = settledAs(p);
   if (s === "paid_by_rules" && p.decision?.outcome === "allow") return null;
   const top = topReason(p);
+  // Decided with no reason at all: how it ended, in the past tense, never "Within the rules." next to a denial.
+  if (s && !top && s !== "failed") return outcomeLine(p);
   if (!s || !top || s === "paused" || s === "failed") return top;
   const verb = s === "stopped" ? "Stopped" : s === "not_sent" ? "Not sent" : "Held";
   const clause = pastClause(top);

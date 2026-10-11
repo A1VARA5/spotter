@@ -116,6 +116,11 @@ describe("wide screens: text tiles get shorter so they aren't half empty", () =>
     expect(layoutOf(fitWide(INITIAL, 2560).state).alerts!.ySpan).toBeLessThan(layoutOf(fitWide(INITIAL, 1920).state).alerts!.ySpan);
   });
 
+  it("keeps room for the fair price tile's last line (measured: it needs 23 rows at 1920 and 19 at 2560, plus one spare)", () => {
+    expect(layoutOf(fitWide(INITIAL, 1920).state).fair!.ySpan).toBeGreaterThanOrEqual(24);
+    expect(layoutOf(fitWide(INITIAL, 2560).state).fair!.ySpan).toBeGreaterThanOrEqual(20);
+  });
+
   it("never saves the shortened layout: unfitWide puts the original back", () => {
     const { state, fitted } = fitWide(INITIAL, 2560);
     expect(layoutOf(unfitWide(state, fitted))).toEqual(layoutOf(INITIAL));

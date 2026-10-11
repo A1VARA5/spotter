@@ -98,6 +98,14 @@ describe("decidedReason: once decided, the why is in the past tense", () => {
     expect(decidedReason({ ...base, status: "blocked", decision: d })).toBe(`Stopped: ${INJECTION}`);
     expect(decidedReason({ ...base, status: "blocked", decision: decision([LIMIT]) })).toBe('Stopped because it was over the £5.00 "ask me first" limit.');
   });
+  it("a decided payment with no reason at all gets its ending in the past tense, never \"Within the rules.\"", () => {
+    const none = { outcome: "ask" as const, reasons: [], flags: [] };
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Sam", decision: none })).toBe("Denied. Sam said no, so PayPal released the £4.99. Nothing was paid.");
+    expect(decidedReason({ ...base, status: "blocked", decision: null })).toBe("Stopped. Spotter stopped it before anything reached PayPal. Nothing was paid.");
+    expect(decidedReason({ ...base, status: "captured", decided_by: "Sam", decision: none })).toBe("Paid. Sam approved it, so PayPal paid £4.99 to Panmoor Kitchen.");
+    // Still waiting with nothing to say: nothing to say.
+    expect(decidedReason({ ...base, decision: none })).toBeNull();
+  });
   it("says when money moved after the hold: approved and being paid, or paid while Spotter was letting it go", () => {
     expect(decidedReason({ ...base, status: "capturing", decided_by: "Sam", decision: decision([FIRST]) })).toBe(
       "Held because it was the first time paying GadgetBarn. Sam approved it and PayPal is paying it.",

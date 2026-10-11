@@ -77,10 +77,17 @@ describe("scam radar lines", () => {
     ];
     const counts = { "parcel-redelivery.co": { families: 4, sample: true }, "tax refunds team": { families: 0 } };
     expect(radarLines(rows, counts)).toEqual([
-      { payee: "parcel-redelivery.co", families: 4, sample: true, text: "Stopped for 4 other families in the last 30 days" },
-      { payee: "Tax Refunds Team", families: 0, sample: false, text: "No other Spotter family has reported it yet" },
+      { payee: "parcel-redelivery.co", families: 4, sample: true, demo: false, text: "4 other Spotter families said no to this payee in the last 30 days." },
+      { payee: "Tax Refunds Team", families: 0, sample: false, demo: false, text: "No other Spotter family has said no to this payee in the last 30 days." },
     ]);
-    expect(radarLines([{ payee: "X", outcome: "Stopped" }], { x: { families: 1 } })[0]!.text).toBe("Stopped for 1 other family in the last 30 days");
+    expect(radarLines([{ payee: "X", outcome: "Stopped" }], { x: { families: 1 } })[0]!.text).toBe("1 other Spotter family said no to this payee in the last 30 days.");
+  });
+
+  it("a demo family's count is other demo families, and says so (networkLine)", () => {
+    const [l] = radarLines([{ payee: "X", outcome: "Denied" }], { x: { families: 6, demo: true } });
+    expect(l!.demo).toBe(true);
+    expect(l!.text).toBe("6 other demo families (other people trying the demo) said no to this payee in the last 30 days.");
+    expect(l!.text).not.toContain("Spotter famil");
   });
 });
 

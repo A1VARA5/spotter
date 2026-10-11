@@ -66,6 +66,13 @@ describe("Watchtower's agent roster", () => {
     expect(b).toContain("SPOTTER CONTEXT");
   });
 
+  it("tells Spotter whose counts the scam radar has: demo families for a demo family, Spotter families otherwise", () => {
+    const demo = buildRoster({ builtIn, extra, context: "C", now: () => NOW, demo: true }).agents.find((a) => a.id === SPOTTER_ID)!.instructions!(ctx, undefined as never);
+    expect(demo).toMatch(/scam_radar: [^\n]*other demo families/);
+    expect(demo).not.toContain("other Spotter families");
+    expect(agent(SPOTTER_ID).instructions!(ctx, undefined as never)).toMatch(/scam_radar: [^\n]*other Spotter families/);
+  });
+
   it("declares no delegation params the way AG asks (s.undefined()), so the primary agent starts", () => {
     const s = { undefined: () => "none" };
     expect(agent(SPOTTER_ID).schema!(s as never)).toBe("none");

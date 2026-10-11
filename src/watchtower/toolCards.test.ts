@@ -130,3 +130,15 @@ describe("what a card says", () => {
     expect(linkCount(["see https://a.example/x and www.b.example", "c.co.uk/pay", "no link here, e.g. this."])).toBe(3);
   });
 });
+
+describe("scam radar card", () => {
+  const radarCard = (payees: unknown[]) => describeCall("scam_radar", {}, done({ payees }));
+  it("says other demo families for a demo family's counts", () => {
+    const c = radarCard([{ payee: "x", families: 3, sample: false, demo: true, text: "" }]);
+    expect(c.lines[0]).toContain("other demo families");
+    expect(c.lines[0]).not.toContain("Spotter families");
+  });
+  it("says other Spotter families for a real family's counts", () => {
+    expect(radarCard([{ payee: "x", families: 3, sample: false, demo: false, text: "" }]).lines[0]).toContain("other Spotter families");
+  });
+});

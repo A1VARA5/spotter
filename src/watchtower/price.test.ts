@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "@/core/households";
 import type { Offer } from "@/core/market";
+import { makeMarket } from "@/market/channel3";
 import { cleanQuery, makePriceCheck, summarisePrices } from "./price";
 
 const offer = (domain: string, pence: number): Offer => ({ title: "Pro wireless earbuds 2", domain, price: pence, currency: "GBP", url: `https://${domain}/p` });
@@ -104,5 +105,43 @@ describe("price check route", () => {
   it("reports a search that throws as an outage too", async () => {
     const check = makePriceCheck({ db, market: async () => { throw new Error("boom"); } });
     expect((await check(hh, { query: "kettle" })).status).toBe(502);
+  });
+});
+
+describe("Watchtower's live price search goes through the market sanity filter", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  // What /api/watchtower/price wires up: makePriceCheck over makeMarket (offersFor, then plausibleOffers in sanity.ts).
+  it("leaves out a designer lamp, a fashion shop's lamp and the expensive tail, so the cheapest is an ordinary lamp", async () => {
+    const db = await pgliteDb();
+    const hh = (await createHousehold(db, { name: "Fam", spotterName: "Sam" })).id;
+    vi.stubEnv("CHANNEL3_API_KEY", "k");
+    const product = (id: string, title: string, brand: string, domain: string, price: number) => ({
+      id,
+      title,
+      brands: [{ name: brand }],
+      offers: [{ url: `https://buy.example/${id}`, domain, price: { price, currency: "GBP" }, availability: "InStock" }],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          products: [
+            product("1", "LED desk lamp with USB port", "Brightly", "lampshop.co.uk", 24.99),
+            product("2", "LED desk lamp dimmable", "Lumo", "homebits.co.uk", 27.99),
+            product("3", "Designer LED desk lamp", "Dyson", "designhouse.co.uk", 449),
+            product("4", "LED desk lamp in brass", "Atelier", "luxe-fashion.co.uk", 199),
+            product("5", "Architect LED desk lamp", "Studio North", "gallerylights.co.uk", 199),
+          ],
+        }),
+      ),
+    );
+    const res = await makePriceCheck({ db, market: makeMarket(db) })(hh, { query: "LED desk lamp" });
+    const r = (await res.json()).result;
+    expect(r.cheapest).toEqual({ shop: "lampshop.co.uk", price: 24.99 });
+    expect(r.shops.map((s: { shop: string }) => s.shop).sort()).toEqual(["homebits.co.uk", "lampshop.co.uk"]);
   });
 });

@@ -2,6 +2,7 @@
 // a pill, and a short card underneath. Tool results carry words scammers wrote (payee names, messages,
 // links), so a card is built only from counts, numbers and Spotter's own fixed labels. A string from a
 // result is shown only when it matches one of those labels exactly; everything else is counted, never echoed.
+import { networkKind } from "@/core/networkLine";
 import { accessOf, type Access } from "./receipt";
 
 export const CARD_TOOLS = ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "fair_prices", "add_page", "place_widget", "my_month"] as const;
@@ -99,10 +100,12 @@ function radar(d: Record<string, unknown>) {
   const list = arr(d.payees).map(obj);
   const hit = list.filter((p) => (num(p.families) ?? 0) > 0);
   const families = hit.reduce((t, p) => t + (num(p.families) ?? 0), 0);
+  // A demo family's counts are other demo families only (radarLines carries demo from networkCount).
+  const kind = networkKind(list.some((p) => p.demo === true));
   return {
     pill: plural(list.length, "payee"),
     lines: [
-      list.length ? `${plural(list.length, "stopped payee")}. ${hit.length} also stopped by other Spotter families (${plural(families, "family", "families")} in all).` : "This family hasn't stopped anyone this month.",
+      list.length ? `${plural(list.length, "stopped payee")}. ${hit.length} also stopped by other ${kind} families (${plural(families, "family", "families")} in all).` : "This family hasn't stopped anyone this month.",
       "Counts only: no other family's details, and payee names are left out here.",
     ],
   };

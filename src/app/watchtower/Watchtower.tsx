@@ -83,7 +83,7 @@ const snapshotOf = (b: Board, canAsk: boolean, version: number): WatchSnapshot =
   canAsk,
 });
 
-export function Watchtower({ board, initialState, since, kind, spotterName }: { board: Board; initialState: unknown; since: string; kind: HouseholdKind; spotterName: string }) {
+export function Watchtower({ board, initialState, since, kind, spotterName, demo }: { board: Board; initialState: unknown; since: string; kind: HouseholdKind; spotterName: string; demo: boolean }) {
   const [wire, setWire] = useState(board.sources);
   const [store] = useState(() => makeStore(snapshotOf(board, typeof window !== "undefined" && !window.matchMedia("(max-width: 760px)").matches, 0)));
   const [notices, setNotices] = useState<Array<{ id: number; text: string; tone: "news" | "problem" }>>([]);
@@ -163,7 +163,7 @@ export function Watchtower({ board, initialState, since, kind, spotterName }: { 
           ))}
         </ol>
       </div>
-      <Studio sources={sources} initialState={initialState} store={store} notify={notify} kind={kind} spotterName={spotterName} />
+      <Studio sources={sources} initialState={initialState} store={store} notify={notify} kind={kind} spotterName={spotterName} demo={demo} />
     </div>
   );
 }

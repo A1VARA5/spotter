@@ -61,9 +61,10 @@ const TEXT_TILES = new Set(["watch-alerts", "fair-price", "money-mid-air", "pric
 /**
  * How much of its height a text tile row keeps at a window width (rows are a fixed pixel height in Studio).
  * Tall rows (the alerts, fair price and money in mid air row) shrink most; shorter rows of lists a little.
- * Measured on the demo board at 1920 and 2560 so the fullest tile still fits.
+ * Measured on the demo board at 1920 and 2560 so the fullest tile still fits: the fair price tile needs 23 rows
+ * at 1920 and 19 at 2560 (rows are about 16 px), so the tall row keeps 24 and 20, one spare each.
  */
-export const wideFactor = (width: number, rows = 28) => (width >= 2300 ? (rows >= 25 ? 0.66 : 0.8) : width >= 1800 ? (rows >= 25 ? 0.8 : 0.9) : 1);
+export const wideFactor = (width: number, rows = 28) => (width >= 2300 ? (rows >= 25 ? 0.72 : 0.8) : width >= 1800 ? (rows >= 25 ? 0.86 : 0.9) : 1);
 
 export type Fitted = Record<string, { original: Record<string, Box>; fitted: Record<string, Box> }>;
 

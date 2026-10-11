@@ -463,7 +463,7 @@ export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
     return (
       <div className="wt-radar wt-radar-empty">
         <p className="wt-radar-payee">Nobody stopped here yet</p>
-        <p className="wt-radar-text">When Spotter stops a payee for your family, this shows how many other Spotter families stopped them too.</p>
+        <p className="wt-radar-text">When Spotter stops a payee for your family, this shows how many other families stopped them too.</p>
       </div>
     );
   }

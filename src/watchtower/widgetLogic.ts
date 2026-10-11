@@ -1,4 +1,5 @@
 // The sums and words behind Spotter's signature widgets, kept out of React so they can be tested.
+import { networkLine } from "@/core/networkLine";
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -68,8 +69,9 @@ export function pickCase(rows: Array<{ id: string; when: Date; outcome: string }
   return (newest.find((r) => ATTENTION.includes(r.outcome)) ?? newest[0])?.id ?? null;
 }
 
-export type RadarCount = { families: number; sample?: boolean };
-export type RadarLine = { payee: string; families: number; sample: boolean; text: string };
+/** demo: the count is other demo families (a demo family's count never includes real families, src/core/network.ts). */
+export type RadarCount = { families: number; sample?: boolean; demo?: boolean };
+export type RadarLine = { payee: string; families: number; sample: boolean; demo: boolean; text: string };
 export const radarKey = (payee: string) => payee.trim().toLowerCase();
 
 /** The family's stopped or denied payees, with how many other families' spotters said no to them. */
@@ -80,12 +82,8 @@ export function radarLines(rows: Array<{ payee: string; outcome: string }>, coun
     .map(([key, payee]) => {
       const c = counts[key];
       const families = c?.families ?? 0;
-      return {
-        payee,
-        families,
-        sample: c?.sample ?? false,
-        text: families ? `Stopped for ${families} other ${families === 1 ? "family" : "families"} in the last 30 days` : "No other Spotter family has reported it yet",
-      };
+      const demo = c?.demo ?? false;
+      return { payee, families, sample: c?.sample ?? false, demo, text: networkLine({ families, demo }, "this payee") };
     })
     .sort((a, b) => b.families - a.families || a.payee.localeCompare(b.payee));
 }
