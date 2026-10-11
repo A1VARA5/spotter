@@ -66,13 +66,17 @@ export default async function Home() {
 
   return (
     <main>
+      {/* WCAG 2.4.1: the first Tab stop jumps past the header to the headline. */}
+      <a href="#hero" className="skip-link">
+        Skip to main content
+      </a>
       <LoopPauser />
       <section className="hero-dark net-host" data-loop>
         <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .hs-chan, .lnav" calm=".hero-copy" />
         <div className="shell">
           <PublicHeader signedIn={!!who} current="home" />
 
-          <div className="hero-grid">
+          <div className="hero-grid" id="hero" tabIndex={-1}>
             <div className="hero-copy">
               {/* Leads with what only Spotter does (asking the person the text pretends to be); the PayPal hold is how. */}
               <h1 className="hero-h1">Banks ask the person paying. Spotter asks the person the text pretends to be.</h1>

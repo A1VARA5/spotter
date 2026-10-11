@@ -635,6 +635,9 @@ p {
 }
 
 .lnav-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px; /* WCAG 2.5.8: at least 24 px to click, with room to spare */
   text-decoration: none;
   color: #b9c3cc;
 }
@@ -1985,13 +1988,16 @@ p {
 }
 
 .side-signout {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px; /* WCAG 2.5.8: at least 24 px to click */
   border: 0;
   background: none;
   font: inherit;
   font-size: 13px;
   color: var(--ink-2);
   cursor: pointer;
-  padding: 0;
+  padding: 0 2px;
 }
 
 .side-signout:hover {
@@ -2353,14 +2359,14 @@ p {
   }
 }
 
+/* Never from opacity 0: a held card is the reason the page exists, so it is readable from the first frame (a fade
+   left it blank for about a second while a fresh dashboard was starting). The yellow ring is the arrival. */
 @keyframes arrive {
   0% {
-    opacity: 0;
     transform: translateY(-8px);
     box-shadow: 0 0 0 3px rgb(242 183 5 / 0.7);
   }
   40% {
-    opacity: 1;
     transform: translateY(0);
   }
   100% {
@@ -3460,6 +3466,12 @@ p {
   }
 }
 
+@keyframes page-settle {
+  from {
+    transform: translateY(8px);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .iphone-gran {
     animation: float 7s ease-in-out infinite;
@@ -3469,10 +3481,12 @@ p {
     animation: float 7s ease-in-out -3.5s infinite;
   }
 
-  /* App: each page settles in, then its rows follow. */
+  /* App: each page settles in, then its rows follow. The page itself only moves, never fades from nothing: the
+     server already sent it, and a fade from opacity 0 left the main area white while the browser was busy
+     starting the page (about a second after "Try it on fake money"). */
   .page-main > *,
   .page-rail {
-    animation: page-in 420ms var(--ease-out) both;
+    animation: page-settle 420ms var(--ease-out) both;
   }
 
   .page-main > :nth-child(2),
@@ -7782,7 +7796,8 @@ h3 {
   outline-offset: 2px;
 }
 
-.app-main:focus {
+.app-main:focus,
+.hero-grid:focus {
   outline: none;
 }
 

@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { MessageCircleQuestion, UserRoundCheck, UserRoundX, PhoneCall } from "lucide-react";
 import type { WasItYou } from "@/core/was-it-you";
+import { messageSays } from "@/core/userText";
 import { plainError, readJson } from "./http";
 import "./wasityou.css";
 
@@ -102,7 +103,7 @@ export function WasItYouLine({ w, status, paymentId, now }: { w: WasItYou | null
       <div className="wiy-line-body">
         <p>
           <strong>{s.state}.</strong> {s.detail}
-          {w.claim.quote && <span className="wiy-line-quote"> The message says &quot;{w.claim.quote}&quot;.</span>}
+          {w.claim.quote && <span className="wiy-line-quote"> {messageSays(w.claim.quote)}</span>}
         </p>
         {done && (
           <p className="wiy-line-note" role="status">

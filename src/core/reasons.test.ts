@@ -93,6 +93,32 @@ describe("decidedReason: once decided, the why is in the past tense", () => {
       "Held because the link showed phones a card form it hid from security scanners.",
     );
   });
+  it("not me with only the AI's own words: says why it was held, never a bare 'Held:' label", () => {
+    const AI = "Someone on a new number says they're Tom. That's how the Hi Mum scam starts.";
+    const d = decision([AI], [flag("impersonation", "high", AI)]);
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Tom", was_it_you: { state: "not_me", who: "Tom" }, decision: d })).toBe(
+      "Held because the message said it was from Tom, and Tom said it wasn't.",
+    );
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Sam", was_it_you: { state: "not_me", who: "Sam", channel: "alert" }, decision: d })).toBe(
+      "Held because the message said it was from you, and you said it wasn't.",
+    );
+  });
+  it("no reason line ever ends in a double full stop", () => {
+    const tails = ["Pay today..", 'The message says "Hi mum its me, new number."', "Rushes you.", "Odd link!"];
+    const endings = [
+      { status: "needs_approval", decided_by: null },
+      { status: "voided", decided_by: "Sam" },
+      { status: "blocked", decided_by: null },
+      { status: "captured", decided_by: "Sam" },
+      { status: "capturing", decided_by: "Sam" },
+      { status: "voided", decided_by: "Tom", was_it_you: { state: "not_me", who: "Tom" } },
+    ];
+    for (const t of tails)
+      for (const e of endings) {
+        const r = decidedReason({ ...base, ...e, decision: decision([t], [flag("pressure", "medium", t)]) });
+        expect(r, `${e.status} / ${t}`).not.toMatch(/\.\s*["”']?\.$/);
+      }
+  });
   it("stopped: stopped because; an AI sign it can't rewrite keeps its words after a short 'Stopped:' label", () => {
     const d = decision([INJECTION], [flag("prompt_injection", "high", INJECTION)]);
     expect(decidedReason({ ...base, status: "blocked", decision: d })).toBe(`Stopped: ${INJECTION}`);

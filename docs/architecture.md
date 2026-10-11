@@ -15,7 +15,7 @@ How a payment gets from Gran's forwarded text (or an agent's tool call) to PayPa
 | Case agent | Claude with 7 read only tools, runs after a payment is held | `src/agents/case.ts`, `src/agents/tools.ts` |
 | Cloud browser | One throwaway KERNEL browser per case | `src/agents/kernel.ts` |
 | PayPal | REST client, Log in with PayPal, webhooks, Agent Toolkit | `src/paypal/` |
-| Agent servers | `/api/mcp` (Spotter's own tools) and `/api/toolkit/mcp` (PayPal's toolkit tools, guarded) | `src/app/api/mcp/`, `src/server/toolkit-mcp.ts` |
+| Agent servers | `/api/mcp` (Spotter's own tools) and `/api/toolkit/mcp` (the PayPal toolkit tools, guarded) | `src/app/api/mcp/`, `src/server/toolkit-mcp.ts` |
 | Channels | Telegram, Discord, email (Agentboxd) for forwarding and alerts | `src/telegram/`, `src/discord/`, `src/email/` |
 | Watchtower | AG Studio board with Spotter's widgets and agents, Claude adapter | `src/app/watchtower/`, `src/watchtower/` |
 | Daily job | Reconciles stuck payments with PayPal, renews holds the spotter asked to sleep on | `src/app/api/cron/reconcile/`, `vercel.json` |
@@ -85,12 +85,12 @@ Each move is one `update payments ... where id = $1 and status = $2` in Postgres
 
 ## The webhook path
 
-`/api/paypal/webhook` reads the raw body (256 KB cap), needs all five PayPal transmission headers, and asks PayPal's `verify-webhook-signature` API with those exact bytes. No `PAYPAL_WEBHOOK_ID` means 503, so nothing is trusted by accident. Then `src/paypal/webhook.ts`:
+`/api/paypal/webhook` reads the raw body (256 KB cap), needs all five PayPal transmission headers, and asks the PayPal `verify-webhook-signature` API with those exact bytes. No `PAYPAL_WEBHOOK_ID` means 503, so nothing is trusted by accident. Then `src/paypal/webhook.ts`:
 
 1. Inserts the event id into `paypal_events` (`on conflict do nothing`), so a repeat is dropped.
 2. Finds the payment and applies a conditional update from a whitelist of starting states.
 3. Writes anything that disagrees with Spotter's own record on the payment's timeline as a mismatch.
-4. Deletes the event row if handling throws, so PayPal's retry is processed.
+4. Deletes the event row if handling throws, so the PayPal retry is processed.
 
 A webhook never captures or voids. It only records what PayPal says happened.
 

@@ -112,8 +112,14 @@ export function Account({
 
   return (
     <div className="account">
-      {nameCard}
+      {/* Two groups side by side on wide screens: you (name, PIN, sign out) and your alerts. On narrower screens they
+          stack as one column in the order Name, Alerts, Security, Sign out (account.css). */}
+      <div className="account-col account-you">
+        <h2 className="account-group">You</h2>
+        {nameCard}
+      </div>
 
+      <div className="account-col account-alerts">
       <h2 className="account-group">Alerts</h2>
       {demo && (
         <p className="account-sub account-note">
@@ -179,7 +185,9 @@ export function Account({
       )}
 
       {discordApp && <DiscordAlerts appId={discordApp} connected={discordConnected} />}
+      </div>
 
+      <div className="account-col account-more">
       {!demo && <h2 className="account-group">Security</h2>}
       {!demo && (
         <form
@@ -230,6 +238,7 @@ export function Account({
           <SignOut demo={demo} className="btn btn-deny" />
         </div>
       </section>
+      </div>
     </div>
   );
 }

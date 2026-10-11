@@ -72,6 +72,12 @@ function useClientNow(): number | null {
  * Still being built: only for a minute or two after the payment, after that there just isn't one. now is the
  * dashboard's clock (the server's on the first render), so the server HTML and the first client render agree.
  */
+/** An example's headline starts "Example, checked earlier: ..." for the places without the verdict line; here the verdict line says it. */
+const unlabelled = (headline: string) => {
+  const rest = headline.replace(/^Example, checked earlier:\s*/, "");
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
+};
+
 export function CasePending({ createdAt, now }: { createdAt: string; now: number }) {
   if (now - new Date(createdAt).getTime() > 2 * 60_000) return null;
   return (
@@ -218,7 +224,7 @@ export function CaseFile({
           {c.example && <span className="case-example"> · Example, checked earlier</span>}
         </p>
         <p className="case-headline" id={ids.head} tabIndex={-1}>
-          {withoutIds(c.headline)}
+          {withoutIds(c.example ? unlabelled(c.headline) : c.headline)}
         </p>
         {chips.length > 0 && <CheckedBy chips={chips} reveal={reveal} />}
       </div>

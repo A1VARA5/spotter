@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { upTo, withoutIds } from "./userText";
+import { messageSays, upTo, withoutIds } from "./userText";
 
 describe("upTo", () => {
   it("keeps whole sentences within the limit instead of stopping mid word", () => {
@@ -32,5 +32,13 @@ describe("withoutIds", () => {
     expect(withoutIds("Payment pay_mg2x8k1a0b3c4d5e6f was held.")).toBe("Payment was held.");
     expect(withoutIds("Real retailers list cast iron skillets from £15.99 to £28.00.")).toBe("Real retailers list cast iron skillets from £15.99 to £28.00.");
     expect(withoutIds("special offer: 2 for 1")).toBe("special offer: 2 for 1");
+  });
+});
+
+describe("messageSays", () => {
+  it("quotes the words with one full stop, never a stop inside and outside the quote", () => {
+    expect(messageSays("Hi mum its me, new number.")).toBe('The message says "Hi mum its me, new number".');
+    expect(messageSays("it's Tom")).toBe(`The message says "it's Tom".`);
+    expect(messageSays("help me!!  ")).toBe('The message says "help me".');
   });
 });

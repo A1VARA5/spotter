@@ -30,7 +30,7 @@ function CardForm({ title }: { title: string }) {
         <span className="ck-field">MM / YY</span>
         <span className="ck-field">CVV</span>
       </span>
-      <span className="ck-form-btn">Pay £2.99</span>
+      <span className="ck-form-btn">Pay £1.99</span>
     </div>
   );
 }
@@ -47,7 +47,7 @@ function PeekView() {
       </p>
       <div className="ck-peek-screen">
         <p className="ck-peek-site">ParcelDrop Redelivery</p>
-        <CardForm title="Pay your £2.99 redelivery fee" />
+        <CardForm title="Pay your £1.99 redelivery fee" />
       </div>
       <div className="ck-peek-ctl">
         <span>
@@ -230,7 +230,7 @@ export function CheckViews() {
   return (
     <div className="ck2">
       <p className="ck2-h" id="ck2-title">
-        What it checks that you can&apos;t
+        When there&apos;s a link or a shop, Spotter checks more
       </p>
       <div className="ck2-tabs" role="tablist" aria-labelledby="ck2-title" onKeyDown={onKey}>
         {VIEWS.map((x, n) => (

@@ -29,3 +29,8 @@ export function withoutIds(text: string): string {
     .replace(/\s+([.,;])/g, "$1")
     .trim();
 }
+
+/** 'The message says "it's Tom".' A quote's own closing stop (or ! or ?) is dropped so the line never ends '.".'. */
+export function messageSays(quote: string): string {
+  return `The message says "${quote.trim().replace(/[\s.!?,;:]+$/, "")}".`;
+}

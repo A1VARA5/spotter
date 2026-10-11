@@ -1,5 +1,5 @@
-/* Account content: small group headings so the cards read as Name, Alerts, Security, Sign out.
-   Page width comes from the shell (AppShell layout="narrow" once that lands). */
+/* Account content: small group headings so the cards read as You, Alerts, Security, Sign out.
+   Page width comes from the shell (AppShell layout="narrow"). */
 .account-group {
   margin: 12px 0 -6px;
   font-size: 12px;
@@ -9,3 +9,24 @@
   color: var(--ink-2);
 }
 .account-sub.account-note { margin: -4px 0 0; max-width: 60ch; }
+.account-col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+
+/* Wide screens: the narrow 720 px column becomes two, so settings groups sit side by side instead of one strip
+   with empty space either side. Left: you (name, PIN, sign out). Right: alerts, the longest group. */
+@media (min-width: 1360px) {
+  .page-frame[data-layout="narrow"]:has(.account) { max-width: 1240px; }
+  .account {
+    max-width: none;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-areas: "you alerts" "more alerts";
+    /* The tall alerts column's extra height goes to the second row, so Sign out sits right under Your name. */
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    column-gap: 28px;
+    row-gap: 16px;
+  }
+  .account-you { grid-area: you; }
+  .account-alerts { grid-area: alerts; }
+  .account-more { grid-area: more; }
+  .account-more:empty { display: none; }
+}

@@ -44,7 +44,7 @@ Spotter sits between people and their money and reads text written by scammers, 
 
 ### Webhook forgery
 
-- PayPal: raw body, 256 KB cap, five transmission headers required (401), PayPal's verify API on the exact bytes, no `PAYPAL_WEBHOOK_ID` means 503. Events are deduped and only record what PayPal says. A webhook never captures or voids.
+- PayPal: raw body, 256 KB cap, five transmission headers required (401), the PayPal verify API on the exact bytes, no `PAYPAL_WEBHOOK_ID` means 503. Events are deduped and only record what PayPal says. A webhook never captures or voids.
 - Telegram: the secret token header. Discord: the Ed25519 signature on the raw body. Email: the Agentboxd webhook secret, plus aligned DKIM, SPF or DMARC on the forwarded message. Channel3: the Svix signature, and its deliveries are hints only (a daily job polls).
 - An unset secret means the endpoint refuses, never that it trusts.
 
@@ -89,9 +89,9 @@ Channel3 searches, price watches, photo checks and messages per Telegram chat, D
 | The case agent or KERNEL is slow | The 45 second cap ends the case. The payment still waits for a person |
 | PayPal times out or answers 5xx on capture | The row stays `capturing`. `reconcileStuck` asks PayPal for the authorisation's real state after 5 minutes and finishes it |
 | PayPal refuses a capture or void with a firm 4xx | Spotter reads the authorisation from PayPal before changing any label, so a live hold is never marked failed |
-| A void doesn't get an answer | The row stays `voiding` and reconcile finishes it from PayPal's state |
+| A void doesn't get an answer | The row stays `voiding` and reconcile finishes it from the state PayPal reports |
 | A retry of any money call | The same `PayPal-Request-Id` (`capture-<id>-<auth>`, `void-<id>-<auth>`, `reauth-<id>-<from>`, `refund-<id>`, `create-<id>`), so PayPal treats it as one request |
-| A webhook handler throws | The event row is deleted so PayPal's retry is processed. PayPal's verify API being down gives 503, so PayPal retries |
+| A webhook handler throws | The event row is deleted so the PayPal retry is processed. The PayPal verify API being down gives 503, so PayPal retries |
 | The server crashes after PayPal made the hold | The payment stays in front of the spotter, never silently dropped |
 
 ## Known gaps

@@ -28,7 +28,7 @@ const ARRIVES: Record<Channel, string> = { telegram: "on Telegram", discord: "on
 function story(kind: HouseholdKind) {
   return kind === "business"
     ? { amount: "£420", payee: "Harbourline Packaging", why: "The invoice says their bank details changed." }
-    : { amount: "£250", payee: "jamie.k1994@inbox.example", why: "A new number asked for Friends and Family." };
+    : { amount: "£250", payee: "jamie.k1994@mail.example", why: "A new number asked for Friends and Family." };
 }
 
 export function Preview({ step, draft, people, labels, connected }: { step: SetupStep; draft: Draft; people: Person[]; labels: Labels; connected: Channel[] }) {

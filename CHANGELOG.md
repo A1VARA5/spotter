@@ -6,7 +6,7 @@ What changed each day, from the git history. Dates are the commit dates. Spotter
 
 PayPal and agents
 - One coverage table for all 47 PayPal Agent Toolkit tools drives the guarded MCP server per agent job. Shopping agents get 35 tripwire tools that never run and freeze the agent when called.
-- Selling agent guard: refunds held for the PIN and only to the original capture, tracking only after a completed capture. Subscriptions held in PayPal's APPROVAL_PENDING with the cost tail shown first. Cut up payments caught.
+- Selling agent guard: refunds held for the PIN and only to the original capture, tracking only after a completed capture. Subscriptions held in the PayPal APPROVAL_PENDING state with the cost tail shown first. Cut up payments caught.
 - Agent keys: daily rate limits on both MCP routes, a per key call log, a key card with Switch off now, a canary key that freezes the agent and burns its keys, and `custom_id` from the key's label on every agent order.
 - The agent lab (`/agent-lab`): a scripted naive test agent springs a tripwire against the real guarded server, and PayPal voids its hold.
 - Money safety: unconfirmed voids and captures retry instead of failing with a live hold, a `PayPal-Request-Id` on void, capture, reauthorize and refund, and a crash after the hold keeps the payment in front of the spotter.

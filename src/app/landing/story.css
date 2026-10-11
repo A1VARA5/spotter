@@ -775,6 +775,19 @@
   background: var(--stop);
 }
 
+/* The payee on its own line under the name and amount, so a long address never runs into the amount. */
+.wk-record-to {
+  grid-column: 2 / -1;
+  margin-top: -8px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.wk-dot[data-tone="go"] {
+  background: var(--go);
+}
+
 .wk-record-meta {
   font-size: 14px;
   color: var(--ink-2);
