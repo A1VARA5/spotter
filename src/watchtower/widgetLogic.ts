@@ -90,6 +90,11 @@ export function radarLines(rows: Array<{ payee: string; outcome: string }>, coun
     .sort((a, b) => b.families - a.families || a.payee.localeCompare(b.payee));
 }
 
+/** A tile shows the first few (already sorted most important first) and says how many more there are. */
+export function firstFew<T>(list: T[], n: number): { shown: T[]; more: number } {
+  return { shown: list.slice(0, n), more: Math.max(0, list.length - n) };
+}
+
 // ---------- fair price ----------
 
 /** A payments row as the fair price widget reads it (prices in pounds, from Channel3's stored check). */

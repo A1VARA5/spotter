@@ -164,7 +164,7 @@ export function Checks({ cta }: { cta?: React.ReactNode }) {
     <section className="ck" aria-labelledby="ck-title">
       <div className="shell">
         <h2 id="ck-title" className="ck-title">
-          What Spotter checks that you can&apos;t. <span>Before anyone pays, it opens the link, reads what the shop tells AI agents, and finds the real price.</span>
+          What Spotter checks that you can&apos;t. <span>It opens the link, reads what the shop tells AI agents, and finds the real price.</span>
         </h2>
 
         <div className="ck-panel ck-kernel">

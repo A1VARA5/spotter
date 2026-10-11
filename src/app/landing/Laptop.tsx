@@ -2,7 +2,7 @@
 // scaled with the lid, so it keeps real proportions. The screens reuse Spotter's real pieces and wording (copy.ts)
 // with made up names and sample numbers.
 import { BrandMark } from "@/ui/components";
-import { AGENT, RECEIPT, SHOP } from "./copy";
+import { AGENT, RECEIPT, SAMPLE_BOARD, SHOP, gbp } from "./copy";
 
 type Nav = "waiting" | "watchtower";
 
@@ -78,11 +78,12 @@ export function AgentScreen() {
   );
 }
 
-const MAX = 711.97;
+const S = SAMPLE_BOARD;
+const MAX = Math.max(S.paid, S.stopped);
 const BARS = [
-  { label: "Paid", value: 687.59 / MAX, tone: "go", note: "£687.59" },
-  { label: "Stopped", value: 1, tone: "stop", note: "£711.97" },
-  { label: "Denied", value: 220.99 / MAX, tone: "stop", note: "£220.99" },
+  { label: "Paid", value: S.paid / MAX, tone: "go", note: gbp(S.paid) },
+  { label: "Stopped", value: S.stopped / MAX, tone: "stop", note: gbp(S.stopped) },
+  { label: "Denied", value: S.denied / MAX, tone: "stop", note: gbp(S.denied) },
 ] as const;
 
 /** Scene 3: Watchtower. Sam asks about the month, the board answers, and the AI's receipt sits underneath. */
@@ -96,8 +97,8 @@ export function WatchtowerScreen() {
       <div className="lw-board">
         <div className="lw-tile lw-kept">
           <p className="lw-tile-label">Money kept, sample month</p>
-          <p className="lw-tile-big num">£932.96</p>
-          <p className="lw-tile-note">7 payments stopped or denied</p>
+          <p className="lw-tile-big num">{gbp(S.kept)}</p>
+          <p className="lw-tile-note">{S.keptCount} payments stopped or denied</p>
         </div>
         <div className="lw-tile lw-chart">
           <p className="lw-tile-label">Payments by outcome</p>

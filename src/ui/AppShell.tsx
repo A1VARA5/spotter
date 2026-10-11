@@ -11,9 +11,8 @@
 // Case files: from 1600 px the primary column grows to 1160 px so an open held card is wide enough for the case
 // file's own two column container query (.cf-body in src/ui/casefile.css), and the panel that opens from
 // Everything today is 1060 px wide for the same reason.
-import { Fragment } from "react";
 import Link from "next/link";
-import { Activity, Binoculars, FlaskConical, Inbox, Plus, UserRound } from "lucide-react";
+import { Activity, Binoculars, FlaskConical, Inbox, Plus, ShieldCheck, UserRound } from "lucide-react";
 import type { Db } from "@/db";
 import type { Household } from "@/core/households";
 import { listSpenders } from "@/core/households";
@@ -48,16 +47,21 @@ export async function AppShell({
     [household.id],
   );
   const waiting = Number(w?.n ?? 0);
+  // tab: false keeps an item out of the phone tab bar, which has room for five.
   const nav = [
-    { key: "waiting", href: "/dashboard", label: "Waiting for you", icon: Inbox, count: waiting },
-    { key: "watchtower", href: "/watchtower", label: "Watchtower", icon: Binoculars },
-    { key: "activity", href: "/ledger", label: "Activity", icon: Activity },
-    { key: "try", href: "/demo", label: "Try a payment", icon: FlaskConical },
-    { key: "account", href: "/account", label: "Account", icon: UserRound },
+    { key: "waiting", href: "/dashboard", label: "Waiting for you", icon: Inbox, count: waiting, tab: true },
+    { key: "watchtower", href: "/watchtower", label: "Watchtower", icon: Binoculars, tab: true },
+    { key: "checks", href: "/checks", label: "How it checked", icon: ShieldCheck, tab: false },
+    { key: "activity", href: "/ledger", label: "Activity", icon: Activity, tab: true },
+    { key: "try", href: "/demo", label: "Try a payment", icon: FlaskConical, tab: true },
+    { key: "account", href: "/account", label: "Account", icon: UserRound, tab: true },
   ] as const;
 
   return (
     <div className="app">
+      <a href="#main" className="skip-link">
+        Skip to main content
+      </a>
       <aside className="side" aria-label="Spotter">
         <Link href="/" className="side-brand" aria-label="Spotter home">
           <BrandMark />
@@ -69,18 +73,11 @@ export async function AppShell({
         </div>
         <nav className="side-nav" aria-label="Main">
           {nav.map((n) => (
-            <Fragment key={n.key}>
-              <Link href={n.href} className="side-link" aria-current={current === n.key ? "page" : undefined}>
-                <n.icon size={17} strokeWidth={1.8} aria-hidden="true" />
-                <span>{n.label}</span>
-                {"count" in n && n.count > 0 && <span className="side-count num">{n.count}</span>}
-              </Link>
-              {n.key === "watchtower" && (
-                <Link href="/checks" className="side-sublink" aria-current={current === "checks" ? "page" : undefined}>
-                  How Spotter checked it
-                </Link>
-              )}
-            </Fragment>
+            <Link key={n.key} href={n.href} className="side-link" aria-current={current === n.key ? "page" : undefined}>
+              <n.icon size={17} strokeWidth={1.8} aria-hidden="true" />
+              <span>{n.label}</span>
+              {"count" in n && n.count > 0 && <span className="side-count num">{n.count}</span>}
+            </Link>
           ))}
         </nav>
         <div className="side-people">
@@ -106,7 +103,7 @@ export async function AppShell({
           <SignOut demo={household.demo} className="side-signout" />
         </div>
       </aside>
-      <main className="app-main">
+      <main className="app-main" id="main" tabIndex={-1}>
         <div className="page-frame" data-layout={layout} data-rail={(layout === "rail" && rail != null) || undefined}>
           <div className="page-main">{children}</div>
           {layout === "rail" && rail != null && (
@@ -117,7 +114,7 @@ export async function AppShell({
         </div>
       </main>
       <nav className="tabbar" aria-label="Main">
-        {nav.map((n) => (
+        {nav.filter((n) => n.tab).map((n) => (
           <Link key={n.key} href={n.href} className="tab" aria-current={current === n.key ? "page" : undefined}>
             <n.icon size={20} strokeWidth={1.8} aria-hidden="true" />
             <span>{n.label.replace("Waiting for you", "Waiting").replace("Try a payment", "Try").replace("Watchtower", "Watch")}</span>

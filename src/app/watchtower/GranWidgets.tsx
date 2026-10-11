@@ -14,7 +14,7 @@ export type GranWaitingDef = NoMapping<"gran-waiting">;
 export type GranScamsDef = NoMapping<"gran-scams">;
 
 const MAX_TRICKS = 3;
-const FIELDS =["id", "when", "who", "payee", "amount", "outcome", "topSign", "sample"] as const;
+const FIELDS =["id", "when", "who", "payee", "amount", "outcome", "topSign", "sample", "wasItYou"] as const;
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const FALLBACK: GranLabels = { who: null, viewLabel: "Simple view", waitingTitle: "Waiting for your spotter", spotter: "your spotter" };
 
