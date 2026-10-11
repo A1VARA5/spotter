@@ -6,6 +6,7 @@ import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } fr
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
+import { Peek } from "./Peek";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
@@ -50,6 +51,7 @@ export function CaseFile({
   onSwap,
   busy,
   pageShot,
+  footer,
 }: {
   c: Case;
   currency: string;
@@ -59,6 +61,8 @@ export function CaseFile({
   busy?: boolean;
   /** A drawn stand in for the screenshot, for mock ups on the landing page. */
   pageShot?: React.ReactNode;
+  /** Shown last, inside the case file: the price watch line on the dashboard. */
+  footer?: React.ReactNode;
 }) {
   return (
     <section className="case" data-verdict={c.verdict} aria-label="What Spotter found">
@@ -119,6 +123,7 @@ export function CaseFile({
           </button>
         </div>
       )}
+      {footer}
     </section>
   );
 }
@@ -263,6 +268,13 @@ function OpenedPage({ page, paymentId, fallback }: { page: NonNullable<Case["pag
       </button>
     )
   );
+  // Watch the recording, or look at the page live on a computer in the cloud (only on a real payment's case file).
+  const actions = (watch || paymentId) && (
+    <div className="case-actions">
+      {watch}
+      {paymentId && <Peek paymentId={paymentId} host={host(page.finalUrl)} />}
+    </div>
+  );
   // Said plainly, so a check that didn't run never reads as "nothing hidden".
   const unchecked = !page.seen ? (
     <> Spotter couldn&apos;t compare what a person sees with what an agent reads on this page.</>
@@ -303,7 +315,7 @@ function OpenedPage({ page, paymentId, fallback }: { page: NonNullable<Case["pag
           </div>
         </div>
         <figcaption>
-          {where} {watch}
+          {where} {actions}
         </figcaption>
       </figure>
     );
@@ -314,7 +326,7 @@ function OpenedPage({ page, paymentId, fallback }: { page: NonNullable<Case["pag
       {view}
       <figcaption>
         {where}
-        {unchecked} {watch}
+        {unchecked} {actions}
       </figcaption>
     </figure>
   );

@@ -166,3 +166,20 @@ export function fairPrice(rows: PriceRow[], now: Date): FairPrice {
 
   return { checked: checked.length, overpaid, saved, headline, caught, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, MAX_ITEMS) };
 }
+
+export type WatchSummaryRow = { status: string; saving: number };
+
+/** The price watches widget's headline: what the drops come to against what was nearly paid, or what is being watched. */
+export function watchSummary(rows: WatchSummaryRow[]): { watching: number; dropped: number; saved: number; headline: string } {
+  const watching = rows.filter((r) => r.status === "Watching").length;
+  const drops = rows.filter((r) => r.status === "Dropped");
+  const saved = round(drops.reduce((t, r) => t + r.saving, 0));
+  const headline = saved > 0
+    ? `${poundsShort(saved)} less than nearly paid, from ${plural(drops.length, "price drop")}`
+    : watching
+      ? `Watching ${plural(watching, "price")}`
+      : rows.length
+        ? "No price drops this time"
+        : "No price watches yet";
+  return { watching, dropped: drops.length, saved, headline };
+}

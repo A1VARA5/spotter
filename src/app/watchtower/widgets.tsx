@@ -6,7 +6,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AgBaseRegistry, AgBaseWidgetDefinition, AgWidgetApi, AgWidgetDataFormat, AgWidgetField, AgWidgetFieldReference, AgWidgetParams } from "ag-studio";
 import type { CaseNote, WatchAlert } from "@/watchtower/data";
-import { countdown, fairPrice, pickCase, poundsShort, radarLines, shortId, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
+import type { GranLabels } from "@/watchtower/gran";
+import type { GranSafeDef, GranScamsDef, GranWaitingDef } from "./GranWidgets";
+import { countdown, fairPrice, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -17,6 +19,7 @@ export type ReplayDef = NoMapping<"replay">;
 export type ScamRadarDef = NoMapping<"scam-radar">;
 export type CaseFileDef = NoMapping<"case-file">;
 export type FairPriceDef = NoMapping<"fair-price">;
+export type PriceWatchesDef = NoMapping<"price-watches">;
 
 export interface SpotterRegistry extends AgBaseRegistry {
   widgets: readonly (
@@ -28,6 +31,10 @@ export interface SpotterRegistry extends AgBaseRegistry {
     | AgBaseWidgetDefinition<"scam-radar", ScamRadarDef>
     | AgBaseWidgetDefinition<"case-file", CaseFileDef>
     | AgBaseWidgetDefinition<"fair-price", FairPriceDef>
+    | AgBaseWidgetDefinition<"gran-safe", GranSafeDef>
+    | AgBaseWidgetDefinition<"gran-waiting", GranWaitingDef>
+    | AgBaseWidgetDefinition<"gran-scams", GranScamsDef>
+    | AgBaseWidgetDefinition<"price-watches", PriceWatchesDef>
   )[];
 }
 
@@ -44,7 +51,7 @@ export type WatchSnapshot = {
 };
 export type WatchStore = { get(): WatchSnapshot; subscribe(fn: () => void): () => void };
 /** Studio's `context` is read once, so it carries a store the page updates rather than the values. */
-export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void> };
+export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void>; gran?: GranLabels };
 
 /**
  * Widgets scroll inside their tile when the text is longer than the tile. A scrolling box has to be
@@ -282,6 +289,11 @@ type Row = Record<string, unknown>;
  * new params whenever a filter changes, so the params object itself is what triggers a fresh query.
  */
 export function usePaymentRows(params: AgWidgetParams<never>, ids: readonly string[], version: number): { rows: Row[] | null; failed: boolean } {
+  return useTableRows(params, "payments", ids, version);
+}
+
+/** The same for any of Watchtower's tables. */
+function useTableRows(params: AgWidgetParams<never>, table: string, ids: readonly string[], version: number): { rows: Row[] | null; failed: boolean } {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [failed, setFailed] = useState(false);
   const shown = useRef(false);
@@ -294,9 +306,9 @@ export function usePaymentRows(params: AgWidgetParams<never>, ids: readonly stri
       shown.current = true;
       widgetApi.setDisplayState("displayed");
     };
-    const fields = fieldsOf(widgetApi, "payments", key.split(","));
+    const fields = fieldsOf(widgetApi, table, key.split(","));
     if (!fields) {
-      console.error(`[watchtower] payments table is missing one of ${key}`);
+      console.error(`[watchtower] ${table} table is missing one of ${key}`);
       setFailed(true);
       show();
       return;
@@ -311,14 +323,14 @@ export function usePaymentRows(params: AgWidgetParams<never>, ids: readonly stri
       })
       .catch((e: unknown) => {
         if (!live) return;
-        console.error("[watchtower] couldn't read payments:", e);
+        console.error(`[watchtower] couldn't read ${table}:`, e);
         setFailed(true);
         show();
       });
     return () => {
       live = false;
     };
-  }, [params, key, version]);
+  }, [params, table, key, version]);
   return { rows, failed };
 }
 
@@ -612,6 +624,84 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
         ))}
       </ul>
       <p className="wt-fair-source">Real shop prices from Channel3, checked when each payment was made.</p>
+    </div>
+  );
+}
+
+// ---------- price watches ----------
+
+const WATCH_FIELDS = ["id", "who", "item", "status", "nearlyPaid", "target", "bestPrice", "shop", "saving", "example", "sample"] as const;
+
+/** Prices Spotter is watching after a payment was too dear, and the drops it found. It never buys; the spotter decides. */
+export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
+  const { version } = useWatch(p.context);
+  const { rows, failed } = useTableRows(p as never, "watches", WATCH_FIELDS, version);
+  const scroll = useScrollBox<HTMLDivElement>();
+  if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price watches. Reload the page.</p>;
+  if (!rows) return null;
+  const list = rows.map((r) => ({
+    id: asText(r.id),
+    who: asText(r.who),
+    item: asText(r.item),
+    status: asText(r.status),
+    nearlyPaid: asNum(r.nearlyPaid),
+    target: asNum(r.target),
+    bestPrice: asNumOrNull(r.bestPrice),
+    shop: asText(r.shop),
+    saving: asNum(r.saving),
+    tag: r.example === "Yes" ? "Example" : r.sample === "Yes" ? "Sample" : "",
+  }));
+  const s = watchSummary(list);
+  if (!list.length) {
+    return (
+      <div className="wt-fair wt-fair-empty">
+        <p className="wt-fair-label">Price watches</p>
+        <p className="wt-fair-headline">No price watches yet</p>
+        <p className="wt-fair-note">When a payment is too dear, Watch the price on it and Spotter tells you if a real shop sells it for less.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="wt-fair" role="region" aria-label="Price watches" {...scroll}>
+      <p className="wt-fair-label">Price watches</p>
+      <p className="wt-fair-headline">{s.headline}</p>
+      <ul className="wt-fair-list">
+        {list.map((w) => (
+          <li key={w.id} className="wt-fair-item">
+            <p className="wt-fair-what">
+              <span className="wt-fair-item-name">{w.item}</span>
+              <span className="wt-fair-verdict" data-verdict={w.status === "Dropped" ? "fair" : w.status === "Watching" ? "over" : undefined}>
+                {w.status === "Dropped" ? "Price dropped" : w.status}
+              </span>
+              {w.tag && <span className="wt-sample-tag">{w.tag}</span>}
+            </p>
+            <p className="wt-fair-note">
+              {w.status === "Dropped" && w.bestPrice !== null ? (
+                <>
+                  Now {poundsShort(w.bestPrice)} at <span className="wt-fair-payee">{w.shop}</span>
+                  {w.saving > 0 ? `, ${poundsShort(w.saving)} less than ${w.who} nearly paid.` : "."}
+                </>
+              ) : w.status !== "Watching" ? (
+                <>
+                  {w.who} nearly paid {poundsShort(w.nearlyPaid)}. {w.status === "Expired" ? "Watched for two weeks without a drop." : "No longer watched."}
+                </>
+              ) : (
+                <>
+                  {w.who} nearly paid {poundsShort(w.nearlyPaid)}. Spotter tells you at {poundsShort(w.target)} or less
+                  {w.bestPrice !== null && w.shop ? (
+                    <>
+                      ; best real price now {poundsShort(w.bestPrice)} at <span className="wt-fair-payee">{w.shop}</span>.
+                    </>
+                  ) : (
+                    "."
+                  )}
+                </>
+              )}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <p className="wt-fair-source">Real shop prices from Channel3. Spotter never buys when a price drops; you decide.</p>
     </div>
   );
 }

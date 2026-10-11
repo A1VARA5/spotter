@@ -142,6 +142,16 @@ describe("PayPal webhook events", () => {
     expectNoMoneyMoved();
   });
 
+  it("CAPTURE.DECLINED (the Orders v2 name) marks a capture as failed too", async () => {
+    const p = await held();
+    await setStatus(p.id, "capturing");
+    await handlePayPalEvent(deps, capture("PAYMENT.CAPTURE.DECLINED", "DECLINED"));
+    const after = (await getPayment(db, p.id))!;
+    expect(after.status).toBe("failed");
+    expect(after.error).toMatch(/PayPal denied/);
+    expectNoMoneyMoved();
+  });
+
   it("AUTHORIZATION.VOIDED settles a stuck deny and tells the spotter the money went back", async () => {
     const p = await held();
     await setStatus(p.id, "voiding");

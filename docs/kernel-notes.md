@@ -57,7 +57,51 @@ Websites can register tools for AI agents (WebMCP, a W3C community group draft).
 - The browser never gets KERNEL's link. It is sealed with AES-256-GCM (key from `SESSION_SECRET`, `src/core/seal.ts`) inside the case file, and `/api/payments/[id]/replay` opens it on the server for the signed in household that owns the payment, follows the redirect only to `*.amazonaws.com`, checks it is `video/mp4` under 20 MB, and relays it with range support and `cache-control: private`.
 - It expires sensibly: Spotter offers it for 23 hours (KERNEL keeps recordings 1 day on our plan) and answers 410 after that.
 - What is in the video: a fresh browser with no profile, cookies or family data, opening one page for a few seconds.
-- Live view isn't used: the browser is gone within seconds, so there is nothing live to watch.
+- Live view isn't used for the case visit: the browser is gone within seconds, so there is nothing live to watch. For looking live, see "Look at it safely" below (pictures relayed by our server, not KERNEL's live view link).
+
+## Look at it safely (peek, added 2026-10-11)
+
+The spotter can look at the page from a case file themselves, live, without opening it on their own phone or laptop. Code: `src/server/peek.ts`, routes under `/api/payments/[id]/peek` (POST start, `/frame`, `/scroll`, `/close`, DELETE), panel `src/ui/Peek.tsx`, table `peeks` (end of `src/db/schema.ts`), tests `src/server/peek.test.ts`.
+
+### Decision: relay pictures from our server, don't embed KERNEL's live view
+
+What the docs and two short live sessions (2026-10-11, each under 35 s, deleted in `finally`) showed about live view:
+
+- `browser_live_view_url` is `https://prod-iad-hypeman-<n>.kernel.sh:8443/browser/live/<12 character token>`. The host changes per session. Nothing but the token protects it: no API key, no cookie, no origin check. It is a bearer link.
+- Opening it answers `302` to `/browser/live?jwt=<signed token>` on the same host. The replay link's JWT (see above) carried KERNEL account ids, a private IP and a CDP port, so this one most likely does too. Either way it would sit in our page's DOM.
+- `readOnly=true` is only a query parameter. Whoever holds the link can drop it and get full control of the browser (mouse, keyboard, address bar). The docs describe no other read only switch, no expiry other than deleting the browser, and no way to revoke a link.
+- After `deleteByID` the link answers `404` within seconds, so its life is the browser's life.
+- Embedding needs `frame-src` and `connect-src` for `*.kernel.sh:8443` and `wss://`, plus `allow-scripts allow-same-origin` in the sandbox, and KERNEL's own messaging relies on `document.referrer` (a `no-referrer` policy breaks `KERNEL_SET_READ_ONLY`).
+
+So an embedded live view would hand the browser a link that anyone who sees it (an extension, a screen share, a copied devtools value) can use to watch and control a browser our account pays for, read only in name only. It would only last as long as the browser (90 s at most), so it isn't reusable "for long", but "read only by default" couldn't be enforced, and the page would carry KERNEL ids. We built the safer alternative instead:
+
+- **Server relayed pictures.** `client.browsers.computer.captureScreenshot(id)` returns a PNG of the browser's screen (about 350 ms, 50 to 65 KB at 1024x768 or 390x844 on example.com). The panel asks `/api/payments/[id]/peek/frame` for one about every 0.7 s after the last arrived. The server finds the household's open peek, opens the sealed session id, takes the picture, checks it really is a PNG under 3 MB, and answers `image/png`, `cache-control: no-store`, `nosniff`. Frames closer than 400 ms apart are refused (429).
+- **Read only, enforced by the server.** The only other action is `/scroll` with `up` or `down`, which calls `computer.scroll` with a fixed wheel step at the middle of the screen. No click, key, text, clipboard or navigation call exists anywhere in the code, so nobody can type into the page through Spotter, even on purpose. The panel still says "Don't type passwords or card details here", plainly, because the page might ask.
+- **Nothing from KERNEL reaches the browser.** No link, no session id. Start answers only `{ secondsLeft, view }`. The session id is sealed with AES-256-GCM (`src/core/seal.ts`, purpose `kernel-peek`) before it is stored and never logged. No KERNEL link is stored at all. Our page has no third party frame, so no CSP change was needed.
+- **The page shown is a picture**, so nothing the scam page runs (scripts, downloads, sound, popups) reaches the spotter's device. It runs on KERNEL's machine.
+
+What this costs compared to live view: about 1 to 1.5 frames a second instead of video, and scrolling by buttons instead of touch. For looking at a scam page that is enough.
+
+### Who, what and how often
+
+- Only the signed in household that owns the payment (`getPayment(db, id, householdId)`), like the replay. No PIN: looking is like reading the case file. Every other household gets 404 or 410, and a test checks KERNEL is never called for them.
+- Only the page already on that payment's case file (`case_file.page.url`), never a URL from the request. It goes through the case agent's guards again: it must be one of the links in the payment's own message (`extractUrls`, same as `open_link`), http or https only, and its host must not be localhost, `.local`, `.internal` or resolve to a private, loopback, carrier or link local address (`safeToFetch` from `links.ts`). The last one matters more here than for our own fetches: KERNEL's browser sits in KERNEL's network, and `169.254.169.254` is a cloud metadata address. Limit: KERNEL resolves the name again itself, so a rebinding DNS server could still answer differently; Spotter only shows what KERNEL's browser loads, as a picture.
+- A fresh headful browser each time: no profile, no cookies, `stealth: false`, `start_url` set to the page (no Playwright, nothing run in the page), viewport 390x844 on phones and 1024x768 otherwise (both on KERNEL's known good list).
+
+### Caps and deletion
+
+- One open peek per household (partial unique index `peeks_one_open_idx`, so two starts racing can't both win), 90 s each, 3 a day per household and 30 a day overall (constants in `PEEK`). The caps and the open slot are claimed in one SQL statement. Under heavy concurrency the overall cap can overshoot by a few, never the one open per household rule. Demo families are free to make, so the overall cap is the real wall.
+- The browser is deleted: when the spotter closes the panel (Close button, Escape, the `cancel` event), when the tab is hidden or closed (`navigator.sendBeacon` to `/peek/close`), when the card unmounts, when the countdown hits zero, on every server call after its time is up (`sweepPeeks` ends and deletes every expired peek, any household), when a start fails after the browser was created (in `finally`), and when a browser only arrives after starting timed out. Backstop: `timeout_seconds: 20`. A live session showed frame requests count as activity (a 10 s timeout browser stayed alive through 22 s of one a second screenshots), so the browser lives while the panel is watching and dies 20 s after it stops asking, even if every delete above failed.
+- A failed delete is logged and never blocks closing the peek. Logged errors have long id like strings blanked, because KERNEL's error text can echo a session id. Expired browsers are deleted in parallel. A start that died half way (no session after 30 s) is cleared by the sweep, so the family isn't stuck on "already looking". Starts that failed don't count towards the caps.
+- The SDK's own request limit (27 s) is longer than our wait (12 s), so a browser created late still comes back with its id and is deleted, kept alive past the response with `after()`.
+
+### Verified live (2026-10-11, local dev, demo family)
+
+The booby trapped shop scenario's case file showed "Look at it safely" next to "Watch Spotter open it". At 1440 px the panel showed the shop live (1024x768) with the address bar, the warning and a 90 s countdown; 27 frames all `200` in about 250 ms each, scroll down moved the page, focus started on Close and went back to the button after Escape, and nothing in the page's DOM or resources mentioned KERNEL. At 390 px (iframe) the browser opened at phone size. After Escape and after Close, KERNEL's browser list was empty. Screenshots in `../paypal-spotter-submission/review-shots/peek/`. Six KERNEL sessions in all (two probes, two case visits, two peeks), each under 35 s.
+
+### Cost per peek
+
+Headful is $0.0001333 a second (about $0.008 a minute). A full peek is 90 s, so about $0.012; at most about 110 s ($0.015) if every delete fails and the 20 s backstop ends it. The cap of 30 a day overall is at most about $0.45 a day. The screenshot and scroll calls aren't billed separately on the pricing page.
 
 ## Cost per case
 
