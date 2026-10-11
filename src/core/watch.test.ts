@@ -246,13 +246,21 @@ describe("failure paths", () => {
     expect((await listWatches(db, hh))[0]!.best).toBeNull();
   });
 
-  it("stops the Channel3 subscription again when saving the watch fails", async () => {
+  it("never starts a Channel3 subscription when saving the watch fails (the row is saved first)", async () => {
     const broken: WatchDeps = {
       ...deps,
       db: { query: async (sql: string, params?: unknown[]) => (/insert into price_watches/.test(sql) ? Promise.reject(new Error("db blip")) : db.query(sql, params)) } as Db,
     };
     await expect(startWatch(broken, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" })).rejects.toThrow("db blip");
-    expect(c3.stop).toHaveBeenCalledWith("X2abc");
+    expect(c3.start).not.toHaveBeenCalled();
+  });
+
+  it("removes the saved row when Channel3 won't track the product or can't be reached", async () => {
+    c3.start.mockResolvedValueOnce("not_found");
+    expect(await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" })).toMatchObject({ status: 404 });
+    c3.start.mockRejectedValueOnce(new Error("network"));
+    await expect(startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" })).rejects.toThrow("network");
+    expect(await db.query("select 1 from price_watches")).toHaveLength(0);
   });
 
   it("a webhook check that hits an outage doesn't count as checked, so the next delivery or the daily job tries again", async () => {

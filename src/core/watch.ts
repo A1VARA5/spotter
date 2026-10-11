@@ -35,7 +35,7 @@ export type WatchC3 = {
   history(productId: string): Promise<PriceHistory | null>;
   product(productId: string, currency: Currency): Promise<Product | null>;
 };
-export type WatchCaps = { perHousehold: number; active: number; perDay: number };
+export type WatchCaps = { perHousehold: number; active: number; perDay: number; perFamilyDay?: number };
 export type WatchDeps = { db: Db; c3: WatchC3; notify?: (w: WatchView & { householdId: string }) => Promise<void>; caps?: WatchCaps };
 
 export type WatchStatus = "watching" | "dropped" | "stopped" | "expired";
@@ -162,6 +162,17 @@ export function mergeHistory(prev: WatchHistory | null, fresh: PriceHistory | nu
     const status = fresh?.current?.currency === currency ? fresh.current.status : undefined;
     return { source: "channel3", points: theirs.slice(-HISTORY_POINTS).map((p) => ({ at: p.at, price: p.price })), ...(status ? { status } : {}) };
   }
+  // A short answer (one point, or none in this currency) doesn't throw away the line Channel3 gave before: the
+  // newest point is added to it instead.
+  if (prev?.source === "channel3") {
+    const latest = theirs.at(-1);
+    const add = latest ? { at: latest.at, price: latest.price } : check;
+    if (!add) return prev;
+    const kept = [...prev.points];
+    if (kept.at(-1)?.at.slice(0, 10) === add.at.slice(0, 10)) kept[kept.length - 1] = add;
+    else kept.push(add);
+    return { ...prev, points: kept.slice(-HISTORY_POINTS) };
+  }
   const points = prev?.source === "checks" ? [...prev.points] : [];
   if (check) {
     const day = check.at.slice(0, 10);
@@ -187,9 +198,12 @@ function capsOf(deps: WatchDeps): WatchCaps {
   );
 }
 
+// The overall per day cap counts watches that ran (not ones their family stopped), so one family starting and
+// stopping can't use up the day for everyone; the family's own per day cap ($5) counts every watch it started.
 const CAP_WHERE = `(select count(*) from price_watches where household_id = $1 and status = 'watching') < $2
   and (select count(*) from price_watches where status = 'watching' and not example) < $3
-  and (select count(*) from price_watches where created_at > now() - interval '1 day' and not example) < $4`;
+  and (select count(*) from price_watches where created_at > now() - interval '1 day' and status <> 'stopped' and not example) < $4
+  and (select count(*) from price_watches where household_id = $1 and created_at > now() - interval '1 day' and not example) < $5`;
 
 /** Ends Channel3's subscription for a product once no watch needs it. Leaves tracking on when Channel3 is down, for the daily job. */
 async function release(deps: WatchDeps, productId: string): Promise<void> {
@@ -214,15 +228,16 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
   if (!item) return { error: "Spotter needs the product's name to watch its price.", status: 400 };
   if (!Number.isInteger(input.nearly) || input.nearly <= 0) return { error: "Say what the price was, in pence or cents.", status: 400 };
   const caps = capsOf(deps);
-  const capArgs = [input.householdId, caps.perHousehold, caps.active, caps.perDay];
-
-  // Caps first, so a full family or a busy day never spends a Channel3 credit.
-  if (!(await db.query(`select 1 where ${CAP_WHERE}`, capArgs)).length) {
+  const capArgs = [input.householdId, caps.perHousehold, caps.active, caps.perDay, caps.perFamilyDay ?? envCap("PRICE_WATCHES_PER_FAMILY_PER_DAY", 10)];
+  const full = async (): Promise<WatchResult> => {
     const [mine] = await db.query<{ n: string }>("select count(*)::text as n from price_watches where household_id = $1 and status = 'watching'", [input.householdId]);
     return Number(mine?.n ?? 0) >= caps.perHousehold
       ? { error: `You're already watching ${caps.perHousehold} prices. Stop one to watch another.`, status: 429 }
       : { error: "Spotter is watching as many prices as it can today. Try again tomorrow.", status: 429 };
-  }
+  };
+
+  // Caps first, so a full family or a busy day never spends a Channel3 credit.
+  if (!(await db.query(`select 1 where ${CAP_WHERE}`, capArgs)).length) return full();
 
   // Each search is a Channel3 credit, spent before any watch row exists: cached, and capped per family and per day.
   const products = await familySearch(db, input.householdId, (q, c, l) => c3.search(q, c, l), item, input.currency, 8);
@@ -236,24 +251,16 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
 
   const best = cheapest(genuineOffers(product.offers, input.currency));
   const target = targetPrice(input.nearly, best?.price ?? null);
-  const started = await c3.start(product.id);
-  if (started === "not_found") return { error: "Channel3 can't track this product, so there's no price to watch.", status: 404 };
-  if (started !== "active") return { error: "Real shop prices are unavailable right now, so nothing is watched yet. Try again in a minute.", status: 502 };
-
-  let history: WatchHistory | null = null;
-  try {
-    history = mergeHistory(null, await c3.history(product.id), best ? { at: new Date().toISOString(), price: best.price } : null, input.currency);
-  } catch (e) {
-    console.error(`[spotter] price history for ${product.id} failed:`, e instanceof Error ? e.message : e);
-  }
 
   const id = `watch_${randomBytes(9).toString("hex")}`;
-  // Caps again in the insert itself: two requests racing can't both take the last slot. If saving fails, the
-  // subscription just started has no row for the daily job to find, so it is stopped here.
+  // The row is saved before Channel3's subscription starts, so release() for another family's watch on the same
+  // product sees it and leaves tracking on, and a request cut off after the start still leaves a row the daily job
+  // ends and stops. tracking = true means "may be tracked": stopping a product that isn't tracked is harmless.
+  // Caps again in the insert itself, so two requests racing can't both take the last slot.
   const rows = await db.query<{ id: string }>(
     `insert into price_watches (id, household_id, payment_id, spender_id, product_id, item, title, currency, nearly_paid, target,
-       best_price, best_shop, best_url, history, tracking, created_by, expires_at)
-     select $5, $1, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, $18, now() + make_interval(days => ${WATCH_DAYS})
+       best_price, best_shop, best_url, tracking, created_by, expires_at)
+     select $6, $1, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, $18, now() + make_interval(days => ${WATCH_DAYS})
      where ${CAP_WHERE}
      on conflict do nothing
      returning id`,
@@ -271,20 +278,45 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
       best?.price ?? null,
       best?.domain ?? null,
       best?.url ?? null,
-      history ? JSON.stringify(history) : null,
       input.createdBy,
     ],
-  ).catch(async (e: unknown) => {
-    // release keeps the subscription when another family's watch still needs it.
-    await release(deps, product.id).catch((err: unknown) =>
-      console.error(`[spotter] Channel3 tracking for ${product.id} may still be on: saving the watch failed and so did stopping it:`, err instanceof Error ? err.message : err),
-    );
-    throw e;
-  });
+  );
   if (!rows.length) {
-    await release(deps, product.id);
     const again = (await db.query<Row>(`${SELECT} where w.household_id = $1 and w.product_id = $2 and w.status = 'watching'`, [input.householdId, product.id]))[0];
-    return again ? { watch: toView(again) } : { error: "Spotter is watching as many prices as it can right now. Try again later.", status: 429 };
+    return again ? { watch: toView(again) } : full();
+  }
+
+  // If Channel3 won't track it, the row goes again. Nothing was started, so there is nothing to stop.
+  // A row that can't be removed is logged: it ends at expiry and the daily job's stop is harmless for it.
+  const forget = () =>
+    db
+      .query("delete from price_watches where id = $1", [id])
+      .catch((err: unknown) => console.error(`[spotter] price watch ${id} couldn't be removed after Channel3 didn't start tracking:`, err instanceof Error ? err.message : err));
+  let started: "active" | "not_found" | null;
+  try {
+    started = await c3.start(product.id);
+  } catch (e) {
+    await forget();
+    throw e;
+  }
+  if (started !== "active") {
+    await forget();
+    return started === "not_found"
+      ? { error: "Channel3 can't track this product, so there's no price to watch.", status: 404 }
+      : { error: "Real shop prices are unavailable right now, so nothing is watched yet. Try again in a minute.", status: 502 };
+  }
+
+  let history: WatchHistory | null = null;
+  try {
+    history = mergeHistory(null, await c3.history(product.id), best ? { at: new Date().toISOString(), price: best.price } : null, input.currency);
+  } catch (e) {
+    console.error(`[spotter] price history for ${product.id} failed:`, e instanceof Error ? e.message : e);
+  }
+  // The watch is saved and tracked by now, so a failed history write is logged, not reported as a failed watch.
+  if (history) {
+    await db
+      .query("update price_watches set history = $2 where id = $1", [id, JSON.stringify(history)])
+      .catch((e: unknown) => console.error(`[spotter] saving the price history for ${id} failed; the next check fills it in:`, e instanceof Error ? e.message : e));
   }
   return { watch: toView((await getRow(db, id))!) };
 }
@@ -320,11 +352,35 @@ export async function listWatches(db: Db, householdId: string, limit = 20): Prom
 
 // ---------- finding drops ----------
 
+/**
+ * Tells the spotter about a drop. notified_at is written only once a notice really went out, so a failed or cut off
+ * send is tried again by the daily job (runWatches). Never throws: a failure is logged and left for the retry.
+ */
+async function tellSpotter(deps: WatchDeps, watchId: string, householdId: string): Promise<boolean> {
+  if (!deps.notify) return false;
+  try {
+    const view = await getRow(deps.db, watchId);
+    if (!view) return false;
+    await deps.notify({ ...toView(view), householdId });
+  } catch (e) {
+    console.error(`[spotter] telling the spotter about price drop ${watchId} failed; the daily job tries again:`, e instanceof Error ? e.message : e);
+    return false;
+  }
+  try {
+    await deps.db.query("update price_watches set notified_at = now() where id = $1", [watchId]);
+    return true;
+  } catch (e) {
+    console.error(`[spotter] price drop ${watchId}: the notice went out but notified_at wasn't saved, so the daily job may send it again:`, e instanceof Error ? e.message : e);
+    return true;
+  }
+}
+
 /** Re-reads the product's real offers at Channel3 and records a drop at most once. Never uses a price from a webhook. */
 export async function checkWatch(deps: WatchDeps, watchId: string): Promise<"dropped" | "watching" | "unavailable" | "skipped"> {
   const { db, c3 } = deps;
   const w = await getRow(db, watchId);
-  if (!w || w.status !== "watching" || !w.household_id || w.example) return "skipped";
+  // Past its 14 days it is over, even before the daily job marks it expired.
+  if (!w || w.status !== "watching" || !w.household_id || w.example || new Date(w.expires_at).getTime() <= Date.now()) return "skipped";
   const product = await c3.product(w.product_id, w.currency);
   if (!product) return "unavailable";
   const best = cheapest(genuineOffers(product.offers, w.currency));
@@ -346,17 +402,10 @@ export async function checkWatch(deps: WatchDeps, watchId: string): Promise<"dro
   if (!best || best.price > Number(w.target)) return "watching";
 
   // One conditional update decides the drop, so a webhook and the daily job racing can't both tell the spotter.
-  const won = await db.query("update price_watches set status = 'dropped', notified_at = now() where id = $1 and status = 'watching' returning id", [w.id]);
+  const won = await db.query("update price_watches set status = 'dropped' where id = $1 and status = 'watching' and expires_at > now() returning id", [w.id]);
   if (!won.length) return "skipped";
   // The spotter is told first; stopping the subscription comes after and the daily job retries it if it fails.
-  const view = await getRow(db, w.id);
-  if (deps.notify && view) {
-    try {
-      await deps.notify({ ...toView(view), householdId: w.household_id });
-    } catch (e) {
-      console.error(`[spotter] telling the spotter about price drop ${w.id} failed:`, e instanceof Error ? e.message : e);
-    }
-  }
+  await tellSpotter(deps, w.id, w.household_id);
   try {
     await release(deps, w.product_id);
   } catch (e) {
@@ -371,8 +420,15 @@ export async function checkWatch(deps: WatchDeps, watchId: string): Promise<"dro
  * Returns how many were really checked; one that hit an outage isn't marked checked, so the daily job still polls it.
  */
 export async function hintFromWebhook(deps: WatchDeps, productId: string): Promise<number> {
+  // Watches on it that ran past their 14 days end now (not at the next daily run), and stop costing credits.
+  const ended = await deps.db.query("update price_watches set status = 'expired' where product_id = $1 and status = 'watching' and expires_at <= now() returning id", [productId]);
+  if (ended.length) {
+    await release(deps, productId).catch((e: unknown) =>
+      console.error(`[spotter] stopping tracking for expired watches on ${productId} failed; the daily job retries:`, e instanceof Error ? e.message : e),
+    );
+  }
   const rows = await deps.db.query<{ id: string }>(
-    `select id from price_watches where product_id = $1 and status = 'watching' and household_id is not null and not example
+    `select id from price_watches where product_id = $1 and status = 'watching' and household_id is not null and not example and expires_at > now()
        and (last_checked_at is null or last_checked_at < now() - make_interval(mins => ${HINT_QUIET_MINUTES}))
      order by created_at limit ${HINT_BATCH}`,
     [productId],
@@ -389,9 +445,15 @@ export async function hintFromWebhook(deps: WatchDeps, productId: string): Promi
   return checked;
 }
 
-export type WatchRun = { expired: number; stopped: number; checked: number; dropped: number; unavailable: number; failed: number };
+export type WatchRun = { expired: number; stopped: number; checked: number; dropped: number; unavailable: number; failed: number; retold: number };
 
-/** The daily job: end old watches, stop subscriptions nobody needs (retrying failures), and poll the rest within a time budget. */
+/** Time a single check (or a notice) may need: none is started with less than this left of the budget. */
+const CHECK_RESERVE_MS = 25_000;
+
+/**
+ * The daily job: end old watches, stop subscriptions nobody needs (retrying failures), tell the spotter about drops
+ * whose notice failed, and poll the rest within a time budget. The caller passes what's left of its own time.
+ */
 export async function runWatches(deps: WatchDeps, budgetMs = 40_000): Promise<WatchRun> {
   const { db } = deps;
   const until = Date.now() + budgetMs;
@@ -417,11 +479,24 @@ export async function runWatches(deps: WatchDeps, budgetMs = 40_000): Promise<Wa
        and (last_checked_at is null or last_checked_at < now() - make_interval(hours => ${POLL_HOURS}))
      order by last_checked_at nulls first limit ${POLL_BATCH}`,
   );
+  // Drops whose notice didn't go out (every channel failed, or the run was cut off) are told again, for 3 days.
+  const unsent = await db.query<{ id: string; household_id: string }>(
+    `select id, household_id from price_watches where status = 'dropped' and notified_at is null and household_id is not null and not example
+       and last_checked_at > now() - interval '3 days' order by last_checked_at limit ${POLL_BATCH}`,
+  );
+  let retold = 0;
+  for (const r of unsent) {
+    if (until - Date.now() < CHECK_RESERVE_MS) break;
+    if (await tellSpotter(deps, r.id, r.household_id)) retold++;
+  }
+
   let checked = 0;
   let dropped = 0;
   let unavailable = 0;
   for (const r of due) {
-    if (Date.now() > until) break; // the rest wait for tomorrow (oldest checked first)
+    // A check can take tens of seconds (several Channel3 calls, a notice, a stop), so one isn't started without
+    // that much time left: the route must not be killed half way through a drop. The rest wait (oldest first).
+    if (until - Date.now() < CHECK_RESERVE_MS) break;
     try {
       const got = await checkWatch(deps, r.id);
       if (got === "unavailable") unavailable++;
@@ -432,7 +507,7 @@ export async function runWatches(deps: WatchDeps, budgetMs = 40_000): Promise<Wa
       console.error(`[spotter] checking price watch ${r.id} failed:`, e instanceof Error ? e.message : e);
     }
   }
-  return { expired: expired.length, stopped: loose.length - Number(still?.n ?? 0), checked, dropped, unavailable, failed };
+  return { expired: expired.length, stopped: loose.length - Number(still?.n ?? 0), checked, dropped, unavailable, failed, retold };
 }
 
 // ---------- the demo family's example ----------
