@@ -63,7 +63,7 @@ describe("scenarios", () => {
   it("every demo scenario keeps its documented outcome whatever order a judge clicks them in", async () => {
     // What each card promises, with a quiet model (the real check can only make things stricter).
     const promised: Record<string, string> = {
-      "agent-gift": "allow", "agent-big": "ask", "agent-too-cheap": "ask", "agent-trap": "block",
+      "agent-gift": "allow", "agent-big": "ask", "agent-too-cheap": "ask", "agent-trap": "block", "agent-skillet": "ask",
       "gran-hi-mum": "ask", "gran-redelivery": "ask", "gran-seller": "protect", "gran-chemist": "allow", "leo-giftcard": "block",
       "biz-invoice": "protect", "biz-paper": "ask",
     };
@@ -99,7 +99,7 @@ describe("scenarios", () => {
   it("each expected line starts with the app's own word for that outcome", () => {
     const word: Record<string, string> = {
       "agent-gift": OUTCOME_WORDS.paid.long, "gran-chemist": OUTCOME_WORDS.paid.long,
-      "agent-big": OUTCOME_WORDS.held.long, "agent-too-cheap": OUTCOME_WORDS.held.long, "gran-hi-mum": OUTCOME_WORDS.held.long, "gran-redelivery": OUTCOME_WORDS.held.long,
+      "agent-big": OUTCOME_WORDS.held.long, "agent-too-cheap": OUTCOME_WORDS.held.long, "agent-skillet": OUTCOME_WORDS.held.long, "gran-hi-mum": OUTCOME_WORDS.held.long, "gran-redelivery": OUTCOME_WORDS.held.long,
       "agent-trap": OUTCOME_WORDS.blocked.long, "leo-giftcard": OUTCOME_WORDS.blocked.long,
       "gran-seller": OUTCOME_WORDS.protected.long, "biz-invoice": OUTCOME_WORDS.protected.long,
       "biz-paper": "Waiting for the owner",
