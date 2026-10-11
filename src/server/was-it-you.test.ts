@@ -49,7 +49,7 @@ describe("the side by side demo", () => {
     const j = await res.json();
     expect(j.payment.status).toBe("voided");
     expect(j.payment.was_it_you.state).toBe("not_me");
-    expect(voidAuth).toHaveBeenCalledWith("A9");
+    expect(voidAuth).toHaveBeenCalledWith("A9", expect.stringMatching(/^void-pay_.*-A9$/));
     expect((await answerRequest(deps, post({ token: r.token, answer: "not_me" }), demo)).status).toBe(409);
     expect(voidAuth).toHaveBeenCalledTimes(1);
   });
@@ -100,7 +100,7 @@ describe("answering on the dashboard", () => {
     const res = await answerOnDashboard(deps, demo, r.payment.id, "not_me");
     expect(res.status).toBe(200);
     expect((await res.json()).payment).toMatchObject({ status: "voided", was_it_you: { state: "not_me" } });
-    expect(voidAuth).toHaveBeenCalledWith("A9");
+    expect(voidAuth).toHaveBeenCalledWith("A9", expect.stringMatching(/^void-pay_.*-A9$/));
   });
 
   it("an example left behind on Try can still be answered from the dashboard, as Tom", async () => {

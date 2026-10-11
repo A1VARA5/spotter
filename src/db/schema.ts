@@ -255,6 +255,7 @@ alter table payments add column if not exists sleeps int not null default 0;
 alter table payments add column if not exists reauthorized_at timestamptz;
 alter table payments add column if not exists reauth_tried_at timestamptz;
 alter table payments add column if not exists reauth_note text;
+alter table payments add column if not exists paypal_custom_id text;
 create index if not exists payments_ask_again_idx on payments (ask_again_at) where ask_again_at is not null;
 -- Switched off block (src/core/switchedoff.ts): "someone switched Spotter off" warnings for the spotter, shown in the app
 -- as well as sent on their channels. key makes each one happen once (a PayPal event id, a pairing code, a chat update).
@@ -408,4 +409,32 @@ create table if not exists held_subscriptions (
   decided_at timestamptz
 );
 create index if not exists held_subscriptions_household_idx on held_subscriptions (household_id, created_at desc);
+
+-- Agent key lifecycle (src/core/agent-keys.ts). label is the key's last 4 characters, safe to show. canary marks the
+-- decoy planted next to each real key: any use of it means the agent leaked its secrets. expires_at is for short lived
+-- demo keys (the agent lab). agent_calls is every tool call per key: the daily rate limit and the key card's log.
+alter table agent_tokens add column if not exists label text;
+alter table agent_tokens add column if not exists canary boolean not null default false;
+alter table agent_tokens add column if not exists last_used_at timestamptz;
+alter table agent_tokens add column if not exists expires_at timestamptz;
+create table if not exists agent_calls (
+  id bigserial primary key,
+  token_hash text not null,
+  spender_id text not null references spenders(id) on delete cascade,
+  household_id text not null references households(id) on delete cascade,
+  tool text not null,
+  outcome text not null,
+  args text not null,
+  at timestamptz not null default now()
+);
+create index if not exists agent_calls_token_idx on agent_calls (token_hash, at desc);
+create index if not exists agent_calls_spender_idx on agent_calls (spender_id, at desc);
+create index if not exists agent_calls_at_idx on agent_calls (at);
+-- The agent lab (hijack console): each run, for the per family and global daily caps.
+create table if not exists lab_runs (
+  id bigserial primary key,
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists lab_runs_household_idx on lab_runs (household_id, at desc);
 `;

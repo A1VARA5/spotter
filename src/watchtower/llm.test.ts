@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "@/core/households";
-import { makeLlmTurn } from "./llm";
+import { WATCHTOWER_FAST_MODEL as FAST, WATCHTOWER_MODEL, WATCHTOWER_MODEL as OPUS, makeLlmTurn, modelFor } from "./llm";
 import type { ClaudeTurn } from "./claude";
 
 const reply = { id: "msg_1", model: "claude-opus-5-5", stop_reason: "end_turn", content: [{ type: "text", text: "Hi" }], usage: { input_tokens: 10, output_tokens: 2 } } as unknown as Anthropic.Message;
@@ -66,6 +66,22 @@ describe("watchtower llm turn", () => {
     const turn = makeLlmTurn({ db, callModel: async () => reply, perHousehold: 10, overall: 1 });
     expect((await turn(hh, body())).status).toBe(200);
     expect((await turn(other, body())).status).toBe(429);
+  });
+
+  it("answers the family's own agents (Spotter, the simple view) on the fast model and keeps Studio's builders on Opus", async () => {
+    const used: string[] = [];
+    const turn = makeLlmTurn({ db, callModel: async (_t, model) => (used.push(model), reply) });
+    for (const agent of ["spotter", "gran", "data", "page", "widget", "planning", "lead", "brief"]) await turn(hh, { ...body(), agent });
+    expect(used).toEqual([FAST, FAST, OPUS, OPUS, OPUS, OPUS, OPUS, OPUS]);
+  });
+
+  it("never lets the browser pick a model: an unknown, missing or odd agent name gets Opus", async () => {
+    const used: string[] = [];
+    const turn = makeLlmTurn({ db, callModel: async (_t, model) => (used.push(model), reply) });
+    for (const agent of [undefined, "claude-haiku-5-5", 7, { id: "spotter" }, "Spotter"]) await turn(hh, { ...body(), agent });
+    expect(used).toEqual([OPUS, OPUS, OPUS, OPUS, OPUS]);
+    expect(modelFor("spotter")).toBe("claude-sonnet-5-5");
+    expect(WATCHTOWER_MODEL).toBe("claude-opus-5-5");
   });
 
   it("reports a model failure as a JSON error instead of throwing", async () => {

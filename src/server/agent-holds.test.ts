@@ -71,10 +71,10 @@ describe("the spotter's agent holds", () => {
     expect((await (await h.GET(req(other))).json()).refunds).toHaveLength(0);
     const id = list.refunds[0].id;
     expect((await h.POST(req(hh, { kind: "refund", id, action: "approve" }))).status).toBe(400);
-    expect(run).not.toHaveBeenCalledWith("create_refund", expect.anything());
+    expect(run).not.toHaveBeenCalledWith("create_refund", expect.anything(), expect.anything());
     const ok = await h.POST(req(hh, { kind: "refund", id, action: "approve", pin: "2468" }));
     expect(ok.status).toBe(200);
-    expect(run).toHaveBeenCalledWith("create_refund", expect.objectContaining({ capture_id: "2GG279541U471931P" }));
+    expect(run).toHaveBeenCalledWith("create_refund", expect.objectContaining({ capture_id: "2GG279541U471931P" }), { requestId: expect.stringMatching(/^refund-/) });
   });
 
   it("sets an agent's job, only for agents in this family", async () => {

@@ -77,6 +77,47 @@ const expectNoMoneyMoved = () => {
   expect(paypal.create).not.toHaveBeenCalled();
 };
 
+describe("stale events for another authorisation or capture on the same order", () => {
+  it("a late VOIDED for an old authorisation (A0, before a reauthorization) never voids the live hold A1", async () => {
+    const p = await held();
+    // Arrives out of order: PayPal voided the spare A0 earlier; the payment now holds A1 on the same order O1.
+    const r = await handlePayPalEvent(deps, evt("PAYMENT.AUTHORIZATION.VOIDED", { id: "A0", status: "VOIDED", supplementary_data: { related_ids: { order_id: "O1" } } }));
+    expect(r.outcome).toBe("mismatch");
+    expect((await getPayment(db, p.id))?.status).toBe("needs_approval");
+    const events = await db.query<{ type: string }>("select type from events where payment_id = $1", [p.id]);
+    expect(events.map((e) => e.type)).toContain("paypal_mismatch");
+    expectNoMoneyMoved();
+  });
+
+  it("a capture event for another authorisation on the same order doesn't mark this payment paid", async () => {
+    const p = await held();
+    const r = await handlePayPalEvent(deps, evt("PAYMENT.CAPTURE.COMPLETED", { id: "C7", status: "COMPLETED", supplementary_data: { related_ids: { order_id: "O1", authorization_id: "A0" } } }));
+    expect(r.outcome).toBe("mismatch");
+    expect((await getPayment(db, p.id))?.status).toBe("needs_approval");
+  });
+
+  it("a capture event for a different capture id than the one Spotter recorded is a mismatch", async () => {
+    const p = await held();
+    await db.query("update payments set status = 'captured', paypal_capture_id = 'C1' where id = $1", [p.id]);
+    const r = await handlePayPalEvent(deps, evt("PAYMENT.CAPTURE.PENDING", { id: "C8", status: "PENDING", supplementary_data: { related_ids: { order_id: "O1", authorization_id: "A1" } } }));
+    expect(r.outcome).toBe("mismatch");
+    expect((await getPayment(db, p.id))?.paypal_capture_id).toBe("C1");
+  });
+
+  it("a late AUTHORIZATION.CREATED for an old authorisation doesn't overwrite the live hold's expiry", async () => {
+    const p = await held();
+    await handlePayPalEvent(deps, evt("PAYMENT.AUTHORIZATION.CREATED", { id: "A0", status: "CREATED", expiration_time: "2026-10-01T00:00:00Z", supplementary_data: { related_ids: { order_id: "O1" } } }));
+    const [row] = await db.query<{ paypal_auth_expires_at: Date }>("select paypal_auth_expires_at from payments where id = $1", [p.id]);
+    expect(new Date(row!.paypal_auth_expires_at).toISOString()).toBe("2026-11-08T10:00:00.000Z");
+  });
+
+  it("the matching VOIDED still settles", async () => {
+    const p = await held();
+    await handlePayPalEvent(deps, authVoided());
+    expect((await getPayment(db, p.id))?.status).toBe("voided");
+  });
+});
+
 describe("PayPal webhook events", () => {
   it("stores the authorisation expiry from the hold itself", async () => {
     const p = await held();

@@ -229,7 +229,7 @@ describe("keeping a sleeping hold alive (reauthorize)", () => {
   it("reauthorizes once after day 3, with an idempotency key, and switches to the new authorisation", async () => {
     const p = await sleeping(4);
     expect(await keepHoldsAlive(deps)).toBe(1);
-    expect(reauth).toHaveBeenCalledWith("A1", `reauth-${p.id}`);
+    expect(reauth).toHaveBeenCalledWith("A1", `reauth-${p.id}-A1`);
     const after = (await getPayment(db, p.id))!;
     expect(after.paypal_authorization_id).toBe("A2");
     expect(after.reauthorized_at).not.toBeNull();
@@ -304,7 +304,7 @@ describe("keeping a sleeping hold alive (reauthorize)", () => {
       }) as Db["query"],
     };
     expect(await keepHoldsAlive({ ...deps, db: flaky })).toBe(1);
-    expect(voidAuth).toHaveBeenCalledWith("A2");
+    expect(voidAuth).toHaveBeenCalledWith("A2", expect.stringMatching(/^void-pay_.*-A2$/));
     const events = [...(await listEvents(db, a.id)), ...(await listEvents(db, b.id))].map((e) => e.type);
     expect(events).toContain("reauth_released");
     expect(events).toContain("reauthorized");
@@ -317,7 +317,7 @@ describe("keeping a sleeping hold alive (reauthorize)", () => {
       return { authorizationId: "A2" };
     });
     expect(await keepHoldsAlive(deps)).toBe(0);
-    expect(voidAuth).toHaveBeenCalledWith("A2");
+    expect(voidAuth).toHaveBeenCalledWith("A2", expect.stringMatching(/^void-pay_.*-A2$/));
     expect((await getPayment(db, p.id))!.paypal_authorization_id).toBe("A1");
   });
 });

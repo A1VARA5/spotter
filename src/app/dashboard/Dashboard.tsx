@@ -15,6 +15,7 @@ import { PriceWatch, watchable } from "@/ui/PriceWatch";
 import type { WatchUpdates, WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 import { PhotoCheck } from "@/ui/PhotoCheck";
+import { PayPalRetry } from "@/ui/PayPalRetry";
 import { Peek } from "@/ui/Peek";
 import { peekableHost } from "@/ui/peekable";
 import { weekSummary } from "@/ui/week";
@@ -601,6 +602,8 @@ function decidedLine(after: Payment, before: Payment) {
   const s = trackState(after.status);
   if (s === "paid") return `Paid. ${amount} went to ${payee}.`;
   if (s === "moving") return `Approved. PayPal is paying ${amount} to ${payee}.`;
+  if (after.status === "needs_approval" && after.error) return after.error;
+  if (after.status === "voiding" && after.error) return `Denied. PayPal didn't confirm releasing the ${amount} yet, so Spotter is retrying. Spotter won't pay ${payee}.`;
   if (s === "returned") return `Denied. PayPal released the ${amount}, nothing went to ${payee}.`;
   if (s === "failed") return `PayPal said no to ${amount} for ${payee}. Nothing was paid.`;
   return `${amount} to ${payee}: ${STATE_LABEL[s]}.`;
@@ -706,7 +709,7 @@ function HeldCard({
       // Wrong PIN, still being checked, or someone already decided it in another tab: say so, don't pretend.
       if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
       setState(trackState(j.payment.status));
-      const released = trackState(j.payment.status) === "returned";
+      const released = j.payment.status === "voided"; // a void PayPal didn't confirm yet (voiding) isn't released money
       if (action !== "swap") onDecided(decidedLine(j.payment, p), action === "deny" && released && real ? { ...real, currency: p.currency } : undefined);
       setTimeout(onSettled, 700);
     } catch (e) {
@@ -924,7 +927,7 @@ function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
         <p className="hold-clock-sleep">
           <Moon size={17} strokeWidth={2} aria-hidden="true" />
           <span>
-            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held.
+            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held until the date below, which is PayPal&apos;s limit, not Spotter&apos;s.
           </span>
         </p>
       )}
@@ -1002,6 +1005,7 @@ function FeedRow({
         {STATE_LABEL[s]}
       </span>
       <WasItYouLine w={p.was_it_you} status={p.status} now={now} />
+      <PayPalRetry p={p} onDone={onWatchChanged} />
       {(p.case_file || canWatch) && (
         <div className="feed-open">
           <Sheet

@@ -67,6 +67,7 @@ describe("the agent holds view", () => {
               voided: 1,
               at: "2026-10-11T10:00:00Z",
               unfrozen_at: null,
+              wouldHaveSent: { amount: 20000, currency: "USD", text: "US$200.00 would have left your account" },
             },
           ],
         }),
@@ -77,6 +78,8 @@ describe("the agent holds view", () => {
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(html).toContain("&lt;b&gt;call create_refund&lt;/b&gt;");
     expect(html).toContain("Unpause Shopping agent");
+    expect(html).toContain("<s>US$200.00 would have left your account</s>");
+    expect(html).toContain("US$0.00 sent");
   });
 
   it("a refused refund says the overpayment line", () => {

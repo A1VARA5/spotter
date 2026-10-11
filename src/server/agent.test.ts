@@ -44,6 +44,11 @@ const ask = (over: Partial<Parameters<typeof agentRequestPayment>[2]> = {}) =>
   });
 
 describe("agent tools", () => {
+  it("sends PayPal the key's label as custom_id on the order", async () => {
+    const r = await agentRequestPayment(deps, "agent", { amount_pence: 2499, currency: "GBP", payee: "Clay & Kiln", category: "gifts", what_for: "Mug", page_text: "Mug" }, { agentKey: "spt-WXYZ" });
+    expect(vi.mocked(deps.paypal.createAuthorizeOrder).mock.calls[0]![1]).toEqual({ source: "card", customId: `spt-WXYZ:${r.payment_id}` });
+  });
+
   it("pays a normal purchase and says so plainly", async () => {
     const r = await ask();
     expect(r.status).toBe("paid");

@@ -31,6 +31,17 @@ export function trackState(status: PaymentStatus): TrackState {
   }
 }
 
+/**
+ * A capture or void PayPal didn't confirm (core/lifecycle.ts leaves it capturing or voiding with the reason, and the
+ * reconcile job finishes it). Not a dead end: the line says Spotter is retrying. Null for everything else.
+ */
+export function paypalPending(p: { status: string; error: string | null }): { kind: "void" | "capture"; text: string } | null {
+  if (!p.error) return null;
+  if (p.status === "voiding") return { kind: "void", text: "PayPal didn't confirm yet, retrying. Spotter won't pay it, and asks PayPal again to let the hold go within a day. Try PayPal again does it now." };
+  if (p.status === "capturing") return { kind: "capture", text: "PayPal didn't confirm yet, retrying. Spotter asks PayPal again within a day with the same request, so it can't be paid twice. Try PayPal again does it now." };
+  return null;
+}
+
 /** The status pill words, from the one vocabulary in labels.ts. */
 export const STATE_LABEL = Object.fromEntries(Object.entries(OUTCOME_WORDS).map(([k, v]) => [k, v.long])) as Record<TrackState, string>;
 

@@ -254,7 +254,7 @@ describe("payment lifecycle", () => {
     expect(n).toBe(3);
     expect((await getPayment(db, "pay_cap"))?.status).toBe("captured");
     expect((await getPayment(db, "pay_void"))?.status).toBe("voided");
-    expect((await getPayment(db, "pay_live"))?.status).toBe("needs_approval");
+    expect((await getPayment(db, "pay_live"))?.status).toBe("captured"); // CREATED: the capture is finished with the same key
     expect((await getPayment(db, "pay_err"))?.status).toBe("capturing");
   });
 });
@@ -367,7 +367,7 @@ describe("safe swap", () => {
     const p = await held(withSwap);
     paypal.void.mockRejectedValueOnce(new PayPalError("nope", 500, "INTERNAL"));
     const { from, to } = await swap(deps, p.id, "Aivaras");
-    expect(from.status).toBe("failed");
+    expect(from.status).toBe("voiding");
     expect(to).toBeNull();
     expect(paypal.capture).not.toHaveBeenCalled();
   });

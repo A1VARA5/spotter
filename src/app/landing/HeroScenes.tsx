@@ -1,5 +1,5 @@
 "use client";
-// The hero: three short scenes, Gran first. "Was it you?" (Gran's phone and Tom's), then an AI agent steered by a
+// The hero: three short scenes, Gran first, and under them the channels each one works in. "Was it you?" (Gran's phone and Tom's), then an AI agent steered by a
 // shop's tool, then Watchtower with the AI's receipt. The people, shops and numbers are examples; the wording on the
 // screens is the product's own (copy.ts).
 // The active tab's progress bar is the clock: when its CSS animation ends, the next scene starts. Pausing (hover,
@@ -215,6 +215,11 @@ export function HeroScenes() {
       <p className="hs-caption" aria-hidden="true">
         {s.caption}
         <span className="hs-who">Example: {s.who}. Spotter&apos;s real screens, made up people.</span>
+      </p>
+      {/* Was "Nobody installs anything new", a section of its own with a tab per channel (folded in 2026-10-11). */}
+      <p className="hs-chan">
+        <b>Nobody installs anything new.</b> Gran forwards from her email or Telegram, Leo right clicks a message in Discord, and your AI agent
+        calls Spotter&apos;s tool. <a href="/how#channels">How each person connects</a>
       </p>
     </div>
   );

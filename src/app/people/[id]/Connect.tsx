@@ -8,6 +8,7 @@ import { Confirm } from "@/ui/Confirm";
 import { money } from "@/ui/format";
 import { ToolkitCoverage } from "@/ui/ToolkitCoverage";
 import { AgentJob } from "@/ui/AgentHolds";
+import { AgentKeyCard } from "@/ui/AgentKeyCard";
 
 type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string; hasKey?: boolean; job?: "shopping" | "selling" };
 
@@ -87,7 +88,7 @@ const TOOLSETS = {
 } as const;
 
 function AgentCard({ spender }: { spender: SpenderView }) {
-  const t = useCall<{ token: string }>();
+  const t = useCall<{ token: string; decoy?: string }>();
   const cur = useCall<{ currency: string; spentOtherCurrency?: { amount: number; currency: string } }>();
   const router = useRouter();
   // Refresh the server rendered "Spent this week" so it shows the new currency's tally straight away.
@@ -108,7 +109,8 @@ function AgentCard({ spender }: { spender: SpenderView }) {
             [set.server]: {
               command: "npx",
               args: ["mcp-remote", `${origin}${set.path}`, "--header", "Authorization:${AUTH_HEADER}"],
-              env: { AUTH_HEADER: `Bearer ${t.data.token}` },
+              // The second value is the decoy (a canary): nothing legitimate ever sends it, so its use means the config leaked.
+              env: { AUTH_HEADER: `Bearer ${t.data.token}`, ...(t.data.decoy ? { SPOTTER_KEY_BACKUP: t.data.decoy } : {}) },
             },
           },
         },
@@ -127,6 +129,8 @@ function AgentCard({ spender }: { spender: SpenderView }) {
           <p className="connect-sub">Works with Claude, Claude Code and any agent that speaks MCP. One key works for both sets of tools.</p>
         </div>
       </header>
+      {/* Hides itself until the agent has had a key. */}
+      <AgentKeyCard agentId={spender.id} name={spender.name} refreshKey={t.data ? 1 : 0} />
       <div className="toolset" role="group" aria-label="Which tools the agent gets">
         {(Object.keys(TOOLSETS) as Array<keyof typeof TOOLSETS>).map((k) => (
           <button key={k} type="button" className="toolset-btn" aria-pressed={tools === k} onClick={() => setTools(k)}>
@@ -204,6 +208,16 @@ function AgentCard({ spender }: { spender: SpenderView }) {
                 mcp-remote connects the desktop app to Spotter.
               </p>
               <CopyBlock label="MCP config" value={config} />
+              {t.data.decoy && (
+                <>
+                  <p>
+                    <strong>The decoy key:</strong> the config above also carries SPOTTER_KEY_BACKUP. It looks like a spare key, but it is a trap: your agent never
+                    needs it, and if anyone ever sends it to Spotter, the config leaked. Spotter then switches off both keys, pauses {spender.name} and tells you.
+                    For other agents, put it in their environment under that name too.
+                  </p>
+                  <CopyBlock label="Decoy key" value={`SPOTTER_KEY_BACKUP=${t.data.decoy}`} />
+                </>
+              )}
             </>
           ) : (
             <p className="connect-sub">The command and config to paste appear here once the key is made.</p>

@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Hand, MessageSquareQuote, RotateCcw } from "lucide-react";
 import { Iphone } from "./Devices";
+import { CheckViews } from "./Checks";
 import { BrandMark, Evidence } from "@/ui/components";
 import { CaseFile } from "@/ui/CaseFile";
 import type { Case } from "@/agents/case";
@@ -117,6 +118,14 @@ const CHECK_CASE: Case = {
 function ShopShot() {
   return (
     <div className="kshot" role="img" aria-label="What the link showed: a checkout page asking for card details">
+      <p className="kshot-url">
+        <span className="kshot-dots" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span>pay-secure-checkout.example/card</span>
+      </p>
       <p className="kshot-bar">
         <span className="kshot-logo" aria-hidden="true" />
         Secure checkout
@@ -433,6 +442,12 @@ export function Walkthrough({ cta }: { cta: React.ReactNode }) {
                 <div className="wk-inline" aria-hidden="true" inert>
                   <Art k={s.key} live={false} />
                 </div>
+                {/* Phones: after Gran's own case file. Desktop: under the stop's words, beside the pinned case file. */}
+                {s.key === "checked" && (
+                  <div className="wk-more">
+                    <CheckViews />
+                  </div>
+                )}
               </li>
             ))}
           </ol>

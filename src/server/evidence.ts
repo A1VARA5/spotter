@@ -260,6 +260,8 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
       ["PayPal order id", ID.test(p.paypal_order_id ?? "") ? p.paypal_order_id! : "None (nothing was sent to PayPal)"],
       ["PayPal authorisation id", auths.length ? auths.join(", then ") : "None"],
       ...(ID.test(p.paypal_capture_id ?? "") ? ([["PayPal capture id", p.paypal_capture_id!]] as Array<[string, string]>) : []),
+      // PayPal's own record of which agent key asked for the order (set by Spotter on agent orders, kept by PayPal).
+      ...(p.paypal_custom_id ? ([["PayPal custom_id (which agent key asked)", str(p.paypal_custom_id, 127)]] as Array<[string, string]>) : []),
       ["Spotter reference", p.id],
     ],
     timeline: events.map((e) => ({ at: fmt(e.at), what: eventWords(e.type, (e.data ?? {}) as Record<string, unknown>, tz) })),

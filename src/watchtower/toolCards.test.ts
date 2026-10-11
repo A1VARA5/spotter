@@ -26,6 +26,20 @@ describe("tool cards never show untrusted text", () => {
     ["scam_radar", { payees: [{ payee: EVIL, families: 3, sample: false, text: EVIL }, { payee: EVIL, families: 0, sample: true, text: EVIL }] }],
     ["paypal_status", { found: true, who: EVIL, payee: EVIL, amount: 250, outcome: "Waiting", heldAtPayPal: 250, holdExpires: "2026-11-08T00:00:00.000Z", events: [{ when: EVIL, said: EVIL }], note: EVIL }],
     ["real_price", { item: EVIL, currency: "GBP", offers: 12, cheapest: { shop: EVIL, price: 8.5 }, median: 11, shops: [{ shop: EVIL, price: 8.5 }] }],
+    [
+      "fair_prices",
+      {
+        headline: EVIL,
+        checked: 3,
+        paidChecked: 2,
+        overpaid: 8.5,
+        saved: 0,
+        allSample: true,
+        items: [{ item: EVIL, payee: EVIL, who: EVIL, paid: 29.99, outcome: "Paid", cheapestThen: 24.99, shopThen: EVIL, overBy: 5, sample: true }],
+        liveItems: [EVIL],
+        today: [{ item: EVIL, cheapestToday: { shop: EVIL, price: 11.99 }, listings: 9, shops: [{ shop: EVIL, price: 11.99 }], note: EVIL }, { item: EVIL, error: EVIL }],
+      },
+    ],
     ["add_page", { pageId: EVIL }],
     ["my_month", { keptThisMonth: EVIL, stopped: [{ payee: EVIL, why: EVIL }], waiting: [{ payee: EVIL }], tricks: [{ trick: EVIL, times: 2 }], advice: EVIL }],
   ];
@@ -81,6 +95,21 @@ describe("what a card says", () => {
     const c = describeCall("real_price", {}, done({ item: "kettle", currency: "GBP", offers: 12, cheapest: { shop: "a.example", price: 8.5 }, median: 11, shops: [{ shop: "a", price: 8.5 }, { shop: "b", price: 9 }] }));
     expect(c.lines[0]).toBe("A live search of real shops: 12 listings from 2 shops. Cheapest £8.50, typical £11.00.");
     expect(c.pill).toBe("12 listings");
+  });
+  it("fair prices: counts and pounds from the stored checks and today's search, no names", () => {
+    const c = describeCall(
+      "fair_prices",
+      {},
+      done({ checked: 3, paidChecked: 2, overpaid: 8.5, saved: 0, allSample: true, items: [], liveItems: ["a", "b"], today: [{ item: "a", cheapestToday: { shop: "x", price: 11.99 }, listings: 9 }, { item: "b", cheapestToday: null, listings: 0 }] }),
+    );
+    expect(c.text).toBe("Checked this month's prices");
+    expect(c.access).toBe("read");
+    expect(c.pill).toBe("2 paid, checked");
+    expect(c.lines).toEqual([
+      "3 price checks this month, 2 on paid payments: £8.50 over the cheapest real shop at the time. All sample month.",
+      "Today's live search: 2 items, 1 matched a real shop.",
+      "Item and shop names are left out here.",
+    ]);
   });
   it("add page: marks a board change", () => {
     const c = describeCall("add_page", {}, done({ pageId: "p1" }));

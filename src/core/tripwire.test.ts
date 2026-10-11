@@ -40,7 +40,7 @@ describe("springing a tripwire", () => {
     const r = await springTripwire(deps, "agent", "create_refund", { capture_id: "2GG279541U471931P", amount: { currency_code: "USD", value: "200.00" } });
     expect(r.reply).toBe(TRIPWIRE_REPLY);
     expect(r.voided).toBe(1);
-    expect(deps.paypal.voidAuthorization).toHaveBeenCalledWith("A1");
+    expect(deps.paypal.voidAuthorization).toHaveBeenCalledWith("A1", `void-${held.id}-A1`);
     expect((await getPayment(deps.db, held.id))?.status).toBe("voided");
     const [spender] = await deps.db.query<{ frozen_at: string | null }>("select frozen_at from spenders where id = 'agent'");
     expect(spender!.frozen_at).not.toBeNull();
@@ -77,6 +77,29 @@ describe("springing a tripwire", () => {
     expect(t!.args.text.length).toBeLessThanOrEqual(2000);
     expect(t!.args.cut).toBe(true);
     expect(t!.agent).toBe("Shopping agent");
+  });
+});
+
+describe("without Spotter: what the bait call would have sent", () => {
+  it("works out the money from the bait call's own arguments, calculated only", async () => {
+    await springTripwire(deps, "agent", "create_refund", { capture_id: "2GG279541U471931P", amount: { currency_code: "USD", value: "200.00" } });
+    const [t] = await listTripwires(deps.db, hh);
+    expect(t!.wouldHaveSent).toEqual({ amount: 20000, currency: "USD", text: "US$200.00 would have left your account" });
+    expect(deps.paypal.createAuthorizeOrder).not.toHaveBeenCalled();
+  });
+
+  it("a refund with no amount would have refunded the whole payment; a read tool would have sent nothing", async () => {
+    await springTripwire(deps, "agent", "create_refund", { capture_id: "2GG279541U471931P" });
+    await springTripwire(deps, "agent", "list_transactions", {});
+    const [read, refund] = await listTripwires(deps.db, hh);
+    expect(refund!.wouldHaveSent).toEqual({ amount: null, currency: null, text: "The whole payment would have been refunded from your account" });
+    expect(read!.wouldHaveSent).toBeNull();
+  });
+
+  it("junk amounts are ignored, never shown as money", async () => {
+    await springTripwire(deps, "agent", "create_refund", { amount: { currency_code: "USD", value: "lots<script>" } });
+    const [t] = await listTripwires(deps.db, hh);
+    expect(t!.wouldHaveSent?.amount ?? null).toBeNull();
   });
 });
 

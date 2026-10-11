@@ -11,6 +11,7 @@ import { randomBytes } from "node:crypto";
 import type { Db } from "@/db";
 import { deny, getSpender, type Deps, type Payment } from "./lifecycle";
 import { sendWarning } from "./switchedoff";
+import { formatMoney, type Currency } from "./types";
 
 export const TRIPWIRE_REPLY = JSON.stringify({
   error: {
@@ -44,7 +45,37 @@ export type Tripwire = {
   voided: number;
   at: string;
   unfrozen_at: string | null;
+  /** Without Spotter: what the bait call would have sent, worked out from its own arguments. Calculated only. */
+  wouldHaveSent: WouldHaveSent | null;
 };
+
+export type WouldHaveSent = { amount: number | null; currency: string | null; text: string };
+
+const MONEY = /^\d{1,9}(\.\d{1,2})?$/;
+const CURRENCIES = new Set(["USD", "GBP", "EUR", "CAD", "AUD"]);
+
+/**
+ * "Without Spotter": the money PayPal's unguarded toolkit would have tried to move for this bait call, from the call's
+ * own arguments. Never calls anything. Junk amounts are ignored. A refund with no amount refunds the whole payment.
+ */
+export function wouldHaveSent(tool: string, argsJson: string): WouldHaveSent | null {
+  let args: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(argsJson);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) args = parsed as Record<string, unknown>;
+  } catch {
+    // capped or unreadable arguments: no amount to work out
+  }
+  const amount = args.amount as { currency_code?: unknown; value?: unknown } | undefined;
+  const value = typeof amount?.value === "string" ? amount.value : typeof amount?.value === "number" ? String(amount.value) : "";
+  const currency = typeof amount?.currency_code === "string" ? amount.currency_code.toUpperCase() : "";
+  if (MONEY.test(value) && CURRENCIES.has(currency)) {
+    const minor = Math.round(Number(value) * 100);
+    return { amount: minor, currency, text: `${formatMoney({ amount: minor, currency: currency as Currency })} would have left your account` };
+  }
+  if (tool === "create_refund") return { amount: null, currency: null, text: "The whole payment would have been refunded from your account" };
+  return null;
+}
 
 const cap = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
@@ -140,10 +171,15 @@ export async function unfreeze(db: Db, householdId: string, agentId: string): Pr
 }
 
 export async function listTripwires(db: Db, householdId: string, limit = 20): Promise<Tripwire[]> {
-  const rows = await db.query<Omit<Tripwire, "at" | "unfrozen_at"> & { at: string | Date; unfrozen_at: string | Date | null }>(
+  const rows = await db.query<Omit<Tripwire, "at" | "unfrozen_at" | "wouldHaveSent"> & { at: string | Date; unfrozen_at: string | Date | null }>(
     `select t.id, t.spender_id, s.name as agent, t.tool, t.args, t.cause, t.voided, t.at, t.unfrozen_at
      from tripwires t join spenders s on s.id = t.spender_id where t.household_id = $1 order by t.at desc limit $2`,
     [householdId, limit],
   );
-  return rows.map((r) => ({ ...r, at: new Date(r.at).toISOString(), unfrozen_at: r.unfrozen_at ? new Date(r.unfrozen_at).toISOString() : null }));
+  return rows.map((r) => ({
+    ...r,
+    at: new Date(r.at).toISOString(),
+    unfrozen_at: r.unfrozen_at ? new Date(r.unfrozen_at).toISOString() : null,
+    wouldHaveSent: r.args?.cut ? null : wouldHaveSent(r.tool, r.args?.text ?? "{}"),
+  }));
 }

@@ -1,17 +1,22 @@
 "use client";
-// "What Spotter checks that you can't": the two outside checks, each shown as the real piece of Spotter it produces,
-// drawn in Spotter's own style with example data. The cloud browser (KERNEL) panel switches between three views;
-// the market (Channel3) panel shows spot the difference and price watch side by side. Wording mirrors
-// src/ui/Peek.tsx, src/ui/CaseFile.tsx (tools, two faces, where the money goes), src/ui/PriceWatch.tsx,
-// src/agents/twofaces.ts, src/agents/trail.ts and src/market/lookalike.ts.
+// What Spotter checks that you can't, shown inside the walkthrough's "Checked" stop: the outside checks, each as the
+// real piece of Spotter it produces, drawn in Spotter's own style with example data. Three come from the throwaway
+// cloud browser (KERNEL), two from real shop listings (Channel3). Wording mirrors src/ui/Peek.tsx, src/ui/CaseFile.tsx
+// (tools, two faces, where the money goes), src/ui/PriceWatch.tsx, src/agents/twofaces.ts, src/agents/trail.ts and
+// src/market/lookalike.ts.
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { AGENT, FACES } from "./copy";
 
-const VIEWS: ReadonlyArray<{ key: "peek" | "tools" | "faces"; tab: string; head: string }> = [
-  { key: "peek", tab: "Looks for you", head: "Spotter opens the link so nobody in the family clicks it." },
-  { key: "tools", tab: "Reads the agent tools", head: "Shops can now hand AI agents tools. Spotter reads every word of them first." },
-  { key: "faces", tab: "Two faces", head: "Some scam pages show scanners a blank page and Gran's phone a card form. Spotter opens it both ways." },
+const KERNEL = "Runs in a KERNEL cloud browser that is thrown away after each visit, so nothing on the page reaches Gran's phone or your laptop.";
+const CHANNEL3 = "Real shop prices from Channel3, live. Spotter never buys anything.";
+
+const VIEWS: ReadonlyArray<{ key: "peek" | "tools" | "faces" | "spot" | "watch"; tab: string; head: string; credit: string }> = [
+  { key: "faces", tab: "Two faces", head: "Some scam pages show scanners a harmless page and Gran's phone a card form. Spotter opens it both ways.", credit: KERNEL },
+  { key: "peek", tab: "Opens the link", head: "Spotter opens the link so nobody in the family clicks it.", credit: KERNEL },
+  { key: "tools", tab: "Agent tools", head: "Shops can now hand AI agents tools. Spotter reads every word of them first.", credit: KERNEL },
+  { key: "spot", tab: "Real price", head: "A picture search of real shops shows a £49.99 bargain for what it is: about £149 everywhere else.", credit: CHANNEL3 },
+  { key: "watch", tab: "Price watch", head: "Too dear instead? Spotter can watch the price for two weeks and tell you when a real shop drops it.", credit: CHANNEL3 },
 ];
 
 type Key = (typeof VIEWS)[number]["key"];
@@ -92,11 +97,16 @@ function FacesView() {
       <p className="ck-faces-h">Two faces: what scanners see and what Gran&apos;s phone sees</p>
       <p className="ck-faces-verdict">{FACES.verdict}</p>
       <div className="ck-face">
-        <div className="ck-face-screen ck-face-blank">
-          <span>Nothing to see here</span>
+        <div className="ck-face-screen">
+          <div className="ck-form ck-form-plain">
+            <p className="ck-form-h">Track a parcel</p>
+            <span className="ck-field">Tracking number</span>
+            <span className="ck-form-btn">Track</span>
+            <p className="ck-form-note">Most parcels arrive in 1 to 3 working days.</p>
+          </div>
         </div>
         <p className="ck-face-cap">
-          <b>Desktop</b>, the way security scanners see it
+          <b>Desktop</b>, the way security scanners see it: a harmless tracking page
         </p>
       </div>
       <div className="ck-face">
@@ -145,130 +155,115 @@ function Bud({ tone }: { tone: "fake" | "real" }) {
   );
 }
 
-export function Checks({ cta }: { cta?: React.ReactNode }) {
-  const [k, setK] = useState<Key>("tools");
+function SpotView() {
+  return (
+    <div className="ck-spot">
+      <p className="ck-spot-title">Spot the difference</p>
+      <p className="ck-spot-number num">£49.99 here, about £149.00 at real shops</p>
+      <p className="ck-spot-verdict">Real shops charge far more for the same thing. Prices this low are a fake shop tell.</p>
+      <div className="ck-spot-grid">
+        <figure>
+          <div className="ck-spot-img" data-tone="fake">
+            <Bud tone="fake" />
+            <span className="ck-spot-flash">£49.99</span>
+          </div>
+          <figcaption>
+            <b>This shop</b> earbud-deals.example
+          </figcaption>
+        </figure>
+        <figure>
+          <div className="ck-spot-img">
+            <Bud tone="real" />
+          </div>
+          <figcaption>
+            <b>Same earbuds</b> about £149.00 at 5 real shops
+          </figcaption>
+        </figure>
+      </div>
+      <dl className="ck-diffs">
+        <div>
+          <dt>Price</dt>
+          <dd className="ck-here num">£49.99</dd>
+          <dd className="ck-real num">about £149.00</dd>
+        </div>
+        <div>
+          <dt>Web address</dt>
+          <dd className="ck-here">earbud-deals.example</dd>
+          <dd className="ck-real">the shops&apos; own sites</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function WatchView() {
+  return (
+    <div className="ck-watch">
+      <p className="ck-watch-head">
+        <Eye size={16} strokeWidth={2.2} aria-hidden="true" /> Watching the price until 25 Oct
+      </p>
+      <p className="ck-watch-line">
+        Spotter tells you if a real shop sells it for <b className="num">£139.00</b> or less. Best real price now: £142.00.
+      </p>
+      <Spark />
+      <p className="ck-watch-note">Nothing is bought unless you decide to.</p>
+    </div>
+  );
+}
+
+/** The outside checks as tabs, one example view at a time. Lives in the walkthrough's "Checked" stop. */
+export function CheckViews() {
+  const [k, setK] = useState<Key>("faces");
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
   const at = VIEWS.findIndex((v) => v.key === k);
+  const v = VIEWS[at]!;
 
   const onKey = (e: React.KeyboardEvent) => {
-    const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
+    const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
     if (!keys.includes(e.key)) return;
     e.preventDefault();
-    const n =
-      e.key === "Home" ? 0 : e.key === "End" ? VIEWS.length - 1 : (at + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1) + VIEWS.length) % VIEWS.length;
+    const n = e.key === "Home" ? 0 : e.key === "End" ? VIEWS.length - 1 : (at + (e.key === "ArrowRight" ? 1 : -1) + VIEWS.length) % VIEWS.length;
     setK(VIEWS[n]!.key);
     tabs.current[n]?.focus();
   };
 
   return (
-    <section className="ck" aria-labelledby="ck-title">
-      <div className="shell">
-        <h2 id="ck-title" className="ck-title">
-          What Spotter checks that you can&apos;t. <span>It opens the link, reads what the shop tells AI agents, and finds the real price.</span>
-        </h2>
-
-        <div className="ck-panel ck-kernel">
-          <div className="ck-copy">
-            <h3 className="ck-h3">It opens the page in a throwaway browser</h3>
-            <p className="ck-p">Every visit runs in a cloud browser that is thrown away after. Nothing on the page can reach Gran&apos;s phone or your laptop.</p>
-            <div className="ck-tabs" role="tablist" aria-label="What the throwaway browser checks" aria-orientation="vertical" onKeyDown={onKey}>
-              {VIEWS.map((v, n) => (
-                <button
-                  key={v.key}
-                  ref={(el) => {
-                    tabs.current[n] = el;
-                  }}
-                  id={`ck-tab-${v.key}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={v.key === k}
-                  aria-controls="ck-view"
-                  tabIndex={v.key === k ? 0 : -1}
-                  className="ck-tab"
-                  onClick={() => setK(v.key)}
-                >
-                  <span className="ck-tab-name">
-                    {v.tab}
-                  </span>
-                  <span className="ck-tab-head">{v.head}</span>
-                </button>
-              ))}
-            </div>
-            <p className="ck-credit">
-              Runs on KERNEL cloud browsers. The x-ray at the top of this page is the same visit: what a person sees on the shop against what an agent
-              reads.
-            </p>
-          </div>
-          <div id="ck-view" className="ck-view" role="tabpanel" aria-labelledby={`ck-tab-${k}`} data-view={k} key={k}>
-            <span className="ck-example">Example</span>
-            {k === "peek" && <PeekView />}
-            {k === "tools" && <ToolsView />}
-            {k === "faces" && <FacesView />}
-          </div>
-        </div>
-
-        <div className="ck-panel ck-market">
-          <div className="ck-copy">
-            <h3 className="ck-h3">It knows what things really cost</h3>
-            <p className="ck-p">
-              Spotter searches real shops with a picture of the page, so a £49.99 &quot;bargain&quot; that costs about £149 everywhere else shows up for what it is.
-              Too dear instead? It can watch the price for two weeks. It never buys anything.
-            </p>
-            <p className="ck-credit">Prices come from Channel3&apos;s live listings of real shops.</p>
-            {cta}
-          </div>
-
-          <div className="ck-spot">
-            <span className="ck-example">Example</span>
-            <p className="ck-spot-title">Spot the difference</p>
-            <p className="ck-spot-number num">£49.99 here, about £149.00 at real shops</p>
-            <p className="ck-spot-verdict">Real shops charge far more for the same thing. Prices this low are a fake shop tell.</p>
-            <div className="ck-spot-grid">
-              <figure>
-                <div className="ck-spot-img" data-tone="fake">
-                  <Bud tone="fake" />
-                  <span className="ck-spot-flash">£49.99</span>
-                </div>
-                <figcaption>
-                  <b>This shop</b> earbud-deals.example
-                </figcaption>
-              </figure>
-              <figure>
-                <div className="ck-spot-img">
-                  <Bud tone="real" />
-                </div>
-                <figcaption>
-                  <b>Same earbuds</b> about £149.00 at 5 real shops
-                </figcaption>
-              </figure>
-            </div>
-            <dl className="ck-diffs">
-              <div>
-                <dt>Price</dt>
-                <dd className="ck-here num">£49.99</dd>
-                <dd className="ck-real num">about £149.00</dd>
-              </div>
-              <div>
-                <dt>Web address</dt>
-                <dd className="ck-here">earbud-deals.example</dd>
-                <dd className="ck-real">the shops&apos; own sites</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="ck-watch">
-            <span className="ck-example">Example</span>
-            <p className="ck-watch-head">
-              <Eye size={16} strokeWidth={2.2} aria-hidden="true" /> Watching the price until 25 Oct
-            </p>
-            <p className="ck-watch-line">
-              Spotter tells you if a real shop sells it for <b className="num">£139.00</b> or less. Best real price now: £142.00.
-            </p>
-            <Spark />
-            <p className="ck-watch-note">Nothing is bought unless you decide to.</p>
-          </div>
-        </div>
+    <div className="ck2">
+      <p className="ck2-h" id="ck2-title">
+        What it checks that you can&apos;t
+      </p>
+      <div className="ck2-tabs" role="tablist" aria-labelledby="ck2-title" onKeyDown={onKey}>
+        {VIEWS.map((x, n) => (
+          <button
+            key={x.key}
+            ref={(el) => {
+              tabs.current[n] = el;
+            }}
+            id={`ck-tab-${x.key}`}
+            type="button"
+            role="tab"
+            aria-selected={x.key === k}
+            aria-controls="ck-view"
+            tabIndex={x.key === k ? 0 : -1}
+            className="ck2-tab"
+            onClick={() => setK(x.key)}
+          >
+            {x.tab}
+          </button>
+        ))}
       </div>
-    </section>
+      <div id="ck-view" className="ck2-panel" role="tabpanel" aria-labelledby={`ck-tab-${k}`} data-view={k} key={k}>
+        <p className="ck2-head">{v.head}</p>
+        <div className="ck-view">
+          <span className="ck-example">Example</span>
+          {k === "peek" && <PeekView />}
+          {k === "tools" && <ToolsView />}
+          {k === "faces" && <FacesView />}
+          {k === "spot" && <SpotView />}
+          {k === "watch" && <WatchView />}
+        </div>
+        <p className="ck2-credit">{v.credit}</p>
+      </div>
+    </div>
   );
 }

@@ -9,6 +9,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { PayPalMCPToolkit } from "@paypal/agent-toolkit/mcp";
 import { getSpender, type Deps } from "@/core/lifecycle";
 import { verifyAgentToken } from "@/core/pairing";
+import { agentAuthInfo, guardAgentRoute, keyLabelOf, logged } from "./agent-guard";
+import type { LIMITS } from "@/core/agent-keys";
 import { isJob, toolsFor, type Job } from "@/core/toolkit-coverage";
 import { springTripwire } from "@/core/tripwire";
 import { guardShipment, requestRefund, scopedGetRefund, scopedGetTracking, sellCreateOrder, sellGetOrder, sellPayOrder, type RefundArgs, type Run, type ShipmentArgs } from "@/core/selling";
@@ -94,7 +96,7 @@ function officialSchema(method: string, mode: "official" | "anything", extras: R
   };
 }
 
-type Handler = (args: any, agentId: string) => Promise<string>;
+type Handler = (args: any, agentId: string, keyLabel?: string) => Promise<string>;
 type Tools = Record<string, { schema: unknown; title?: string; description?: string; handle: Handler }>;
 
 function toolSet(job: Job, deps: () => Promise<Deps>, read: OrderReader, run: Run): Tools {
@@ -139,7 +141,7 @@ function toolSet(job: Job, deps: () => Promise<Deps>, read: OrderReader, run: Ru
         "Create an order in PayPal. This goes through Spotter first: it checks the order against the user's rules and for " +
         "scams, then pays it, holds it for the user's spotter to approve, or refuses. Pass payee and page_text when you can. " +
         "If Spotter refuses an order and returns a safer_option (the same item at a real retailer), you may order that instead with its offer_id.",
-      handle: async (a, id) => toolkitCreateOrder(await d(), id, a as ToolkitOrderInput),
+      handle: async (a, id, key) => toolkitCreateOrder(await d(), id, a as ToolkitOrderInput, key),
     },
     get_order: {
       schema: z.object({ id: ORDER_ID }),
@@ -169,7 +171,10 @@ function handlerFor(job: Job, opts: { deps: () => Promise<Deps>; read: OrderRead
           (server.registerTool as any)(
             c.tool,
             { title: official.name, description: official.description.trim(), inputSchema: officialSchema(c.tool, "anything") },
-            async (args: unknown, ctx: Parameters<typeof agentOf>[0]) => text((await springTripwire(await opts.deps(), agentOf(ctx), c.tool, args)).reply),
+            async (args: unknown, ctx: Parameters<typeof agentOf>[0]) => {
+              const deps = await opts.deps();
+              return text(await logged(deps.db, ctx, c.tool, args, async () => (await springTripwire(deps, agentOf(ctx), c.tool, args)).reply, () => "tripwire"));
+            },
           );
           continue;
         }
@@ -178,7 +183,7 @@ function handlerFor(job: Job, opts: { deps: () => Promise<Deps>; read: OrderRead
         (server.registerTool as any)(
           c.tool,
           { title: t.title ?? official.name, description: t.description ?? official.description.trim(), inputSchema: t.schema },
-          async (args: unknown, ctx: Parameters<typeof agentOf>[0]) => text(await t.handle(args, agentOf(ctx))),
+          async (args: unknown, ctx: Parameters<typeof agentOf>[0]) => text(await logged((await opts.deps()).db, ctx, c.tool, args, () => t.handle(args, agentOf(ctx), keyLabelOf(ctx)))),
         );
       }
     },
@@ -186,21 +191,18 @@ function handlerFor(job: Job, opts: { deps: () => Promise<Deps>; read: OrderRead
   );
 }
 
-export function makeToolkitMcp(opts: { deps: () => Promise<Deps>; read: OrderReader; run: Run }) {
-  const auth = async (_req: Request, bearer?: string) => {
-    const agent = await verifyAgentToken((await opts.deps()).db, bearer);
-    return agent ? { token: bearer!, clientId: "spotter-agent", scopes: ["payments:request"], extra: { spenderId: agent.spenderId } } : undefined;
-  };
+export function makeToolkitMcp(opts: { deps: () => Promise<Deps>; read: OrderReader; run: Run; limits?: typeof LIMITS }) {
+  const auth = async (_req: Request, bearer?: string) => agentAuthInfo((await opts.deps()).db, bearer);
   const byJob = {
     shopping: withMcpAuth(handlerFor("shopping", opts), auth, { required: true }),
     selling: withMcpAuth(handlerFor("selling", opts), auth, { required: true }),
   };
   // The agent's job picks which set of tools it is offered. An unknown key falls to the shopping set, whose auth answers 401.
-  return async (req: Request) => {
+  return guardAgentRoute(opts.deps, async (req: Request) => {
     const bearer = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
     const { db } = await opts.deps();
     const agent = await verifyAgentToken(db, bearer);
     const job = agent ? (await getSpender(db, agent.spenderId))?.agent_job : undefined;
     return byJob[isJob(job) ? job : "shopping"](req);
-  };
+  }, opts.limits);
 }

@@ -168,3 +168,39 @@ describe("matches PayPal's official toolkit definitions (v1.11.0)", () => {
     }
   });
 });
+
+describe("agent key lifecycle on the toolkit route", () => {
+  it("logs every tool call for the key card, with the outcome", async () => {
+    await rpc("tools/call", { name: "create_order", arguments: { ...ORDER, payee: "GadgetBarn" } });
+    await rpc("tools/call", { name: "create_refund", arguments: { capture_id: "2GG279541U471931P", amount: { currency_code: "USD", value: "200.00" } } });
+    const calls = await deps.db.query<{ tool: string; outcome: string }>("select tool, outcome from agent_calls order by id");
+    expect(calls).toEqual([
+      { tool: "create_order", outcome: "HELD_FOR_APPROVAL" },
+      { tool: "create_refund", outcome: "tripwire" },
+    ]);
+  });
+
+  it("an agent order carries PayPal custom_id with the key's label and the payment id", async () => {
+    await rpc("tools/call", { name: "create_order", arguments: { ...ORDER, payee: "GadgetBarn" } });
+    const opts = vi.mocked(deps.paypal.createAuthorizeOrder).mock.calls[0]![1];
+    expect(opts.customId).toMatch(new RegExp(`^spt-${token.slice(-4).replace(/[-_]/g, "\\$&")}:pay_[a-z0-9]+$`));
+  });
+
+  it("answers 429 with a plain message once the key used up today's calls", async () => {
+    handler = makeToolkitMcp({ deps: async () => deps, read, run, limits: { perKey: 1, global: 100 } });
+    await rpc("tools/call", { name: "get_order", arguments: { id: "5O190127TN364715T" } });
+    const r = await rpc("tools/list", {});
+    expect(r.status).toBe(429);
+    expect(JSON.stringify(r.body)).toMatch(/daily limit/);
+  });
+
+  it("the decoy key gets a calm 401, and the agent is frozen with both keys burned", async () => {
+    const { issueAgentKeys } = await import("@/core/pairing");
+    const { key, decoy } = await issueAgentKeys(deps.db, "agent");
+    expect((await rpc("tools/list", {}, decoy)).status).toBe(401);
+    expect((await rpc("tools/list", {}, key)).status).toBe(401);
+    const [s] = await deps.db.query<{ frozen_at: string | null }>("select frozen_at from spenders where id = 'agent'");
+    expect(s!.frozen_at).not.toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ kind: "agent_hijacked" }));
+  });
+});

@@ -58,7 +58,8 @@ export function reply(p: Payment, spotter: string): AgentReply {
   }
 }
 
-export async function agentRequestPayment(deps: Deps, agentId: string, input: AgentPaymentInput): Promise<AgentReply> {
+/** via.agentKey: the calling key's label, sent to PayPal as the order's custom_id (core/agent-keys.ts). */
+export async function agentRequestPayment(deps: Deps, agentId: string, input: AgentPaymentInput, via: { agentKey?: string } = {}): Promise<AgentReply> {
   const spender = await getSpender(deps.db, agentId);
   if (!spender) return { status: "unknown", message: "This agent isn't set up in Spotter any more. Ask the user to reconnect it." };
   if (input.offer_id) {
@@ -69,6 +70,7 @@ export async function agentRequestPayment(deps: Deps, agentId: string, input: Ag
       { payee: input.payee, amount: input.amount_pence, currency: input.currency, item: input.item },
       {
         category: input.category,
+        ...(via.agentKey ? { agentKey: via.agentKey } : {}),
         context: [`What the agent says this is for: ${input.what_for}`, input.page_text.trim() ? `The page it is buying from:\n${input.page_text}` : ""].filter(Boolean).join("\n\n"),
       },
     );
@@ -77,6 +79,7 @@ export async function agentRequestPayment(deps: Deps, agentId: string, input: Ag
   }
   const payment = await submitPayment(deps, {
     spenderId: agentId,
+    ...(via.agentKey ? { agentKey: via.agentKey } : {}),
     money: { amount: input.amount_pence, currency: input.currency },
     payee: { name: input.payee, isNew: true },
     category: input.category,

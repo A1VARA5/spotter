@@ -85,6 +85,12 @@ describe("payments API", () => {
     expect((await (await h.deny(hhId, id, "Aivaras")).json()).payment.status).toBe("voided");
   });
 
+  it("retry: a 409 when nothing waits on PayPal, a 404 for another household", async () => {
+    const id = (await (await h.submit(hhId, post(valid))).json()).payment.id;
+    expect((await h.retry(hhId, id)).status).toBe(409);
+    expect((await h.retry(otherHh, id)).status).toBe(404);
+  });
+
   it("404s approve on an unknown payment", async () => {
     expect((await h.approve(hhId, "pay_nope", "Aivaras")).status).toBe(404);
   });

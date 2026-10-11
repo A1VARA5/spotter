@@ -1,5 +1,6 @@
 // The channel hub and the closing call to action, shared by the landing and the product shots.
 import { BrandMark } from "@/ui/components";
+import { NetworkField } from "./NetworkField";
 
 export function Hub() {
   return (
@@ -76,9 +77,14 @@ export function Hub() {
   );
 }
 
-export function Final({ children }: { children: React.ReactNode }) {
+/**
+ * The ending mirrors the header: the same night, the same quiet network field, a centred call to action, then a
+ * footer laid out like the top bar (brand left, links right) inside the same band.
+ */
+export function Final({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <section data-loop className="final">
+    <section data-loop className="final net-host">
+      <NetworkField quiet runFor={5} fx={0.5} fy={0.3} calm=".final-inner" avoid=".final-inner, .lfoot" />
       <div className="shell final-inner reveal">
         <div className="final-track" aria-hidden="true">
           <span className="final-rail" />
@@ -91,6 +97,7 @@ export function Final({ children }: { children: React.ReactNode }) {
         <p className="final-lede">The demo family has Gran, Leo and a shopping agent ready. Or log in with a PayPal sandbox account and set up your own.</p>
         {children}
       </div>
+      {footer && <div className="shell">{footer}</div>}
     </section>
   );
 }

@@ -121,6 +121,30 @@ describe("paypal client", () => {
     expect(await voidAuthorization("A1")).toEqual({ status: "VOIDED" });
     expect(calls[1]!.url).toContain("/v2/payments/authorizations/A1/void");
   });
+
+  it("sends a PayPal-Request-Id on void, so a retried void is the same request at PayPal", async () => {
+    mockFetch([TOKEN, { status: 200, body: { status: "VOIDED" } }]);
+    await voidAuthorization("A1", "void-pay_1-A1");
+    expect(header(calls[1]!, "PayPal-Request-Id")).toBe("void-pay_1-A1");
+  });
+
+  it("puts a unique invoice_id on every order and the agent key's custom_id when given", async () => {
+    const body = { id: "O1", status: "COMPLETED", purchase_units: [{ payments: { authorizations: [{ id: "A1", expiration_time: "x" }] } }] };
+    mockFetch([TOKEN, { status: 201, body }]);
+    await createAuthorizeOrder(req, { source: "card", customId: "spt-abcd:p1" });
+    const unit = JSON.parse(String(calls[1]!.init.body)).purchase_units[0];
+    expect(unit.invoice_id).toBe("spotter-p1");
+    expect(unit.custom_id).toBe("spt-abcd:p1");
+    mockFetch([{ status: 201, body }]);
+    await createAuthorizeOrder(req, { source: "card" });
+    expect(JSON.parse(String(calls[0]!.init.body)).purchase_units[0].custom_id).toBeUndefined();
+  });
+
+  it("cuts a custom_id to PayPal's 127 characters", async () => {
+    mockFetch([TOKEN, { status: 201, body: { id: "O1", status: "CREATED" } }]);
+    await createAuthorizeOrder(req, { source: "card", customId: "x".repeat(300) });
+    expect(JSON.parse(String(calls[1]!.init.body)).purchase_units[0].custom_id).toHaveLength(127);
+  });
 });
 
 describe("webhook signature check", () => {

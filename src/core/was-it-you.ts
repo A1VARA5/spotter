@@ -294,7 +294,8 @@ async function afterAnswer(deps: Deps, before: Payment, claimed: Payment, w: Was
   const status = claimed.status === "needs_approval" ? (await deny(deps, before.id, who)).status : claimed.status;
   const after = (await getPayment(db, before.id)) ?? claimed;
   const fresh = claimed.status === "needs_approval";
-  if (status === "voided" || status === "voiding") {
+  // A fresh "voiding" means the void just went to PayPal and PayPal didn't confirm it: not safe to say "released" yet.
+  if (status === "voided" || (status === "voiding" && !fresh)) {
     const released = status === "voided" ? "released" : "is releasing";
     if (toSpotter) await tellSpotter(deps, after, payer, `${who} says they didn't send the message to ${payerName}. ${fresh ? `Spotter ${released}` : "It was already stopped:"} the ${amount} to ${payee}. Nothing was paid.`);
     return {
@@ -307,10 +308,10 @@ async function afterAnswer(deps: Deps, before: Payment, claimed: Payment, w: Was
     const ok = await tellSpotter(deps, after, payer, `Urgent: ${who} says they didn't send the message, but ${amount} to ${payee} is ${statusWords(status)}. Ring ${payerName} and report it to PayPal now.`);
     return { ok: true, reply: `Thanks. It was already approved: ${amount} to ${payee} is ${statusWords(status)}. ${told(ok)}`, payment: after };
   }
-  if (fresh && status === "failed") {
-    // The void call failed: Spotter marks it failed, so it will never pay it, but PayPal may still hold the money until the hold expires.
-    const ok = await tellSpotter(deps, after, payer, `${who} says they didn't send the message, but PayPal didn't confirm releasing the ${amount} hold for ${payee}. Spotter won't pay it. PayPal drops the hold on its own, or you can cancel it in PayPal.`);
-    return { ok: true, reply: `Thanks. Spotter will never pay this, but PayPal didn't confirm releasing the hold yet, so the money may stay held for a while. ${told(ok)}`, payment: after };
+  if (fresh && (status === "failed" || status === "voiding")) {
+    // PayPal didn't confirm the void: Spotter will never pay it and keeps asking PayPal to let it go (reconcile), but the money may stay held meanwhile.
+    const ok = await tellSpotter(deps, after, payer, `${who} says they didn't send the message, but PayPal didn't confirm releasing the ${amount} hold for ${payee} yet. Spotter won't pay it and keeps asking PayPal to let it go.`);
+    return { ok: true, reply: `Thanks. Spotter will never pay this, but PayPal didn't confirm releasing the hold yet, so the money may stay held for a while. Spotter keeps retrying. ${told(ok)}`, payment: after };
   }
   if (toSpotter) await tellSpotter(deps, after, payer, `${who} says they didn't send the message to ${payerName}. The payment is ${statusWords(status)}.`);
   return { ok: true, reply: `Thanks. The payment is ${statusWords(status)}.`, payment: after };
