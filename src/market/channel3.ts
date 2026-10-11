@@ -207,10 +207,10 @@ export async function familySearch(db: Db, householdId: string, search: SearchFn
   const products = await search(query, currency, limit);
   if (!products) return null;
   // Products share the payment check's cache table under their own key prefix (its keys start with the currency).
-  await db.query(
-    "insert into market_cache (key, offers) values ($1, $2) on conflict (key) do update set offers = excluded.offers, fetched_at = now()",
-    [key, JSON.stringify(products)],
-  );
+  // The credit is spent either way, so a failed cache write is logged and the results are still used.
+  await db
+    .query("insert into market_cache (key, offers) values ($1, $2) on conflict (key) do update set offers = excluded.offers, fetched_at = now()", [key, JSON.stringify(products)])
+    .catch((e: unknown) => console.error("[spotter] caching a Channel3 search failed; the next ask searches again:", e instanceof Error ? e.message : e));
   return products;
 }
 

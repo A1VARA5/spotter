@@ -137,7 +137,15 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
           )
         ).length > 0
       : false;
-  const moved = declined ? null : await settleFromPayPal(db, payment.id, rule.from, rule.to, {
+  if (declined) {
+    console.error(`[spotter] paypal ${evt.event_type} for ${payment.id} ignored: PayPal already declined capture ${resourceId}`);
+    await db.query("insert into events (payment_id, type, data) values ($1, 'paypal_mismatch', $2)", [
+      payment.id,
+      JSON.stringify({ event: evt.event_type, paypal_event: evt.id, spotter_status: payment.status, reason: "capture already declined" }),
+    ]);
+    return result("declined_earlier");
+  }
+  const moved = await settleFromPayPal(db, payment.id, rule.from, rule.to, {
     ...(isCapture && rule.to === "captured" && resourceId ? { paypal_capture_id: resourceId } : {}),
     ...(rule.error ? { error: rule.error } : {}),
   });
