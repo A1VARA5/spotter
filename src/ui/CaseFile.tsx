@@ -9,7 +9,7 @@ import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
 import { Hint } from "./Hint";
 import { Peek } from "./Peek";
-import { keyFacts, kernelLead, type RealOne } from "./caseFold";
+import { keyFacts, kernelLead, leadParts, type RealOne } from "./caseFold";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
@@ -253,8 +253,9 @@ export function CaseFile({
       {fold && lead && leadKey && panel[leadKey] && (
         <div className="cf-lead" data-kind={lead.kind}>
           <p className="cf-lead-line">
-            <b>KERNEL</b>
-            {lead.line.slice("KERNEL".length)}
+            {leadParts(lead.line).before}
+            <b>{leadParts(lead.line).name}</b>
+            {leadParts(lead.line).after}
           </p>
           {panel[leadKey]}
         </div>

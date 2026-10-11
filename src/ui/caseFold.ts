@@ -41,6 +41,13 @@ export function keyFacts(findings: Finding[], n = 3): { facts: Finding[]; rest: 
 export type LeadKind = "seen" | "faces" | "trail" | "tools";
 export type Lead = { kind: LeadKind; line: string };
 
+/** Splits a lead line around its first "KERNEL" so the name can be set in bold wherever it sits in the sentence. */
+export function leadParts(line: string): { before: string; name: string; after: string } {
+  const at = line.indexOf("KERNEL");
+  if (at < 0) return { before: line, name: "", after: "" };
+  return { before: line.slice(0, at), name: "KERNEL", after: line.slice(at + "KERNEL".length) };
+}
+
 type Page = NonNullable<Case["page"]>;
 
 /** The KERNEL catch to show open first, with the engine's name and what it proves in one line. Null when it caught nothing. */

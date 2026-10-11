@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Case, Finding } from "@/agents/case";
-import { keyFacts, kernelLead, realOne, unsaidReasons } from "./caseFold";
+import { keyFacts, kernelLead, leadParts, realOne, unsaidReasons } from "./caseFold";
 
 const f = (tool: string, text: string, extra: Partial<Finding> = {}): Finding => ({ tool, text, source: `t_${tool}`, ...extra });
 
@@ -112,5 +112,18 @@ describe("the held card's reasons, without what the case file already says", () 
 
   it("keeps everything when there is no case file", () => {
     expect(unsaidReasons(reasons, flags, null, { lead: null })).toEqual(reasons);
+  });
+});
+
+describe("leadParts", () => {
+  it("keeps every word when KERNEL sits mid sentence", () => {
+    const line = "The cloud browser (KERNEL) read text on this page that people can't see.";
+    const p = leadParts(line);
+    expect(p.before + p.name + p.after).toBe(line);
+    expect(p.name).toBe("KERNEL");
+    expect(p.before).toBe("The cloud browser (");
+  });
+  it("works when the line starts with KERNEL", () => {
+    expect(leadParts("KERNEL opened this link").before).toBe("");
   });
 });
