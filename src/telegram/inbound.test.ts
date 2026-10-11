@@ -151,7 +151,7 @@ describe("telegram photo price check", () => {
     currency: "GBP",
     size: [960, 720],
     items: [
-      { n: 1, thing: "Headphones", bbox: [1, 1, 50, 50], found: true, title: "Model <X1> headphones", low: 21900, high: 21999, typical: 21900, offers: 3, shops: 2, cheapest: { domain: "shop.example", price: 21900, url: "https://buy.example/a" } },
+      { n: 1, thing: "Headphones", bbox: [1, 1, 50, 50], found: true, match: "exact", title: "Model <X1> headphones", low: 21900, high: 21999, typical: 21900, offers: 3, shops: 2, cheapest: { domain: "shop.example", price: 21900, url: "https://buy.example/a" } },
       { n: 2, thing: "Desk lamp", bbox: null, found: false },
     ],
     total: "Real shops: about £219 for the 1 thing Spotter could match. It couldn't find the other 1, so the real total is higher.",

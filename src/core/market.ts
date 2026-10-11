@@ -108,11 +108,78 @@ export function priceCheck(amount: number, currency: Currency, offers: Offer[], 
   return { ...base, likeUsed: lu, flag: { kind: "price", severity: "medium", quote: "", why: likeUsedText(lu, currency) } };
 }
 
+/**
+ * Real offers only: new ones (a used listing isn't the going rate), in this currency, and never one far below the
+ * going rate (another product, an accessory or a fake listing). The one rule for "the cheapest real shop" everywhere.
+ */
+export function genuineOffers(offers: Offer[], currency: Currency): Offer[] {
+  const same = offers.filter((o) => !isUsed(o) && o.currency === currency && o.price > 0);
+  if (same.length < 2) return same;
+  const going = median(same.map((o) => o.price));
+  return same.filter((o) => o.price >= going * TOO_CHEAP);
+}
+
+export type MarketSummary = { median: number; offers: number; cheapest: Offer | null };
+
+/**
+ * The one going rate for a payment, read from its saved market check: the middle price and the cheapest real shop.
+ * The reasons line, the price note on the card and the Activity column all use this, so they can't disagree. A saved
+ * cheapest listing far below the middle price (rows saved before genuineOffers) is left out rather than shown.
+ */
+export function marketSummary(m: (MarketResult & { item?: string }) | null | undefined): MarketSummary | null {
+  if (!m || !m.median) return null;
+  const cheapest = m.cheapest && m.cheapest.price >= m.median * TOO_CHEAP ? m.cheapest : null;
+  return { median: m.median, offers: m.offers, cheapest };
+}
+
+/** "around £79.95, from £69.99 at c.co.uk": the Activity cell, from the same summary as the card. */
+export function marketCell(m: (MarketResult & { item?: string }) | null | undefined, currency: Currency | string): string {
+  const s = marketSummary(m);
+  if (!s) return "";
+  const money = (minor: number) => formatMoney({ amount: minor, currency: currency as Currency });
+  return s.cheapest ? `around ${money(s.median)}, from ${money(s.cheapest.price)} at ${s.cheapest.domain}` : `around ${money(s.median)}`;
+}
+
+const WATCH_STATUSES = new Set(["needs_approval", "blocked", "voided", "voiding", "protected"]);
+const SCAM_KINDS = new Set(["prompt_injection", "gift_card_or_crypto", "friends_and_family"]);
+
+type WatchFitInput = {
+  status: string;
+  amount: number | string;
+  request: { item?: string };
+  ai?: { flags?: Array<{ kind: string; severity: string }> } | null;
+  market?: (MarketResult & { item?: string }) | null;
+  /** The case file, when Spotter opened one: hidden orders, a two faced page or money sent off site found there count too. */
+  case_file?: { verdict?: string; findings?: Array<{ kind?: string }> } | null;
+};
+
+/** A payment whose shop looked fake or unsafe: hidden orders for AI agents, an unsafe way to pay, or a price far below real shops (or priced like a used one). */
+export function looksFake(p: Pick<WatchFitInput, "ai" | "market" | "case_file">): boolean {
+  if ((p.ai?.flags ?? []).some((f) => SCAM_KINDS.has(f.kind) && f.severity !== "low")) return true;
+  if (p.case_file?.verdict === "likely_scam" || (p.case_file?.findings ?? []).some((f) => f.kind)) return true;
+  const verdict = priceVerdict(p.market);
+  return verdict === "too_cheap" || verdict === "like_used";
+}
+
+/**
+ * Should "Watch the price" be offered on this payment? Only when waiting for a lower price makes sense: a held, denied
+ * or stopped payment for a named product that costs more than the cheapest real shop. Never on a shop that looked fake
+ * (far below real shops, priced like a used one) or hid orders for AI agents: the answer there is "don't buy it".
+ */
+export function priceWatchFits(p: WatchFitInput): boolean {
+  if (!p.request.item?.trim() || !WATCH_STATUSES.has(p.status) || looksFake(p)) return false;
+  const verdict = priceVerdict(p.market);
+  if (verdict !== "overpriced" && verdict !== "normal") return false;
+  const cheapest = marketSummary(p.market)?.cheapest;
+  return Boolean(cheapest && Number(p.amount) > cheapest.price);
+}
+
 function goingRate(amount: number, currency: Currency, offers: Offer[]): MarketResult {
   const same = offers.filter((o) => o.currency === currency && o.price > 0);
   if (same.length < 2) return { flag: null, offers: same.length };
   const m = median(same.map((o) => o.price));
-  const cheapest = same.reduce((a, b) => (b.price < a.price ? b : a));
+  // The cheapest real shop: never a listing far below the going rate (another product or a fake one).
+  const cheapest = same.filter((o) => o.price >= m * TOO_CHEAP).reduce((a, b) => (b.price < a.price ? b : a));
   const money = (minor: number) => formatMoney({ amount: minor, currency });
 
   if (amount < m * TOO_CHEAP) {

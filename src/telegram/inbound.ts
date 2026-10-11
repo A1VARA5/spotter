@@ -246,7 +246,15 @@ export function photoText(r: PhotoResult, captioned: boolean): string {
   const whole = (minor: number) => money(minor).replace(/\.00$/, "");
   const lines = r.items.map((i) => {
     if (!i.found) return `${i.n}. ${esc(i.thing)}: couldn't find this one`;
-    const price = r.mode === "buy" ? `about ${whole(i.typical)} at real shops` : i.low === i.high ? `used ones sell for about ${whole(i.low)}` : `used ones sell for ${whole(i.low)} to ${whole(i.high)}`;
+    const range = i.low === i.high ? `about ${whole(i.low)}` : `${whole(i.low)} to ${whole(i.high)}`;
+    const price =
+      i.match === "similar"
+        ? `similar ${r.mode === "buy" ? "ones" : "used ones"} mostly ${range}, not this exact one`
+        : r.mode === "buy"
+          ? `about ${whole(i.typical)} at real shops`
+          : i.low === i.high
+            ? `used ones sell for about ${whole(i.low)}`
+            : `used ones sell for ${whole(i.low)} to ${whole(i.high)}`;
     return `${i.n}. ${esc(i.thing)}: ${price} (${esc(i.title.slice(0, 70))}, ${i.shops} ${i.shops === 1 ? "shop" : "shops"})`;
   });
   return [

@@ -65,8 +65,12 @@ describe("targetPrice", () => {
     expect(targetPrice(16000, 15900)).toBe(14400);
   });
 
-  it("ignores a fake shop price that was below every real shop", () => {
-    expect(targetPrice(2499, 15900)).toBe(15400);
+  it("is never above what they nearly paid (the £173 target for a £24.99 ask was a bug)", () => {
+    expect(targetPrice(2499, 17899)).toBe(2200);
+    for (const [nearly, best] of [[2499, 17899], [16000, 15900], [100, 90000], [21900, 15900]] as const) {
+      expect(targetPrice(nearly, best)).toBeLessThan(nearly);
+      expect(targetPrice(nearly, best)).toBeLessThanOrEqual(best);
+    }
   });
 
   it("is 10% under what they nearly paid when no real price is known", () => {
@@ -148,6 +152,18 @@ describe("startWatch", () => {
     expect(await startWatch(capped, { householdId: other, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" })).toMatchObject({ status: 429 });
   });
 
+  it("won't watch a price far below every real shop (a fake shop), and starts no tracking", async () => {
+    const r = await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 2499, createdBy: "spotter" });
+    expect(r).toMatchObject({ status: 409 });
+    expect(c3.start).not.toHaveBeenCalled();
+    expect(await listWatches(db, hh)).toEqual([]);
+  });
+
+  it("refuses a fake price even when the product is already watched (no handing back the old watch)", async () => {
+    expect("watch" in (await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" }))).toBe(true);
+    expect(await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 2499, createdBy: "agent" })).toMatchObject({ status: 409 });
+  });
+
   it("doesn't save a watch when Channel3 refuses to track", async () => {
     c3.start.mockResolvedValueOnce(null);
     expect(await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" })).toMatchObject({ status: 502 });
@@ -160,6 +176,19 @@ describe("watchFromPayment", () => {
     await payment("pay_1", "voided", 21900, "Over ear wireless headphones X2");
     const r = await watchFromPayment(deps, hh, "pay_1");
     expect("watch" in r && r.watch.paymentId).toBe("pay_1");
+  });
+
+  it("refuses a shop that hid orders for AI agents or priced far below real shops, before any Channel3 call", async () => {
+    await payment("pay_trap", "blocked", 1999, "Pulse wireless earbuds");
+    await db.query("update payments set ai = $2 where id = $1", ["pay_trap", JSON.stringify({ ok: true, flags: [{ kind: "prompt_injection", severity: "high", quote: "", why: "" }] })]);
+    await payment("pay_cheap", "needs_approval", 2499, "Over ear wireless headphones X2");
+    await db.query("update payments set market = $2 where id = $1", [
+      "pay_cheap",
+      JSON.stringify({ flag: { kind: "price", severity: "high", quote: "", why: "" }, median: 17900, offers: 4, item: "X2" }),
+    ]);
+    expect(await watchFromPayment(deps, hh, "pay_trap")).toMatchObject({ status: 409 });
+    expect(await watchFromPayment(deps, hh, "pay_cheap")).toMatchObject({ status: 409 });
+    expect(c3.search).not.toHaveBeenCalled();
   });
 
   it("refuses a paid payment, one with no product name, and another family's payment", async () => {

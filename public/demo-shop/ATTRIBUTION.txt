@@ -1,0 +1,4 @@
+skillet.jpg
+"A small cast iron pan.jpg" by Anonimski, Wikimedia Commons, released under CC0 1.0 (public domain dedication).
+https://commons.wikimedia.org/wiki/File:A_small_cast_iron_pan.jpg
+Used on the made up Panmoor Kitchen demo shop (src/app/demo-shop/skillet), labelled demo.

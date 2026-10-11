@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Ban, Hand, ShieldCheck, Check, RotateCcw, CircleAlert, Loader, Store } from "lucide-react";
 import { findQuotes, money, STATE_LABEL, type TrackState } from "./format";
 import type { Flag } from "@/core/grounding";
-import type { MarketResult } from "@/core/market";
+import { marketSummary, type MarketResult } from "@/core/market";
 
 export function BrandMark() {
   // The hold track in one mark: the money's path, and the yellow clamp that holds it while someone looks.
@@ -97,25 +97,35 @@ export function Evidence({ text, flags }: { text: string; flags: Flag[] }) {
   return <blockquote className="evidence">{parts}</blockquote>;
 }
 
-/** What real shops charge for the same item (Channel3), next to what's about to be paid. */
+/**
+ * What real shops charge for the same item (Channel3), next to what's about to be paid. The numbers come from
+ * marketSummary, like the reasons line and the Activity column, so the three always agree.
+ */
 export function MarketNote({ market, currency }: { market: (MarketResult & { item: string }) | null; currency: string }) {
-  if (!market || !market.cheapest || !market.median) return null;
+  const s = marketSummary(market);
+  if (!market || !s) return null;
+  const shop = s.cheapest && /^https:\/\//.test(s.cheapest.url) ? s.cheapest : null;
   return (
     <p className="market">
       <Store className="market-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
       <span>
-        Real shops sell {market.item} from{" "}
-        <a href={market.cheapest.url} target="_blank" rel="noopener noreferrer nofollow">
-          {money(market.cheapest.price, currency)} at {market.cheapest.domain}
-        </a>
-        , around {money(market.median, currency)} across {market.offers} retailers.{" "}
+        Real shops sell {market.item} for around {money(s.median, currency)} across {s.offers} retailers
+        {shop && (
+          <>
+            , from{" "}
+            <a href={shop.url} target="_blank" rel="noopener noreferrer nofollow">
+              {money(shop.price, currency)} at {shop.domain}
+            </a>
+          </>
+        )}
+        .{" "}
         {market.likeUsed && (
           <>
             <b>Priced like a used one.</b> Used ones sell for {money(market.likeUsed.usedLow, currency)} to {money(market.likeUsed.usedHigh, currency)}; new ones cost at least{" "}
             {money(market.likeUsed.newFrom, currency)}.{" "}
           </>
         )}
-        <span className="market-src">Prices from Channel3.</span>
+        <span className="market-src">Real shop prices (Channel3).</span>
       </span>
     </p>
   );

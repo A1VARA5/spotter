@@ -1,0 +1,151 @@
+/* Activity (AG Grid): clickable rows and the case file drawer. Shell and grid basics live in globals.css. */
+.ledger-hint {
+  margin: -4px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.ledger .ledger-row {
+  cursor: pointer;
+}
+
+.ledger-market {
+  line-height: 1.4 !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  font-size: 14px;
+}
+
+.ledger-drawer {
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  width: min(600px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: var(--chalk);
+  color: var(--ink);
+  box-shadow: -24px 0 60px -30px rgb(13 20 28 / 0.45);
+  overscroll-behavior: contain;
+}
+
+.ledger-drawer::backdrop {
+  background: rgb(13 20 28 / 0.5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ledger-drawer[open] {
+    animation: ledger-drawer-in 260ms var(--ease-out) both;
+  }
+}
+
+@keyframes ledger-drawer-in {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+
+.ledger-drawer-box {
+  display: grid;
+  gap: 18px;
+  padding: 20px clamp(16px, 4vw, 28px) 40px;
+}
+
+.ledger-drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: -20px calc(-1 * clamp(16px, 4vw, 28px)) 0;
+  padding: 20px clamp(16px, 4vw, 28px) 14px;
+  background: var(--chalk);
+  border-bottom: 1px solid var(--line);
+}
+
+.ledger-drawer-head > div {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.ledger-drawer-kicker {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.ledger-drawer-title {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.ledger-drawer-close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.ledger-drawer-label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.ledger-drawer-reasons {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.ledger-drawer-why {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.ledger-drawer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.ledger-drawer-links .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.ledger-drawer-txt {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.ledger-drawer-id {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}

@@ -8,7 +8,7 @@ import { money } from "./format";
 import { plainError, readJson } from "./http";
 
 const MAX_EDGE = 1600;
-const EXAMPLE = "/examples/desk-photo.jpg";
+const EXAMPLE = "/examples/living-room.jpg";
 const HTTPS = /^https:\/\/[^\s"<>]+$/;
 
 type Picked = { url: string; base64: string; example: boolean; name: string };
@@ -86,7 +86,7 @@ export function PhotoCheck() {
       setWhat("prices");
       setMode("buy");
       setAmount("49");
-      await use(await r.blob(), true, "Example desk photo");
+      await use(await r.blob(), true, "Example living room photo");
     } catch (e) {
       setError(plainError(e));
     }
@@ -209,7 +209,7 @@ export function PhotoCheck() {
         <figure className="photo-figure">
           <div className="photo-frame">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={picked.url} alt={picked.example ? "Example photo of a desk with headphones, a monitor, a keyboard and a lamp" : `Your photo: ${picked.name}`} />
+            <img src={picked.url} alt={picked.example ? "Example photo of a living room with a blue sofa, a white chair, a floor lamp, a sideboard and curtains" : `Your photo: ${picked.name}`} />
             {size &&
               result.items.map((i) =>
                 i.bbox ? (
@@ -233,7 +233,7 @@ export function PhotoCheck() {
           </div>
           {picked.example && (
             <figcaption className="photo-credit">
-              <b>Example.</b> Photo by Pea santsbh, public domain (CC0), cropped.
+              <b>Example.</b> Photo by Jarosław Ceborski, public domain (CC0), cropped.
             </figcaption>
           )}
         </figure>
@@ -300,8 +300,8 @@ export function PhotoCheck() {
           </ol>
           <p className="spot-source">
             {result.fallback ? "Spotter searched with the whole photo, because finding each thing didn't work this time. " : ""}
-            Prices and shop names come from real shop listings, {result.mode === "buy" ? "new" : "used"} ones only. A thing is only priced when the best matches agree on
-            the exact model.
+            Real shop prices (Channel3), {result.mode === "buy" ? "new" : "used"} ones only. A thing with a model number is only priced when the best matches agree
+            on the exact model. Everyday things like a sofa or a lamp are priced from similar ones of the same kind, and say so.
           </p>
         </div>
       )}
@@ -317,11 +317,20 @@ function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: 
       </span>
     );
   }
+  const range = i.low === i.high ? `about ${money(i.low, currency)}` : `${money(i.low, currency)} to ${money(i.high, currency)}`;
   const price =
-    mode === "buy" ? `About ${money(i.typical, currency)} at real shops` : i.low === i.high ? `Used ones sell for about ${money(i.low, currency)}` : `Used ones sell for ${money(i.low, currency)} to ${money(i.high, currency)}`;
+    i.match === "similar"
+      ? mode === "buy"
+        ? `Similar ones mostly cost ${range} at real shops, not this exact one`
+        : `Similar used ones mostly sell for ${range}, not this exact one`
+      : mode === "buy"
+        ? `About ${money(i.typical, currency)} at real shops`
+        : i.low === i.high
+          ? `Used ones sell for about ${money(i.low, currency)}`
+          : `Used ones sell for ${money(i.low, currency)} to ${money(i.high, currency)}`;
   return (
     <span>
-      <b>{i.thing}</b> {price}. <span className="photo-match">{i.title}</span>{" "}
+      <b>{i.thing}</b> {price}. <span className="photo-match">{i.match === "similar" ? `For example: ${i.title}` : i.title}</span>{" "}
       {HTTPS.test(i.cheapest.url) && (
         <a href={i.cheapest.url} target="_blank" rel="noopener noreferrer nofollow">
           {money(i.cheapest.price, currency)} at {i.cheapest.domain}

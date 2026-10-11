@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, TrendingDown } from "lucide-react";
 import type { WatchView } from "@/core/watch";
+import { priceWatchFits } from "@/core/market";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
 
@@ -162,7 +163,7 @@ export function PriceWatch({ watch, paymentId, onChanged }: { watch?: WatchView;
       ) : (
         paymentId && (
           <div className="watch-offer">
-            <p>Too dear? Spotter can watch real shops for two weeks and tell you if the price comes down. Nothing is bought.</p>
+            <p>Too dear? Spotter can watch real shop prices (Channel3) for two weeks and tell you if it comes down. Nothing is bought.</p>
             <button type="button" className="btn btn-quiet" aria-disabled={busy || undefined} onClick={start}>
               <Eye size={16} strokeWidth={2.2} aria-hidden="true" /> {busy ? "Starting" : "Watch the price"}
             </button>
@@ -181,6 +182,8 @@ export function PriceWatch({ watch, paymentId, onChanged }: { watch?: WatchView;
   );
 }
 
-/** Payments whose price can be watched: held, denied or stopped, with a product name. */
-export const watchable = (p: { status: string; request: { item?: string } }) =>
-  !!p.request.item?.trim() && ["needs_approval", "blocked", "voided", "voiding", "protected"].includes(p.status);
+/**
+ * Payments whose price is worth watching: held, denied or stopped, for a named product that costs more than the
+ * cheapest real shop. Never a shop that looked fake or hid orders for AI agents (src/core/market.ts priceWatchFits).
+ */
+export const watchable = priceWatchFits;
