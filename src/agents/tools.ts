@@ -12,6 +12,7 @@ import { extractUrls, inspectWithBudget, levenshtein, type LinkReport } from "./
 import type { PageAsks, PageSeen, PageVisit } from "./kernel";
 import { WHY_LABEL } from "./seen";
 import type { ShopTools } from "./webmcp";
+import type { SpotInput, SpotTheDifference } from "@/market/lookalike";
 import { seal } from "@/core/seal";
 
 export type CaseCtx = {
@@ -27,6 +28,8 @@ export type CaseCtx = {
   visiting?: { url: string; result: Promise<PageVisit> };
   /** What the cloud browser saw, kept for the case file: facts, a small screenshot, hidden text and the replay link. */
   page?: CasePage;
+  /** Spot the difference (src/market/lookalike.ts), run after the case when the page was opened. Optional. */
+  spot?: (input: SpotInput) => Promise<SpotTheDifference | null>;
   /** Offers find_genuine_offer returned in this run, by id. A swap can only use one of these. */
   offers: Map<string, Offer>;
 };
@@ -41,6 +44,9 @@ export type CasePage = {
   seen?: PageSeen;
   /** The tools the page offers AI agents (WebMCP), listed and checked for hidden orders, never run. */
   tools?: ShopTools;
+  /** The page's struck through "was" price as written there, and its shared product picture (https). */
+  was?: string;
+  productImage?: string;
   /**
    * KERNEL's recording of the visit and when it was made (KERNEL keeps it for about a day). The link is sealed
    * (src/core/seal.ts): the browser only ever gets the video through /api/payments/[id]/replay.
@@ -241,6 +247,8 @@ async function visitOnce(url: string, ctx: CaseCtx): Promise<Extract<PageVisit, 
     ...(v.screenshot ? { screenshot: v.screenshot } : {}),
     ...(v.seen ? { seen: v.seen } : {}),
     ...(v.tools ? { tools: v.tools } : {}),
+    ...(v.was ? { was: v.was } : {}),
+    ...(v.productImage ? { productImage: v.productImage } : {}),
     ...(replay ? { replay } : {}),
   };
   return v;

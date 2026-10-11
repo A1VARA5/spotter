@@ -3,7 +3,9 @@ import { getDb } from "@/db";
 import { aiCheck } from "@/ai/check";
 import { captureAuthorization, createAuthorizeOrder, getAuthorization, voidAuthorization } from "@/paypal/client";
 import type { Deps } from "@/core/lifecycle";
-import { makeMarket, searchProducts } from "@/market/channel3";
+import { makeMarket, priceHigh, searchByImage, searchProducts } from "@/market/channel3";
+import { spotTheDifference } from "@/market/lookalike";
+import { cap } from "@/watchtower/llm";
 import { after } from "next/server";
 import { buildCase } from "@/agents/case";
 import { visitInCloud } from "@/agents/kernel";
@@ -59,6 +61,18 @@ export function getDeps(): Promise<Deps> {
             search: searchProducts,
             getAuthorization,
             ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitInCloud(url) } : {}),
+            spot: (input) =>
+              spotTheDifference(
+                {
+                  db,
+                  householdId: spender.household_id,
+                  imageSearch: searchByImage,
+                  priceHigh,
+                  perHousehold: cap("SPOT_IMAGE_CHECKS_PER_FAMILY", 10),
+                  overall: cap("SPOT_IMAGE_CHECKS_PER_DAY", 200),
+                },
+                input,
+              ),
             offers: new Map(),
           },
           { who: { name: spender.name, kind: spender.kind } },

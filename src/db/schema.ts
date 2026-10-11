@@ -194,4 +194,17 @@ create table if not exists safer_options (
   used_by text
 );
 create index if not exists safer_options_payment_idx on safer_options (payment_id, created_at desc);
+-- Spot the difference block, two tables: each Channel3 image search made for a case (counted per family per day,
+-- like price_checks), and its products cached by a hash of the picture, so the same screenshot costs one credit.
+create table if not exists image_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists image_checks_household_idx on image_checks (household_id, at);
+create index if not exists image_checks_at_idx on image_checks (at);
+create table if not exists image_search_cache (
+  key text primary key,
+  products jsonb not null,
+  fetched_at timestamptz not null default now()
+);
 `;

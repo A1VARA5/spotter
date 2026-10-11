@@ -11,11 +11,15 @@ import { contradictsPrice, marketFacts, priceVerdict } from "@/core/market";
 import { runTool, toolDefinitions, type CaseCtx, type CasePage, type ToolOutput } from "./tools";
 import { extractUrls } from "./links";
 import { WHY_LABEL } from "./seen";
+import { stopReason } from "@/core/safer";
+import type { SpotTheDifference } from "@/market/lookalike";
 
 export const CASE_MODEL = "claude-opus-5-5";
 const BUDGET_MS = 25_000;
 const MAX_TURNS = 5;
 const MAX_CALLS = 6;
+// Spot the difference runs after the case: one image search (8 s timeout) and maybe one price history call.
+const SPOT_MS = 12_000;
 
 type TextBlock = { type: "text"; text: string };
 type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: unknown };
@@ -61,6 +65,8 @@ export type Case = {
   ms: number;
   /** What the cloud browser saw (facts, a small screenshot, hidden text, the replay link), when it ran. */
   page?: CasePage;
+  /** Spot the difference: the shop next to the genuine product at real shops (Channel3 image search), when found. */
+  spot?: SpotTheDifference;
   /** Written earlier for the demo family's example hold, not checked live. The page labels it. */
   example?: boolean;
 };
@@ -138,8 +144,36 @@ async function within<T>(ms: number, work: Promise<T>, late: T): Promise<T> {
 type CaseOpts = { model?: CaseModel; budgetMs?: number; who?: { name: string; kind: string } };
 
 export async function buildCase(ctx: CaseCtx, opts: CaseOpts = {}): Promise<Case> {
-  const c = await runCase(ctx, opts);
-  // The cloud browser's facts and screenshot belong to the case even when the model didn't finish it.
+  const c = withPage(await runCase(ctx, opts), ctx);
+  if (!ctx.page || !ctx.spot) return c;
+  // Spot the difference: the shop's screenshot next to the genuine product at real shops, only for shop reasons.
+  const p = ctx.payment;
+  const proofOfOrders = c.findings.some((f) => f.kind === "prompt_injection" && f.severity === "high");
+  const reason = stopReason(p) ?? (proofOfOrders ? "hidden instructions" : null);
+  const spot = await within<SpotTheDifference | null | "late">(
+    SPOT_MS,
+    ctx
+      .spot({
+        paymentId: p.id,
+        item: p.request.item,
+        amount: p.request.money.amount,
+        currency: p.request.money.currency,
+        payee: p.request.payee.name,
+        reason,
+        page: { finalUrl: ctx.page.finalUrl, screenshot: ctx.page.screenshot, productImage: ctx.page.productImage, was: ctx.page.was },
+      })
+      .catch((e) => {
+        console.error(`[spotter] spot the difference for ${p.id} failed:`, e instanceof Error ? e.message : e);
+        return null;
+      }),
+    "late" as const,
+  );
+  if (spot === "late") console.error(`[spotter] spot the difference for ${p.id} ran out of time, so it isn't shown`);
+  return spot && spot !== "late" ? { ...c, spot } : c;
+}
+
+/** The cloud browser's facts and screenshot belong to the case even when the model didn't finish it. */
+function withPage(c: Case, ctx: CaseCtx): Case {
   if (!ctx.page) return c;
   // Hidden instructions on the page are proof made by code, so they are a finding whatever the model wrote,
   // sourced to the browser call that saw them, and a page that hides orders for AI agents is never "fine".

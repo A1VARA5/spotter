@@ -240,6 +240,17 @@ describe("visitInCloud", () => {
     expect(k.browsers.deleteByID).toHaveBeenCalledWith("sess1");
   });
 
+  it("keeps the page's 'was' price as plain text and its product picture only when it is an https link", async () => {
+    const withFacts = (was: string, image: string) =>
+      fakeKernel(async () => ({ ...good, result: { ...good.result, facts: { ...good.result.facts, was, image } } }));
+    const v = await visitInCloud("https://gadgetbarn.example/", { client: withFacts("<b>£49.99</b>", "https://gadgetbarn.example/pulse.jpg") });
+    expect(v.ok && v.was).toBe("b £49.99 /b");
+    expect(v.ok && v.productImage).toBe("https://gadgetbarn.example/pulse.jpg");
+    const bad = await visitInCloud("https://gadgetbarn.example/", { client: withFacts("", "javascript:alert(1)") });
+    expect(bad.ok && bad.productImage).toBeUndefined();
+    expect(bad.ok && bad.was).toBeUndefined();
+  });
+
   it("treats a malformed result as a failure, not as facts", async () => {
     const k = fakeKernel(async () => ({ success: true, result: { title: 42 } }));
     const v = await visitInCloud("https://bargainpods.shop/", { client: k });

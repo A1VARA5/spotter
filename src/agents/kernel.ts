@@ -21,6 +21,10 @@ export type PageVisit =
       replayUrl?: string;
       /** The tools the page registers for AI agents (WebMCP), listed and checked, never run. */
       tools?: ShopTools;
+      /** The page's struck through "was" price, as written there (plain text, short). */
+      was?: string;
+      /** The product picture the page shares (og:image), only when it is an https link. */
+      productImage?: string;
     }
   | { ok: false; url: string; error: string };
 
@@ -69,6 +73,9 @@ const facts = await page.evaluate(() => {
     login: inputs.some((i) => /user|login|email|passcode/.test(about(i))) && /sign in|log in|login|verify your account/.test(text),
     giftCard: /gift ?card|voucher code|redeem(ption)? code|steam card|itunes card|apple gift|google play card|card pin/.test(text),
     forms: document.forms.length,
+    // A struck through "was" price, and the product picture the page shares, for "spot the difference".
+    was: (() => { const el = document.querySelector("s, del, strike, [class~='was'], [class*='was-price'], [class*='compare-at'], [class*='old-price']"); return el ? (el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 60) : ""; })(),
+    image: (() => { const m = document.querySelector('meta[property="og:image"]'); return m ? String(m.getAttribute("content") || "").slice(0, 2000) : ""; })(),
   };
 });
 let seen = null;
@@ -91,7 +98,14 @@ return { finalUrl: page.url(), title: (await page.title()).slice(0, 200), facts,
 const Result = z.object({
   finalUrl: z.string().max(4000),
   title: z.string().max(400),
-  facts: z.object({ password: z.boolean(), card: z.boolean(), login: z.boolean(), giftCard: z.boolean() }),
+  facts: z.object({
+    password: z.boolean(),
+    card: z.boolean(),
+    login: z.boolean(),
+    giftCard: z.boolean(),
+    was: z.string().max(100).optional(),
+    image: z.string().max(2100).optional(),
+  }),
   seen: z
     .object({
       domChars: z.number().int().nonnegative(),
@@ -188,6 +202,8 @@ export async function visitInCloud(
           : {}),
         ...(replayUrl ? { replayUrl } : {}),
         ...(tools ? { tools } : {}),
+        ...(facts.was && plainText(facts.was, 60) ? { was: plainText(facts.was, 60) } : {}),
+        ...(facts.image && /^https:\/\/[^\s"<>]+$/.test(facts.image) ? { productImage: facts.image } : {}),
       };
     };
     // Even after a timeout, the finally below deletes the browser if it was created in time.
