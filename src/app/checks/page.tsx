@@ -6,6 +6,7 @@ import { listSpenders } from "@/core/households";
 import { listPayments } from "@/core/lifecycle";
 import { engines } from "./checks";
 import "./checks.css";
+import { ToolkitCoverage } from "@/ui/ToolkitCoverage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "How Spotter checked it | Spotter" };
@@ -75,6 +76,7 @@ export default async function ChecksPage() {
           </li>
         ))}
       </ol>
+      <ToolkitCoverage />
       <p className="ck-foot">
         None of these can move money. Only you can approve a held payment, with your PIN. <Link href="/how">How Spotter works</Link>
       </p>

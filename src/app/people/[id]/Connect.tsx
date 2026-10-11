@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { plainError, readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
 import { money } from "@/ui/format";
+import { ToolkitCoverage } from "@/ui/ToolkitCoverage";
+import { AgentJob } from "@/ui/AgentHolds";
 
-type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string; hasKey?: boolean };
+type SpenderView = { id: string; name: string; kind: string; email: string | null; telegram: string | null; discord: string | null; currency: string; hasKey?: boolean; job?: "shopping" | "selling" };
 
 function CopyBlock({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -80,7 +82,7 @@ const TOOLSETS = {
     label: "PayPal's Agent Toolkit",
     path: "/api/toolkit/mcp",
     server: "paypal-via-spotter",
-    sub: "PayPal's own create_order, pay_order and get_order tools, with the same names and arguments. Every order goes through Spotter first, and pay_order can't take money until you say yes.",
+    sub: "PayPal's own tools, with the same names and arguments. Spotter sits in the middle: orders, refunds and subscriptions wait for you, and a tool a hijacked agent reaches for freezes it.",
   },
 } as const;
 
@@ -133,6 +135,12 @@ function AgentCard({ spender }: { spender: SpenderView }) {
         ))}
       </div>
       <p className="connect-sub">{set.sub}</p>
+      {tools === "toolkit" && (
+        <>
+          <AgentJob agentId={spender.id} job={spender.job ?? "shopping"} />
+          <ToolkitCoverage job={spender.job ?? "shopping"} headingLevel={3} />
+        </>
+      )}
       {tools === "toolkit" && currency !== "USD" && (
         <div className="connect-warn">
           <p>PayPal&apos;s toolkit makes orders in US dollars, and {spender.name}&apos;s allowance is in pounds, so its orders would be stopped.</p>
