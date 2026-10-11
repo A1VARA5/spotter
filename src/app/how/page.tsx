@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Check, FileCheck, Link2, ShoppingBag, Users, X } from "lucide-react";
-import { BrandMark, HoldTrack } from "@/ui/components";
+import { HoldTrack } from "@/ui/components";
 import { ChannelGuide } from "./ChannelGuide";
 import { FAQ } from "./faq";
 import { NetworkField } from "@/app/landing/NetworkField";
 import { getDb } from "@/db";
 import { pageSession } from "@/server/page-session";
 import { NewDemo } from "./NewDemo";
+import { DemoStart } from "@/ui/DemoStart";
+import { PublicFooter, PublicHeader } from "@/ui/PublicChrome";
 import "@/app/landing/motion.css";
 import "./how.css";
 
@@ -50,25 +52,7 @@ export default async function HowPage() {
       <section className="how-hero net-host">
         <NetworkField quiet runFor={5} fx={0.84} fy={0.22} calm=".how-h1, .how-lede" avoid=".role, .how-track, .lnav" />
         <div className="shell">
-          <header className="lnav">
-            <Link href="/" className="brand brand-light" aria-label="Spotter home">
-              <BrandMark />
-              Spotter
-            </Link>
-            <nav className="lnav-links" aria-label="Main">
-              <Link href="/">Home</Link>
-              <a href="#faq">FAQ</a>
-              {who ? (
-                <Link href="/dashboard" className="lnav-login">
-                  Dashboard
-                </Link>
-              ) : (
-                <a href="/api/auth/paypal/start" className="lnav-login">
-                  Log in
-                </a>
-              )}
-            </nav>
-          </header>
+          <PublicHeader signedIn={!!who} current="how" />
           <h1 className="how-h1">How Spotter works</h1>
           <p className="how-lede">One person looks out for the others. Nobody else needs an account, and nobody installs anything new.</p>
 
@@ -227,7 +211,7 @@ export default async function HowPage() {
         </div>
       </section>
 
-      <section className="final">
+      <section className="final how-final">
         <div className="shell final-inner">
           {who ? (
             <>
@@ -245,9 +229,7 @@ export default async function HowPage() {
               <h2 className="final-title">See it with the demo family.</h2>
               <p className="final-lede">Gran, Leo and a shopping agent, already set up. No sign up, fake money.</p>
               <div className="start">
-                <form action="/api/demo/start" method="post">
-                  <button className="btn btn-hold">Try the demo family</button>
-                </form>
+                <DemoStart label="Try the demo family" />
                 <a className="btn btn-ghost" href="/api/auth/paypal/start">
                   Log in with PayPal
                 </a>
@@ -255,15 +237,10 @@ export default async function HowPage() {
             </>
           )}
         </div>
+        <div className="shell">
+          <PublicFooter />
+        </div>
       </section>
-
-      <footer className="shell footer">
-        <p>Built for the PayPal AI Hackathon. Sandbox only.</p>
-        <p>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-        </p>
-      </footer>
     </main>
   );
 }

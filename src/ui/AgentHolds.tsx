@@ -6,16 +6,13 @@ import { useId, useState } from "react";
 import type { AgentHolds as Holds } from "@/server/agent-holds";
 import type { Job } from "@/core/toolkit-coverage";
 import { formatMoney, type Currency } from "@/core/types";
+import { CAUSE_LABEL } from "@/core/tripped";
 import { timeAgo } from "./format";
 import "./toolkit.css";
 
 const money = (amount: number, currency: string) => formatMoney({ amount, currency: currency as Currency });
 
-const CAUSE: Record<string, string> = {
-  hidden_text: "Text hidden from people on the page it read",
-  poisoned_tool: "A line in a tool the page offered AI agents",
-  flagged_line: "A line Spotter's check flagged as orders for AI agents",
-};
+const CAUSE: Record<string, string> = CAUSE_LABEL;
 
 async function post(body: Record<string, unknown>): Promise<{ ok: boolean; data: Record<string, any> }> {
   try {
@@ -129,7 +126,7 @@ export function AgentHolds({ initial }: { initial: Holds }) {
                   </>
                 )}
                 {trip.voided ? ` ${trip.voided === 1 ? "Its held payment was" : `Its ${trip.voided} held payments were`} let go.` : ""}{" "}
-                <span className="ah-when" suppressHydrationWarning>{timeAgo(trip.at)}</span>
+                <span className="ah-when" suppressHydrationWarning>({timeAgo(trip.at)})</span>
               </p>
               {trip.wouldHaveSent && (
                 <p className="ah-without">
@@ -273,6 +270,27 @@ export function AgentHolds({ initial }: { initial: Holds }) {
         </article>
       ))}
     </section>
+  );
+}
+
+/**
+ * The agent lab's test agent, while a run left it paused: one quiet line under the family's real payments, never a
+ * card above them. It needs no unpause (the next run starts it fresh), so there is no PIN here.
+ */
+export function LabLine({ lab }: { lab: Holds["lab"] }) {
+  if (!lab) return null;
+  return (
+    <aside className="ah-lab" aria-label="Agent lab">
+      <span className="ah-lab-tag">Test agent</span>
+      <p className="ah-lab-text">
+        The agent lab&apos;s naive test agent is paused: it reached for <code>{lab.tool}</code>, so Spotter froze it
+        {lab.voided ? " and PayPal released its hold" : ""}. Nothing real was touched.{" "}
+        <span className="ah-when" suppressHydrationWarning>({timeAgo(lab.at)})</span>
+      </p>
+      <a className="ah-lab-link" href="/agent-lab">
+        See the run
+      </a>
+    </aside>
   );
 }
 

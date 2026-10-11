@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createHousehold } from "@/core/households";
+import { createHousehold, getHousehold, listSpenders } from "@/core/households";
+import { createSpender, listPayments } from "@/core/lifecycle";
+import { LAB_NAME, labSpenderId, tripOutcome } from "@/core/tripped";
+import { topReason } from "@/core/reasons";
+import { loadWatchtower } from "@/watchtower/load";
+import { holdsFor } from "./agent-holds";
 import { pgliteDb, type Db } from "@/db";
 import type { Deps } from "@/core/lifecycle";
 import type { AiCheckResult } from "@/ai/check";
@@ -120,5 +125,70 @@ describe("the hijack console run", () => {
     await db.query("insert into paypal_events (id, event_type, resource_id, payment_id, summary) values ('WH-LAB', 'PAYMENT.AUTHORIZATION.VOIDED', '0VF52814937998046', null, '{}')");
     const steps = await run();
     expect(steps.find((s) => s.kind === "confirm")!.data).toMatchObject({ source: "webhook", event: "PAYMENT.AUTHORIZATION.VOIDED" });
+  });
+});
+
+describe("a lab run stays in the lab", () => {
+  // The network hashes payees with the session secret; without it a report would fail quietly and prove nothing.
+  beforeEach(() => {
+    vi.stubEnv("SESSION_SECRET", "lab-test-secret-".repeat(4));
+    return () => vi.unstubAllEnvs();
+  });
+
+  const realAgentStoppedAtGadgetBarn = async () => {
+    const id = `sp_real_${Math.random().toString(36).slice(2, 8)}`;
+    await createSpender(db, {
+      id,
+      householdId: hh,
+      name: "Shopping agent",
+      kind: "agent",
+      spotterName: "Sam",
+      allowance: { weekly: { amount: 100_000, currency: "GBP" }, askAbove: { amount: 3000, currency: "GBP" }, blockedCategories: [], allowedPayees: [], blockedPayees: [] },
+    });
+    await db.query("insert into payments (id, spender_id, request, status, amount, currency) values ($1, $2, $3, 'blocked', 8999, 'GBP')", [
+      `pay_${id}`,
+      id,
+      JSON.stringify({ payee: { name: "GadgetBarn" }, amount: { amount: 8999, currency: "GBP" }, category: "electronics" }),
+    ]);
+    return id;
+  };
+
+  it("the test agent isn't one of the family's people", async () => {
+    await run();
+    expect((await listSpenders(db, hh)).map((s) => s.id)).not.toContain(labSpenderId(hh));
+    // Pages that name payments (the dashboard rail, Activity) can still ask for it by name.
+    expect((await listSpenders(db, hh, { lab: true })).map((s) => s.name)).toContain(LAB_NAME);
+  });
+
+  it("its payments only show where asked for, labelled with the tripwire that stopped them", async () => {
+    await run();
+    expect(await listPayments(db, hh)).toEqual([]);
+    const [p] = await listPayments(db, hh, 50, { lab: true });
+    expect(p!.status).toBe("voided");
+    expect(p!.tripwire).toMatchObject({ tool: "create_refund", cause: { kind: "hidden_text", payee: "GadgetBarn" } });
+    expect(tripOutcome(p!)!.long).toBe("Stopped by a tripwire");
+    expect(topReason(p!)).toMatch(/^Reached for create_refund/);
+  });
+
+  it("Watchtower doesn't warn that the same payee is going after two people when one is the test agent", async () => {
+    await realAgentStoppedAtGadgetBarn();
+    await run();
+    const household = (await getHousehold(db, hh))!;
+    const { alerts } = await loadWatchtower(db, household);
+    expect(alerts.filter((a) => a.kind === "repeat_payee")).toEqual([]);
+  });
+
+  it("never files a Spotter network report for the other families", async () => {
+    await run();
+    expect(await db.query("select 1 from reports")).toEqual([]);
+  });
+
+  it("its paused card is kept apart from the family's agents", async () => {
+    await realAgentStoppedAtGadgetBarn();
+    await run();
+    const h = await holdsFor(db, hh);
+    expect(h.agents.map((a) => a.id)).not.toContain(labSpenderId(hh));
+    expect(h.tripwires.map((t) => t.spender_id)).not.toContain(labSpenderId(hh));
+    expect(h.lab).toMatchObject({ tool: "create_refund", voided: 1 });
   });
 });

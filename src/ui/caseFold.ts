@@ -112,9 +112,9 @@ export function panelShows(f: Finding, page: Case["page"]): boolean {
  * The Why list in the Activity drawer: the strongest reason first, always (src/core/reasons.ts), then the other reasons
  * the case file doesn't already say, strongest first.
  */
-export function whyLines(p: Pick<Payment, "decision" | "ai" | "case_file">): string[] {
+export function whyLines(p: Pick<Payment, "decision" | "ai" | "case_file"> & Partial<Pick<Payment, "status" | "decided_by" | "tripwire">>): string[] {
   const c = p.case_file;
-  const ranked = rankedReasons({ decision: p.decision, case_file: c });
+  const ranked = rankedReasons({ decision: p.decision, case_file: c, status: p.status, decided_by: p.decided_by, tripwire: p.tripwire });
   if (!ranked.length) return [];
   const unsaid = new Set(unsaidReasons(p.decision?.reasons ?? [], p.decision?.flags ?? p.ai?.flags ?? [], c, { lead: kernelLead(c?.page)?.kind ?? null }));
   return ranked.filter((r, i) => i === 0 || unsaid.has(r));

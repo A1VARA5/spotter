@@ -213,24 +213,25 @@ export function PhotoCheck() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={picked.url} alt={picked.example ? "Example photo of a living room with a blue sofa, a white chair, a floor lamp, a sideboard and curtains" : `Your photo: ${picked.name}`} />
             {size &&
-              result.items.map((i) =>
-                i.bbox ? (
+              // One number per kind of thing: the two curtains of a window both carry the same number.
+              result.items.flatMap((i) =>
+                [...(i.bbox ? [i.bbox] : []), ...(i.more ?? [])].map((b, k) => (
                   <span
-                    key={i.n}
+                    key={`${i.n}-${k}`}
                     className="photo-box"
                     data-found={i.found}
                     data-hot={hot === i.n}
                     aria-hidden="true"
                     style={{
-                      left: `${(i.bbox[0] / size[0]) * 100}%`,
-                      top: `${(i.bbox[1] / size[1]) * 100}%`,
-                      width: `${((i.bbox[2] - i.bbox[0]) / size[0]) * 100}%`,
-                      height: `${((i.bbox[3] - i.bbox[1]) / size[1]) * 100}%`,
+                      left: `${(b[0] / size[0]) * 100}%`,
+                      top: `${(b[1] / size[1]) * 100}%`,
+                      width: `${((b[2] - b[0]) / size[0]) * 100}%`,
+                      height: `${((b[3] - b[1]) / size[1]) * 100}%`,
                     }}
                   >
                     <span className="photo-num">{i.n}</span>
                   </span>
-                ) : null,
+                )),
               )}
           </div>
           {picked.example && (
@@ -325,7 +326,7 @@ function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: 
   if (!i.found) {
     return (
       <span>
-        <b>{i.thing}</b> Couldn&apos;t find this one, so it has no price.
+        <b>{i.thing}{i.count ? ` (${i.count} in the photo)` : ""}</b> Couldn&apos;t find this one, so it has no price.
       </span>
     );
   }
@@ -342,7 +343,7 @@ function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: 
           : `Used ones sell for ${money(i.low, currency)} to ${money(i.high, currency)}`;
   return (
     <span>
-      <b>{i.thing}</b> <span className="photo-price">{price}.</span>{" "}
+      <b>{i.thing}{i.count ? ` (${i.count} in the photo, the price is for one)` : ""}</b> <span className="photo-price">{price}.</span>{" "}
       <span className="photo-match">
         {i.match === "similar" ? `For example: ${i.title}` : i.title}{" "}
         {HTTPS.test(i.cheapest.url) && (

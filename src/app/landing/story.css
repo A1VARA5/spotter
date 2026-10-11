@@ -1200,36 +1200,3 @@
   justify-content: center;
   margin-top: 8px;
 }
-
-.lfoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px 32px;
-  margin-top: clamp(96px, 14vh, 160px);
-  padding: 28px 0 36px;
-  border-top: 1px solid rgb(255 255 255 / 0.1);
-}
-
-.lfoot-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 26px;
-  font-size: 15px;
-}
-
-.lfoot-links a {
-  text-decoration: none;
-  color: #b9c3cc;
-}
-
-.lfoot-links a:hover {
-  color: #fff;
-}
-
-.lfoot-fine {
-  flex-basis: 100%;
-  font-size: 14px;
-  color: #8d99a5;
-}

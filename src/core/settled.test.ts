@@ -64,7 +64,7 @@ describe("outcomeLine", () => {
     expect(outcomeLine(p({ status: "voided", decided_by: "Tom", was_it_you: { state: "not_me", who: "Tom" } }))).toBe(
       "Released. Tom said the message wasn't from them, so PayPal released the £6.99. Nothing was paid.",
     );
-    expect(outcomeLine(p({ status: "voided", decided_by: PAUSED_BY }))).toMatch(/^Released\. The agent was paused by a tripwire.*Nothing was paid\.$/);
+    expect(outcomeLine(p({ status: "voided", decided_by: PAUSED_BY }))).toMatch(/^Stopped by a tripwire\..*froze it and PayPal released the hold\. Nothing was paid\.$/);
     expect(outcomeLine(p({ status: "voided", decided_by: LATE_BY, error: LATE_HOLD }))).toBe(LATE_HOLD);
     expect(outcomeLine(p({ status: "blocked" }))).toBe("Stopped. Spotter stopped it before anything reached PayPal. Nothing was paid.");
     expect(outcomeLine(p({ status: "protected" }))).toMatch(/^Not sent\..*no buyer protection/);

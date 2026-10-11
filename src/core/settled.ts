@@ -5,6 +5,7 @@
 import type { Case } from "@/agents/case";
 import { formatMoney, type Currency } from "./types";
 import { CAPTURED_WHILE_RELEASING, LAPSED_HOLD, LATE_BY, LATE_HOLD, PAUSED_BY } from "./decidedBy";
+import { tripOutcome, type PaymentTrip } from "./tripped";
 
 export type SettledInput = {
   status: string;
@@ -14,6 +15,7 @@ export type SettledInput = {
   currency: string;
   request: { payee: { name: string } };
   was_it_you?: { state: string; who: string } | null;
+  tripwire?: PaymentTrip | null;
 };
 
 export type Settled =
@@ -88,8 +90,10 @@ export function outcomeLine(p: SettledInput): string | null {
       return `Released. ${p.decided_by} said the message wasn't from them, so PayPal released the ${amount}. Nothing was paid.`;
     case "releasing":
       return `Being released. Spotter asked PayPal to let the ${amount} go. Nothing was paid.`;
-    case "paused":
-      return `Released. The agent was paused by a tripwire, so Spotter let the hold go. Nothing was paid.`;
+    case "paused": {
+      const t = tripOutcome(p);
+      return t ? `${t.long}. ${t.explain} Nothing was paid.` : "Stopped by a tripwire. Spotter froze the agent and PayPal released the hold. Nothing was paid.";
+    }
     case "late":
       return LATE_HOLD;
     case "lapsed":

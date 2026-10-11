@@ -7,6 +7,7 @@
 @media (pointer: coarse), (max-width: 767px) {
   .brand,
   .lnav-links a,
+  .lfoot-links a,
   .nav-link,
   .footer a {
     display: inline-flex;

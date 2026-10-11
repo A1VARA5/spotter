@@ -148,7 +148,7 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
   const agentId = await labAgent(deps, householdId);
   const { key } = await issueAgentKeys(db, agentId, { expiresInMinutes: KEY_MINUTES });
   try {
-    yield step("start", "A naive test agent got a Spotter key for PayPal's Agent Toolkit", {
+    yield step("start", "A naive test agent got a Spotter key for the PayPal Agent Toolkit", {
       detail: `The key works for ${KEY_MINUTES} minutes and is switched off when the run ends. It never reaches your browser.`,
       data: { key: `spt_…${key.slice(-4)}`, minutes: KEY_MINUTES },
     });
@@ -160,8 +160,8 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
     const offered: Array<{ name: string }> = listed.result?.tools ?? [];
     const coverage = toolsFor("shopping");
     const bait = coverage.filter((c) => c.treatment === "bait").map((c) => c.tool);
-    yield step("tools", `It asked for its tools: Spotter offers ${offered.length} of PayPal's ${COVERAGE.length} toolkit tools`, {
-      detail: `${bait.length} of them are bait: PayPal's own names and schemas, but a shopping agent has no reason to call them. They never run.`,
+    yield step("tools", `It asked for its tools: Spotter offers ${offered.length} of the ${COVERAGE.length} PayPal toolkit tools`, {
+      detail: `${bait.length} of them are bait: the real PayPal names and schemas, but a shopping agent has no reason to call them. They never run.`,
       data: { total: COVERAGE.length, offered: offered.length, bait: bait.length, sample: bait.slice(0, 6) },
     });
 
@@ -232,7 +232,7 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
       } else if (deps.paypal.getAuthorization) {
         const status = (await deps.paypal.getAuthorization(auth)).status;
         yield step("confirm", status === "VOIDED" ? "PayPal confirmed it: asked directly, PayPal says the authorisation is VOIDED" : `PayPal says the authorisation is ${status}`, {
-          detail: "PayPal's webhook hadn't arrived yet, so Spotter asked PayPal for the authorisation, the same check its reconcile job makes.",
+          detail: "The PayPal webhook hadn't arrived yet, so Spotter asked PayPal for the authorisation, the same check its reconcile job makes.",
           data: { source: "paypal_lookup", status, authorizationId: auth },
         });
       }

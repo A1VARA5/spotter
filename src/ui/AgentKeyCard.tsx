@@ -99,10 +99,10 @@ export function AgentKeyCard({ agentId, name, refreshKey = 0 }: { agentId: strin
         <p className="key-record" data-status={view.paypalStatus ?? "error"}>
           {view.paypalStatus === "match" && record ? (
             <>
-              PayPal&apos;s own record says order {view.order.paypalOrderId} came from key <b>{record.split(":")[0]?.replace("spt-", "spt_…")}</b>.
+              The PayPal record says order {view.order.paypalOrderId} came from key <b>{record.split(":")[0]?.replace("spt-", "spt_…")}</b>.
             </>
           ) : view.paypalStatus === "mismatch" ? (
-            <>PayPal&apos;s record for order {view.order.paypalOrderId} names a different key ({record}) than Spotter sent ({view.order.customId}). Check this order in PayPal.</>
+            <>The PayPal record for order {view.order.paypalOrderId} names a different key ({record}) than Spotter sent ({view.order.customId}). Check this order in PayPal.</>
           ) : view.paypalStatus === "missing" ? (
             <>PayPal has no key on record for order {view.order.paypalOrderId}. Spotter sent {view.order.customId}.</>
           ) : (

@@ -1,4 +1,5 @@
-import { TopBar } from "@/ui/components";
+import { PublicFooter, PublicHeader } from "@/ui/PublicChrome";
+import { isSignedIn } from "@/server/page-session";
 import { getDeps } from "@/server/deps";
 import { askLines, findAsk } from "@/core/was-it-you";
 import { getSpender } from "@/core/lifecycle";
@@ -31,8 +32,9 @@ export default async function WasItYouPage({ searchParams }: { searchParams: Pro
   const found = t ? await findAsk(db, t) : null;
   const payer = found ? await getSpender(db, found.p.spender_id) : null;
   return (
+    <>
+    <PublicHeader band signedIn={await isSignedIn()} />
     <main className="shell legal wiy-page">
-      <TopBar />
       {!found || !payer ? (
         <>
           <h1 className="page-title">This link isn&apos;t valid</h1>
@@ -56,5 +58,7 @@ export default async function WasItYouPage({ searchParams }: { searchParams: Pro
         </>
       )}
     </main>
+    <PublicFooter band />
+    </>
   );
 }

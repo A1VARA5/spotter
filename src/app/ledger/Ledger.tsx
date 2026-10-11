@@ -22,6 +22,8 @@ import { realOne, whyLines } from "@/ui/caseFold";
 import { MarketNote } from "@/ui/components";
 import { topReason } from "@/core/reasons";
 import { outcomeLine, settledCase } from "@/core/settled";
+import { tripOutcome } from "@/core/tripped";
+import { TripFound } from "@/ui/TripFound";
 import "./ledger.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -55,14 +57,24 @@ type Row = {
   amount: number;
   currency: string;
   state: TrackState;
+  label: string;
   why: string;
   market: string;
   paypal: string;
 };
 
-function toRow(p: Payment, names: Record<string, string>): Row {
+/** The outcome a payment shows: a hold a tripwire let go is "Stopped by a tripwire", never a person's deny. */
+function shown(p: Payment): { state: TrackState; label: string } {
+  const trip = tripOutcome(p);
+  if (trip) return { state: trip.state, label: trip.long };
   const s = trackState(p.status);
+  return { state: s, label: STATE_LABEL[s] };
+}
+
+function toRow(p: Payment, names: Record<string, string>): Row {
+  const { state: s, label } = shown(p);
   return {
+    label,
     id: p.id,
     when: p.created_at,
     who: names[p.spender_id] ?? "Someone",
@@ -93,11 +105,11 @@ const WIDE_ONLY = ["when", "why", "market", "paypal"];
 const PHONE = 760;
 const EVIDENCE_FOR = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
 
-function StateCell({ value }: ICellRendererParams<Row, TrackState>) {
+function StateCell({ value, data }: ICellRendererParams<Row, TrackState>) {
   if (!value) return null;
   return (
     <span className="feed-state" data-state={value}>
-      {STATE_LABEL[value]}
+      {data?.label ?? STATE_LABEL[value]}
     </span>
   );
 }
@@ -116,7 +128,8 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
   const columns = useMemo<ColDef<Row>[]>(
     () => [
       { field: "when", headerName: "When", width: 108, valueFormatter: (p) => timeAgo(p.value), sort: "desc" },
-      { field: "who", headerName: "Who", width: 140 },
+      // Names wrap rather than cut off ("Naive test agent" at phone width).
+      { field: "who", headerName: "Who", width: 140, wrapText: true, autoHeight: true, cellClass: "ledger-who" },
       {
         field: "payee",
         headerName: "Paid to",
@@ -145,7 +158,8 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
         cellClass: "ledger-market",
         tooltipField: "market",
       },
-      { field: "paypal", headerName: "PayPal id", width: 150, cellClass: "ledger-id", tooltipField: "paypal" },
+      // Wide enough for a whole 17 character PayPal id in the mono face.
+      { field: "paypal", headerName: "PayPal id", width: 200, cellClass: "ledger-id", tooltipField: "paypal" },
     ],
     [],
   );
@@ -230,7 +244,9 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
     if (!p && d.open) d.close();
   }, [p]);
 
-  const s = p ? trackState(p.status) : null;
+  const out = p ? shown(p) : null;
+  const s = out?.state ?? null;
+  const tripped = !!p && !!tripOutcome(p);
   const evidence = p && EVIDENCE_FOR.has(p.status) ? `/api/payments/${encodeURIComponent(p.id)}/evidence` : null;
   // How it ended (past tense once decided), then the strongest reason and the ones the case file below doesn't say.
   const c = p?.case_file ? settledCase(p.case_file, p) : null;
@@ -257,7 +273,7 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
                 {who} to {p.request.payee.name}, <span className="num">{money(p.amount, p.currency)}</span>
               </h2>
               <span className="feed-state" data-state={s}>
-                {STATE_LABEL[s]}
+                {out?.label}
               </span>
             </div>
             <button type="button" className="btn btn-quiet ledger-drawer-close" onClick={onClose} aria-label="Close the case file">
@@ -284,7 +300,9 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
 
           {!channel3OnCard && <MarketNote market={p.market} currency={p.currency} />}
 
-          {c ? (
+          {tripped ? (
+            <TripFound p={p} lead={false} />
+          ) : c ? (
             <section aria-labelledby="ledger-case">
               <h3 id="ledger-case" className="ledger-drawer-label">
                 Case file

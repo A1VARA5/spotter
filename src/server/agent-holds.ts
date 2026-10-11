@@ -5,6 +5,7 @@ import { getSpender } from "@/core/lifecycle";
 import { getHousehold } from "@/core/households";
 import { isJob } from "@/core/toolkit-coverage";
 import { listTripwires, unfreeze } from "@/core/tripwire";
+import { labSpenderId } from "@/core/tripped";
 import { decideRefund, listRefunds, recordSale, type Run } from "@/core/selling";
 import { decideSubscription, listHeldSubscriptions } from "@/core/subscriptions";
 import { randomBytes } from "node:crypto";
@@ -28,12 +29,17 @@ export async function holdsFor(db: Deps["db"], householdId: string) {
     ),
     db.query<{ id: string; name: string; agent_job: string; frozen_at: string | null }>("select id, name, agent_job, frozen_at from spenders where household_id = $1 and kind = 'agent' order by created_at", [householdId]),
   ]);
+  // The agent lab's test agent is kept apart: never a family agent card, only one compact line while it is paused.
+  const labId = labSpenderId(householdId);
+  const labAgent = agents.find((a) => a.id === labId);
+  const labTrip = labAgent?.frozen_at ? (tripwires.find((t) => t.spender_id === labId && !t.unfrozen_at) ?? null) : null;
   return {
-    tripwires,
+    tripwires: tripwires.filter((t) => t.spender_id !== labId),
     refunds,
     subscriptions,
     sales: sales.map((s) => ({ ...s, amount: Number(s.amount) })),
-    agents: agents.map((a) => ({ ...a, frozen_at: a.frozen_at ? new Date(a.frozen_at).toISOString() : null })),
+    agents: agents.filter((a) => a.id !== labId).map((a) => ({ ...a, frozen_at: a.frozen_at ? new Date(a.frozen_at).toISOString() : null })),
+    lab: labTrip ? { tool: labTrip.tool, voided: labTrip.voided, at: labTrip.at } : null,
   };
 }
 export type AgentHolds = Awaited<ReturnType<typeof holdsFor>>;
