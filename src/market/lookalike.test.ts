@@ -150,6 +150,30 @@ describe("spotTheDifference", () => {
     expect(close!.differences.map((d) => d.label)).not.toContain("Was price");
   });
 
+  it("keeps the price row in line with the verdict (both use the middle price, not the cheapest listing)", async () => {
+    search.mockResolvedValueOnce([product("a", "Aurora X2 wireless earbuds", [["argos.co.uk", 2000], ["currys.co.uk", 4500], ["johnlewis.com", 5000]])]);
+    const s = await spotTheDifference(deps, input({ amount: 3000 }));
+    expect(s!.direction).toBe("cheaper");
+    expect(s!.differences[0]).toEqual({ label: "Price", here: "£30.00", real: "about £45.00" });
+  });
+
+  it("spends no daily slot when the search didn't answer, and still shows a result when the cache write fails", async () => {
+    search.mockResolvedValueOnce(null);
+    await spotTheDifference(deps, input());
+    expect(await db.query("select 1 from image_checks")).toHaveLength(0);
+    const flaky = { ...deps, db: { ...db, query: async (sql: string, params?: unknown[]) => (sql.includes("insert into image_search_cache") ? Promise.reject(new Error("blip")) : db.query(sql, params)) } as Db };
+    expect(await spotTheDifference(flaky, input({ paymentId: "p9" }))).not.toBeNull();
+  });
+
+  it("drops a slow 'was' check instead of the whole comparison", async () => {
+    const slow = vi.fn<NonNullable<SpotDeps["priceHigh"]>>(() => new Promise(() => {}));
+    const t = Date.now();
+    const s = await spotTheDifference({ ...deps, priceHigh: slow }, input({ page: { finalUrl: "https://gadgetbarn.shop/", screenshot: jpeg(), was: "£400" } }));
+    expect(Date.now() - t).toBeLessThan(4000);
+    expect(s).not.toBeNull();
+    expect(s!.differences.map((d) => d.label)).not.toContain("Was price");
+  });
+
   it("never fails the case: a broken search or history is logged and skipped", async () => {
     search.mockRejectedValueOnce(new Error("boom"));
     expect(await spotTheDifference(deps, input())).toBeNull();
@@ -167,5 +191,8 @@ describe("parseWas", () => {
     expect(parseWas("$49.99", "GBP")).toBeNull();
     expect(parseWas("RRP 49.99", "GBP")).toBeNull();
     expect(parseWas("$12.50", "USD")).toBe(1250);
+    expect(parseWas("£1299.00", "GBP")).toBe(129900);
+    expect(parseWas("£12345", "GBP")).toBe(1234500);
+    expect(parseWas("£1,299.99", "GBP")).toBe(129999);
   });
 });

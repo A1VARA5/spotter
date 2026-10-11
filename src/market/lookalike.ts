@@ -54,6 +54,7 @@ export type SpotInput = {
 
 const SHOP_REASONS = new Set(["fake shop price", "brand new shop", "hidden instructions"]);
 const MAX_IMAGE_BYTES = 1_500_000;
+const HISTORY_MS = 2_500;
 const CACHE_DAYS = 7;
 const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/;
 const CDN_IMAGE = /^https:\/\/cdn\.trychannel3\.com\/[A-Za-z0-9._~%?=&/-]{1,300}$/;
@@ -85,7 +86,7 @@ export function sameItem(item: string, p: Pick<Product, "title" | "brand">): boo
 export function parseWas(text: string | undefined, currency: Currency): number | null {
   if (!text) return null;
   const sign = currency === "GBP" ? "£" : "\\$";
-  const m = new RegExp(`${sign}\\s?(\\d{1,3}(?:,\\d{3})*|\\d{1,7})(?:\\.(\\d{2}))?`).exec(text);
+  const m = new RegExp(`${sign}\\s?(\\d{1,3}(?:,\\d{3})+|\\d{1,7})(?:\\.(\\d{2}))?(?![\\d,])`).exec(text);
   if (!m) return null;
   const minor = Number(m[1]!.replace(/,/g, "")) * 100 + Number(m[2] ?? 0);
   return minor > 0 ? minor : null;
@@ -95,12 +96,13 @@ export function parseWas(text: string | undefined, currency: Currency): number |
 function pictureOf(page: SpotInput["page"]): { query: ImageQuery; key: string } | null {
   if (page.screenshot) {
     const m = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/=]+)$/.exec(page.screenshot);
-    if (!m) return null;
-    const bytes = Buffer.from(m[2]!, "base64");
+    const bytes = m ? Buffer.from(m[2]!, "base64") : Buffer.alloc(0);
     const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
     const png = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-    if (!(jpeg || png) || bytes.length > MAX_IMAGE_BYTES) return null;
-    return { query: { base64: m[2]! }, key: createHash("sha256").update(bytes).digest("hex") };
+    if (m && (jpeg || png) && bytes.length <= MAX_IMAGE_BYTES) {
+      return { query: { base64: m[2]! }, key: createHash("sha256").update(bytes).digest("hex") };
+    }
+    console.error(`[spotter] spot the difference: the screenshot isn't a JPEG or PNG under ${MAX_IMAGE_BYTES} bytes, so it isn't sent`);
   }
   if (page.productImage) {
     let u: URL;
@@ -131,23 +133,30 @@ async function search(deps: SpotDeps, pic: { query: ImageQuery; key: string }, c
     [key],
   );
   if (hit[0]) return hit[0].products;
-  const took = await deps.db.query(
-    `insert into image_checks (household_id) select $1
-     where (select count(*) from image_checks where at > now() - interval '1 day') < $2
-       and (select count(*) from image_checks where household_id = $1 and at > now() - interval '1 day') < $3
-     returning 1`,
-    [deps.householdId, deps.overall ?? 200, deps.perHousehold ?? 10],
+  const [used] = await deps.db.query<{ total: string; mine: string }>(
+    `select (select count(*) from image_checks where at > now() - interval '1 day') as total,
+            (select count(*) from image_checks where household_id = $1 and at > now() - interval '1 day') as mine`,
+    [deps.householdId],
   );
-  if (!took.length) {
+  if (Number(used?.total ?? 0) >= (deps.overall ?? 200) || Number(used?.mine ?? 0) >= (deps.perHousehold ?? 10)) {
     console.error(`[spotter] spot the difference skipped for ${deps.householdId}: daily image search cap reached`);
     return null;
   }
   const products = await deps.imageSearch(pic.query, currency);
-  if (!products) return null; // an outage is never cached as "no match"
-  await deps.db.query(
-    "insert into image_search_cache (key, products) values ($1, $2) on conflict (key) do update set products = excluded.products, fetched_at = now()",
-    [key, JSON.stringify(products)],
-  );
+  if (!products) {
+    console.error("[spotter] spot the difference: Channel3 image search gave no answer, so nothing is shown");
+    return null; // an outage is never cached as "no match", and costs the family no slot
+  }
+  // Counted once Channel3 answered (count then insert isn't atomic; a race can go one or two over, which is fine here).
+  await deps.db.query("insert into image_checks (household_id) values ($1)", [deps.householdId]);
+  try {
+    await deps.db.query(
+      "insert into image_search_cache (key, products) values ($1, $2) on conflict (key) do update set products = excluded.products, fetched_at = now()",
+      [key, JSON.stringify(products)],
+    );
+  } catch (e) {
+    console.error("[spotter] caching the image search failed (the result is still used):", e instanceof Error ? e.message : e);
+  }
   return products;
 }
 
@@ -174,7 +183,10 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   const item = input.item?.trim();
   if (!input.reason || !SHOP_REASONS.has(input.reason) || !item) return null;
   const pic = pictureOf(input.page);
-  if (!pic) return null;
+  if (!pic) {
+    if (input.page.productImage) console.error("[spotter] spot the difference: the page's product picture isn't a public https link, so it isn't sent");
+    return null;
+  }
   const products = await search(deps, pic, input.currency);
   if (!products?.length) return null;
 
@@ -195,8 +207,11 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   const safer = (
     await deps.db.query<{ id: string; offer: Offer }>("select id, offer from safer_options where payment_id = $1 order by created_at desc limit 1", [input.paymentId])
   )[0];
-  const reuse = safer && listings.find((l) => l.domain === safer.offer.domain && sameItem(item, { title: safer.offer.title }) && safer.offer.currency === input.currency);
-  const pick: Listing & { offerId?: string } = reuse ? { ...reuse, title: safer.offer.title, price: safer.offer.price, url: safer.offer.url, offerId: safer.id } : cheapest;
+  // Reused only when it is the same live listing (same shop, same price), so the panel shows only live numbers.
+  const reuse =
+    safer &&
+    listings.find((l) => l.domain === safer.offer.domain && l.price === safer.offer.price && safer.offer.currency === input.currency && sameItem(item, { title: safer.offer.title }));
+  const pick: Listing & { offerId?: string } = reuse ? { ...reuse, offerId: safer.id } : cheapest;
 
   const money = (minor: number) => formatMoney({ amount: minor, currency: input.currency });
   const ratio = input.amount / typical;
@@ -207,13 +222,21 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   const verdict = direction === "cheaper" ? (ratio < 0.4 ? VERDICT.far : VERDICT.cheaper) : VERDICT[direction];
 
   const differences: SpotDifference[] = [];
-  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: money(pick.price) });
+  // The same middle price the verdict uses, so the row can never argue with it.
+  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: shops.size > 1 ? `about ${money(typical)}` : money(typical) });
   const wasHere = parseWas(input.page.was, input.currency);
   if (wasHere && deps.priceHigh) {
-    const high = await deps.priceHigh(pick.productId).catch((e) => {
-      console.error(`[spotter] price history for ${pick.productId} failed (the was price isn't checked):`, e instanceof Error ? e.message : e);
-      return null;
-    });
+    // Optional, so it gets a short limit of its own: a slow history call drops this row, never the whole comparison.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const high = await Promise.race([
+      deps.priceHigh(pick.productId),
+      new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(`no answer in ${HISTORY_MS} ms`)), HISTORY_MS))),
+    ])
+      .catch((e) => {
+        console.error(`[spotter] price history for ${pick.productId} failed (the was price isn't checked):`, e instanceof Error ? e.message : e);
+        return null;
+      })
+      .finally(() => clearTimeout(timer));
     // Only in the same currency, and only when the claim is far above anything real shops charged.
     if (high && high.currency === input.currency && wasHere > high.max * 1.5) {
       differences.push({ label: "Was price", here: `Says it was ${money(wasHere)}`, real: `No more than ${money(high.max)} at real shops in 30 days` });
