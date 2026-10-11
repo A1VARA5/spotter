@@ -5,11 +5,27 @@
 // Everything the page says (title, hidden text) is a stranger's text: callers must treat it as data.
 import { z } from "zod";
 import { SEEN_VS_READ, judgeHidden, type HiddenFinding } from "./seen";
+import { readShopTools, type ShopTools } from "./webmcp";
 
 export type PageAsks = { card: boolean; login: boolean; giftCard: boolean };
 export type PageSeen = { domChars: number; visibleChars: number; visibleSample: string; hidden: HiddenFinding[]; isolated: boolean; truncated: boolean };
 export type PageVisit =
-  | { ok: true; url: string; finalUrl: string; title: string; asks: PageAsks; screenshot?: string; seen?: PageSeen; replayUrl?: string }
+  | {
+      ok: true;
+      url: string;
+      finalUrl: string;
+      title: string;
+      asks: PageAsks;
+      screenshot?: string;
+      seen?: PageSeen;
+      replayUrl?: string;
+      /** The tools the page registers for AI agents (WebMCP), listed and checked, never run. */
+      tools?: ShopTools;
+      /** The page's struck through "was" price, as written there (plain text, short). */
+      was?: string;
+      /** The product picture the page shares (og:image), only when it is an https link. */
+      productImage?: string;
+    }
   | { ok: false; url: string; error: string };
 
 /** The slice of the @onkernel/sdk client this uses, so tests can pass a fake. */
@@ -21,6 +37,10 @@ export type KernelLike = {
       execute(id: string, body: { code: string; timeout_sec?: number }): Promise<{ success: boolean; result?: unknown; error?: string }>;
     };
     /** Session recordings. Optional so a client without them still opens pages, just without a replay. */
+    /** Tools pages register for AI agents (WebMCP). Listing only: Spotter never runs a page's tools. */
+    webmcp?: {
+      listTools(id: string, query?: { exclude_custom?: boolean }): Promise<unknown>;
+    };
     replays?: {
       start(id: string, body?: { max_duration_in_seconds?: number }): Promise<{ replay_id: string; replay_view_url?: string }>;
       stop(replayId: string, params: { id_or_name: string }): Promise<unknown>;
@@ -53,6 +73,9 @@ const facts = await page.evaluate(() => {
     login: inputs.some((i) => /user|login|email|passcode/.test(about(i))) && /sign in|log in|login|verify your account/.test(text),
     giftCard: /gift ?card|voucher code|redeem(ption)? code|steam card|itunes card|apple gift|google play card|card pin/.test(text),
     forms: document.forms.length,
+    // A struck through "was" price, and the product picture the page shares, for "spot the difference".
+    was: (() => { const el = document.querySelector("s, del, strike, [class~='was'], [class*='was-price'], [class*='compare-at'], [class*='old-price']"); return el ? (el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 60) : ""; })(),
+    image: (() => { const m = document.querySelector('meta[property="og:image"]'); return m ? String(m.getAttribute("content") || "").slice(0, 2000) : ""; })(),
   };
 });
 let seen = null;
@@ -75,7 +98,14 @@ return { finalUrl: page.url(), title: (await page.title()).slice(0, 200), facts,
 const Result = z.object({
   finalUrl: z.string().max(4000),
   title: z.string().max(400),
-  facts: z.object({ password: z.boolean(), card: z.boolean(), login: z.boolean(), giftCard: z.boolean() }),
+  facts: z.object({
+    password: z.boolean(),
+    card: z.boolean(),
+    login: z.boolean(),
+    giftCard: z.boolean(),
+    was: z.string().max(100).optional(),
+    image: z.string().max(2100).optional(),
+  }),
   seen: z
     .object({
       domChars: z.number().int().nonnegative(),
@@ -143,6 +173,9 @@ export async function visitInCloud(
       const r = Result.safeParse(res.result);
       if (!r.success) return fail("The cloud browser sent back something unexpected.");
       // Stopped before the delete in finally, so KERNEL saves the video. A replay that didn't save just isn't shown.
+      // In the same visit, on the page that just loaded: the tools it offers AI agents.
+      // Its own short limit, so a slow listing can't cost the page visit that already worked.
+      const tools = await listShopTools(client, browser.session_id, Math.max(300, Math.min(5000, limit - (Date.now() - started) - 1500)));
       const replayUrl = replay && (await stopReplay(client, browser.session_id, replay.id)) ? replay.url : undefined;
       const { finalUrl, title, facts, seen, isolated, seenError, shot } = r.data;
       // A check the page broke, or one that had to run where the page could fake it, is logged rather than hidden.
@@ -168,6 +201,9 @@ export async function visitInCloud(
             }
           : {}),
         ...(replayUrl ? { replayUrl } : {}),
+        ...(tools ? { tools } : {}),
+        ...(facts.was && plainText(facts.was, 60) ? { was: plainText(facts.was, 60) } : {}),
+        ...(facts.image && /^https:\/\/[^\s"<>]+$/.test(facts.image) ? { productImage: facts.image } : {}),
       };
     };
     // Even after a timeout, the finally below deletes the browser if it was created in time.
@@ -201,6 +237,31 @@ async function startReplay(client: KernelLike, session: string): Promise<{ id: s
   } catch (e) {
     console.error("[spotter] starting the KERNEL replay failed (the visit goes on without one):", e instanceof Error ? e.message : e);
     return null;
+  }
+}
+
+/**
+ * The page's own WebMCP tools (custom tools excluded), read and judged. Undefined when the client can't list tools;
+ * a failed listing is logged and comes back as "not checked", so it never reads as "this shop offers no tools".
+ */
+async function listShopTools(client: KernelLike, session: string, ms: number): Promise<ShopTools | undefined> {
+  if (!client.browsers.webmcp) {
+    console.error("[spotter] this KERNEL client can't list a page's tools for AI agents, so they weren't checked");
+    return undefined;
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const listed = await Promise.race([
+      client.browsers.webmcp.listTools(session, { exclude_custom: true }),
+      new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms))),
+    ]);
+    return readShopTools(listed);
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    console.error("[spotter] listing the page's tools for AI agents failed (the visit goes on without them):", error);
+    return { checked: false, error: "Spotter couldn't list the tools this page offers AI agents." };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 // The case agent's write up on a held payment: what it most likely is, what each check found (every line names
 // the check it came from), what to do before deciding, and a safer way to buy the same thing when there is one.
-import { useState } from "react";
+import { useId, useState } from "react";
 import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
@@ -89,6 +89,9 @@ export function CaseFile({
       )}
 
       {c.page && <OpenedPage page={c.page} paymentId={paymentId} fallback={pageShot} />}
+      {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
+      {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
+      {c.spot && <SpotPanel spot={c.spot} shot={c.page?.screenshot} />}
 
       {c.status !== "done" && (
         <p className="case-note">
@@ -121,6 +124,109 @@ export function CaseFile({
         </div>
       )}
       {footer}
+    </section>
+  );
+}
+
+// Only Channel3's own image host is ever put in an img src for the genuine listing.
+const CDN = /^https:\/\/cdn\.trychannel3\.com\/[A-Za-z0-9._~%?=&/-]{1,300}$/;
+const HTTPS = /^https:\/\/[^\s"<>]+$/;
+
+/**
+ * Spot the difference: the shop's screenshot next to the same product at a real shop (found by Channel3's image
+ * search and checked to be the same product), one number first, one verdict line, then up to 3 differences.
+ */
+function SpotPanel({ spot, shot }: { spot: NonNullable<Case["spot"]>; shot?: string }) {
+  const titleId = useId();
+  const here = shot && SHOT.test(shot) ? shot : undefined;
+  const real = spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  return (
+    <section className="spot" data-direction={spot.direction} aria-labelledby={titleId}>
+      <p className="spot-title" id={titleId}>
+        Spot the difference
+      </p>
+      <p className="spot-number">{spot.headline}</p>
+      <p className="spot-verdict">{spot.verdict}</p>
+      <div className="spot-grid">
+        <figure className="spot-side spot-here">
+          {here ? <img src={here} alt={`The shop Spotter opened: ${spot.here.host}`} width={320} height={240} /> : <div className="spot-blank" aria-hidden="true" />}
+          <figcaption>
+            <b>This shop</b> {spot.here.host} · {money(spot.here.price, spot.currency)}
+          </figcaption>
+        </figure>
+        <figure className="spot-side spot-real">
+          {real ? <img src={real} alt={spot.genuine.title} width={320} height={240} loading="lazy" referrerPolicy="no-referrer" /> : <div className="spot-blank" aria-hidden="true" />}
+          <figcaption>
+            <b>{spot.genuine.title}</b> {money(spot.genuine.price, spot.currency)} at {spot.genuine.domain}
+            {HTTPS.test(spot.genuine.url) && (
+              <>
+                {" "}
+                <a href={spot.genuine.url} target="_blank" rel="noopener noreferrer nofollow">
+                  See it there
+                </a>
+              </>
+            )}
+          </figcaption>
+        </figure>
+      </div>
+      {spot.differences.length > 0 && (
+        <ol className="spot-diffs">
+          {spot.differences.map((d, i) => (
+            <li key={d.label} style={{ "--i": i } as React.CSSProperties}>
+              <span className="spot-diff-label">{d.label}</span>
+              <span className="spot-diff-here">
+                <span className="sr-only">This shop: </span>
+                {d.here}
+              </span>
+              <span className="spot-diff-real">
+                <span className="sr-only">Real shops: </span>
+                {d.real}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="spot-source">Found by searching real shops with a picture of this page. Prices and shop names come from those shops&apos; listings.</p>
+    </section>
+  );
+}
+
+/**
+ * The tools the shop offers AI agents (WebMCP), as plain words, never raw JSON. A line written to steer the agent is
+ * shown in red with the tool's name and where it sits. Spotter only listed these; it never ran one.
+ */
+function ShopToolList({ tools }: { tools: Extract<NonNullable<NonNullable<Case["page"]>["tools"]>, { checked: true }> }) {
+  const more = tools.total - tools.tools.length;
+  const titleId = useId();
+  return (
+    <section className="case-tools" aria-labelledby={titleId}>
+      <p className="case-tools-title" id={titleId}>
+        Tools this shop offers AI agents
+      </p>
+      <p className="case-tools-sub">An AI agent reads these to decide what to do. Spotter only listed them and never ran one.</p>
+      <ul>
+        {tools.tools.map((t, i) => (
+          <li key={`${t.name}-${i}`} className="case-tool" data-poisoned={t.poisoned ? "true" : undefined}>
+            <p className="case-tool-head">
+              <code>{t.name}</code>
+              {t.poisoned && <span className="case-tool-tag">Written to steer your agent</span>}
+              {!t.poisoned && t.hints[0] && <span className="case-tool-hint">{t.hints[0]}</span>}
+            </p>
+            {t.description && <p className="case-tool-desc">{t.description}</p>}
+            {t.frame && <p className="case-tool-desc">Offered by an embedded page from {t.frame}.</p>}
+            {t.poisoned && (
+              <>
+                <p className="case-tool-where">In {t.poisoned.where}:</p>
+                <blockquote>
+                  <mark>{t.poisoned.quote}</mark>
+                </blockquote>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {more > 0 && <p className="case-tools-sub">And {more} more.</p>}
+      {tools.incomplete && <p className="case-tools-sub">Spotter couldn&apos;t read all of this shop&apos;s tools, so this is only part of the picture.</p>}
     </section>
   );
 }

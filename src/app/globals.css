@@ -7558,3 +7558,47 @@ h3 {
 }
 @keyframes wiy-drop { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
 @keyframes wiy-rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* Spot the difference: the shop next to the genuine listing, one number first, differences arriving one at a time. */
+.spot { margin: 4px 0 0; display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--paper); border: 1px solid #e3e7e3; }
+.spot-title { font-size: 15px; font-weight: 650; color: var(--ink); }
+.spot-number { font-size: clamp(20px, 3.4vw, 26px); font-weight: 650; line-height: 1.2; color: var(--ink); text-wrap: balance; }
+.spot-verdict { font-size: 15px; color: var(--ink-2); text-wrap: pretty; }
+.spot[data-direction="cheaper"] .spot-verdict, .spot[data-direction="dearer"] .spot-verdict { color: var(--stop); font-weight: 600; }
+.spot-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.spot-side { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.spot-side img, .spot-blank { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; border-radius: 8px; border: 1px solid var(--line); background: var(--chalk); }
+.spot-here img { object-fit: cover; object-position: top; }
+.spot-real img { background: #fff; }
+.spot-side figcaption { font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; text-wrap: pretty; }
+.spot-side figcaption b { color: var(--ink); font-weight: 650; }
+.spot-side a { color: var(--protect); font-weight: 600; }
+.spot-diffs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.spot-diffs li { display: grid; grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 8px 10px; border-radius: 8px; background: var(--chalk); font-size: 14px; animation: spot-in 320ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 450ms + 200ms); }
+.spot-diff-label { font-weight: 650; color: var(--ink); }
+.spot-diff-here { color: var(--stop); overflow-wrap: anywhere; }
+.spot-diff-real { color: var(--go); overflow-wrap: anywhere; }
+.spot-source { font-size: 12.5px; color: var(--ink-2); }
+@keyframes spot-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .spot-diffs li { animation: none; } }
+@media (max-width: 560px) {
+  .spot-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .spot-diffs li { grid-template-columns: 1fr 1fr; }
+  .spot-diff-label { grid-column: 1 / -1; }
+}
+
+/* Tools this shop offers AI agents (WebMCP): plain words, a poisoned line in red. */
+.case-tools { margin: 4px 0 0; display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: var(--paper); border: 1px solid #e3e7e3; }
+.case-tools-title { font-size: 15px; font-weight: 650; color: var(--ink); }
+.case-tools-sub { font-size: 13.5px; color: var(--ink-2); text-wrap: pretty; }
+.case-tools ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.case-tool { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--chalk); border: 1px solid var(--line); min-width: 0; }
+.case-tool[data-poisoned="true"] { background: var(--paper); border-color: color-mix(in srgb, var(--stop) 45%, var(--line)); }
+.case-tool-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.case-tool-head code { font: 600 14px/1.3 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ink); overflow-wrap: anywhere; }
+.case-tool-tag { font-size: 12.5px; font-weight: 650; color: #fff; background: var(--stop); border-radius: 6px; padding: 1px 7px; }
+.case-tool-hint { font-size: 12.5px; color: var(--ink-2); }
+.case-tool-desc { font-size: 14px; color: var(--ink-2); text-wrap: pretty; overflow-wrap: anywhere; }
+.case-tool-where { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.case-tool blockquote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--stop); border-radius: 0 8px 8px 0; background: var(--stop-soft); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.case-tool mark { background: color-mix(in srgb, var(--stop) 18%, transparent); color: var(--ink); padding: 1px 2px; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
