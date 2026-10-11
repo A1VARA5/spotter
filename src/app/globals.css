@@ -7344,8 +7344,9 @@ h3 {
 .watch-offer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px dashed var(--line); font-size: 15px; line-height: 1.45; }
 .watch-offer p { margin: 0; max-width: 52ch; color: var(--ink-2); }
 .watch-offer .btn { gap: 8px; }
-.watch { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--hold); font-size: 15px; line-height: 1.45; }
-.watch[data-state="dropped"] { border-left-color: var(--go); background: var(--go-soft); }
+.watch { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); font-size: 15px; line-height: 1.45; }
+/* Hairline border tinted by state, like the Was it you? line (no thick coloured left edge). */
+.watch[data-state="dropped"] { border-color: rgb(31 122 85 / 0.35); background: var(--go-soft); }
 .watch-head { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .watch[data-state="dropped"] .watch-head { color: var(--go); }
 .watch-line { margin: 0; color: var(--ink); overflow-wrap: anywhere; text-wrap: pretty; }

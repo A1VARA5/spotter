@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CaseFile } from "./CaseFile";
+import { CaseFile, CasePending } from "./CaseFile";
 import type { Case } from "@/agents/case";
 
 const base: Case = {
@@ -50,5 +50,26 @@ describe("the case file's proof card", () => {
   it("never shows a picture that isn't our own JPEG", () => {
     const out = html({ ...base, page: { ...base.page!, faces: { compared: true, differs: false, verdict: "Same.", differences: [], textOverlap: 1, lookSimilarity: 1 }, phone: { finalUrl: "x", title: "", asks: { card: false, login: false, giftCard: false }, network: "direct", screenshot: "https://evil.example/x.jpg" } } });
     expect(out).not.toContain("evil.example");
+  });
+});
+
+// The server's clock is passed down (like the dashboard's serverNow), so the first client render matches the HTML
+// even when the browser's clock is off. Nothing in these components reads Date.now() while rendering.
+describe("the case file's clock", () => {
+  const made = "2020-01-01T10:00:00Z";
+  const at = (iso: string, ms: number) => Date.parse(iso) + ms;
+
+  it("'looking into this' shows for two minutes after the payment by the clock it is given", () => {
+    const pending = (now: number) => renderToStaticMarkup(createElement(CasePending, { createdAt: made, now }));
+    expect(pending(at(made, 30_000))).toContain("Spotter is looking into this");
+    expect(pending(at(made, 3 * 60_000))).toBe("");
+  });
+
+  it("offers the replay inside its window by the clock it is given, and never without one on the server", () => {
+    const c: Case = { ...base, page: { ...base.page!, replay: { sealed: "s", at: made } } };
+    const withNow = (now?: number) => renderToStaticMarkup(createElement(CaseFile, { c, currency: "GBP", paymentId: "pay_1", now }));
+    expect(withNow(at(made, 60 * 60_000))).toContain("Watch Spotter open it");
+    expect(withNow(at(made, 24 * 60 * 60_000))).not.toContain("Watch Spotter open it");
+    expect(withNow()).not.toContain("Watch Spotter open it");
   });
 });

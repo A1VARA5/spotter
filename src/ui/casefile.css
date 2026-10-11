@@ -40,17 +40,23 @@ a.cf-chip:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px
 .cf figure[tabindex="-1"]:focus,
 .cf .case-swap:focus { outline: 2px solid color-mix(in srgb, var(--protect) 60%, transparent); outline-offset: 4px; border-radius: 10px; }
 
-/* Body: one column, then two once the card is wide (about 1600 px screens with the wide layout). */
+/* Body: one column, then two once the card is wide enough for both to read (from about 1440 px screens). */
 .cf-body { container: casefile / inline-size; min-width: 0; }
 .cf-cols { display: grid; gap: 14px; align-items: start; }
 .cf-main, .cf-evidence { display: grid; gap: 12px; align-content: start; min-width: 0; }
 /* Hidden orders or two faces: the proof panel leads on one column, right after the verdict and the chips. */
 .cf-cols[data-lead="evidence"] > .cf-evidence { order: -1; }
-@container casefile (min-width: 940px) {
+@container casefile (min-width: 780px) {
   .cf-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; }
   .cf-cols > .cf-main { grid-column: 1; grid-row: 1; }
   .cf-cols > .cf-evidence { grid-column: 2; grid-row: 1; }
 }
+
+/* Spot the difference: when the real shop's picture is missing or won't load, the listing's own words fill the box. */
+.spot-listing { display: grid; align-content: center; gap: 4px; width: 100%; aspect-ratio: 4 / 3; padding: 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--chalk); text-align: center; overflow: hidden; }
+.spot-listing-title { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.spot-listing-price { font-size: 20px; font-weight: 700; color: var(--go); }
+.spot-listing-shop { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
 
 /* Panel headers: what it is, which engine did it, and a (?) */
 .cf-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-width: 0; }

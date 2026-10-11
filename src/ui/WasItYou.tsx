@@ -65,12 +65,13 @@ export function wiyStatus(w: WasItYou, status: string, now = Date.now()): { tone
 
 const ICON = { waiting: MessageCircleQuestion, safe: UserRoundX, claimed: UserRoundCheck, ring: PhoneCall } as const;
 
-export function WasItYouLine({ w, status, paymentId }: { w: WasItYou | null | undefined; status: string; paymentId?: string }) {
+/** now is the dashboard's clock (the server's on the first render), so "didn't answer" can't flip during hydration. */
+export function WasItYouLine({ w, status, paymentId, now }: { w: WasItYou | null | undefined; status: string; paymentId?: string; now: number }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   if (!w) return null;
-  const s = wiyStatus(w, status);
+  const s = wiyStatus(w, status, now);
   const Icon = ICON[s.tone];
   // The payment id comes from the card's own anchor when the caller doesn't pass it.
   async function answer(a: "not_me" | "it_was_me", el: HTMLElement) {

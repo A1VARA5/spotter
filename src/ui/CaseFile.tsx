@@ -1,7 +1,7 @@
 "use client";
 // The case agent's write up on a held payment: what it most likely is, what each check found (every line names
 // the check it came from), what to do before deciding, and a safer way to buy the same thing when there is one.
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
@@ -50,9 +50,27 @@ const VERDICT = {
   looks_fine: "Looks genuine",
 } as const;
 
-/** Still being built: only for a minute or two after the payment, after that there just isn't one. */
-export function CasePending({ createdAt }: { createdAt: string }) {
-  if (Date.now() - new Date(createdAt).getTime() > 2 * 60_000) return null;
+/**
+ * The browser's clock, but only after the first render: null on the server and during hydration, so nothing drawn
+ * from it can differ from the server's HTML. Used when the caller didn't pass the server's clock down.
+ */
+function useClientNow(): number | null {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    // Ticks slowly, so a page left open stops offering a recording once it has expired.
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+/**
+ * Still being built: only for a minute or two after the payment, after that there just isn't one. now is the
+ * dashboard's clock (the server's on the first render), so the server HTML and the first client render agree.
+ */
+export function CasePending({ createdAt, now }: { createdAt: string; now: number }) {
+  if (now - new Date(createdAt).getTime() > 2 * 60_000) return null;
   return (
     <p className="case-pending" role="status">
       <span className="case-spin" aria-hidden="true" />
@@ -70,7 +88,10 @@ export function CaseFile({
   pageShot,
   footer,
   peekScrolls,
+  now,
 }: {
+  /** The dashboard's clock (the server's on the first render). Without it, the replay button waits for the browser. */
+  now?: number;
   /** Scrolls the spotter made looking at the page safely; null or undefined when they never looked. */
   peekScrolls?: number | null;
   c: Case;
@@ -84,6 +105,8 @@ export function CaseFile({
   /** Shown last, inside the case file: the price watch line on the dashboard. */
   footer?: React.ReactNode;
 }) {
+  const clientNow = useClientNow();
+  const clock = now ?? clientNow;
   const base = `cf-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   const findings = c.findings.map((f, i) => ({ f, id: `${base}-f${i}` })).filter(({ f }) => !panelShows(f, c.page));
   const ids = {
@@ -164,7 +187,7 @@ export function CaseFile({
 
           {hasEvidence && (
             <div className="cf-evidence">
-              {c.page && <OpenedPage id={ids.kernel} page={c.page} paymentId={paymentId} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
+              {c.page && <OpenedPage id={ids.kernel} page={c.page} paymentId={paymentId} now={clock} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
               {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
               {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
               {c.page?.faces && <TwoFaces page={c.page} />}
@@ -267,7 +290,6 @@ function CheckedBy({ chips }: { chips: Chip[] }) {
             ) : (
               <span className="cf-chip" data-quiet="true">
                 {ch.label}
-                <span className="sr-only">, nothing to report</span>
               </span>
             )}
           </li>
@@ -514,11 +536,18 @@ const HTTPS = /^https:\/\/[^\s"<>]+$/;
 function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spot"]>; shot?: string }) {
   const titleId = useId();
   const here = shot && SHOT.test(shot) ? shot : undefined;
-  const real = spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  // A picture that fails to load (blocked, gone) falls back to the listing's own words, never an empty box.
+  const [imageFailed, setImageFailed] = useState(false);
+  const real = !imageFailed && spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  const fromMarket = spot.source === "market";
   return (
     <section className="spot" id={id} tabIndex={-1} data-direction={spot.direction} aria-labelledby={titleId}>
-      <PanelHead id={titleId} title="Spot the difference" engine="Real shop prices (Channel3), image search">
-        <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+      <PanelHead id={titleId} title="Spot the difference" engine={fromMarket ? "Real shop prices (Channel3)" : "Real shop prices (Channel3), image search"}>
+        {fromMarket ? (
+          <p>The same real shop listings as Spotter&apos;s price check on this payment, so every price on this card agrees. Shops in other countries are left out.</p>
+        ) : (
+          <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+        )}
         <p>A shop that sells it but isn&apos;t listed won&apos;t show up here.</p>
       </PanelHead>
       <p className="spot-number">{spot.headline}</p>
@@ -531,7 +560,15 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
           </figcaption>
         </figure>
         <figure className="spot-side spot-real">
-          {real ? <img src={real} alt={spot.genuine.title} width={320} height={240} loading="lazy" referrerPolicy="no-referrer" /> : <div className="spot-blank" aria-hidden="true" />}
+          {real ? (
+            <img src={real} alt={spot.genuine.title} width={320} height={240} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} />
+          ) : (
+            <div className="spot-listing" aria-hidden="true">
+              <span className="spot-listing-title">{spot.genuine.title}</span>
+              <span className="spot-listing-price">{money(spot.genuine.price, spot.currency)}</span>
+              <span className="spot-listing-shop">{spot.genuine.domain}</span>
+            </div>
+          )}
           <figcaption>
             <b>{spot.genuine.title}</b> {money(spot.genuine.price, spot.currency)} at {spot.genuine.domain}
             {HTTPS.test(spot.genuine.url) && (
@@ -562,7 +599,11 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
           ))}
         </ol>
       )}
-      <p className="spot-source">Found by searching real shops with a picture of this page. Prices and shop names come from those shops&apos; listings.</p>
+      <p className="spot-source">
+        {fromMarket
+          ? `The same ${spot.offers} real shop${spot.offers === 1 ? "" : "s"} as the price check on this payment. Prices and shop names come from those shops' listings.`
+          : "Found by searching real shops with a picture of this page. Prices and shop names come from those shops' listings."}
+      </p>
     </section>
   );
 }
@@ -621,8 +662,11 @@ function OpenedPage({
   paymentId,
   fallback,
   inFaces,
+  now,
 }: {
   id: string;
+  /** null until there is a clock that can't differ from the server's HTML: no replay button until then. */
+  now: number | null;
   page: NonNullable<Case["page"]>;
   paymentId?: string;
   fallback?: React.ReactNode;
@@ -636,7 +680,7 @@ function OpenedPage({
   const shot = page.screenshot && SHOT.test(page.screenshot) ? page.screenshot : undefined;
   const trap = page.seen?.hidden.find((h) => h.instruction);
   const replayAt = page.replay ? new Date(page.replay.at).getTime() : NaN;
-  const canWatch = !!paymentId && Date.now() - replayAt < REPLAY_FOR_MS;
+  const canWatch = !!paymentId && now !== null && now - replayAt < REPLAY_FOR_MS;
 
   const view =
     watching && !replayFailed ? (

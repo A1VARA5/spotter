@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { wiyStatus } from "./WasItYou";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { WasItYouLine, wiyStatus } from "./WasItYou";
 import type { WasItYou } from "@/core/was-it-you";
 
 const NOW = Date.parse("2026-10-11T12:00:00Z");
@@ -62,5 +64,14 @@ describe("wiyStatus", () => {
   it("no answer buttons for a real person's question, or once the payment isn't waiting", () => {
     expect(wiyStatus(w({}), "needs_approval", NOW).answer).toBeUndefined();
     expect(wiyStatus(mine, "voided", NOW).answer).toBeUndefined();
+  });
+});
+
+describe("WasItYouLine", () => {
+  it("uses the clock it is given, not the browser's, so the server HTML and first render agree", () => {
+    const line = (now: number) =>
+      renderToStaticMarkup(createElement(WasItYouLine, { w: w({ expiresAt: "2099-01-01T00:00:00Z" }), status: "needs_approval", now }));
+    expect(line(Date.parse("2100-01-01T00:00:00Z"))).toContain("didn&#x27;t answer");
+    expect(line(Date.parse("2098-01-01T00:00:00Z"))).toContain("Asked Tom");
   });
 });

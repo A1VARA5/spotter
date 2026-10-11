@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { labelsFor, ON_HOLD, OUTCOME_WORDS } from "./labels";
+import { approveWarning, labelsFor, ON_HOLD, OUTCOME_WORDS } from "./labels";
 import { STATE_LABEL } from "./format";
 
 describe("labels", () => {
@@ -37,5 +37,16 @@ describe("one vocabulary", () => {
   it("no hyphens, dashes or curly quotes in the words", () => {
     const all = Object.values(OUTCOME_WORDS).flatMap((v) => [v.short, v.long, v.explain]).join(" ");
     expect(all).not.toMatch(/[–—‘’“”]|\w-\w/);
+  });
+});
+
+describe("approveWarning", () => {
+  it("follows the case verdict, so a card saying worth a closer look never confirms with likely a scam", () => {
+    expect(approveWarning("likely_scam", false)).toMatch(/likely a scam/);
+    expect(approveWarning("unclear", true)).not.toMatch(/scam/);
+    expect(approveWarning("unclear", true)).toMatch(/serious warning/);
+    expect(approveWarning(undefined, true)).toMatch(/serious warning/);
+    expect(approveWarning("unclear", false)).toBeNull();
+    expect(approveWarning("looks_fine", false)).toBeNull();
   });
 });
