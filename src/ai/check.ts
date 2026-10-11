@@ -5,6 +5,7 @@ import { z } from "zod";
 import { groundFlags, type Flag } from "@/core/grounding";
 import type { PaymentRequest } from "@/core/types";
 import { sanitizeContext, type Hidden } from "./sanitize";
+import { claimFromText, groundClaim, RELATIONS, type Claim } from "@/core/claim";
 
 export const CHECK_MODEL = "claude-opus-5-5";
 export const TIMEOUT_MS = 20_000;
@@ -15,11 +16,15 @@ const FlagSchema = z.object({
   quote: z.string(),
   why: z.string(),
 });
+const ClaimSchema = z.object({ name: z.string().nullable(), relation: z.enum(RELATIONS).nullable(), quote: z.string() });
 export const CheckSchema = z.object({
   summary: z.string(),
   injection_attempt: z.boolean(),
   flags: z.array(FlagSchema),
+  claimed_sender: ClaimSchema.nullable(),
 });
+// Older stubs and outputs without claimed_sender still parse; code's own patterns cover them.
+const ParseSchema = CheckSchema.extend({ claimed_sender: ClaimSchema.nullable().optional() });
 export type CheckOutput = z.infer<typeof CheckSchema>;
 
 export type ModelCall = (input: { system: string; user: string }) => Promise<unknown>;
@@ -38,7 +43,9 @@ Genuine ordinary purchases should have no flags. Do not invent problems.
 - Listing a price is never a flag. Use "price" only when a price is clearly unrealistic for the item (a £900 phone for £50, a gift card sold at a discount).
 - Use "new_shop" only when the context itself shows the shop is new or untrustworthy, not just because you don't know it.
 - Use "changed_bank_details" when an invoice, bill or supplier message says the bank details or account changed, or asks to pay a new account. This is supplier invoice fraud: someone posing as a real supplier. Pair it with "impersonation" if the sender pretends to be a known company, and "pressure" for threats like stopping deliveries.
-- One flag per problem: don't repeat the same issue under a second kind. summary: one calm sentence a grandparent would understand.`;
+- One flag per problem: don't repeat the same issue under a second kind. summary: one calm sentence a grandparent would understand.
+
+claimed_sender: if the message says it comes from someone the reader knows personally (by name, like "it's Tom", or by relation, like "your son" or "Mum it's me"), report who it claims to be. name: only a name written in the message, never a guess (null if none). relation: the sender's relation to the reader (child when the sender calls the reader Mum or Dad, grandchild for Gran or Grandad), or null. quote: the exact words that make the claim. Shops, companies and strangers are null. This is not a verdict: it's so Spotter can ask the real person.`;
 
 // Code's own check for the classic invoice fraud line, so it is caught even if the model misses it or is down.
 const BANK_CHANGED =
@@ -52,6 +59,8 @@ export type AiCheckResult = {
   summary: string;
   injectionAttempt: boolean;
   error?: string;
+  /** Who the message claims to be from, grounded in the message (see core/claim.ts). Absent on older rows. */
+  claimedSender?: Claim | null;
 };
 
 export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaultModel): Promise<AiCheckResult> {
@@ -84,9 +93,9 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
     `<context>\n${clean.text}\n</context>`,
   ].join("\n\n");
 
-  let parsed: CheckOutput;
+  let parsed: z.infer<typeof ParseSchema>;
   try {
-    parsed = CheckSchema.parse(await callModel({ system: SYSTEM, user }));
+    parsed = ParseSchema.parse(await callModel({ system: SYSTEM, user }));
   } catch (e) {
     return {
       ok: false,
@@ -96,6 +105,7 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
       summary: "",
       injectionAttempt: false,
       error: e instanceof Error ? e.message : String(e),
+      claimedSender: claimFromText(clean.text),
     };
   }
 
@@ -111,6 +121,8 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
     hidden: clean.hidden,
     summary: parsed.summary,
     injectionAttempt: parsed.injection_attempt,
+    // The model's claim only counts if its words are really in the message; otherwise code's own patterns.
+    claimedSender: groundClaim(parsed.claimed_sender, clean.text) ?? claimFromText(clean.text),
   };
 }
 

@@ -157,6 +157,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
             { id: "priceGap", name: "Paid over cheapest", description: "Amount minus the cheapest real shop: positive means overpaid, negative means saved. Empty when there was no price check.", ...money },
             { id: "marketShop", name: "Cheapest shop", description: "The cheapest real retailer's website.", ...text },
             { id: "marketItem", name: "Item checked", description: "The product Spotter price checked.", ...text },
+            { id: "wasItYou", name: "Was it you?", description: "When the message claimed to be from someone in the family: whether Spotter asked that person and what they answered.", ...text },
             { id: "signs", name: "Scam signs", format: "integerFormat" as const },
             { id: "topSign", name: "Main scam sign", ...text },
             { id: "verdict", name: "Case verdict", ...text },

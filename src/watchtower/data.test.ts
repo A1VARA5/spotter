@@ -193,6 +193,7 @@ describe("watch alerts", () => {
     priceGap: null,
     marketShop: "",
     marketItem: "",
+    wasItYou: "Not asked",
     ...over,
   });
 
@@ -273,5 +274,23 @@ describe("fair price fields", () => {
     for (const r of toSources([none, thin], [gran], NOW).payments) {
       expect(r).toMatchObject({ marketCheapest: null, marketMedian: null, priceGap: null, marketShop: "", marketItem: "" });
     }
+  });
+});
+
+describe("Was it you? in Watchtower", () => {
+  const w = (state: string) => ({ id: "wiy_x", who: "Tom", state, channel: "telegram", claim: { name: "Tom", relation: null, quote: "it's Tom" }, target: { kind: "spender", spenderId: "t", name: "Tom" }, askedAt: "", expiresAt: "" }) as never;
+  it("says who was asked and what they answered, in words", () => {
+    const rows = toSources(
+      [
+        payment({ id: "a", spender_id: "sp_gran", status: "needs_approval", was_it_you: w("asked") }),
+        payment({ id: "b", spender_id: "sp_gran", status: "voided", was_it_you: w("not_me") }),
+        payment({ id: "c", spender_id: "sp_gran", status: "needs_approval", was_it_you: w("it_was_me") }),
+        payment({ id: "d", spender_id: "sp_gran", status: "captured" }),
+      ],
+      [gran],
+      NOW,
+    ).payments;
+    const by = Object.fromEntries(rows.map((r) => [r.id, r.wasItYou]));
+    expect(by).toEqual({ a: "Asked Tom", b: "Tom: not me", c: "Tom: it was me", d: "Not asked" });
   });
 });

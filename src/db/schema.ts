@@ -243,4 +243,8 @@ create index if not exists price_watches_household_idx on price_watches (househo
 create index if not exists price_watches_product_idx on price_watches (product_id) where status = 'watching';
 create index if not exists price_watches_created_idx on price_watches (created_at);
 create unique index if not exists price_watches_one_active_idx on price_watches (household_id, product_id) where status = 'watching' and household_id is not null;
+-- Was it you? block, one column: when a held payment's message claims to come from someone in the family,
+-- Spotter asks that real person. The ask, who it went to and their answer (never a secret: tokens are HMACs).
+alter table payments add column if not exists was_it_you jsonb;
+create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
 `;

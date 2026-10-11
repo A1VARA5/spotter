@@ -192,7 +192,7 @@ function WaTick() {
 }
 
 /** Messages: the opening text from a stranger's number. */
-export function SmsScreen() {
+export function SmsScreen({ number = SCAM.number, text = SCAM.sms, at = "09:28" }: { number?: string; text?: string; at?: string } = {}) {
   return (
     <>
       <div className="imsg-nav">
@@ -202,7 +202,7 @@ export function SmsScreen() {
         <span className="imsg-contact">
           <PersonGlyph />
           <span className="imsg-num">
-            {SCAM.number} <i>›</i>
+            {number} <i>›</i>
           </span>
         </span>
       </div>
@@ -210,9 +210,9 @@ export function SmsScreen() {
         <p className="imsg-meta">
           Text Message
           <br />
-          Today 09:28
+          Today {at}
         </p>
-        <p className="imsg-bubble">{SCAM.sms}</p>
+        <p className="imsg-bubble">{text}</p>
       </div>
     </>
   );
