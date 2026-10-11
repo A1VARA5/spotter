@@ -178,6 +178,34 @@ function timed<A, C>(fn: (args: A, ctx: C) => Promise<unknown>) {
   };
 }
 
+/**
+ * Phones read the board as one long page: Studio's canvas has a fixed track height, so the box around it
+ * grows to the canvas's full height and the page scrolls, instead of a small scroll box inside the page.
+ * `reset` (view, language, page, remount) lets it measure again from the start.
+ */
+function usePhoneFullHeight(box: React.RefObject<HTMLDivElement | null>, on: boolean, reset: string) {
+  useEffect(() => {
+    const el = box.current;
+    if (!on || !el) return;
+    el.style.height = "";
+    let frame = 0;
+    const fit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const canvas = el.querySelector<HTMLElement>(".ag-studio-layout");
+        if (canvas && canvas.scrollHeight > canvas.clientHeight + 2) el.style.height = `${el.offsetHeight + canvas.scrollHeight - canvas.clientHeight}px`;
+      });
+    };
+    const watch = new MutationObserver(fit);
+    watch.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    fit();
+    return () => {
+      cancelAnimationFrame(frame);
+      watch.disconnect();
+    };
+  }, [box, on, reset]);
+}
+
 function isValidState(s: unknown): s is AgReportState {
   return !!s && typeof s === "object" && Array.isArray((s as { pages?: unknown }).pages) && (s as { pages: unknown[] }).pages.length > 0;
 }
@@ -310,10 +338,10 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   const [initial] = useState(() => {
     const s = isValidState(initialState) ? initialState : start;
     if (phone) return stackForPhone(s as AgReportState);
-    // On a laptop narrower than about 1360px the open chat panel sits on top of the widgets and cuts them
-    // off, so the board opens with it folded. One click (or "Look into this") opens it.
+    // On a laptop narrower than about 1700px the open chat panel squeezes the tiles to about 180px wide,
+    // so their text runs far past the tile. The board opens with it folded; one click (or "Look into this") opens it.
     const st = s as AgReportState;
-    if (window.innerWidth < 1360 && st.panels?.ai?.collapsed === false) return { ...st, panels: { ...st.panels, ai: { ...st.panels.ai, collapsed: true } } };
+    if (window.innerWidth < 1700 && st.panels?.ai?.collapsed === false) return { ...st, panels: { ...st.panels, ai: { ...st.panels.ai, collapsed: true } } };
     return s;
   });
   const names = useRef<Record<string, string>>({ ...namesOf(start), ...namesOf(initial) });
@@ -334,6 +362,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   // TODO(AG Studio real-time release, ~28 Oct): swap the remount for the proper update API.
   const [mount, setMount] = useState(() => ({ key: 0, state: initial }));
   const [swapping, setSwapping] = useState(false);
+  const studioBox = useRef<HTMLDivElement | null>(null);
+  usePhoneFullHeight(studioBox, phone, `${audience}-${granLang}-${tabs.selected}-${mount.key}`);
   const shownData = useRef(sources);
   useEffect(() => {
     if (shownData.current === sources) return;
@@ -845,7 +875,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   );
 
   const board = (
-    <div className="wt-studio" data-swapping={swapping || undefined}>
+    <div className="wt-studio" ref={studioBox} data-swapping={swapping || undefined}>
       <AgStudioProvider licenseKey={process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY} modules={MODULES}>
         <AgStudio<SpotterRegistry>
           key={gran ? `gran-${granLang}-${mount.key}` : `spotter-${mount.key}`}

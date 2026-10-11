@@ -52,3 +52,14 @@ export const OUTCOME_WORDS: Record<TrackState, { short: string; long: string; ex
 
 /** Money waiting on a decision, in the same words everywhere. */
 export const ON_HOLD = "on hold at PayPal";
+
+/**
+ * The warning in the approve confirm. It follows the case file's verdict, so a card that says "Worth a closer look"
+ * never confirms with "likely a scam"; serious warning signs without that verdict get their own words. null: no warning.
+ */
+export function approveWarning(verdict: string | undefined, highFlag: boolean): string | null {
+  const after = "Once PayPal pays, it can't be pulled back.";
+  if (verdict === "likely_scam") return `Spotter thinks this is likely a scam. ${after}`;
+  if (highFlag) return `Spotter found serious warning signs. ${after}`;
+  return null;
+}

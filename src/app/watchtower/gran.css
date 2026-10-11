@@ -30,8 +30,15 @@
 
 .gran, .gran-ask { --g-ink: #17212B; --g-ink2: #384552; --g-line: #B9C2BC; --g-stop: #A3261D; --g-stop-soft: #FBEDEB; --g-go: #17694A; --g-go-soft: #E8F3EE; --g-hold: #F2B705; --g-focus: #FFDD00; }
 .gran {
-  height: 100%; overflow: auto; padding: 2px 2px 8px; display: grid; align-content: start; gap: 14px;
+  height: 100%; overflow: auto; padding: 4px 12px 10px; display: grid; align-content: start; gap: 14px;
   font-size: 20px; line-height: 1.5; color: var(--g-ink); font-variant-numeric: lining-nums proportional-nums;
+  container-type: inline-size;
+}
+/* Very wide screens: the stops and the waiting payments sit in two columns instead of one 60 character
+   column with half the tile empty. Each item keeps its own short line length. */
+@container (min-width: 1000px) {
+  .gran-list { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; }
+  .gran-statement { max-width: 44ch; }
 }
 .gran-h { margin: 0; font-size: 25px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; color: var(--g-ink); text-wrap: balance; }
 .gran-statement { margin: 0; max-width: 30ch; font-size: 25px; line-height: 1.35; font-weight: 500; text-wrap: pretty; }
@@ -113,5 +120,5 @@
 
 /* Gran's language: the same pill switch as the view switch, the English name beside the native one. */
 .wt-lang .wt-view-btn { font-weight: 650; }
-.wt-lang-en { font-weight: 500; opacity: 0.8; }
+.wt-lang-en { font-weight: 500; }
 .gran-receipt-missing { color: var(--g-ink2, #384552); }

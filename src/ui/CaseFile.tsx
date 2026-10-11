@@ -1,13 +1,15 @@
 "use client";
 // The case agent's write up on a held payment: what it most likely is, what each check found (every line names
 // the check it came from), what to do before deciding, and a safer way to buy the same thing when there is one.
-import { useId, useState } from "react";
-import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
+import { Fragment, useEffect, useId, useState } from "react";
+import { flushSync } from "react-dom";
+import { ChevronDown, CircleAlert, ExternalLink, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
 import { Hint } from "./Hint";
 import { Peek } from "./Peek";
+import { keyFacts, kernelLead, type RealOne } from "./caseFold";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
@@ -50,14 +52,72 @@ const VERDICT = {
   looks_fine: "Looks genuine",
 } as const;
 
-/** Still being built: only for a minute or two after the payment, after that there just isn't one. */
-export function CasePending({ createdAt }: { createdAt: string }) {
-  if (Date.now() - new Date(createdAt).getTime() > 2 * 60_000) return null;
+/**
+ * The browser's clock, but only after the first render: null on the server and during hydration, so nothing drawn
+ * from it can differ from the server's HTML. Used when the caller didn't pass the server's clock down.
+ */
+function useClientNow(): number | null {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    // Ticks slowly, so a page left open stops offering a recording once it has expired.
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+/**
+ * Still being built: only for a minute or two after the payment, after that there just isn't one. now is the
+ * dashboard's clock (the server's on the first render), so the server HTML and the first client render agree.
+ */
+export function CasePending({ createdAt, now }: { createdAt: string; now: number }) {
+  if (now - new Date(createdAt).getTime() > 2 * 60_000) return null;
   return (
     <p className="case-pending" role="status">
       <span className="case-spin" aria-hidden="true" />
       Spotter is looking into this: family history, other families, links and real prices.
     </p>
+  );
+}
+
+type Shown = { f: Case["findings"][number]; id: string };
+
+function FindingList({ items, id, label }: { items: Shown[]; id?: string; label: string }) {
+  if (!items.length) return null;
+  return (
+    <ul className="case-findings" id={id} tabIndex={id ? -1 : undefined} aria-label={label}>
+      {items.map(({ f, id: fid }) => {
+        const t = TOOL[f.tool] ?? { label: "Check", Icon: CircleAlert };
+        return (
+          <li key={f.source + f.text} id={fid} tabIndex={-1} data-severity={f.severity}>
+            <t.Icon size={17} strokeWidth={2} aria-hidden="true" />
+            <span>
+              <b>{t.label}</b> {plainWords(f.text)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** A genuine listing from Channel3, opened on the shop's own site. Nothing is bought through Spotter here. */
+function RealOneCard({ real, currency }: { real: RealOne; currency: string }) {
+  return (
+    <div className="cf-real">
+      <p className="cf-real-label">Buy it from a real shop instead</p>
+      <p className="cf-real-title">{real.title}</p>
+      <p className="cf-real-price">
+        <b className="num">{money(real.price, currency)}</b> at {real.domain}
+      </p>
+      <a className="btn btn-quiet cf-real-go" href={real.url} target="_blank" rel="noopener noreferrer nofollow">
+        <span>Open {real.domain}</span>
+        <ExternalLink size={15} strokeWidth={2.2} aria-hidden="true" />
+        <span className="sr-only"> ({real.domain}&apos;s own page, opens in a new tab)</span>
+      </a>
+      <p className="cf-real-note">The shop&apos;s own page, found by Channel3. Nothing is bought unless you buy it there.</p>
+    </div>
   );
 }
 
@@ -68,9 +128,18 @@ export function CaseFile({
   onSwap,
   busy,
   pageShot,
-  footer,
+  aside,
   peekScrolls,
+  now,
+  fold = false,
+  settled = false,
+  actions,
+  more,
+  moreCount = 0,
+  real,
 }: {
+  /** The dashboard's clock (the server's on the first render). Without it, the replay button waits for the browser. */
+  now?: number;
   /** Scrolls the spotter made looking at the page safely; null or undefined when they never looked. */
   peekScrolls?: number | null;
   c: Case;
@@ -81,25 +150,67 @@ export function CaseFile({
   busy?: boolean;
   /** A drawn stand in for the screenshot, for mock ups on the landing page. */
   pageShot?: React.ReactNode;
-  /** Shown last, inside the case file: the price watch line on the dashboard. */
-  footer?: React.ReactNode;
+  /** Beside the three facts: the price watch on the dashboard. */
+  aside?: React.ReactNode;
+  /** Verdict, headline, three facts and the actions first, everything else behind "See the evidence (N)". */
+  fold?: boolean;
+  /** The payment was decided (paid, denied, released): past tense, and no advice about deciding. */
+  settled?: boolean;
+  /** The decision buttons, shown right after the three facts. */
+  actions?: React.ReactNode;
+  /** The caller's own evidence, last inside the fold (hold clock, the message), and how many items it holds. */
+  more?: React.ReactNode;
+  moreCount?: number;
+  /** A genuine listing (Channel3) to open instead. */
+  real?: RealOne | null;
 }) {
+  const clientNow = useClientNow();
+  const clock = now ?? clientNow;
   const base = `cf-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
-  const findings = c.findings.map((f, i) => ({ f, id: `${base}-f${i}` })).filter(({ f }) => !panelShows(f, c.page));
+  const [open, setOpen] = useState(false);
+  const lead = kernelLead(c.page);
+  const shown: Shown[] = c.findings.map((f, i) => ({ f, id: `${base}-f${i}` })).filter(({ f }) => !panelShows(f, c.page));
+  const { facts: factList, rest: restList } = keyFacts(shown.map((s) => s.f));
+  const byFinding = new Map(shown.map((s) => [s.f, s]));
+  const facts = factList.map((f) => byFinding.get(f)!);
+  const rest = restList.map((f) => byFinding.get(f)!);
   const ids = {
     head: `${base}-head`,
     findings: `${base}-findings`,
     kernel: `${base}-kernel`,
     spot: `${base}-spot`,
     swap: `${base}-swap`,
+    fold: `${base}-fold`,
   };
-  const chips = checksThatRan(c, findings, ids, !!(c.swap && onSwap));
-  const hasEvidence = !!(c.page || c.spot);
-  // When a panel holds the strongest proof (hidden orders, two faces), it comes first on one column screens.
-  const leadWithEvidence = c.findings.some((f) => f.severity === "high" && panelShows(f, c.page));
+  const showSwap = !settled && !!(c.swap && onSwap);
+  const chips = checksThatRan(c, shown, ids, showSwap);
+  const page = c.page;
+  const inFaces = !!(page?.faces?.compared && page.phone?.screenshot);
+  const toolsShown = !!(page?.tools?.checked && page.tools.total > 0);
+
+  const panel = {
+    page: page && <OpenedPage id={ids.kernel} page={page} paymentId={paymentId} now={clock} fallback={pageShot} inFaces={inFaces} />,
+    tools: toolsShown && page?.tools?.checked && <ShopToolList tools={page.tools} />,
+    faces: page?.faces && <TwoFaces page={page} compact={fold && lead?.kind === "faces"} />,
+    trail: page?.trail && <MoneyTrailPanel trail={page.trail} />,
+  };
+  // The KERNEL catch shown open: the page panel holds the hidden text, the others their own panel.
+  const leadKey = lead ? (lead.kind === "seen" ? "page" : lead.kind) : null;
+  const panels = (["page", "tools", "faces", "trail"] as const).filter((k) => panel[k] && (!fold || k !== leadKey));
+  const evidenceCount = rest.length + panels.length + (c.spot ? 1 : 0) + (page?.proof ? 1 : 0) + moreCount;
+  const ask = !settled && c.ask.length > 0;
+  const hasFold = rest.length > 0 || ask || showSwap || panels.length > 0 || !!c.spot || !!page?.proof || !!more;
+  const isOpen = !fold || open;
+
+  // A "Checked by" chip whose finding is folded away opens the fold first, then scrolls to it.
+  const reveal = (id: string) => {
+    const el = document.getElementById(id);
+    if (el?.closest("[hidden]")) flushSync(() => setOpen(true));
+    return document.getElementById(id);
+  };
 
   return (
-    <section className="case cf" data-verdict={c.verdict} aria-label="What Spotter found">
+    <section className="case cf" data-verdict={c.verdict} data-fold={fold || undefined} aria-label="What Spotter found">
       <div className="cf-top">
         <p className="case-verdict">
           {VERDICT[c.verdict]}
@@ -108,34 +219,49 @@ export function CaseFile({
         <p className="case-headline" id={ids.head} tabIndex={-1}>
           {c.headline}
         </p>
-        {chips.length > 0 && <CheckedBy chips={chips} />}
+        {chips.length > 0 && <CheckedBy chips={chips} reveal={reveal} />}
       </div>
 
-      <div className="cf-body">
-        <div className="cf-cols" data-lead={leadWithEvidence ? "evidence" : undefined}>
-          <div className="cf-main">
-            {findings.length > 0 && (
-              <ul className="case-findings" id={ids.findings} tabIndex={-1} aria-label="What each check found">
-                {findings.map(({ f, id }) => {
-                  const t = TOOL[f.tool] ?? {
-                    label: "Check",
-                    Icon: CircleAlert,
-                  };
-                  return (
-                    <li key={f.source + f.text} id={id} tabIndex={-1} data-severity={f.severity}>
-                      <t.Icon size={17} strokeWidth={2} aria-hidden="true" />
-                      <span>
-                        <b>{t.label}</b> {plainWords(f.text)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
+      {(facts.length > 0 || real || aside || c.status !== "done") && (
+        <div className="cf-first" data-aside={real || aside ? "true" : undefined}>
+          <div className="cf-facts">
+            {settled && facts.length > 0 && <p className="cf-sub">What Spotter saw</p>}
+            <FindingList items={facts} id={ids.findings} label={settled ? "What Spotter saw" : "What each check found"} />
             {c.status !== "done" && <p className="case-note">{c.status === "partial" ? "Some checks didn't finish, so this is only part of the picture." : "Spotter couldn't look into this one."}</p>}
+          </div>
+          {(real || aside) && (
+            <div className="cf-aside">
+              {real && <RealOneCard real={real} currency={currency} />}
+              {aside}
+            </div>
+          )}
+        </div>
+      )}
 
-            {c.ask.length > 0 && (
+      {actions}
+
+      {fold && lead && leadKey && panel[leadKey] && (
+        <div className="cf-lead" data-kind={lead.kind}>
+          <p className="cf-lead-line">
+            <b>KERNEL</b>
+            {lead.line.slice("KERNEL".length)}
+          </p>
+          {panel[leadKey]}
+        </div>
+      )}
+
+      {fold && hasFold && (
+        <button type="button" className="cf-more" aria-expanded={open} aria-controls={ids.fold} onClick={() => setOpen((v) => !v)}>
+          <span>{open ? "Hide the evidence" : `${lead ? "See more evidence" : "See the evidence"} (${evidenceCount})`}</span>
+          <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      )}
+
+      {hasFold && (
+        <div className="cf-fold" id={ids.fold} hidden={!isOpen}>
+          <div className="cf-fold-text">
+            <FindingList items={rest} label="More of what each check found" />
+            {ask && (
               <div className="case-ask">
                 <p className="case-ask-title">Before you decide</p>
                 <ul>
@@ -145,36 +271,30 @@ export function CaseFile({
                 </ul>
               </div>
             )}
-
-            {c.swap && onSwap && (
+            {showSwap && c.swap && (
               <div className="case-swap" id={ids.swap} tabIndex={-1}>
                 <p>
-                  <b>{c.swap.title}</b> is {money(c.swap.price, currency)} at {c.swap.domain}.{" "}
-                  <a href={c.swap.url} target="_blank" rel="noopener noreferrer nofollow">
-                    See it there
-                  </a>
+                  Or let Spotter swap it: deny this and pay <b>{money(c.swap.price, currency)}</b> to {c.swap.domain} for {c.swap.title} through PayPal instead.
                 </p>
                 <button className="btn btn-quiet" disabled={busy} onClick={onSwap}>
                   {busy ? "Swapping" : `Deny this, buy it from ${c.swap.domain}`}
                 </button>
               </div>
             )}
-            {footer}
+            {more}
           </div>
-
-          {hasEvidence && (
-            <div className="cf-evidence">
-              {c.page && <OpenedPage id={ids.kernel} page={c.page} paymentId={paymentId} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
-              {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
-              {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
-              {c.page?.faces && <TwoFaces page={c.page} />}
-              {c.page?.trail && <MoneyTrailPanel trail={c.page.trail} />}
-              {c.spot && <SpotPanel id={ids.spot} spot={c.spot} shot={c.page?.screenshot} />}
-              {c.page?.proof && <ProofCard proof={c.page.proof} peekScrolls={peekScrolls} />}
+          {(panels.length > 0 || c.spot || page?.proof || page?.tools) && (
+            <div className="cf-panels">
+              {panels.map((k) => (
+                <Fragment key={k}>{panel[k]}</Fragment>
+              ))}
+              {page?.tools && !page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
+              {c.spot && <SpotPanel id={ids.spot} spot={c.spot} shot={page?.screenshot} />}
+              {page?.proof && <ProofCard proof={page.proof} peekScrolls={peekScrolls} />}
             </div>
           )}
         </div>
-      </div>
+      )}
     </section>
   );
 }
@@ -243,9 +363,9 @@ function checksThatRan(
   return chips;
 }
 
-function CheckedBy({ chips }: { chips: Chip[] }) {
+function CheckedBy({ chips, reveal }: { chips: Chip[]; reveal: (id: string) => HTMLElement | null }) {
   const jump = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    const el = document.getElementById(id);
+    const el = reveal(id);
     if (!el) return;
     e.preventDefault();
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -267,7 +387,6 @@ function CheckedBy({ chips }: { chips: Chip[] }) {
             ) : (
               <span className="cf-chip" data-quiet="true">
                 {ch.label}
-                <span className="sr-only">, nothing to report</span>
               </span>
             )}
           </li>
@@ -343,7 +462,7 @@ function Outline({ box }: { box?: CasePageT["moneyBox"] }) {
  * frames side by side with the card form outlined, a slider that blends one picture into the other, one verdict line,
  * then what differed. Said plainly when the phone wasn't on a UK network, and when the two couldn't be compared.
  */
-function TwoFaces({ page }: { page: CasePageT }) {
+function TwoFaces({ page, compact = false }: { page: CasePageT; compact?: boolean }) {
   const titleId = useId();
   const sliderId = useId();
   const [mix, setMix] = useState(50);
@@ -384,7 +503,7 @@ function TwoFaces({ page }: { page: CasePageT }) {
           </figure>
         </div>
       )}
-      {faces.compared && desk && phone && (
+      {!compact && faces.compared && desk && phone && (
         <div className="faces-onion">
           <div className="faces-stage" aria-hidden="true">
             <img src={desk} alt="" className="faces-under" style={{ opacity: (100 - mix) / 100 }} />
@@ -514,11 +633,18 @@ const HTTPS = /^https:\/\/[^\s"<>]+$/;
 function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spot"]>; shot?: string }) {
   const titleId = useId();
   const here = shot && SHOT.test(shot) ? shot : undefined;
-  const real = spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  // A picture that fails to load (blocked, gone) falls back to the listing's own words, never an empty box.
+  const [imageFailed, setImageFailed] = useState(false);
+  const real = !imageFailed && spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  const fromMarket = spot.source === "market";
   return (
     <section className="spot" id={id} tabIndex={-1} data-direction={spot.direction} aria-labelledby={titleId}>
-      <PanelHead id={titleId} title="Spot the difference" engine="Real shop prices (Channel3), image search">
-        <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+      <PanelHead id={titleId} title="Spot the difference" engine={fromMarket ? "Real shop prices (Channel3)" : "Real shop prices (Channel3), image search"}>
+        {fromMarket ? (
+          <p>The same real shop listings as Spotter&apos;s price check on this payment, so every price on this card agrees. Shops in other countries are left out.</p>
+        ) : (
+          <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+        )}
         <p>A shop that sells it but isn&apos;t listed won&apos;t show up here.</p>
       </PanelHead>
       <p className="spot-number">{spot.headline}</p>
@@ -531,7 +657,15 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
           </figcaption>
         </figure>
         <figure className="spot-side spot-real">
-          {real ? <img src={real} alt={spot.genuine.title} width={320} height={240} loading="lazy" referrerPolicy="no-referrer" /> : <div className="spot-blank" aria-hidden="true" />}
+          {real ? (
+            <img src={real} alt={spot.genuine.title} width={320} height={240} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} />
+          ) : (
+            <div className="spot-listing" aria-hidden="true">
+              <span className="spot-listing-title">{spot.genuine.title}</span>
+              <span className="spot-listing-price">{money(spot.genuine.price, spot.currency)}</span>
+              <span className="spot-listing-shop">{spot.genuine.domain}</span>
+            </div>
+          )}
           <figcaption>
             <b>{spot.genuine.title}</b> {money(spot.genuine.price, spot.currency)} at {spot.genuine.domain}
             {HTTPS.test(spot.genuine.url) && (
@@ -562,7 +696,11 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
           ))}
         </ol>
       )}
-      <p className="spot-source">Found by searching real shops with a picture of this page. Prices and shop names come from those shops&apos; listings.</p>
+      <p className="spot-source">
+        {fromMarket
+          ? `The same ${spot.offers} real shop${spot.offers === 1 ? "" : "s"} as the price check on this payment. Prices and shop names come from those shops' listings.`
+          : "Found by searching real shops with a picture of this page. Prices and shop names come from those shops' listings."}
+      </p>
     </section>
   );
 }
@@ -621,8 +759,11 @@ function OpenedPage({
   paymentId,
   fallback,
   inFaces,
+  now,
 }: {
   id: string;
+  /** null until there is a clock that can't differ from the server's HTML: no replay button until then. */
+  now: number | null;
   page: NonNullable<Case["page"]>;
   paymentId?: string;
   fallback?: React.ReactNode;
@@ -636,7 +777,7 @@ function OpenedPage({
   const shot = page.screenshot && SHOT.test(page.screenshot) ? page.screenshot : undefined;
   const trap = page.seen?.hidden.find((h) => h.instruction);
   const replayAt = page.replay ? new Date(page.replay.at).getTime() : NaN;
-  const canWatch = !!paymentId && Date.now() - replayAt < REPLAY_FOR_MS;
+  const canWatch = !!paymentId && now !== null && now - replayAt < REPLAY_FOR_MS;
 
   const view =
     watching && !replayFailed ? (

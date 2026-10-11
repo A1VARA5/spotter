@@ -558,3 +558,60 @@ describe("honest verdicts", () => {
     expect(c.verdict).toBe("unclear");
   });
 });
+
+describe("shop names come from tool results only", () => {
+  it("the prompt tells the model to name shops only from this case's tool results", async () => {
+    const { CASE_SYSTEM } = await import("./case");
+    expect(CASE_SYSTEM).toMatch(/Never name a shop, retailer or website from your own knowledge/);
+  });
+
+  it("drops 'Before you decide' lines and findings that name shops no tool returned", async () => {
+    const model = scripted(
+      turn(use("t1", "payee_history", { payee: "BargainPods" })),
+      turn(
+        use("f", "file_case", {
+          verdict: "unclear",
+          headline: "First time paying this shop.",
+          findings: [
+            { text: "Gran has never paid BargainPods.", source: "t1" },
+            { text: "Currys sells these for less.", source: "t1" },
+          ],
+          ask: ["Check the price at Currys, Argos or John Lewis first.", "Ask Gran where she found the shop."],
+        }),
+      ),
+    );
+    const c = await buildCase(ctx(), { model });
+    expect(c.ask).toEqual(["Ask Gran where she found the shop."]);
+    expect(c.findings.map((f) => f.text)).toEqual(["Gran has never paid BargainPods."]);
+    expect(c.dropped).toBe(1);
+  });
+
+  it("keeps a shop the product search returned and drops the ones it didn't", async () => {
+    const model = scripted(
+      turn(use("t1", "find_genuine_offer", { item: "Apple AirPods Pro 2" })),
+      turn(
+        use("f", "file_case", {
+          verdict: "unclear",
+          headline: "Cheaper at Currys than at Argos.",
+          findings: [{ text: "Currys sells it for £179.00.", source: "t1" }],
+          ask: ["Buy it from Currys instead.", "Or try John Lewis."],
+        }),
+      ),
+    );
+    const c = await buildCase(ctx(), { model });
+    expect(c.ask).toEqual(["Buy it from Currys instead."]);
+    expect(c.findings.map((f) => f.text)).toEqual(["Currys sells it for £179.00."]);
+    // The headline named a shop nobody checked, so it is replaced with a plain one.
+    expect(c.headline).not.toMatch(/Argos/);
+  });
+
+  it("a replaced headline follows the verdict", async () => {
+    const model = scripted(
+      turn(use("t1", "payee_history", { payee: "BargainPods" })),
+      turn(use("f", "file_case", { verdict: "likely_scam", headline: "Buy it from Argos instead, this shop is fake.", findings: [{ text: "Gran has never paid BargainPods.", source: "t1" }], ask: [] })),
+    );
+    const c = await buildCase(ctx(), { model });
+    expect(c.headline).toMatch(/scam/i);
+    expect(c.headline).not.toMatch(/Argos/);
+  });
+});

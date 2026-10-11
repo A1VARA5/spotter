@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { firstToOpen, withoutHoldFinding } from "./Dashboard";
+import { feedEmpty, firstToOpen, withoutHoldFinding } from "./Dashboard";
 import type { Case } from "@/agents/case";
 
 describe("withoutHoldFinding (one expiry date per held card)", () => {
@@ -36,6 +36,18 @@ describe("firstToOpen (which held card opens on its own)", () => {
   it("treats a high severity flag from the message check as risky too", () => {
     const flagged = pay("flagged", { ai: { flags: [{ severity: "high" }] } as unknown as Payment["ai"] });
     expect(firstToOpen([flagged, pay("old")])).toBe("flagged");
+  });
+});
+
+describe("feedEmpty (Everything today with nothing else in it)", () => {
+  it("says no payments only when there really are none", () => {
+    expect(feedEmpty(0)).toBe("No payments yet.");
+  });
+
+  it("counts the held ones instead of saying no payments while a hold waits", () => {
+    expect(feedEmpty(1)).toBe("Nothing else yet. The one payment so far is waiting for you.");
+    expect(feedEmpty(3)).toBe("Nothing else yet. All 3 payments so far are waiting for you.");
+    expect(feedEmpty(1)).not.toMatch(/No payments/);
   });
 });
 

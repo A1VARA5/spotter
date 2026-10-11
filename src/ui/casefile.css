@@ -40,17 +40,141 @@ a.cf-chip:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px
 .cf figure[tabindex="-1"]:focus,
 .cf .case-swap:focus { outline: 2px solid color-mix(in srgb, var(--protect) 60%, transparent); outline-offset: 4px; border-radius: 10px; }
 
-/* Body: one column, then two once the card is wide (about 1600 px screens with the wide layout). */
-.cf-body { container: casefile / inline-size; min-width: 0; }
-.cf-cols { display: grid; gap: 14px; align-items: start; }
-.cf-main, .cf-evidence { display: grid; gap: 12px; align-content: start; min-width: 0; }
-/* Hidden orders or two faces: the proof panel leads on one column, right after the verdict and the chips. */
-.cf-cols[data-lead="evidence"] > .cf-evidence { order: -1; }
-@container casefile (min-width: 940px) {
-  .cf-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; }
-  .cf-cols > .cf-main { grid-column: 1; grid-row: 1; }
-  .cf-cols > .cf-evidence { grid-column: 2; grid-row: 1; }
+/* ---------------------------------------------------------------------------------------------------------------
+   The folded case file (M3). First view: verdict, headline, three facts (and the real listing beside them), then
+   the decision. Then the one KERNEL catch, open. Everything else waits behind "See the evidence (N)".
+   Container queries on the card itself, so it reads the same in the dashboard, the drawer and the sheet.
+   --------------------------------------------------------------------------------------------------------------- */
+.cf { container: casefile / inline-size; min-width: 0; }
+.cf-first { display: grid; gap: 14px; align-items: start; min-width: 0; }
+.cf-facts { display: grid; gap: 8px; min-width: 0; }
+.cf-sub { font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.cf-aside { display: grid; gap: 10px; min-width: 0; }
+@container casefile (min-width: 620px) {
+  .cf-first[data-aside] { grid-template-columns: minmax(0, 1fr) minmax(250px, 34%); gap: 20px; }
 }
+
+/* The real one: a genuine Channel3 listing, opened on the shop's own site. Green like the other "safer way" notes. */
+.cf-real {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: 1px solid color-mix(in srgb, var(--go) 35%, var(--line));
+}
+.cf-real-label { font-size: 12.5px; font-weight: 650; color: var(--go); }
+.cf-real-title { font-size: 15px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cf-real-price { font-size: 14.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.cf-real-price b { font-size: 17px; color: var(--ink); font-weight: 700; margin-right: 2px; }
+.cf-real-go { justify-self: start; margin-top: 6px; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; white-space: normal; text-align: left; }
+.cf-real-go svg { flex: none; color: var(--go); }
+.cf-real-note { font-size: 12.5px; color: var(--ink-2); line-height: 1.4; }
+
+/* Phones: the decision has to sit about one screen down, so the folded card drops the "Checked by" strip (each fact
+   already names its engine) and the real listing becomes two short lines and a button. */
+@container casefile (max-width: 520px) {
+  .cf[data-fold] .cf-checked { display: none; }
+  /* The price watch moves under the decision on one column, so Deny and Approve aren't pushed down by it. */
+  .cf[data-fold] .cf-first, .cf[data-fold] .cf-aside { display: contents; }
+  .cf[data-fold] > .cf-top { order: 0; }
+  .cf[data-fold] .cf-facts { order: 1; }
+  .cf[data-fold] .cf-real { order: 2; }
+  .cf[data-fold] > .held-decide { order: 3; }
+  .cf[data-fold] .cf-aside > :not(.cf-real) { order: 4; }
+  .cf[data-fold] > .cf-lead { order: 5; }
+  .cf[data-fold] > .cf-more { order: 6; }
+  .cf[data-fold] > .cf-fold { order: 7; }
+  .cf-real { gap: 2px; padding: 10px 12px; }
+  .cf-real-title { -webkit-line-clamp: 1; }
+  .cf-real-go { margin-top: 6px; min-height: 40px; }
+}
+
+/* The decision, inside the case file right after the facts. */
+.cf > .held-decide { display: grid; gap: 8px; padding-top: 4px; }
+
+/* KERNEL's catch: one line that names the engine and what it proved, then its panel, kept compact. */
+.cf-lead { display: grid; gap: 10px; min-width: 0; }
+.cf-lead-line {
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--stop-soft);
+  text-wrap: pretty;
+}
+.cf-lead-line b { font-weight: 800; letter-spacing: 0.01em; color: var(--stop); margin-right: 1px; }
+.cf-lead .case-seen { margin: 0; }
+.cf-lead .case-seen-side img,
+.cf-lead .case-seen-side .case-page-video { max-height: 220px; object-fit: cover; object-position: top; }
+.cf-lead .faces-frame img { max-height: 240px; object-fit: cover; object-position: top; }
+.cf-lead .faces-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.7fr); }
+@container casefile (min-width: 900px) {
+  .cf-lead .case-seen-side img { max-height: 280px; }
+}
+
+/* See the evidence (N): a full width quiet bar, so it reads as "there is more here", not as another action. */
+.cf-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid #d9dfda;
+  border-radius: 12px;
+  background: var(--paper);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 150ms ease, background-color 150ms ease, transform 140ms var(--ease-out);
+}
+.cf-more:hover { border-color: #b9c3bc; background: #fbfbf8; }
+.cf-more:active { transform: scale(0.99); }
+.cf-more:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.cf-more svg { flex: none; color: var(--ink-2); transition: transform 200ms var(--ease-out); }
+.cf-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* The fold: text on the left (more findings, before you decide, the message), panels on the right, and two columns
+   of panels once the card is very wide (1920 px screens and up), so big screens aren't one long narrow strip. */
+.cf-fold { display: grid; gap: 14px; align-items: start; min-width: 0; }
+.cf-fold-text, .cf-panels { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.cf-fold-text > :empty { display: none; }
+.cf-fold[hidden] { display: none; }
+@container casefile (min-width: 780px) {
+  .cf-fold { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; }
+}
+@container casefile (min-width: 1240px) {
+  .cf-fold { grid-template-columns: minmax(0, 4fr) minmax(0, 9fr); }
+  /* Two flowing columns (like a masonry wall), so a tall two faces panel doesn't leave holes beside short ones. */
+  .cf-panels { display: block; columns: 2; column-gap: 14px; }
+  .cf-panels > * { break-inside: avoid; margin: 0 0 14px; }
+}
+/* Big screens: the decision buttons and the facts keep a readable size instead of stretching across the card. */
+.cf > .held-decide .held-actions { max-width: 880px; }
+.cf-facts { max-width: 78ch; }
+/* Opening in place: a short fade and settle from just above, never a height animation. Closing is instant. */
+.cf[data-fold] > .cf-fold:not([hidden]) { transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out); }
+@starting-style {
+  .cf[data-fold] > .cf-fold:not([hidden]) { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-more, .cf-more svg { transition: none; }
+  .cf[data-fold] > .cf-fold:not([hidden]) { transition: opacity 160ms ease; transform: none; }
+}
+
+/* Spot the difference: when the real shop's picture is missing or won't load, the listing's own words fill the box. */
+.spot-listing { display: grid; align-content: center; gap: 4px; width: 100%; aspect-ratio: 4 / 3; padding: 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--chalk); text-align: center; overflow: hidden; }
+.spot-listing-title { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.spot-listing-price { font-size: 20px; font-weight: 700; color: var(--go); }
+.spot-listing-shop { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
 
 /* Panel headers: what it is, which engine did it, and a (?) */
 .cf-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-width: 0; }

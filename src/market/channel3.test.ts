@@ -63,7 +63,7 @@ describe("searchByImage", () => {
     const [url, init] = fetchMock.mock.calls[0]! as unknown as [string, RequestInit];
     expect(url).toBe("https://api.trychannel3.com/v1/image-search");
     expect(JSON.parse(String(init.body))).toEqual({ base64_image: "AAAA", limit: 10, segment: "AUTO", config: { country: "GB", currency: "GBP" } });
-    expect(out).toEqual([{ id: "p1", title: "Aurora X2", brand: "Aurora", image: "https://cdn.trychannel3.com/a", offers: [{ title: "Aurora X2", brand: "Aurora", domain: "currys.co.uk", price: 4999, currency: "GBP", url: "https://buy.trychannel3.com/x" }] }]);
+    expect(out).toEqual([{ id: "p1", title: "Aurora X2", brand: "Aurora", image: "https://cdn.trychannel3.com/a", offers: [{ title: "Aurora X2", brand: "Aurora", domain: "currys.co.uk", price: 4999, currency: "GBP", url: "https://buy.trychannel3.com/x", image: "https://cdn.trychannel3.com/a" }] }]);
   });
 
   it("answers null (not []) on an error status, a network failure or a body without products", async () => {

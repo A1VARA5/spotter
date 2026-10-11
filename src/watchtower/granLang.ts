@@ -41,6 +41,8 @@ const T = {
   byStopped: { en: "Spotter stopped it", pl: "Spotter ją zatrzymał" },
   byDenied: { en: "{spotter} said no", pl: "{spotter} powiedział(a) nie" },
   stoppedFallback: { en: "Spotter stopped it before any money left.", pl: "Spotter zatrzymał ją, zanim pieniądze wyszły." },
+  byNotMe: { en: '{who} said "not me"', pl: '{who} powiedział(a): "to nie ja"' },
+  notMeFallback: { en: '{who} said "not me", so nothing was paid.', pl: '{who} powiedział(a): "to nie ja", więc nic nie zostało zapłacone.' },
   deniedFallback: { en: "{spotter} said no, so nothing was paid.", pl: "{spotter} powiedział(a) nie, więc nic nie zostało zapłacone." },
   waitingTitle: GLOSSARY.waitingFor,
   waitingStatus: { en: "{spotter} has been asked. PayPal keeps the money safe until they decide.", pl: "Poprosiliśmy o decyzję: {spotter}. Do tego czasu PayPal trzyma pieniądze bezpiecznie." },

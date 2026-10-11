@@ -63,6 +63,22 @@
 }
 .ck-links { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 15px; font-weight: 650; }
 .ck-links a { color: var(--protect); min-height: 24px; display: inline-flex; align-items: center; }
+/* KERNEL's row: its own screenshot of the latest page it opened, on top of the family's example, so the engine is
+   visible here without opening a case. Cropped from the top, where the page's heading and price sit. */
+.ck-thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  margin-bottom: 4px;
+}
+.ck-links { align-items: center; }
+.ck-links .case-watch { font-size: 14px; margin-top: 0; background: var(--paper); white-space: nowrap; }
 .ck-foot { margin: 18px 0 0; color: var(--ink-2); font-size: 15px; }
 .ck-foot a { color: var(--protect); font-weight: 600; }
 

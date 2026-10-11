@@ -6,14 +6,15 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { BrandMark } from "@/ui/components";
-import { GRAN_VIEW, RECEIPT } from "./copy";
+import { GRAN_VIEW, RECEIPT, SAMPLE_BOARD, gbp } from "./copy";
 
-const MAX = 711.97;
+const S = SAMPLE_BOARD;
+const MAX = Math.max(S.paid, S.stopped);
 const BARS = [
-  { label: "Paid", value: 687.59 / MAX, tone: "go", note: "£687.59" },
-  { label: "Stopped", value: 1, tone: "stop", note: "£711.97" },
-  { label: "Denied", value: 220.99 / MAX, tone: "stop", note: "£220.99" },
-  { label: "Protected", value: 85 / MAX, tone: "protect", note: "£85.00" },
+  { label: "Paid", value: S.paid / MAX, tone: "go", note: gbp(S.paid) },
+  { label: "Stopped", value: S.stopped / MAX, tone: "stop", note: gbp(S.stopped) },
+  { label: "Denied", value: S.denied / MAX, tone: "stop", note: gbp(S.denied) },
+  { label: "Protected", value: S.protected / MAX, tone: "protect", note: gbp(S.protected) },
 ] as const;
 
 type Lang = keyof typeof GRAN_VIEW;
@@ -26,7 +27,7 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
       <div className="shell">
         <div className="wt3-head">
           <h2 id="wt3-title" className="wt3-title">
-            Watchtower, built on AG Studio. <span>Ask about the month in plain words. The AI that answers can&apos;t move money, and it shows you a receipt.</span>
+            Watchtower, built on AG Studio. <span>Ask about the month in plain words. The AI can&apos;t move money.</span>
           </h2>
         </div>
 
@@ -35,7 +36,7 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
             <div
               className="board"
               role="img"
-              aria-label="Example Watchtower board, sample month. Question: what did Spotter keep this month? Answer: £932.96, with payments by outcome. Under it, the AI's receipt: 4 calls, money actions 0, board changes 1, and a button to undo what Spotter changed."
+              aria-label="Example Watchtower board, sample month. Question: what did Spotter keep this month? Answer: £957.95, with payments by outcome. Under it, the AI's receipt: 4 calls, money actions 0, board changes 1, and a button to undo what Spotter changed."
             >
               <p className="board-top" aria-hidden="true">
                 <BrandMark />
@@ -49,8 +50,8 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
               <div className="board-grid" aria-hidden="true">
                 <div className="board-tile">
                   <p className="board-label">Money kept, sample month</p>
-                  <p className="board-big num">£932.96</p>
-                  <p className="board-note">7 payments stopped or denied</p>
+                  <p className="board-big num">{gbp(S.kept)}</p>
+                  <p className="board-note">{S.keptCount} payments stopped or denied</p>
                 </div>
                 <div className="board-tile">
                   <p className="board-label">Payments by outcome</p>
@@ -101,7 +102,7 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
               <p className="wt3-gran-h">{v.safeTitle}</p>
               <p className="wt3-gran-kept">
                 {v.keptBefore}
-                <b className="num">£452.98</b>
+                <b className="num">{gbp(S.granKept)}</b>
                 {v.keptAfter}
               </p>
               <div className="wt3-gran-row">

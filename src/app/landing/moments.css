@@ -441,6 +441,11 @@
   overflow-x: clip;
 }
 
+/* Stacked (phones): the last stop's phone repeats the chat from "You decide" above it, so only its Watchtower record shows. */
+.wk-stop[data-k="done"] .wk-inline .wk-phone {
+  display: none;
+}
+
 @media (max-width: 560px) {
   .xr-page {
     grid-template-columns: minmax(0, 0.55fr) minmax(0, 1.45fr);

@@ -1423,7 +1423,8 @@
 
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .aterm-body > * {
+    /* The agent's closing line is real text people read: it never sits half faded (axe measured it at 4.4:1 mid fade). */
+    .aterm-body > :not(.aterm-say) {
       animation: term-line linear both;
       animation-timeline: view();
       animation-range: entry 20% cover 40%;

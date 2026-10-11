@@ -207,6 +207,17 @@ export const BUSINESS_SCENARIOS: Scenario[] = [
   },
 ];
 
+/**
+ * The judge's tour at the top of Try a payment: the four scenarios that show the most, each with the one
+ * thing it puts on screen. Family households only (a business has its own list).
+ */
+export const JUDGE_TOUR: Array<{ id: string; short: string; shows: string }> = [
+  { id: "agent-trap", short: "Booby trapped shop", shows: "KERNEL: seen vs read" },
+  { id: "gran-hi-mum", short: "\"Hi Mum\" text", shows: "Was it you?" },
+  { id: "gran-redelivery", short: "£1.99 parcel text", shows: "KERNEL: two faces" },
+  { id: "agent-skillet", short: "£6.99 skillet", shows: "Channel3: spot the difference" },
+];
+
 /** What Try a payment shows: a family's own scenarios with the business ones under "Runs a business?", or only the business ones. */
 export function scenariosFor(kind: HouseholdKind): { main: Scenario[]; extra: Scenario[] } {
   return kind === "business" ? { main: BUSINESS_SCENARIOS, extra: [] } : { main: SCENARIOS, extra: BUSINESS_SCENARIOS };

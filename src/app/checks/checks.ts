@@ -4,13 +4,25 @@
 import type { Payment } from "@/core/lifecycle";
 import { money, trackState } from "@/ui/format";
 import { OUTCOME_WORDS } from "@/ui/labels";
+import { peekableHost } from "@/ui/peekable";
 
 export type CheckPayment = Pick<
   Payment,
   "id" | "spender_id" | "status" | "amount" | "currency" | "created_at" | "request" | "ai" | "market" | "case_file" | "paypal_authorization_id"
 >;
 export type EngineId = "ai" | "kernel" | "channel3" | "watchtower" | "activity" | "paypal";
-export type Example = { text: string; href: string; label: string; example?: boolean; shows?: string[]; evidence?: string };
+export type Example = {
+  text: string;
+  href: string;
+  label: string;
+  example?: boolean;
+  shows?: string[];
+  evidence?: string;
+  /** KERNEL's own screenshot of the page (only a JPEG data URL Spotter made). */
+  thumb?: { src: string; alt: string };
+  /** A live, read only look at that page again (src/ui/Peek.tsx), when the server would allow one. */
+  peek?: { paymentId: string; host: string };
+};
 export type Engine = { id: EngineId; name: string; by: string; does: string; example: Example | null; empty: { text: string; href: string; label: string } };
 export type Extras = { lastEvent: { type: string; paymentId: string } | null; demo: boolean };
 
@@ -25,6 +37,8 @@ const host = (u: string) => {
   }
 };
 const caseLink = (p: CheckPayment) => `/dashboard#pay-${p.id}`;
+// Only a JPEG data URL Spotter made itself is ever put in an img src (the same rule as the case file).
+const SHOT = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
 
 const EVENT_WORDS: Record<string, string> = {
   "PAYMENT.AUTHORIZATION.CREATED": "PayPal confirmed the hold",
@@ -82,7 +96,15 @@ export function engines(payments: CheckPayment[], names: Record<string, string>,
       does: "Opens a link or shop page in a throwaway browser in the cloud, so nobody in the family has to click it. It only looks: it never types, clicks or pays, and it's deleted after the visit.",
       example:
         kernel && page
-          ? { text: `Opened ${host(page.finalUrl || page.url)} for ${what(kernel)}.`, href: caseLink(kernel), label: "See what it saw", example: isExample(kernel), shows }
+          ? {
+              text: `Opened ${host(page.finalUrl || page.url)} for ${what(kernel)}.`,
+              href: caseLink(kernel),
+              label: "See what it saw",
+              example: isExample(kernel),
+              shows,
+              ...(page.screenshot && SHOT.test(page.screenshot) ? { thumb: { src: page.screenshot, alt: `What KERNEL's cloud browser saw on ${host(page.finalUrl || page.url)}` } } : {}),
+              ...(peekableHost(kernel) ? { peek: { paymentId: kernel.id, host: peekableHost(kernel)! } } : {}),
+            }
           : null,
       empty: { text: "No link or shop page opened for your family yet.", href: "/demo#s-agent-trap", label: "Try the booby trapped shop" },
     },

@@ -11,7 +11,7 @@ import type { GranLang } from "@/watchtower/granLang";
 import type { GranSafeDef, GranScamsDef, GranWaitingDef } from "./GranWidgets";
 import type { AiChecksDef } from "./AiChecks";
 import type { ReceiptBook } from "./ReceiptBar";
-import { countdown, fairPrice, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
+import { countdown, fairPrice, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -210,10 +210,12 @@ export function HoldTrackWidget({ dataMapping, widgetApi, context }: AgWidgetPar
       <ol className="wt-track-stops">
         {STOPS.map((s) => (
           <li key={s.outcome} data-tone={s.tone}>
-            <button type="button" className="wt-stop" onClick={() => pick(s.outcome)} aria-label={`Filter the dashboard to ${s.label}`}>
+            {/* The name starts with the visible text ("22 Paid") so voice control users can say what they see (WCAG 2.5.3). */}
+            <button type="button" className="wt-stop" onClick={() => pick(s.outcome)}>
               <span className="wt-stop-count">{counts?.[s.outcome] ?? 0}</span>
               <span className="wt-stop-dot" aria-hidden="true" />
               <span className="wt-stop-label">{s.label}</span>
+              <span className="wt-sr">, filter the board to these</span>
             </button>
           </li>
         ))}
@@ -247,9 +249,10 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
       setAsking(null);
     }
   };
+  const { shown, more } = firstFew(alerts, ALERTS_SHOWN);
   return (
     <ul className="wt-alerts" aria-label="Watch alerts" {...scroll}>
-      {alerts.map((a) => (
+      {shown.map((a) => (
         <li key={a.id} className="wt-alert" data-level={a.level}>
           <span className="wt-alert-pin" aria-hidden="true" />
           <div>
@@ -266,6 +269,11 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
           </div>
         </li>
       ))}
+      {more > 0 && (
+        <li className="wt-more">
+          {more === 1 ? "1 more alert" : `${more} more alerts`} this month. Every payment is in <a href="/ledger">Activity</a>.
+        </li>
+      )}
     </ul>
   );
 }
@@ -438,6 +446,10 @@ export function MoneyMidAirWidget(p: AgWidgetParams<MoneyMidAirDef>) {
 // ---------- scam radar ----------
 
 const RADAR_FIELDS = ["payee", "outcome"] as const;
+// How many rows a tile shows before "N more": enough to read, few enough to fit the tile at laptop width.
+const RADAR_SHOWN = 3;
+const FAIR_SHOWN = 1;
+const ALERTS_SHOWN = 2;
 
 export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
   const { context } = p;
@@ -455,9 +467,10 @@ export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
       </div>
     );
   }
+  const { shown, more } = firstFew(lines, RADAR_SHOWN);
   return (
     <ul className="wt-radar" aria-label="Scam radar" {...scroll}>
-      {lines.map((l) => (
+      {shown.map((l) => (
         <li key={l.payee} className="wt-radar-row">
           <div className="wt-radar-head">
             <p className="wt-radar-payee" title={l.payee}>
@@ -475,6 +488,11 @@ export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
           <p className="wt-radar-text">{l.text}</p>
         </li>
       ))}
+      {more > 0 && (
+        <li className="wt-more">
+          {more === 1 ? "1 more payee" : `${more} more payees`} Spotter stopped this month, in <a href="/ledger">Activity</a>.
+        </li>
+      )}
     </ul>
   );
 }
@@ -610,7 +628,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
       <p className="wt-fair-headline">{f.headline}</p>
       {f.caught && <p className="wt-fair-caught">{f.caught}</p>}
       <ul className="wt-fair-list">
-        {f.items.map((i) => (
+        {firstFew(f.items, FAIR_SHOWN).shown.map((i) => (
           <li key={i.id} className="wt-fair-item">
             <p className="wt-fair-what">
               <span className="wt-fair-item-name">{i.marketItem || i.payee}</span>
@@ -627,6 +645,11 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
           </li>
         ))}
       </ul>
+      {f.checked > FAIR_SHOWN && (
+        <p className="wt-more">
+          {FAIR_SHOWN === 1 ? "The biggest" : `The biggest ${FAIR_SHOWN}`} of {f.checked} price checks this month. Every one is in <a href="/ledger">Activity</a>.
+        </p>
+      )}
       <p className="wt-fair-source">Real shop prices from Channel3, checked when each payment was made.</p>
     </div>
   );

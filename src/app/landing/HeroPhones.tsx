@@ -1,7 +1,7 @@
 // The phones in the hero scenes, laid out at iPhone points like the rest of Devices.tsx. The chat app is a generic
 // one, the people and shops are examples, and every message Spotter sends is quoted from the product (copy.ts).
 import { BrandMark } from "@/ui/components";
-import { AGENT, GRAN, GRAN_VIEW, TOM } from "./copy";
+import { AGENT, GRAN, GRAN_VIEW, SAMPLE_BOARD, TOM, gbp } from "./copy";
 
 function BotBar() {
   return (
@@ -121,7 +121,7 @@ export function GranViewPhone() {
       <p className="hp-gran-h">{v.safeTitle}</p>
       <p className="hp-gran-kept">
         {v.keptBefore}
-        <b className="num">£452.98</b>
+        <b className="num">{gbp(SAMPLE_BOARD.granKept)}</b>
         {v.keptAfter}
       </p>
       <div className="hp-gran-row">

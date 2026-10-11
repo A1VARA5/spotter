@@ -46,6 +46,11 @@
 .wt-alert { grid-template-columns: 14px minmax(0, 1fr); }
 .wt-air-total, .wt-air-note, .wt-alerts-title, .wt-alerts-detail { overflow-wrap: anywhere; }
 
+/* "N more, in Activity" under a tile's first few rows */
+.wt-more { list-style: none; margin: 0; padding: 8px 0 2px; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+.wt-more a { color: var(--protect); font-weight: 600; text-underline-offset: 3px; }
+.wt-more a:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; border-radius: 3px; }
+
 /* money in mid air */
 .wt-air { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; container-type: inline-size; }
 .wt-air-empty { align-content: center; }
@@ -215,4 +220,9 @@
     linear-gradient(rgb(255 255 255 / 0), var(--paper) 70%) center bottom / 100% 28px no-repeat local,
     radial-gradient(farthest-side at 50% 0, rgb(23 33 43 / 0.14), transparent) center top / 100% 10px no-repeat scroll,
     radial-gradient(farthest-side at 50% 100%, rgb(23 33 43 / 0.14), transparent) center bottom / 100% 10px no-repeat scroll;
+}
+
+/* Phones: the board is part of the page. Studio.tsx (usePhoneFullHeight) sets the box to the canvas's full height. */
+@media (max-width: 760px) {
+  .wt-frame > div.wt-studio:last-child { flex: none; min-height: 560px; }
 }

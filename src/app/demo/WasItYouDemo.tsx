@@ -21,13 +21,19 @@ const SCAM_TEXT =
 /** Two phones fit side by side at 390 px at this scale; bigger from a small tablet up. */
 function usePhoneScale() {
   // Starts small so the first paint never overflows a phone screen; grows once the width is known.
-  const [scale, setScale] = useState(0.37);
+  const [scale, setScale] = useState(0.34);
   useEffect(() => {
     const narrow = window.matchMedia("(max-width: 620px)");
-    const set = () => setScale(narrow.matches ? 0.37 : 0.56);
+    // At 320 px the two phones at 0.37 ran 2 px past the screen edge.
+    const tiny = window.matchMedia("(max-width: 359px)");
+    const set = () => setScale(tiny.matches ? 0.34 : narrow.matches ? 0.37 : 0.56);
     set();
     narrow.addEventListener("change", set);
-    return () => narrow.removeEventListener("change", set);
+    tiny.addEventListener("change", set);
+    return () => {
+      narrow.removeEventListener("change", set);
+      tiny.removeEventListener("change", set);
+    };
   }, []);
   return scale;
 }

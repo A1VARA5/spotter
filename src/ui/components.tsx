@@ -94,7 +94,12 @@ export function Evidence({ text, flags }: { text: string; flags: Flag[] }) {
     at = r.end;
   }
   if (at < text.length) parts.push(text.slice(at));
-  return <blockquote className="evidence">{parts}</blockquote>;
+  // Long messages scroll inside the box (max-height), so it is a tab stop: keyboard users can scroll it too.
+  return (
+    <blockquote className="evidence" tabIndex={0} aria-label="The message as it came in">
+      {parts}
+    </blockquote>
+  );
 }
 
 /**

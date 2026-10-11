@@ -12,15 +12,17 @@ No sign up and no PayPal account needed.
 
 1. Open https://spotter-pay.vercel.app and press **Try it on fake money**. You get your own private demo family (Gran, Leo and a shopping agent), deleted after 48 hours. The PIN is `2468`.
 2. The dashboard opens on one payment already waiting for you: Gran's forwarded "Hi Mum" text, £250. The PayPal part is real, a sandbox authorisation made the moment your family was created. The scam check and case file on it were written earlier and say "Example, checked earlier" on the card. Approve it (type `2468`) and PayPal captures the money, or deny it and PayPal voids the hold. If the sandbox didn't answer, the dashboard says so and the family starts without it.
-3. Go to **Try a payment** and send these. Each one is a live Claude check and a real sandbox hold, and they come out the same in any order:
-   - Gran forwards a "Hi Mum" text: held for you, with the warning signs quoted.
-   - Gran buys a tablet from a local listing: not sent, because Friends and Family has no buyer protection.
-   - Agent wants £249 earbuds: held, with the real shop price next to it.
-   - Agent lands on a booby trapped shop: stopped. The case file shows what a person sees next to the hidden line the agent read.
-   - Leo is offered cheap game credit: stopped, gift cards can't be undone.
-   - Agent buys Mum a birthday mug: goes straight through and gets paid.
-4. Open **Waiting for you** and decide the held ones. Every approval asks for the PIN.
-5. If a week's allowance ever runs low after lots of sends, **Start fresh** on the Try page clears it.
+3. Go to **Try a payment**. The four buttons at the top are the short tour, each a live Claude check and a real sandbox hold:
+   - **Booby trapped shop**: stopped. KERNEL opens the shop in a throwaway cloud browser and shows what a person sees next to the hidden line the agent read, plus the tools the page offers to AI agents.
+   - **"Hi Mum" text**: held. The text calls Gran "Mum", so it claims to be from you, and the held card asks you "Was it you?". In the side by side example lower on the page the text claims to be from Tom and you answer as Tom: his "not me" releases the money straight away.
+   - **£1.99 parcel text**: held. KERNEL opens the link as a desktop and as a UK phone at the same moment. Only the phone gets the card form, and Spotter shows where the card details would go.
+   - **£6.99 skillet**: held. Spot the difference puts the shop's picture next to the same pan at real shops (Channel3 image search).
+
+   The full list under the tour has the rest, including Friends and Family (never sent), a gift card offer for Leo (stopped) and a normal mug order (paid straight away). They come out the same in any order.
+4. Open **Waiting for you** and decide the held ones. Every approval asks for the PIN. Under **Tools** on the same page, **Check a photo or a screenshot** boxes each thing in a photo and prices it against real shops with Channel3 (there's an example photo if you don't have one).
+5. **Activity** is an AG Grid table of every payment. Click a row and its case file opens in a drawer. **How it checked** (`/checks`) shows each engine's work on your own payments: Claude's quotes, KERNEL visits, Channel3 prices, PayPal's webhooks, and all 47 tools of PayPal's Agent Toolkit with what Spotter does to each one.
+6. **Watchtower** is the AG Studio board. Switch to **Gran's view** for big type and plain words, in English or Polish.
+7. If a week's allowance ever runs low after lots of sends, **Start fresh** on the Try page clears it.
 
 ### Testing an AI agent through PayPal's toolkit
 
@@ -34,9 +36,9 @@ Open the shopping agent's page (People, Shopping agent). In the connect panel pi
 
 ### What's real and what's an example
 
-- Real: every PayPal call (orders, authorise, capture, void, webhooks), the Claude check and the case agent on payments you send, Channel3 prices, the KERNEL page visit, Telegram and Discord.
-- Example: the one hold your demo family starts with has a check and case file written earlier, labelled on the card. Network counts in the landing page mockups say "In this example". Watchtower's starting month for demo families is a sample, labelled Sample.
-- Tests: 542 passing (`npx vitest run`).
+- Real: every PayPal call (orders, authorise, capture, void, webhooks), the Claude check and the case agent on payments you send, Channel3 prices, image search and photo check, the KERNEL page visits, "Was it you?", Telegram and Discord.
+- Example: the one hold your demo family starts with has a check and case file written earlier, labelled on the card. The price watch it starts with is labelled Example too. Network counts in the landing page mockups say "In this example". Watchtower's starting month for demo families is a sample, labelled Sample.
+- Tests: 1,350 passing across 114 files (`npx vitest run`).
 
 ## What it does
 
