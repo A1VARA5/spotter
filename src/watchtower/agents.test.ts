@@ -19,6 +19,7 @@ const extra: SpotterTools = {
   radar: t("scam_radar"),
   paypal: t("paypal_status"),
   price: t("real_price"),
+  fair: t("fair_prices"),
   addPage: t("add_page"),
 };
 const NOW = new Date("2026-10-10T12:00:00Z"); // a Saturday
@@ -75,6 +76,18 @@ describe("Watchtower's agent roster", () => {
     expect(names("lead")).toEqual(["own_lead", "open_case_file", "watch_alerts"]);
     expect(names("data")).toEqual(["own_data", "open_case_file", "watch_alerts"]);
     expect(names("page")).toEqual(["own_page"]);
+  });
+
+  it("answers the fair price question in one tool call: fair_prices, with no data agent hop", () => {
+    expect(names(SPOTTER_ID)).toContain("fair_prices");
+    expect(names(BRIEF_ID)).not.toContain("fair_prices");
+    const s = agent(SPOTTER_ID).instructions!(ctx, undefined as never) as string;
+    const route = s.split("\n").find((l) => l.startsWith('- "Did we pay fair prices?"'))!;
+    expect(route).toMatch(/fair_prices/);
+    expect(route).not.toMatch(/ask data/i);
+    expect(route).toMatch(/view_page/);
+    // a loose name match must never be passed off as the usual price
+    expect(s).toMatch(/never call it the usual price/i);
   });
 
   it("describes both custom agents so a delegating agent knows when to hand off", () => {

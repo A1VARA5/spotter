@@ -1,7 +1,6 @@
 /* ==========================================================================
    The landing story after the hero: the problem, one payment start to
-   finish (Walkthrough.tsx), the channel picker (ChannelHub.tsx), the agent
-   section and Watchtower. The hold track and the amber clamp are the one
+   finish (Walkthrough.tsx), the agent section and Watchtower. The hold track and the amber clamp are the one
    thread: every section draws money on a line, and only held money is amber.
    ========================================================================== */
 
@@ -511,24 +510,21 @@
   font-size: 14.5px;
 }
 
+/* The page visit reads top to bottom: what it is, the screenshot at a readable size, then what Spotter found. */
 .wk-checked .case-page {
-  grid-template-columns: 176px minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   margin: 0;
 }
 
 .wk-checked .case-page figcaption {
   font-size: 14px;
+  max-width: 60ch;
 }
 
 @media (max-width: 520px) {
   .wk-checked {
     padding: 14px;
-  }
-
-  .wk-checked .case-page {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -789,476 +785,6 @@
   padding: 8px 10px;
   border-radius: 10px;
   background: var(--chalk);
-}
-
-/* ---------- 4. Nobody installs anything new ---------- */
-.hub2 {
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
-  padding: clamp(72px, 12vh, 140px) 0;
-}
-
-.hub2-picker {
-  margin-top: 32px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.hub2-tab {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 10px 16px 10px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #fbfbf9;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink-2);
-  touch-action: manipulation;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms var(--ease-out);
-}
-
-.hub2-tab:active {
-  transform: scale(0.97);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .hub2-tab:hover {
-    color: var(--ink);
-    border-color: #b9c2bc;
-  }
-}
-
-.hub2-tab[aria-selected="true"] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
-}
-
-.hub2-tab:focus-visible {
-  outline: 3px solid var(--protect);
-  outline-offset: 2px;
-}
-
-.hub2-tab svg {
-  flex: none;
-}
-
-.hub2-flow {
-  margin-top: 28px;
-  display: grid;
-  gap: 0;
-  justify-items: stretch;
-}
-
-.hub2-col {
-  display: grid;
-  gap: 10px;
-  align-content: start;
-  min-width: 0;
-}
-
-.hub2-cap {
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--ink-2);
-}
-
-.hub2-card {
-  display: grid;
-  gap: 10px;
-  align-content: start;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  background: #fbfbf9;
-  min-width: 0;
-}
-
-.hub2-note {
-  color: var(--ink-2);
-  font-size: 14.5px;
-}
-
-/* The connectors: dashed like the old hub, with one dot that runs once when a channel is picked. */
-.hub2-wire {
-  position: relative;
-  height: 44px;
-  width: 2px;
-  justify-self: center;
-  background-image: linear-gradient(var(--ink-2) 55%, transparent 0);
-  background-size: 2px 12px;
-  opacity: 0.7;
-}
-
-.hub2-wire i {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  border-radius: 50%;
-  background: var(--ink);
-  opacity: 0;
-}
-
-.hub2-core {
-  justify-self: center;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  text-align: center;
-}
-
-.hub2-pill {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px 12px 12px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: #c7cfd6;
-  font-size: 15px;
-  box-shadow: 0 20px 40px -20px rgb(23 33 43 / 0.6);
-}
-
-.hub2-pill b {
-  color: #fff;
-}
-
-.hub2-pill .brand-mark {
-  width: 36px;
-  height: 36px;
-  display: block;
-}
-
-.hub2-checks {
-  font-size: 14px;
-  color: var(--ink-2);
-  max-width: 30ch;
-}
-
-.hub2-money {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  width: min(100%, 300px);
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid var(--line);
-  font-size: 14.5px;
-  line-height: 1.4;
-  color: var(--ink-2);
-  text-align: center;
-  box-shadow: var(--sh-1);
-}
-
-.hub2-money-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.hub2-money .hub-pp {
-  font-size: 18px;
-}
-
-.hub2-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-weight: 650;
-  font-size: 14px;
-  color: var(--ink);
-}
-
-.hub2-state i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.hub2-state[data-tone="held"] {
-  background: var(--hold-soft);
-}
-
-.hub2-state[data-tone="held"] i {
-  background: var(--hold);
-}
-
-.hub2-state[data-tone="stop"] {
-  background: var(--stop-soft);
-}
-
-.hub2-state[data-tone="stop"] i {
-  background: var(--stop);
-}
-
-.hub2-state[data-tone="protect"] {
-  background: var(--protect-soft);
-}
-
-.hub2-state[data-tone="protect"] i {
-  background: var(--protect);
-}
-
-.hub2-end {
-  margin-top: 40px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 24px;
-}
-
-@media (min-width: 900px) {
-  .hub2-flow {
-    grid-template-columns: minmax(0, 1fr) 48px minmax(240px, 300px) 48px minmax(0, 1fr);
-    align-items: start;
-  }
-
-  /* Wires meet the cards just under their captions, level with the Spotter pill. */
-  .hub2-wire-a,
-  .hub2-wire-b {
-    height: 2px;
-    width: 100%;
-    margin-top: 62px;
-    background-image: linear-gradient(90deg, var(--ink-2) 55%, transparent 0);
-    background-size: 12px 2px;
-  }
-
-  .hub2-wire-a i,
-  .hub2-wire-b i {
-    top: 50%;
-    left: 0;
-    margin: -5px 0 0 -5px;
-  }
-
-  .hub2-core {
-    padding-top: 31px;
-  }
-}
-
-.hub2-wire-c {
-  height: 28px;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hub2-flow[data-run] .hub2-wire i {
-    animation: hub2-down 520ms var(--ease-out) both;
-  }
-
-  .hub2-flow[data-run] .hub2-wire-c i {
-    animation-name: hub2-down-short;
-    animation-delay: 420ms;
-  }
-
-  .hub2-flow[data-run] .hub2-money {
-    animation: hub2-in 360ms var(--ease-out) 760ms both;
-  }
-
-  .hub2-flow[data-run] .hub2-wire-b i {
-    animation-delay: 900ms;
-  }
-
-  .hub2-flow[data-run] .hub2-reply {
-    animation: hub2-in 360ms var(--ease-out) 1250ms both;
-  }
-
-  @media (min-width: 900px) {
-    .hub2-flow[data-run] .hub2-wire-a i,
-    .hub2-flow[data-run] .hub2-wire-b i {
-      animation-name: hub2-across;
-    }
-  }
-}
-
-@keyframes hub2-down {
-  0% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(34px);
-  }
-}
-
-@keyframes hub2-down-short {
-  0% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(26px);
-  }
-}
-
-@keyframes hub2-across {
-  0% {
-    opacity: 0;
-    transform: translateX(0);
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(44px);
-  }
-}
-
-@keyframes hub2-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
-/* Snippets inside the cards: the real message going in and Spotter's real reply. */
-.snip {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.45;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.snip-mail {
-  background: #fff;
-  border: 1px solid var(--line);
-}
-
-.snip-mail-meta {
-  color: var(--ink-2);
-  font-size: 13px;
-}
-
-.snip-mail-meta b {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.snip-tg {
-  background: #e9edf0;
-}
-
-.snip-tg > span {
-  max-width: 92%;
-  padding: 7px 10px;
-  border-radius: 12px;
-  background: #fff;
-  justify-self: start;
-}
-
-.snip-tg > .snip-me {
-  justify-self: end;
-  background: #dfe7f8;
-}
-
-.snip-from {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: #3a7a3a;
-}
-
-.snip-dc {
-  background: #1c2129;
-  color: #e3e6ea;
-}
-
-.snip-dc-user {
-  font-weight: 650;
-  color: #fff;
-}
-
-.snip-dc-user span {
-  font-weight: 400;
-  color: #9aa3ad;
-  font-size: 12.5px;
-  margin-left: 6px;
-}
-
-.snip-dc-menu {
-  justify-self: start;
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: #111419;
-  font-size: 13px;
-  color: #b8bfc7;
-}
-
-.snip-dc-menu b {
-  color: #fff;
-  background: var(--protect);
-  padding: 3px 8px;
-  border-radius: 5px;
-  font-weight: 600;
-}
-
-.snip-dc-only {
-  font-size: 12.5px;
-  color: #9aa3ad;
-}
-
-.snip-term {
-  display: block;
-  margin: 0;
-  background: #0d141c;
-  color: #e6edf3;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12.5px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
-.snip-term .t-dim {
-  color: #8b97a2;
-}
-
-.snip-term .t-fn {
-  color: var(--hold);
-}
-
-.snip-term .t-ok {
-  color: #7ee2a8;
-}
-
-.snip-term .t-str {
-  color: #a8c7fa;
-}
-
-.snip .mark {
-  white-space: normal;
 }
 
 /* ---------- 5. For your AI agent ---------- */
@@ -1648,4 +1174,62 @@
   padding: 0 16px 12px;
   font-size: 12.5px;
   color: var(--ink-2);
+}
+
+/* ---------- the ending: a centred call to action and a footer laid out like the top bar ---------- */
+.final.net-host {
+  padding: clamp(96px, 15vh, 168px) 0 0;
+}
+
+.final .final-inner {
+  justify-items: center;
+  text-align: center;
+}
+
+.final .final-track {
+  width: min(560px, 100%);
+  margin-inline: auto;
+}
+
+.final .final-lede {
+  margin-inline: auto;
+  text-wrap: pretty;
+}
+
+.final .start {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.lfoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 32px;
+  margin-top: clamp(96px, 14vh, 160px);
+  padding: 28px 0 36px;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.lfoot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  font-size: 15px;
+}
+
+.lfoot-links a {
+  text-decoration: none;
+  color: #b9c3cc;
+}
+
+.lfoot-links a:hover {
+  color: #fff;
+}
+
+.lfoot-fine {
+  flex-basis: 100%;
+  font-size: 14px;
+  color: #8d99a5;
 }

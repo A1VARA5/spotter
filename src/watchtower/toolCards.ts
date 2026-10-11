@@ -4,7 +4,7 @@
 // result is shown only when it matches one of those labels exactly; everything else is counted, never echoed.
 import { accessOf, type Access } from "./receipt";
 
-export const CARD_TOOLS = ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "add_page", "my_month"] as const;
+export const CARD_TOOLS = ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "fair_prices", "add_page", "my_month"] as const;
 
 export type CallStatus = "streaming" | "ready" | "awaiting_approval" | "executing" | "done" | "cancelled";
 type Result = { success: true; response?: string; data?: unknown } | { success: false; issues?: unknown };
@@ -16,6 +16,7 @@ const WORDS: Record<(typeof CARD_TOOLS)[number], [running: string, done: string]
   scam_radar: ["Checking the scam radar", "Checked the scam radar"],
   paypal_status: ["Reading PayPal's record", "Read PayPal's record"],
   real_price: ["Checking real shop prices", "Checked real shop prices"],
+  fair_prices: ["Checking this month's prices", "Checked this month's prices"],
   add_page: ["Adding a page", "Added a page"],
   my_month: ["Looking at your month", "Looked at your month"],
 };
@@ -131,6 +132,24 @@ function price(d: Record<string, unknown>) {
   };
 }
 
+function fair(d: Record<string, unknown>) {
+  const checked = num(d.checked) ?? 0;
+  const paid = num(d.paidChecked) ?? 0;
+  const over = num(d.overpaid) ?? 0;
+  const saved = num(d.saved) ?? 0;
+  const today = arr(d.today).map(obj);
+  const matched = today.filter((t) => num(obj(t.cheapestToday).price) !== null).length;
+  const gap = over > 0 ? `${gbp(over)} over the cheapest real shop at the time` : saved > 0 ? `${gbp(saved)} under the cheapest real shop at the time` : "never over the cheapest real shop at the time";
+  return {
+    pill: `${paid} paid, checked`,
+    lines: [
+      `${plural(checked, "price check")} this month, ${paid} on paid payments${paid ? `: ${gap}` : ""}.${d.allSample === true && checked ? " All sample month." : ""}`,
+      today.length ? `Today's live search: ${plural(today.length, "item")}, ${matched} matched a real shop.` : "No live search today: nothing paid had a price check.",
+      "Item and shop names are left out here.",
+    ],
+  };
+}
+
 function month(d: Record<string, unknown>) {
   const s = arr(d.stopped).length;
   const w = arr(d.waiting).length;
@@ -158,6 +177,7 @@ export function describeCall(name: string, _args: Record<string, unknown>, call:
     : tool === "scam_radar" ? radar(d)
     : tool === "paypal_status" ? paypal(d)
     : tool === "real_price" ? price(d)
+    : tool === "fair_prices" ? fair(d)
     : tool === "my_month" ? month(d)
     : tool === "add_page" ? { pill: "Board change", lines: ["Added one empty page to the board. The receipt can undo it."] }
     : { lines: ["Spotter doesn't know this tool."] };

@@ -2,14 +2,15 @@
 // Claude key and the daily cap) and replays the answer as the stream events Studio's chat expects.
 import type { AgAiEvent, AgLlmAdapter, AgLlmRequest, AgLlmResponse } from "ag-studio";
 
-export function spotterAdapter(endpoint = "/api/watchtower/llm"): AgLlmAdapter {
+/** `agent` names whose turn this is; the server picks the model from it (and never takes a model from us). */
+export function spotterAdapter(endpoint = "/api/watchtower/llm", agent?: string): AgLlmAdapter {
   return {
     executeTurn(request: AgLlmRequest, options) {
       // Started now, so `complete` settles whether or not anyone reads the stream.
       const reply: Promise<AgLlmResponse> = fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ request: { ...request, tools: request.tools?.filter((t) => t.kind !== "provided") } }),
+        body: JSON.stringify({ agent, request: { ...request, tools: request.tools?.filter((t) => t.kind !== "provided") } }),
         signal: options?.signal,
       }).then(async (res) => {
         const body = (await res.json().catch(() => null)) as { response?: AgLlmResponse; error?: string } | null;

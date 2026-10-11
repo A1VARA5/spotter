@@ -3,9 +3,7 @@ import { BrandMark } from "@/ui/components";
 import { HeroScenes } from "./landing/HeroScenes";
 import { NetworkField } from "./landing/NetworkField";
 import { Problem } from "./landing/Problem";
-import { Checks } from "./landing/Checks";
 import { Walkthrough } from "./landing/Walkthrough";
-import { ChannelHub } from "./landing/ChannelHub";
 import { AgentToolkit } from "./landing/AgentToolkit";
 import { WatchtowerPeek } from "./landing/WatchtowerPeek";
 import { Final } from "./landing/Sections";
@@ -75,7 +73,7 @@ export default async function Home() {
     <main>
       <LoopPauser />
       <section className="hero-dark net-host" data-loop>
-        <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .lnav" calm=".hero-copy" />
+        <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .hs-chan, .lnav" calm=".hero-copy" />
         <div className="shell">
           <header className="lnav">
             <Link href="/" className="brand brand-light" aria-label="Spotter home">
@@ -122,19 +120,6 @@ export default async function Home() {
 
       <Walkthrough cta={<DemoButton who={who} label="Try it on the demo family" />} />
 
-      <Checks />
-
-      <ChannelHub
-        cta={
-          <>
-            <DemoButton who={who} />
-            <a className="next-link" href="/how#channels">
-              How each person connects, step by step
-            </a>
-          </>
-        }
-      />
-
       <AgentToolkit
         connectHref={connectHref}
         cta={
@@ -177,17 +162,25 @@ export default async function Home() {
           <a href={who ? "/setup?step=name" : "/api/auth/paypal/start"}>{who ? "Set up Spotter for a business" : "Log in with PayPal to set up a business"}</a>
         </p>
       </section>
-      <Final>
+      <Final
+        footer={
+          <footer className="lfoot">
+            <Link href="/" className="brand brand-light" aria-label="Spotter home">
+              <BrandMark />
+              Spotter
+            </Link>
+            <nav className="lfoot-links" aria-label="Footer">
+              <a href="/how">How it works</a>
+              <a href="/how#faq">FAQ</a>
+              <a href="/privacy">Privacy</a>
+              <a href="/terms">Terms</a>
+            </nav>
+            <p className="lfoot-fine">Built for the PayPal AI Hackathon. Sandbox only: no real money moves.</p>
+          </footer>
+        }
+      >
         <StartButtons onDark who={who} label="Try it on fake money" />
       </Final>
-
-      <footer className="shell footer">
-        <p>Built for the PayPal AI Hackathon. Sandbox only.</p>
-        <p>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-        </p>
-      </footer>
     </main>
   );
 }

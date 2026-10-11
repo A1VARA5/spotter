@@ -174,7 +174,7 @@ export function ChannelGuide() {
   const g = GUIDES[i]!;
   const Shot = SHOT[g.key]!;
 
-  // Tabs per the ARIA pattern (same as the landing ChannelHub): one tab stop, arrows move between tabs.
+  // Tabs per the ARIA pattern (same as the landing hero scenes): one tab stop, arrows move between tabs.
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const k = e.key;
     if (k !== "ArrowRight" && k !== "ArrowLeft" && k !== "Home" && k !== "End") return;
