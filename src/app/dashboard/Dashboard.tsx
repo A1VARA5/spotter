@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock } from "lucide-react";
+import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock, FileText } from "lucide-react";
 import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
@@ -349,6 +349,7 @@ function HeldCard({
       )}
 
       <HoldClock p={p} who={who} tz={tz} />
+      <EvidenceLinks p={p} />
 
       {/* The message check never saw the market listings, so its summary is hidden when it argues with them. */}
       {p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
@@ -445,6 +446,27 @@ function HeldCard({
   );
 }
 
+const EVIDENCE_FOR = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
+
+/** One click to a printable evidence page for the bank, PayPal or the police, and a plain text copy. */
+function EvidenceLinks({ p }: { p: Payment }) {
+  if (!EVIDENCE_FOR.has(p.status)) return null;
+  const href = `/api/payments/${encodeURIComponent(p.id)}/evidence`;
+  return (
+    <p className="evidence-links">
+      <FileText size={16} strokeWidth={2} aria-hidden="true" />
+      <a href={href} target="_blank" rel="noopener">
+        Evidence pack<span className="sr-only"> (opens a printable page in a new tab)</span>
+      </a>
+      <span aria-hidden="true">·</span>
+      <a href={`${href}?format=txt`} download>
+        Plain text<span className="sr-only"> copy of the evidence pack</span>
+      </a>
+      <span className="evidence-for">for your bank, PayPal or the police</span>
+    </p>
+  );
+}
+
 /** When Spotter asks again (if someone chose to sleep on it) and, always, when PayPal lets the hold go on its own. */
 function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
   const until = p.ask_again_at ? new Date(p.ask_again_at) : null;
@@ -489,6 +511,7 @@ function FeedRow({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
         {STATE_LABEL[s]}
       </span>
       <ReplacedLink p={p} all={all} who={who} />
+      <EvidenceLinks p={p} />
       {p.case_file && (
         // Stopped payments have a case file too; one that caught hidden orders for an AI agent starts open.
         <details className="feed-case" open={p.case_file.findings.some((f) => f.kind === "prompt_injection")}>
