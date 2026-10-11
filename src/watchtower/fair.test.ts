@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIVE_ITEMS, fairBrief, todayLine } from "./fair";
+import { LIVE_ITEMS, fairBrief, todayLine, todayUnavailable } from "./fair";
 import type { PaymentRow } from "./data";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
@@ -65,6 +65,14 @@ describe("today's real shop prices, worded so a loose match can't pass as the us
     expect(t).toMatchObject({ item: "Steel kettle 1.7L", cheapestToday: { shop: "dunelm.com", price: 39 }, listings: 5 });
     expect(JSON.stringify(t)).not.toContain("97.95");
     expect(t.note).toMatch(/other brands|other models/i);
+  });
+
+  it("marks a failed search as unavailable, with no price, so the old figure can't stand in for today's", () => {
+    const t = todayUnavailable("LED desk lamp", "Real shop price search is unavailable right now.");
+    expect(t.cheapestToday).toBeNull();
+    expect(t.error).toBeTruthy();
+    expect(t.note).toMatch(/unavailable/i);
+    expect(t.note).toMatch(/don't quote/i);
   });
 
   it("says no match rather than guessing a price", () => {

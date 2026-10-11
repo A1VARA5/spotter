@@ -58,7 +58,12 @@ export function fairBrief(payments: PaymentRow[], now: Date): FairBrief {
   };
 }
 
-export type TodayLine = { item: string; cheapestToday: { shop: string; price: number } | null; listings: number; shops: Array<{ shop: string; price: number }>; note: string };
+export type TodayLine = { item: string; cheapestToday: { shop: string; price: number } | null; listings: number; shops: Array<{ shop: string; price: number }>; note: string; error?: string };
+
+/** A search that failed: the same shape as a result with no price, and told not to fall back on an old figure. */
+export function todayUnavailable(item: string, error: string): TodayLine {
+  return { item, cheapestToday: null, listings: 0, shops: [], error, note: "Today's price for this item is unavailable. Say so; don't quote the price at the time or guess one as today's." };
+}
 
 /**
  * Today's search, worded for the assistant. The middle price is left out on purpose: a search matches on the
