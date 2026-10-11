@@ -11,6 +11,7 @@ import { networkCount } from "@/core/network";
 import { formatMoney, type Currency } from "@/core/types";
 import { safeTz, whenText } from "@/core/holdtime";
 import { SIGN_LABEL } from "@/watchtower/data";
+import { peekActivity } from "./peek";
 
 const EVIDENCE_STATUSES = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
 // Only a JPEG data URL Spotter made itself is ever embedded (the same rule as the case file).
@@ -36,6 +37,16 @@ const METHOD: Record<string, string> = {
 };
 const VERDICT: Record<string, string> = { likely_scam: "Likely a scam", unclear: "Worth a closer look", looks_fine: "Looks genuine" };
 const KIND: Record<string, string> = { agent: "AI agent", person: "Person", kid: "Kid" };
+const FACE_DIFF: Record<string, string> = {
+  final_site: "Where it ended up",
+  asks_money: "Card or bank form",
+  asks_login: "Log in",
+  asks_gift_card: "Gift card",
+  text: "Words on the page",
+  title: "Page title",
+  look: "Colours",
+};
+const STEP: Record<string, string> = { link: "The link", redirect: "Sent on to", landed: "Landed on" };
 
 type Line = { at: string; what: string };
 type Pack = {
@@ -56,6 +67,9 @@ type Pack = {
   findings: Array<{ label: string; text: string; quote?: string }>;
   network: string;
   page: { host: string; title: string; asks: string[]; hidden: string | null; screenshot: string | null } | null;
+  faces: { verdict: string; how: string; differences: Array<[string, string, string]>; phoneShot: string | null } | null;
+  trail: { line: string | null; steps: string } | null;
+  proof: Array<[string, string]> | null;
 };
 
 const str = (v: unknown, max = 400) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -168,6 +182,37 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
   const trap = c?.page?.seen?.hidden.find((h) => h.instruction);
   const shot = c?.page?.screenshot && SHOT.test(c.page.screenshot) ? c.page.screenshot : null;
   const asks = c?.page ? ([c.page.asks.card && "card details", c.page.asks.login && "a login", c.page.asks.giftCard && "a gift card code"].filter(Boolean) as string[]) : [];
+  const pg = c?.page;
+  const faces = pg?.faces
+    ? {
+        verdict: str(pg.faces.verdict, 300),
+        how: `Spotter opened the link twice at the same moment: as a desktop, the way security scanners see it, and as a phone${pg.phone?.network && pg.phone.network !== "direct" ? " on a UK mobile network" : " set to UK English and UK time (not on a UK network)"}.`,
+        differences: pg.faces.compared ? pg.faces.differences.slice(0, 6).map((d): [string, string, string] => [FACE_DIFF[d.kind] ?? "Difference", str(d.desktop, 120), str(d.phone, 120)]) : [],
+        phoneShot: pg.phone?.screenshot && SHOT.test(pg.phone.screenshot) ? pg.phone.screenshot : null,
+      }
+    : null;
+  const trail = pg?.trail ? { line: pg.trail.line ? str(pg.trail.line, 300) : null, steps: pg.trail.steps.map((s) => `${STEP[s.how] ?? s.how}: ${str(s.host, 120)}`).join(", then ") } : null;
+  let peeks: { peeks: number; scrolls: number } | null = null;
+  try {
+    peeks = pg ? await peekActivity(db, p.id) : null;
+  } catch (e) {
+    console.error(`[spotter] evidence pack peek count for ${p.id} failed:`, e instanceof Error ? e.message : e);
+  }
+  const pr = pg?.proof;
+  const n = (v: number | null | undefined) => (typeof v === "number" ? String(v) : "Not recorded");
+  const proof: Array<[string, string]> | null = pr
+    ? [
+        ["Clicks", n(pr.clicks)],
+        ["Keys typed", n(pr.keys)],
+        ["Scrolls during Spotter's visit", n(pr.scrolls)],
+        ["Looking at it yourself", peeks === null ? "Not recorded" : peeks.peeks ? `${peeks.peeks} ${peeks.peeks === 1 ? "look" : "looks"}, ${peeks.scrolls} scrolls (scrolling is the only thing possible there)` : "Not used"],
+        ["Downloads", pr.downloadsBlocked === true ? "Blocked (the cloud browser confirmed Chrome's block on every download)" : pr.downloadsBlocked === false ? "Not confirmed blocked" : "Not recorded"],
+        ["Calls Spotter made to the cloud browser", String(pr.apiCalls)],
+        ["Browser deleted afterwards", pr.deleted === true ? "Yes" : pr.deleted === false ? "Not confirmed (the cloud browser ends itself after 20 seconds idle)" : "Not recorded"],
+        ["SHA-256 of the screenshot", pr.hashes.screenshot && /^[0-9a-f]{64}$/.test(pr.hashes.screenshot) ? pr.hashes.screenshot : "No screenshot stored"],
+        ["SHA-256 of the page text", pr.hashes.text && /^[0-9a-f]{64}$/.test(pr.hashes.text) ? pr.hashes.text : "No page text stored"],
+      ]
+    : null;
   const stopped = p.status === "blocked" || p.status === "protected";
   const title = p.status === "voided" ? "A payment that was denied" : stopped ? "A payment Spotter stopped" : "A payment Spotter is holding";
 
@@ -203,6 +248,9 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
     page: c?.page
       ? { host: host(c.page.finalUrl), title: str(c.page.title, 160), asks, hidden: trap ? str(trap.text, 400) : null, screenshot: shot }
       : null,
+    faces,
+    trail,
+    proof,
   };
 }
 
@@ -255,6 +303,17 @@ ${
     ? `<h3>The page the message linked to</h3><p>Spotter opened ${esc(p.page.host || "the link")} in a throwaway cloud browser so nobody in the family had to.${p.page.title ? ` Its title: <q>${esc(p.page.title)}</q>.` : ""}${p.page.asks.length ? ` It asks for ${esc(p.page.asks.join(", "))}.` : ""}</p>${p.page.hidden ? `<p>Hidden from people but read by AI agents: <q>${esc(p.page.hidden)}</q></p>` : ""}${p.page.screenshot ? `<img src="${p.page.screenshot}" alt="What the page showed when Spotter opened it" width="320" height="240">` : ""}`
     : ""
 }
+${
+  p.faces
+    ? `<h3>Two faces: desktop and phone</h3><p><b>${esc(p.faces.verdict)}</b></p><p>${esc(p.faces.how)}</p>${
+        p.faces.differences.length
+          ? `<table><tr><th scope="col">What</th><th scope="col">Desktop (scanner)</th><th scope="col">Phone</th></tr>${p.faces.differences.map(([k, d, ph]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(d)}</td><td>${esc(ph)}</td></tr>`).join("")}</table>`
+          : ""
+      }${p.faces.phoneShot ? `<img src="${p.faces.phoneShot}" alt="What the page showed the phone" width="195" height="422">` : ""}`
+    : ""
+}
+${p.trail ? `<h3>Where the money would go</h3>${p.trail.line ? `<p><b>${esc(p.trail.line)}</b></p>` : "<p>The page had no card or bank form.</p>"}<p>The link went: ${esc(p.trail.steps)}.</p>` : ""}
+${p.proof ? `<h3>Proof Spotter never touched the page</h3><p class="note">Counted by the cloud browser's own log of the visit. Anything it didn't record says so; it never says zero without a record.</p><table>${p.proof.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>` : ""}
 <h2>Who to tell</h2>
 <p>${esc(WHO_TO_TELL)}</p>
 <p class="note print">To print this or save it as a PDF, use your browser's Print. <a href="?format=txt">Download it as plain text</a>.</p>
@@ -285,6 +344,15 @@ function text(p: Pack): string {
     out.push("", `The page the message linked to: Spotter opened ${p.page.host || "the link"} in a throwaway cloud browser.${p.page.title ? ` Title: "${p.page.title}".` : ""}${p.page.asks.length ? ` It asks for ${p.page.asks.join(", ")}.` : ""}`);
     if (p.page.hidden) out.push(`Hidden from people but read by AI agents: "${p.page.hidden}"`);
     if (p.page.screenshot) out.push("Screenshot: included in the printable version of this page.");
+  }
+  if (p.faces) {
+    out.push("", `Two faces: ${p.faces.verdict}`, p.faces.how);
+    for (const [k, d, ph] of p.faces.differences) out.push(`- ${k}: desktop "${d}", phone "${ph}"`);
+  }
+  if (p.trail) out.push("", `Where the money would go: ${p.trail.line ?? "The page had no card or bank form."}`, `The link went: ${p.trail.steps}.`);
+  if (p.proof) {
+    out.push("", "Proof Spotter never touched the page (from the cloud browser's own log; anything it didn't record says so):");
+    for (const [k, v] of p.proof) out.push(`- ${k}: ${v}`);
   }
   h("Who to tell");
   out.push(WHO_TO_TELL, "");

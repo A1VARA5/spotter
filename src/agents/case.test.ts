@@ -90,6 +90,54 @@ describe("buildCase with the cloud browser", () => {
     expect(c.findings).toHaveLength(1);
   });
 
+  it("files two faces as a high severity cloaking finding sourced to the visit, and a card form posting elsewhere as another", async () => {
+    const verdict = "This page shows something different to phones in the UK than to security scanners: only the phone was asked for card details.";
+    const visit = vi.fn(async (url: string) => ({
+      ok: true as const,
+      url,
+      finalUrl: "https://bargainpods.shop/",
+      title: "Parcel tracking",
+      asks: { card: false, login: false, giftCard: false },
+      screenshot: "data:image/jpeg;base64,AAAA",
+      phone: { finalUrl: "https://bargainpods.shop/", title: "Fee due", asks: { card: true, login: false, giftCard: false }, network: "uk_mobile" as const, screenshot: "data:image/jpeg;base64,BBBB" },
+      faces: { compared: true as const, differs: true, verdict, differences: [{ kind: "asks_money" as const, desktop: "No card or bank form", phone: "Asks for card details", strong: true }], textOverlap: 0.1, lookSimilarity: 0.3 },
+      trail: { shop: "bargainpods.shop", targets: [{ host: "collect-x.example", how: "form" as const }], offsite: { host: "collect-x.example", how: "form" as const }, line: "Card details on this page would go to collect-x.example, not to the shop (bargainpods.shop).", steps: [{ host: "bargainpods.shop", how: "landed" as const }], stepsFrom: "network log" as const },
+      proof: { clicks: 0, keys: 0, scrolls: 0, downloadsBlocked: true, apiCalls: 6, hashes: {}, deleted: true },
+    }));
+    const model = vi.fn<CaseModel>(async (req) =>
+      req.messages.length > 1
+        ? turn(use("f", "file_case", { verdict: "looks_fine", headline: "A parcel tracking page.", findings: [], ask: [] }))
+        : turn(use("o1", "open_link", { url: "https://bargainpods.shop" })),
+    );
+    const c = await buildCase(ctx({ visit }), { model });
+    expect(c.verdict).toBe("likely_scam");
+    expect(c.findings[0]).toMatchObject({ kind: "cloaking", severity: "high", tool: "open_link", source: "o1", text: expect.stringContaining(verdict) });
+    expect(c.findings[1]).toMatchObject({ kind: "money_offsite", severity: "high", source: "o1", text: "Card details on this page would go to collect-x.example, not to the shop (bargainpods.shop)." });
+    expect(c.page).toMatchObject({ phone: { network: "uk_mobile" }, faces: { differs: true }, proof: { deleted: true } });
+    // The model was told about both visits, so it can cite them too.
+    const told = JSON.stringify((model.mock.calls[1]![0] as { messages: unknown[] }).messages);
+    expect(told).toContain("same moment as a phone on a UK mobile network");
+  });
+
+  it("a card form posting elsewhere alone never leaves the case 'fine'", async () => {
+    const visit = vi.fn(async (url: string) => ({
+      ok: true as const,
+      url,
+      finalUrl: "https://bargainpods.shop/",
+      title: "Checkout",
+      asks: { card: true, login: false, giftCard: false },
+      trail: { shop: "bargainpods.shop", targets: [{ host: "collect-x.example", how: "script" as const }], offsite: { host: "collect-x.example", how: "script" as const }, line: "Card details on this page would go to collect-x.example, not to the shop (bargainpods.shop).", steps: [], stepsFrom: "network log" as const },
+    }));
+    const model = vi.fn<CaseModel>(async (req) =>
+      req.messages.length > 1
+        ? turn(use("f", "file_case", { verdict: "looks_fine", headline: "Fine.", findings: [], ask: [] }))
+        : turn(use("o1", "open_link", { url: "https://bargainpods.shop" })),
+    );
+    const c = await buildCase(ctx({ visit }), { model });
+    expect(c.verdict).toBe("unclear");
+    expect(c.findings[0]).toMatchObject({ kind: "money_offsite" });
+  });
+
   it("when an AI agent pays a shop, opens the shop page first and files the hidden instruction as a sourced, high severity finding", async () => {
     const visit = vi.fn(async (url: string) => ({
       ok: true as const,

@@ -3,7 +3,7 @@ import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "@/core/households";
 import { createSpender, submitPayment, type Deps } from "@/core/lifecycle";
 import { seal } from "@/core/seal";
-import { closePeek, PEEK, PEEK_SEAL, peekFrame, peekScroll, startPeek, sweepPeeks, type PeekKernel } from "./peek";
+import { closePeek, PEEK, PEEK_SEAL, peekActivity, peekFrame, peekScroll, startPeek, sweepPeeks, type PeekKernel } from "./peek";
 
 const gbp = (amount: number) => ({ amount, currency: "GBP" as const });
 const allowance = { weekly: gbp(100000), askAbove: gbp(500), blockedCategories: [], allowedPayees: [], blockedPayees: [] };
@@ -319,6 +319,16 @@ describe("peekScroll", () => {
     expect(calls[0]!.delta_y).toBeGreaterThan(0);
     expect(calls[1]!.delta_y).toBeLessThan(0);
     expect(calls[0]).toMatchObject({ x: 512, y: 384 });
+  });
+
+  it("counts every scroll that worked, for the proof that the spotter only ever scrolled", async () => {
+    const k = fakeKernel();
+    await startPeek(db, hh, paymentId, "desktop", opts(k));
+    await peekScroll(db, hh, paymentId, "down", { kernel: k });
+    await peekScroll(db, hh, paymentId, "down", { kernel: k });
+    k.browsers.computer.scroll.mockRejectedValueOnce(new Error("500"));
+    await peekScroll(db, hh, paymentId, "up", { kernel: k });
+    expect(await peekActivity(db, paymentId)).toEqual({ peeks: 1, scrolls: 2 });
   });
 
   it("refuses anything that isn't up or down", async () => {

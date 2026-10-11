@@ -282,4 +282,6 @@ create table if not exists image_search_cache (
   products jsonb not null,
   fetched_at timestamptz not null default now()
 );
+-- Proof block: scrolls the spotter made while looking at a page safely (peek), for "Spotter never touched it".
+alter table peeks add column if not exists scrolls integer not null default 0;
 `;

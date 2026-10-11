@@ -52,7 +52,10 @@ export function CaseFile({
   busy,
   pageShot,
   footer,
+  peekScrolls,
 }: {
+  /** Scrolls the spotter made looking at the page safely; null or undefined when they never looked. */
+  peekScrolls?: number | null;
   c: Case;
   currency: string;
   /** Needed to play KERNEL's recording of the page visit (/api/payments/[id]/replay). */
@@ -88,7 +91,10 @@ export function CaseFile({
         </ul>
       )}
 
-      {c.page && <OpenedPage page={c.page} paymentId={paymentId} fallback={pageShot} />}
+      {c.page && <OpenedPage page={c.page} paymentId={paymentId} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
+      {c.page?.faces && <TwoFaces page={c.page} />}
+      {c.page?.trail && <MoneyTrailPanel trail={c.page.trail} />}
+      {c.page?.proof && <ProofCard proof={c.page.proof} peekScrolls={peekScrolls} />}
       {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
       {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
       {c.spot && <SpotPanel spot={c.spot} shot={c.page?.screenshot} />}
@@ -124,6 +130,177 @@ export function CaseFile({
         </div>
       )}
       {footer}
+    </section>
+  );
+}
+
+type CasePageT = NonNullable<Case["page"]>;
+
+const FACE_DIFF: Record<string, string> = {
+  final_site: "Ends up on",
+  asks_money: "Card or bank",
+  asks_login: "Log in",
+  asks_gift_card: "Gift card",
+  text: "Words",
+  title: "Title",
+  look: "Colours",
+};
+
+/** The card or bank form, outlined on the screenshot it was found in. */
+function Outline({ box }: { box?: CasePageT["moneyBox"] }) {
+  if (!box || box.w <= 0 || box.h <= 0) return null;
+  const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+  return <span className="faces-box" style={{ left: pct(box.x), top: pct(box.y), width: pct(box.w), height: pct(box.h) }} aria-hidden="true" />;
+}
+
+/**
+ * Two faces: the same link opened at the same moment as a desktop (how scanners see it) and as Gran's phone. The two
+ * frames side by side with the card form outlined, a slider that blends one picture into the other, one verdict line,
+ * then what differed. Said plainly when the phone wasn't on a UK network, and when the two couldn't be compared.
+ */
+function TwoFaces({ page }: { page: CasePageT }) {
+  const titleId = useId();
+  const sliderId = useId();
+  const [mix, setMix] = useState(50);
+  const faces = page.faces!;
+  const desk = page.screenshot && SHOT.test(page.screenshot) ? page.screenshot : undefined;
+  const phone = page.phone?.screenshot && SHOT.test(page.phone.screenshot) ? page.phone.screenshot : undefined;
+  const uk = page.phone && page.phone.network !== "direct";
+  const differs = faces.compared && faces.differs;
+  return (
+    <section className="faces" data-differs={differs ? "true" : undefined} aria-labelledby={titleId}>
+      <p className="faces-title" id={titleId}>
+        Two faces: what scanners see and what Gran&apos;s phone sees
+      </p>
+      <p className="faces-verdict">{faces.verdict}</p>
+      {faces.compared && (
+        <div className="faces-grid">
+          <figure className="faces-side faces-desk">
+            <div className="faces-frame">
+              {desk ? <img src={desk} alt={`Desktop view of ${host(page.finalUrl)}`} width={320} height={240} /> : <div className="faces-blank" />}
+              <Outline box={page.moneyBox} />
+            </div>
+            <figcaption>
+              <b>Desktop</b>, the way security scanners see it
+            </figcaption>
+          </figure>
+          <figure className="faces-side faces-phone">
+            <div className="faces-frame">
+              {phone ? <img src={phone} alt={`Phone view of ${host(page.phone?.finalUrl ?? page.finalUrl)}`} width={195} height={422} /> : <div className="faces-blank" />}
+              <Outline box={page.phone?.moneyBox} />
+            </div>
+            <figcaption>
+              <b>Gran&apos;s phone</b>, {uk ? "on a UK mobile network" : "set to UK English and time (not on a UK network)"}
+            </figcaption>
+          </figure>
+        </div>
+      )}
+      {faces.compared && desk && phone && (
+        <div className="faces-onion">
+          <div className="faces-stage" aria-hidden="true">
+            <img src={desk} alt="" className="faces-under" style={{ opacity: (100 - mix) / 100 }} />
+            <img src={phone} alt="" className="faces-over" style={{ opacity: mix / 100 }} />
+          </div>
+          <label htmlFor={sliderId} className="faces-slider">
+            <span>Desktop</span>
+            <input id={sliderId} type="range" min={0} max={100} step={5} value={mix} onChange={(e) => setMix(Number(e.target.value))} aria-valuetext={`${100 - mix}% desktop, ${mix}% phone`} />
+            <span>Phone</span>
+          </label>
+        </div>
+      )}
+      {faces.compared && faces.differences.length > 0 && (
+        <ol className="spot-diffs faces-diffs">
+          {faces.differences.map((d, i) => (
+            <li key={d.kind} style={{ "--i": i } as React.CSSProperties}>
+              <span className="spot-diff-label">{FACE_DIFF[d.kind] ?? d.kind}</span>
+              <span>
+                <span className="sr-only">Desktop: </span>
+                {d.desktop}
+              </span>
+              <span className={d.strong ? "spot-diff-here" : undefined}>
+                <span className="sr-only">Phone: </span>
+                {d.phone}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+const STEP = { link: "The link", redirect: "Sent on to", landed: "Landed on" } as const;
+
+/** Where the page sends people and where its card form would send their details. Read from the page, never sent. */
+function MoneyTrailPanel({ trail }: { trail: NonNullable<CasePageT["trail"]> }) {
+  const titleId = useId();
+  return (
+    <section className="trail" data-offsite={trail.offsite ? "true" : undefined} aria-labelledby={titleId}>
+      <p className="trail-title" id={titleId}>
+        Where the money goes
+      </p>
+      {trail.line ? <p className="trail-line">{trail.line}</p> : <p className="case-tools-sub">The page has no card or bank form.</p>}
+      {trail.steps.length > 0 && (
+        <ol className="trail-steps">
+          {trail.steps.map((s, i) => (
+            <li key={`${s.host}-${i}`}>
+              <span className="trail-how">{STEP[s.how]}</span> <b>{s.host}</b>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="spot-source">
+        {trail.stepsFrom === "network log" ? "From the cloud browser's own log of every page it loaded." : "Only where it started and where it ended: the cloud browser's log wasn't available."} Nothing was typed or sent.
+      </p>
+    </section>
+  );
+}
+
+/** "Proof Spotter never touched it": counts from KERNEL's own log. A count it didn't record says so, never zero. */
+function ProofCard({ proof, peekScrolls }: { proof: NonNullable<CasePageT["proof"]>; peekScrolls?: number | null }) {
+  const titleId = useId();
+  const n = (v: number | null) => (v === null ? "Not recorded" : String(v));
+  const rows: Array<[string, string, boolean]> = [
+    ["Clicks", n(proof.clicks), proof.clicks === null],
+    ["Keys typed", n(proof.keys), proof.keys === null],
+    ["Scrolls by Spotter", n(proof.scrolls), proof.scrolls === null],
+    ["Your scrolls looking at it", typeof peekScrolls === "number" ? String(peekScrolls) : "None", typeof peekScrolls !== "number"],
+    ["Downloads", proof.downloadsBlocked === true ? "Blocked" : proof.downloadsBlocked === false ? "Not confirmed blocked" : "Not recorded", proof.downloadsBlocked !== true],
+    ["Calls to the cloud browser", String(proof.apiCalls), false],
+  ];
+  return (
+    <section className="proof" aria-labelledby={titleId}>
+      <p className="proof-title" id={titleId}>
+        Proof Spotter never touched it
+      </p>
+      <dl className="proof-grid">
+        {rows.map(([k, v, unknown]) => (
+          <div key={k} data-unknown={unknown ? "true" : undefined}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="spot-source">
+        Counted by the cloud browser&apos;s own log of the visit
+        {proof.deleted === true ? ", and the browser was deleted straight after." : proof.deleted === false ? ". Deleting the browser wasn't confirmed; it ends itself after 20 seconds idle." : "."}
+      </p>
+      {(proof.hashes.screenshot || proof.hashes.text) && (
+        <details className="proof-hashes">
+          <summary>Fingerprints of what Spotter kept</summary>
+          <p className="case-tools-sub">SHA-256 of the screenshot and the page text, so anyone can check they weren&apos;t changed later.</p>
+          {proof.hashes.screenshot && (
+            <p>
+              Screenshot <code>{proof.hashes.screenshot}</code>
+            </p>
+          )}
+          {proof.hashes.text && (
+            <p>
+              Page text <code>{proof.hashes.text}</code>
+            </p>
+          )}
+        </details>
+      )}
     </section>
   );
 }
@@ -235,7 +412,7 @@ function ShopToolList({ tools }: { tools: Extract<NonNullable<NonNullable<Case["
  * What Spotter saw when it opened the page in a throwaway cloud browser (KERNEL), so nobody in the family had to.
  * When the page hides text from people that an AI agent reads, the two are shown side by side.
  */
-function OpenedPage({ page, paymentId, fallback }: { page: NonNullable<Case["page"]>; paymentId?: string; fallback?: React.ReactNode }) {
+function OpenedPage({ page, paymentId, fallback, inFaces }: { page: NonNullable<Case["page"]>; paymentId?: string; fallback?: React.ReactNode; /** The screenshot is shown in the two faces panel instead. */ inFaces?: boolean }) {
   const [watching, setWatching] = useState(false);
   const [replayFailed, setReplayFailed] = useState(false);
   const asks = [page.asks.card && "card details", page.asks.login && "a login", page.asks.giftCard && "a gift card code"].filter(Boolean) as string[];
@@ -249,7 +426,7 @@ function OpenedPage({ page, paymentId, fallback }: { page: NonNullable<Case["pag
     <video className="case-page-video" src={`/api/payments/${encodeURIComponent(paymentId!)}/replay`} poster={shot} controls autoPlay muted playsInline width={320} height={240} onError={() => setReplayFailed(true)}>
       Your browser can&apos;t play the recording.
     </video>
-  ) : shot ? (
+  ) : shot && !inFaces ? (
     <img src={shot} alt={`What the page showed: ${page.title || host(page.finalUrl)}`} width={320} height={240} />
   ) : (
     (fallback ?? null)

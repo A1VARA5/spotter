@@ -402,6 +402,7 @@ function HeldCard({
           c={p.case_file}
           currency={p.currency}
           paymentId={p.id}
+          peekScrolls={p.peek_scrolls}
           busy={busy === "swap"}
           onSwap={busy ? undefined : () => act("swap")}
           footer={watchable(p) || watch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} /> : null}
@@ -579,10 +580,10 @@ function FeedRow({ p, all, who, watch, onWatchChanged }: { p: Payment; all: Paym
       <EvidenceLinks p={p} />
       <WasItYouLine w={p.was_it_you} status={p.status} />
       {p.case_file && (
-        // Stopped payments have a case file too; one that caught hidden orders for an AI agent starts open.
-        <details className="feed-case" open={p.case_file.findings.some((f) => f.kind === "prompt_injection")}>
+        // Stopped payments have a case file too; one with a high severity finding (hidden orders, two faces) starts open.
+        <details className="feed-case" open={p.case_file.findings.some((f) => f.severity === "high")}>
           <summary>What Spotter found</summary>
-          <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} />
+          <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} />
         </details>
       )}
       {(watchable(p) || watch) && (

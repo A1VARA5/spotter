@@ -43,7 +43,7 @@ export type Finding = {
   text: string;
   tool: string;
   source: string;
-  kind?: "prompt_injection";
+  kind?: "prompt_injection" | "cloaking" | "money_offsite";
   severity?: "high";
   quote?: string;
   /** For a poisoned tool the shop offers AI agents: that tool's name. */
@@ -185,8 +185,21 @@ function withPage(c: Case, ctx: CaseCtx): Case {
   // Prefer a call that finished; a call that timed out but whose page still arrived is the source otherwise.
   const browser = c.calls.filter((x) => x.tool === "inspect_shop" || x.tool === "open_link");
   const from = browser.findLast((x) => x.ok) ?? browser.at(-1);
-  if ((!trap && !poisoned) || !from) return { ...c, page: ctx.page };
+  // Two faces and the money trail are code made proof too.
+  const faces = ctx.page.faces?.compared && ctx.page.faces.differs ? ctx.page.faces : undefined;
+  const offsite = ctx.page.trail?.offsite && ctx.page.trail.line ? ctx.page.trail.line : undefined;
+  if ((!trap && !poisoned && !faces && !offsite) || !from) return { ...c, page: ctx.page };
   const proof: Finding[] = [];
+  if (faces) {
+    proof.push({
+      kind: "cloaking",
+      severity: "high",
+      tool: from.tool,
+      source: from.id,
+      text: `${faces.verdict} Spotter opened the same link twice at the same moment: once as a desktop, the way security scanners see it, and once as a phone${ctx.page.phone && ctx.page.phone.network !== "direct" ? " on a UK mobile network" : ""}.`,
+    });
+  }
+  if (offsite) proof.push({ kind: "money_offsite", severity: "high", tool: from.tool, source: from.id, text: offsite });
   if (trap) {
     proof.push({
       kind: "prompt_injection",
@@ -216,7 +229,10 @@ function withPage(c: Case, ctx: CaseCtx): Case {
   // The model often repeats the same line in its own words; the code made finding already says it, so the repeat goes.
   // Only when the finding is mostly that quote: a finding that adds another fact around it stays.
   const repeats = (f: Finding) => f.source === from.id && proof.some((p) => p.quote && mostlyQuote(f.text, p.quote));
-  return { ...c, page: ctx.page, verdict: "likely_scam", findings: [...proof, ...c.findings.filter((f) => !repeats(f))] };
+  // Hidden orders, poisoned tools and two faces make it likely a scam. A card form posting elsewhere alone is a strong
+  // sign but payment providers can do that too, so it only stops the case from reading "fine".
+  const verdict = trap || poisoned || faces ? "likely_scam" : c.verdict === "looks_fine" ? "unclear" : c.verdict;
+  return { ...c, page: ctx.page, verdict, findings: [...proof, ...c.findings.filter((f) => !repeats(f))] };
 }
 
 /**

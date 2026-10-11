@@ -8,7 +8,7 @@ import { spotTheDifference, type SpotInput } from "@/market/lookalike";
 import { cap } from "@/watchtower/llm";
 import { after } from "next/server";
 import { buildCase } from "@/agents/case";
-import { visitInCloud } from "@/agents/kernel";
+import { visitTwoFaces } from "@/agents/kernel";
 import { sendHtml } from "@/telegram/api";
 import { makeTelegramAsk, makeTelegramConfirmed, makeTelegramDecided, makeTelegramNote, makeTelegramNotify } from "@/telegram/notify";
 import { sendDm } from "@/discord/api";
@@ -98,7 +98,7 @@ export function getDeps(): Promise<Deps> {
             payment,
             search: searchProducts,
             getAuthorization,
-            ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitInCloud(url) } : {}),
+            ...(process.env.KERNEL_API_KEY ? { visit: (url: string) => visitTwoFaces(url) } : {}),
             // Spot the difference needs Channel3; without a key it is simply off (no slot spent, nothing shown).
             ...(process.env.CHANNEL3_API_KEY
               ? {
