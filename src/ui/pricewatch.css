@@ -225,3 +225,82 @@
     font-size: 22px;
   }
 }
+
+/* ---------- the shared live watch (SharedWatch.tsx) ---------- */
+/* Its badge is a sentence, so the head wraps and the badge can break onto two lines instead of squeezing the name. */
+.pw-shared .pw-head {
+  flex-wrap: wrap;
+}
+
+.pw-shared .pw-badge {
+  white-space: normal;
+  line-height: 1.4;
+  padding-block: 3px;
+}
+
+.pw-shared-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.pw-shared-note svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+/* A low to high range is two prices, so it sits a size below the single price beside it. */
+.pw-shared .pw-was .pw-price {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.pw-shops-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+
+.pw-shops ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.pw-shops li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  font-size: 15px;
+}
+
+.pw-shops li + li {
+  border-top: 1px solid var(--line);
+}
+
+.pw-shop {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pw-shops .num {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.pw-shared-stale {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f8f9f7;
+  border: 1px solid var(--line);
+}

@@ -203,7 +203,12 @@ const CAP_WHERE = `(select count(*) from price_watches where household_id = $1 a
 
 /** Ends Channel3's subscription for a product once no watch needs it. Leaves tracking on when Channel3 is down, for the daily job. */
 async function release(deps: WatchDeps, productId: string): Promise<void> {
-  const still = await deps.db.query("select 1 from price_watches where product_id = $1 and status = 'watching' and household_id is not null limit 1", [productId]);
+  // The shared demo watch (src/core/shared-watch.ts) needs its product tracked for good, whatever families do.
+  const still = await deps.db.query(
+    `select 1 from price_watches where product_id = $1 and status = 'watching' and household_id is not null
+     union all select 1 from shared_watches where product_id = $1 limit 1`,
+    [productId],
+  );
   if (still.length) {
     await deps.db.query("update price_watches set tracking = false where product_id = $1 and status <> 'watching' and tracking", [productId]);
     return;
