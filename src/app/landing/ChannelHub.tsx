@@ -2,7 +2,7 @@
 // "Nobody installs anything new": pick a channel and see the real message going in, Spotter's real reply coming back,
 // and where the money is meanwhile. The replies use the wording the bots, emails and tools actually send.
 import { useState } from "react";
-import { Bot, Gamepad2, Mail, ReceiptText, Send, Terminal } from "lucide-react";
+import { Bot, Gamepad2, Mail, Send } from "lucide-react";
 import { BrandMark, Evidence } from "@/ui/components";
 import type { Flag } from "@/core/grounding";
 
@@ -24,7 +24,6 @@ type Channel = {
 const PARCEL = "We were unable to deliver your parcel due to an unpaid shipping fee of £2.99. Pay within 24 hours or it will be returned to the sender.";
 const HI_MUM = "Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow";
 const COINS = "selling 2000 BlockWorld coins for £8!! pay with a gift card, send me the code in dms";
-const INVOICE = "Please note our bank details have changed, so pay the new account below by bank transfer. Pay today or we stop deliveries tomorrow.";
 
 const f = (quote: string, severity: Flag["severity"], kind: Flag["kind"] = "other"): Flag => ({ kind, severity, quote, why: "" });
 
@@ -145,64 +144,6 @@ const CHANNELS: Channel[] = [
     checks: "First time at this shop, over the agent's £30 limit.",
     money: { tone: "held", state: "On hold", text: "£49.99 reserved at PayPal until Sam decides" },
     how: "Each agent gets its own key. It can ask to pay. It has no tool to approve.",
-  },
-  {
-    key: "toolkit",
-    tab: "PayPal Agent Toolkit",
-    Icon: Terminal,
-    who: "Any agent",
-    inCap: "PayPal's own create_order tool",
-    In: () => (
-      <pre className="snip snip-term">
-        <span className="t-fn">create_order</span>
-        {"({\n  currencyCode: "}
-        <span className="t-str">&quot;USD&quot;</span>
-        {",\n  items: [{ name: "}
-        <span className="t-str">&quot;Noise cancelling earbuds&quot;</span>
-        {",\n    itemCost: 119, quantity: 1 }]\n})"}
-      </pre>
-    ),
-    outCap: "Spotter answers in PayPal's format",
-    Out: () => (
-      <pre className="snip snip-term">
-        {"status: "}
-        <span className="t-fn">&quot;HELD_FOR_APPROVAL&quot;</span>
-        {"\namount: { value: "}
-        <span className="t-str">&quot;119.00&quot;</span>
-        {" }\n"}
-        <span className="t-dim">Over the US$30.00 &quot;ask me first&quot; limit.</span>
-      </pre>
-    ),
-    checks: "PayPal's tools have no limits of their own. Spotter adds them.",
-    money: { tone: "held", state: "On hold", text: "$119 reserved at PayPal, pay_order can't capture it" },
-    how: "Point the toolkit at Spotter's address with the agent's key. Same tools, with a spotter.",
-  },
-  {
-    key: "invoice",
-    tab: "Supplier invoice",
-    Icon: ReceiptText,
-    who: "A business",
-    inCap: "Tom forwards an invoice",
-    In: () => (
-      <div className="snip snip-mail">
-        <span className="snip-mail-meta">
-          Fwd: <b>Invoice HP-4471 OVERDUE</b>, £286.40
-        </span>
-        <Evidence text={INVOICE} flags={[f("our bank details have changed", "high", "changed_bank_details"), f("Pay today or we stop deliveries tomorrow", "medium", "pressure")]} />
-      </div>
-    ),
-    outCap: "Spotter tells Tom what to do instead",
-    Out: () => (
-      <div className="snip snip-mail">
-        <span className="snip-mail-meta">
-          From <b>Spotter</b>, Not paid
-        </span>
-        <span>The bank details changed. Don&apos;t pay by bank transfer: pay with a protected PayPal payment, and ring the supplier on a number you already have.</span>
-      </div>
-    ),
-    checks: "New bank details on an invoice, with a deadline.",
-    money: { tone: "protect", state: "Not sent", text: "The bank transfer never goes out. Pay it through PayPal instead." },
-    how: "Same Spotter for a business: whoever pays the suppliers forwards invoices.",
   },
 ];
 

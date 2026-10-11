@@ -2,8 +2,8 @@ import Link from "next/link";
 import { BrandMark } from "@/ui/components";
 import { HeroScenes } from "./landing/HeroScenes";
 import { NetworkField } from "./landing/NetworkField";
-import { LitText } from "./landing/LitText";
-import { AgentArt } from "./landing/Inspector";
+import { Problem } from "./landing/Problem";
+import { Checks } from "./landing/Checks";
 import { Walkthrough } from "./landing/Walkthrough";
 import { ChannelHub } from "./landing/ChannelHub";
 import { AgentToolkit } from "./landing/AgentToolkit";
@@ -18,6 +18,8 @@ import { pageSession } from "@/server/page-session";
 import "./landing/hero.css";
 import "./landing/motion.css";
 import "./landing/story.css";
+import "./landing/scenes.css";
+import "./landing/moments.css";
 
 type Who = { name: string; demo: boolean; agentId: string | null } | null;
 
@@ -100,8 +102,8 @@ export default async function Home() {
             <div className="hero-copy">
               <h1 className="hero-h1">PayPal holds the money until someone you trust says yes.</h1>
               <p className="hero-p">
-                Gran forwards the text she isn&apos;t sure about. If it looks like a scam, PayPal holds her &pound;250 and you get asked on Telegram,
-                Discord or your laptop. It works the same for your kid and your AI shopping agent.
+                Gran forwards a text she isn&apos;t sure about. PayPal holds her &pound;250 while Spotter checks, and when the text says it&apos;s from Tom,
+                Spotter asks the real Tom. Your kid and your AI shopping agent get the same check.
               </p>
               <StartButtons onDark who={who} label="Try it on fake money" />
               {!who && (
@@ -117,46 +119,11 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="shell problem" aria-label="Why it's needed">
-        <div className="problem-grid">
-          <LitText
-            lead="Nobody hacked Gran. She was asked, so the bank sees a normal payment."
-            rest="A text from a new number, a parcel fee, a seller who wants Friends and Family. Spotter can't stop the asking. It makes sure the money waits at PayPal until someone she trusts has looked."
-          />
-          <div className="problem-agent">
-            <AgentArt />
-            <p>
-              Now AI agents get asked too. A shop page can hide a line no person sees, telling the agent to ignore its budget, and PayPal&apos;s agent tools have no
-              limit of their own. Spotter shows you the hidden line and stops the payment.
-            </p>
-            <a className="next-link" href="#walkthrough">
-              Follow one payment through Spotter
-            </a>
-          </div>
-        </div>
-        <ul className="problem-stats" aria-label="How big the problem is">
-          <li>
-            <b className="num">&pound;576.4m</b>
-            <span>lost in the UK in 2025 to scams where people were talked into sending the money themselves, up 19% on 2024.</span>
-            <a href="https://www.ukfinance.org.uk/system/files/2026-06/UK%20Finance%20Fraud%20Report%202026.pdf" target="_blank" rel="noopener noreferrer">
-              UK Finance, Annual Fraud Report 2026
-            </a>
-          </li>
-          <li>
-            <b className="num">$15.9bn</b>
-            <span>reported lost to fraud by people in the US in 2025, from 3 million reports.</span>
-            <a
-              href="https://www.ftc.gov/news-events/news/press-releases/2026/03/ftc-testifies-joint-economic-committee-agencys-efforts-combat-fraud"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              FTC testimony, March 2026
-            </a>
-          </li>
-        </ul>
-      </section>
+      <Problem />
 
       <Walkthrough cta={<DemoButton who={who} label="Try it on the demo family" />} />
+
+      <Checks />
 
       <ChannelHub
         cta={

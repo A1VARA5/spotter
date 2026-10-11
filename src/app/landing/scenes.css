@@ -1,0 +1,402 @@
+/* ==========================================================================
+   Hero scenes, v3 (2026-10-11): Was it you?, the poisoned tool, Watchtower's
+   receipt. Phones keep iOS points; chat type is a step bigger than a real
+   chat so it still reads at half size. Builds on hero.css and globals.css.
+   ========================================================================== */
+.hero-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 360px) {
+  .hs-duo {
+    --s: 0.41;
+  }
+}
+
+.hs-back-phone {
+  position: absolute;
+  right: 40px;
+  top: 0;
+}
+
+[data-scene="wiy"] .hs-phone {
+  left: 40px;
+}
+
+.hp-chat .tg-msg {
+  font-size: 20px;
+  line-height: 1.32;
+  max-width: 90%;
+}
+
+.hp-chat .tg-msg i {
+  font-size: 12px;
+}
+
+.hp-chat .wk-day {
+  font-size: 14px;
+}
+
+.hp-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  width: 88%;
+}
+
+.hp-key {
+  display: block;
+  padding: 12px 6px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.78);
+  text-align: center;
+  font-size: 17px;
+  font-weight: 650;
+  color: #2a7bc4;
+}
+
+.hp-key-no {
+  color: var(--stop);
+}
+
+.hp-mark {
+  background: rgb(190 51 40 / 0.14);
+  color: #8f2219;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.hp-chat .hp-alert {
+  max-width: 94%;
+}
+
+.hp-alert-keys {
+  width: 94%;
+  max-width: none;
+}
+
+/* The money's state, docked between the two phones like a tag on a process. */
+.hs-tag {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 104px;
+  translate: -50% 0;
+  display: grid;
+  padding: 9px 14px 9px 30px;
+  border-radius: 999px;
+  background: #17212b;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  box-shadow: 0 12px 30px -12px rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hs-tag::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--hold);
+  box-shadow: 0 0 0 4px rgb(242 183 5 / 0.2);
+}
+
+.hs-tag > span {
+  grid-area: 1 / 1;
+}
+
+.hs-tag-b {
+  color: #9fe0bf;
+}
+
+/* Terminal lines for the poisoned tool and the held reply */
+.lap-term-poison mark {
+  background: rgb(190 51 40 / 0.28);
+  color: #ffc2bb;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.lap-term-held {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgb(242 183 5 / 0.12);
+  color: #f6dc8c;
+}
+
+.lap-term-held b {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--hold);
+  color: #17212b;
+  font-weight: 700;
+}
+
+/* The AI's receipt, as Watchtower draws it under the board */
+.lw-receipt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  margin-top: 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1px solid #e3e7e3;
+  box-shadow: var(--sh-1);
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+.lw-rc-title b {
+  color: var(--ink);
+}
+
+.lw-rc-money {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.lw-rc-money i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--go);
+}
+
+.lw-rc-undo {
+  margin-left: auto;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #17212b;
+  color: #fff;
+  font-weight: 650;
+}
+
+/* Gran's view in Watchtower: big type, plain words, nothing to approve */
+.hp-gran {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 8px 24px 40px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.hp-gran-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.hp-gran-top .brand-mark {
+  width: 26px;
+  height: 26px;
+}
+
+.hp-gran-h {
+  font-size: 40px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hp-gran-kept {
+  font-size: 27px;
+  line-height: 1.3;
+}
+
+.hp-gran-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 23px;
+  line-height: 1.3;
+}
+
+.hp-gran-row i {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 19px;
+  color: var(--ink-2);
+}
+
+.hp-gran-dot {
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border-radius: 6px;
+  background: var(--stop);
+}
+
+.hp-gran-receipt {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #f1f4f1;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.hp-gran-rh {
+  font-weight: 700;
+}
+
+.hp-gran-money {
+  font-weight: 650;
+  color: var(--go);
+}
+
+.hp-gran-sample {
+  justify-self: start;
+  padding: 2px 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.hs-who {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #8d99a5;
+}
+
+/* ---------- the scenes' timelines ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .hs-duo-inner {
+    animation: hs-scene-in 420ms var(--ease-out) both;
+  }
+
+  /* Was it you?: held, Tom's phone buzzes, Not me, Gran is told */
+  [data-scene="wiy"] .hp-held { animation: bubble-in 420ms var(--ease-out) 0.8s both; }
+  [data-scene="wiy"] .hs-back-phone { animation: hs-buzz 420ms ease-in-out 1.6s both; }
+  [data-scene="wiy"] .hp-ask { animation: bubble-in 420ms var(--ease-out) 1.6s both; }
+  [data-scene="wiy"] .hp-keys { animation: lap-row-in 360ms var(--ease-out) 2.1s both; }
+  [data-scene="wiy"] .hp-key-no { animation: hs-tap 260ms ease 3.3s both; }
+  [data-scene="wiy"] .hp-tom-said { animation: bubble-in 380ms var(--ease-out) 3.6s both; }
+  [data-scene="wiy"] .hp-tom-thanks { animation: bubble-in 420ms var(--ease-out) 4.2s both; }
+  [data-scene="wiy"] .hp-safe { animation: bubble-in 420ms var(--ease-out) 4.9s both; }
+  [data-scene="wiy"] .hs-tag { animation: lap-row-in 360ms var(--ease-out) 1.1s both; }
+  [data-scene="wiy"] .hs-tag-a { animation: lap-fade-out 240ms ease 4.5s both; }
+  [data-scene="wiy"] .hs-tag-b { opacity: 0; animation: lap-fade-in 300ms ease 4.6s both; }
+  [data-scene="wiy"] .hs-tag::before { animation: hs-dot-safe 300ms ease 4.6s both; }
+
+  /* The agent: tools listed, the poisoned line marked, the payment held, Sam's phone told */
+  [data-scene="agent"] .lap-term-body p { animation: lap-row-in 320ms var(--ease-out) both; }
+  [data-scene="agent"] .lap-term-body p:nth-child(1) { animation-delay: 0.2s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(2) { animation-delay: 0.8s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(3) { animation-delay: 1.4s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(4) { animation-delay: 2.2s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(5) { animation-delay: 2.9s; }
+  [data-scene="agent"] .lap-term-body p:nth-child(6) { animation-delay: 4.4s; }
+  [data-scene="agent"] .hp-alert { animation: bubble-in 420ms var(--ease-out) 3.3s both; }
+  [data-scene="agent"] .hp-alert-keys { animation: lap-row-in 360ms var(--ease-out) 3.8s both; }
+
+  /* Watchtower: the question, the board, then the receipt */
+  [data-scene="tower"] .lw-ask-text { animation: hs-type 1100ms steps(34, end) 0.4s both; }
+  [data-scene="tower"] .lw-tile { animation: lap-row-in 420ms var(--ease-out) both; }
+  [data-scene="tower"] .lw-tile:nth-child(1) { animation-delay: 1.7s; }
+  [data-scene="tower"] .lw-tile:nth-child(2) { animation-delay: 1.9s; }
+  [data-scene="tower"] .lw-bar { animation: hs-grow 700ms var(--ease-out) both; }
+  [data-scene="tower"] .lw-bar-row:nth-child(1) .lw-bar { animation-delay: 2.2s; }
+  [data-scene="tower"] .lw-bar-row:nth-child(2) .lw-bar { animation-delay: 2.35s; }
+  [data-scene="tower"] .lw-bar-row:nth-child(3) .lw-bar { animation-delay: 2.5s; }
+  [data-scene="tower"] .lw-receipt { animation: lap-row-in 420ms var(--ease-out) 3.2s both; }
+  [data-scene="tower"] .hp-gran-receipt { animation: lap-row-in 420ms var(--ease-out) 3.8s both; }
+}
+
+/* Reduced motion: every scene shows how it ends. */
+@media (prefers-reduced-motion: reduce) {
+  [data-scene="wiy"] .hs-tag-a {
+    opacity: 0;
+  }
+
+  [data-scene="wiy"] .hs-tag::before {
+    background: var(--go);
+    box-shadow: 0 0 0 4px rgb(31 122 85 / 0.25);
+  }
+
+  [data-scene="wiy"] .hp-key-no {
+    background: #dbe7f3;
+  }
+}
+
+@keyframes hs-scene-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hs-buzz {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px) rotate(-1deg);
+  }
+  40% {
+    transform: translateX(4px) rotate(1deg);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes hs-tap {
+  50% {
+    transform: scale(0.96);
+    background: #dbe7f3;
+  }
+  to {
+    background: #dbe7f3;
+  }
+}
+
+@keyframes hs-dot-safe {
+  to {
+    background: var(--go);
+    box-shadow: 0 0 0 4px rgb(31 122 85 / 0.25);
+  }
+}
+
+@keyframes hs-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes hs-grow {
+  from {
+    transform: scaleX(0);
+  }
+}

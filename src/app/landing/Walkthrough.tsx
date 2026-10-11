@@ -24,36 +24,31 @@ const STOPS = [
     key: "asked",
     title: "Asked",
     head: "Gran forwards an offer she isn't sure about.",
-    body: "A text about a £79 tablet that's £249 everywhere else. She forwards it to Spotter on Telegram, the one habit you set up with her. It works the same by email, from Discord, or when an AI agent asks to pay.",
-    tools: ["Email", "Telegram", "Discord", "AI agents"],
+    body: "A text about a £79 tablet that's £249 everywhere else. She forwards it to Spotter in the chat app she already uses, the one habit you set up with her. It works the same by email, or when an AI agent asks to pay.",
   },
   {
     key: "checked",
     title: "Checked",
     head: "Spotter checks it the way you would, only faster.",
-    body: "Her rules first. Then Claude reads the message and has to quote the exact words that worried it, and looks for text hidden from people but readable by an AI. Channel3 finds what real shops charge, KERNEL opens the link in a throwaway browser so nobody has to, and the Spotter network says whether other families said no.",
-    tools: ["Your rules", "Claude", "Channel3", "KERNEL", "Spotter network"],
+    body: "Her rules first. Then an AI reads the message and has to quote the exact words that worried it. Spotter opens the link where it can't hurt anyone, looks up what real shops charge, and asks the Spotter network whether other families said no.",
   },
   {
     key: "held",
     title: "Held at PayPal",
     head: "PayPal holds the £79. Nothing has left.",
     body: "Spotter asks PayPal to authorise the payment, not take it. The money is reserved on Gran's account and PayPal's own countdown starts. If nobody approves, nothing is ever paid.",
-    tools: ["PayPal"],
   },
   {
     key: "decide",
     title: "You decide",
     head: "Your phone gets the whole case.",
-    body: "One tap Deny in Telegram or Discord. Approving opens Spotter and needs your PIN, so nobody can say yes for you. When the same thing is for sale at a genuine shop, the case agent offers that instead.",
-    tools: ["Telegram", "Discord", "Your PIN", "Case agent"],
+    body: "One tap Deny in your chat app. Approving opens Spotter and needs your PIN, so nobody can say yes for you. When the same thing is for sale at a genuine shop, Spotter offers that instead.",
   },
   {
     key: "done",
     title: "Paid or released",
     head: "PayPal confirms it, and the record stays.",
     body: "You said no, so PayPal releases the hold and its webhook confirms it back to Spotter. Gran hears it from Spotter in the same chat. Watchtower keeps every decision, so you can ask about the month later.",
-    tools: ["PayPal webhooks", "Watchtower"],
   },
 ] as const;
 
@@ -103,7 +98,7 @@ const CHECK_CASE: Case = {
   verdict: "likely_scam",
   headline: "Almost certainly a fake shop. The tablet costs £229 or more at real retailers, and the link ends up somewhere else.",
   findings: [
-    { tool: "find_genuine_offer", source: "c1", text: "Real shops sell this tablet from £229, around £239 across 6 retailers (Channel3)." },
+    { tool: "find_genuine_offer", source: "c1", text: "Real shops sell this tablet from £229, around £239 across 6 retailers." },
     { tool: "network_reports", source: "c2", text: "In this example, 7 other Spotter families said no to this shop in the last 30 days." },
   ],
   ask: [],
@@ -152,7 +147,7 @@ function CheckedArt() {
         <li>
           <MessageSquareQuote size={17} strokeWidth={2} aria-hidden="true" />
           <span>
-            <b>Claude</b> Two warning signs, quoted word for word. No hidden text for an AI in this one.
+            <b>AI check</b> Two warning signs, quoted word for word. No hidden text for an AI in this one.
           </span>
         </li>
       </ul>
@@ -434,11 +429,6 @@ export function Walkthrough({ cta }: { cta: React.ReactNode }) {
                   <p className="wk-stop-name">{s.title}</p>
                   <h3>{s.head}</h3>
                   <p>{s.body}</p>
-                  <ul className="wk-tools" aria-label="What does the work">
-                    {s.tools.map((t) => (
-                      <li key={t}>{t}</li>
-                    ))}
-                  </ul>
                 </div>
                 <div className="wk-inline" aria-hidden="true">
                   <Art k={s.key} live={false} />

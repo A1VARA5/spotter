@@ -1,56 +1,65 @@
 "use client";
-// The hero: one phone and one laptop, cycling through five short scenes, one per way money gets asked for.
+// The hero: three short scenes, Gran first. "Was it you?" (Gran's phone and Tom's), then an AI agent steered by a
+// shop's tool, then Watchtower with the AI's receipt. The people, shops and numbers are examples; the wording on the
+// screens is the product's own (copy.ts).
 // The active tab's progress bar is the clock: when its CSS animation ends, the next scene starts. Pausing (hover,
-// focus, the pause button, off screen, hidden tab) pauses that bar and every animation in the scene together.
+// focus, the pause button, off screen, hidden tab) pauses that bar.
 // Reduced motion: nothing plays by itself, each scene shows its finished state, and the tabs still work.
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { Iphone } from "./Devices";
-import { AgentScreen, CaseScreen, HeldScreen, Laptop, ProtectScreen, WatchtowerScreen } from "./Laptop";
-import { CoinsPhone, DiscordPhone, EmailPhone, ShopPhone, TextPhone } from "./HeroPhones";
+import { AgentScreen, Laptop, WatchtowerScreen } from "./Laptop";
+import { GranAskPhone, GranViewPhone, SamAlertPhone, TomPhone } from "./HeroPhones";
 
-const SCENE_MS = 5600;
+type Scene = {
+  key: string;
+  tab: string;
+  short?: string;
+  caption: string;
+  ms: number;
+  /** The device at the back: a laptop screen, or a second phone. */
+  Back: () => React.ReactNode;
+  backKind: "laptop" | "phone";
+  Phone: () => React.ReactNode;
+  /** Who each device belongs to, said under the stage. */
+  who: string;
+};
 
-const SCENES = [
+const SCENES: Scene[] = [
   {
-    key: "text",
-    tab: "Text",
-    caption: "Gran forwards a \"Hi Mum\" text to Spotter on Telegram. PayPal holds the £250, and you say no from your laptop.",
-    Phone: TextPhone,
-    Screen: HeldScreen,
-  },
-  {
-    key: "email",
-    tab: "Email",
-    caption: "A parcel fee email, forwarded. The case agent checks the link and what other Spotter families saw.",
-    Phone: EmailPhone,
-    Screen: CaseScreen,
-  },
-  {
-    key: "discord",
-    tab: "Discord",
-    caption: "Leo right clicks a seller's message: Apps, Check with Spotter. Friends and Family gets refused, and Spotter finds a safer shop.",
-    Phone: DiscordPhone,
-    Screen: ProtectScreen,
-    dark: true,
+    key: "wiy",
+    tab: "Was it you?",
+    short: "Was it you",
+    caption: "A text says it's Tom and asks Gran for £250. PayPal holds it, Spotter asks the real Tom, and his Not me releases it.",
+    ms: 7600,
+    Back: TomPhone,
+    backKind: "phone",
+    Phone: GranAskPhone,
+    who: "Gran's phone and Tom's phone",
   },
   {
     key: "agent",
     tab: "AI agent",
     short: "Agent",
-    caption: "Your shopping agent reads a shop page with hidden instructions. Spotter stops the payment, and the agent has no approve tool.",
-    Phone: ShopPhone,
-    Screen: AgentScreen,
+    caption: "A shop hides an order for AI agents in one of its tools. The agent falls for it, Spotter holds the payment and shows Sam the line.",
+    ms: 6800,
+    Back: AgentScreen,
+    backKind: "laptop",
+    Phone: SamAlertPhone,
+    who: "The agent's screen and Sam's phone",
   },
   {
-    key: "gift",
-    tab: "Gift card",
-    short: "Gift",
-    caption: "A free coins site wants Leo's gift card code. Stopped, and you can ask Watchtower what Leo tried to spend.",
-    Phone: CoinsPhone,
-    Screen: WatchtowerScreen,
+    key: "tower",
+    tab: "Watchtower",
+    short: "Watch",
+    caption: "Sam asks about the month and the board answers. The receipt comes from AG Studio's own record: Money actions: 0. Gran sees it in big type.",
+    ms: 6800,
+    Back: WatchtowerScreen,
+    backKind: "laptop",
+    Phone: GranViewPhone,
+    who: "Sam's laptop and Gran's phone",
   },
-] as const;
+];
 
 export function HeroScenes() {
   const ref = useRef<HTMLDivElement>(null);
@@ -138,18 +147,34 @@ export function HeroScenes() {
       }}
     >
       <div className="hs-stage" id="hs-panel" role="tabpanel" aria-labelledby={`hs-tab-${s.key}`}>
-        <p className="hs-sr">{s.caption}</p>
+        <p className="hs-sr">
+          Example, {s.who}. {s.caption}
+        </p>
         <div className="hs-tilt" aria-hidden="true">
           <div className="hs-duo">
             <div className="hs-duo-inner" key={`${s.key}-${run}`} data-scene={s.key}>
-              <Laptop>
-                <s.Screen />
-              </Laptop>
+              {s.backKind === "laptop" ? (
+                <Laptop>
+                  <s.Back />
+                </Laptop>
+              ) : (
+                <div className="hs-back-phone">
+                  <Iphone scale={0.56} className="hs-iphone">
+                    <s.Back />
+                  </Iphone>
+                </div>
+              )}
               <div className="hs-phone">
-                <Iphone scale={0.5} dark={"dark" in s} className="iphone-gran hs-iphone">
+                <Iphone scale={s.backKind === "phone" ? 0.56 : 0.5} className="iphone-gran hs-iphone">
                   <s.Phone />
                 </Iphone>
               </div>
+              {s.key === "wiy" && (
+                <span className="hs-tag hs-tag-hold">
+                  <span className="hs-tag-a">£250 on hold at PayPal</span>
+                  <span className="hs-tag-b">Released, nothing paid</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -170,20 +195,12 @@ export function HeroScenes() {
               aria-controls="hs-panel"
               tabIndex={n === i ? 0 : -1}
               className="hs-tab"
-              aria-label={x.tab}
               onClick={() => go(n)}
             >
-              {"short" in x ? (
-                <>
-                  <span className="hs-long">{x.tab}</span>
-                  <span className="hs-short">{x.short}</span>
-                </>
-              ) : (
-                x.tab
-              )}
+              {x.tab}
               <span className="hs-bar" aria-hidden="true">
                 {n === i && !reduced && (
-                  <i key={run} style={{ animationDuration: `${SCENE_MS}ms` }} onAnimationEnd={() => go(i + 1)} />
+                  <i key={run} style={{ animationDuration: `${x.ms}ms` }} onAnimationEnd={() => go(i + 1)} />
                 )}
               </span>
             </button>
@@ -197,6 +214,7 @@ export function HeroScenes() {
       </div>
       <p className="hs-caption" aria-hidden="true">
         {s.caption}
+        <span className="hs-who">Example: {s.who}. Spotter&apos;s real screens, made up people.</span>
       </p>
     </div>
   );
