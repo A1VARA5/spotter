@@ -243,4 +243,16 @@ create index if not exists price_watches_household_idx on price_watches (househo
 create index if not exists price_watches_product_idx on price_watches (product_id) where status = 'watching';
 create index if not exists price_watches_created_idx on price_watches (created_at);
 create unique index if not exists price_watches_one_active_idx on price_watches (household_id, product_id) where status = 'watching' and household_id is not null;
+-- AI receipt block, one table: what Watchtower's assistant did in each run, folded from AG Studio's harness
+-- telemetry in the page (src/watchtower/receipt.ts): tool names, counts, times, money actions, board changes.
+-- Never the question, the prompt, tool arguments or results. The newest 50 per family are kept.
+create table if not exists watchtower_receipts (
+  household_id text not null references households(id) on delete cascade,
+  run_id text not null,
+  data jsonb not null,
+  flagged boolean not null default false,
+  created_at timestamptz not null default now(),
+  primary key (household_id, run_id)
+);
+create index if not exists watchtower_receipts_recent_idx on watchtower_receipts (household_id, created_at desc);
 `;

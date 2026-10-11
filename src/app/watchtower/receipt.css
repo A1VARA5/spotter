@@ -1,0 +1,88 @@
+/* The AI's receipt: tool cards in AG Studio's chat, the receipt strip under the board, Spotter's own checks
+   widget and the receipt under Gran's answer. Tokens from globals.css. The receipt reads like a till slip:
+   a perforated top edge, figures that line up, one green dot that turns red only when a run is flagged. */
+
+/* tool cards (aiToolDisplay detail): AG gives the body no background or padding of its own */
+.wt-card { display: grid; gap: 8px; padding: 2px 0 4px; font-size: 13px; line-height: 1.45; color: var(--ink); }
+.wt-card-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wt-card-lines li { text-wrap: pretty; }
+.wt-card-lines li:last-child { color: var(--ink-2); }
+.wt-card-foot { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--ink-2); font-variant-numeric: lining-nums proportional-nums; }
+.wt-card-mark { font-weight: 650; color: var(--go); padding: 0 7px; border-radius: 6px; border: 1px solid currentColor; line-height: 1.6; }
+.wt-card-mark[data-access="board"] { color: var(--protect); }
+.wt-card-mark[data-access="unknown"] { color: #fff; background: var(--stop); border-color: var(--stop); }
+
+/* the receipt strip */
+.wt-frame > .wt-rc { flex: none; position: relative; background: var(--paper); color: var(--ink); font-size: 14px; font-variant-numeric: lining-nums proportional-nums; }
+/* perforated edge: the board above tears off along it */
+.wt-rc::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: radial-gradient(circle at 4px 1px, var(--chalk) 1.6px, transparent 2px) 0 0 / 9px 2px repeat-x, var(--line); }
+.wt-rc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; padding: 9px 14px; }
+.wt-rc-row p { margin: 0; }
+.wt-rc-title { font-weight: 700; }
+.wt-rc-when { font-weight: 400; color: var(--ink-2); }
+.wt-rc-fact { color: var(--ink); white-space: nowrap; }
+.wt-rc-status { color: var(--stop); }
+.wt-rc-money { display: inline-flex; align-items: center; gap: 7px; font-weight: 650; }
+.wt-rc-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--go); box-shadow: 0 0 0 3px var(--go-soft); }
+.wt-rc-money[data-flagged] { color: var(--stop); }
+.wt-rc-money[data-flagged] .wt-rc-dot { background: var(--stop); box-shadow: 0 0 0 3px var(--stop-soft); border-radius: 2px; }
+.wt-rc[data-flagged] { background: linear-gradient(var(--stop-soft), var(--stop-soft)), var(--paper); }
+.wt-rc-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+.wt-rc-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 9px; font-size: 14px; font-weight: 650; color: var(--ink); background: var(--chalk); border: 1px solid var(--line); white-space: nowrap; transition: transform 160ms var(--ease-out); }
+.wt-rc-undo { background: var(--ink); color: var(--chalk); border-color: var(--ink); }
+.wt-rc-more { background: transparent; border-color: transparent; color: var(--protect); }
+.wt-rc-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+.wt-rc-btn:active { transform: scale(0.97); }
+.wt-rc-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+@media (pointer: coarse) { .wt-rc-btn { min-height: 44px; } }
+.wt-rc-said { margin: 0; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.wt-rc-said:not(:empty) { padding-bottom: 9px; }
+.wt-rc-wait { margin: 0; padding: 10px 14px; color: var(--ink-2); }
+.wt-rc-detail { position: absolute; z-index: 6; right: 12px; bottom: calc(100% + 8px); width: min(620px, calc(100% - 24px)); max-height: min(60dvh, 520px); overflow: auto; display: grid; gap: 8px; padding: 4px 16px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--raise), 0 18px 40px -18px rgb(23 33 43 / 0.35); }
+.wt-rc-detail[hidden] { display: none; }
+.wt-rc-note { margin: 0; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+.wt-rc-alarm { margin: 0; font-size: 14px; font-weight: 650; color: var(--stop); }
+.wt-rc-detail > .wt-rc-note:first-child { padding-top: 8px; color: var(--go); font-weight: 600; }
+.wt-rc-table { border-collapse: collapse; width: 100%; max-width: 720px; font-size: 13px; }
+.wt-rc-table caption { text-align: left; font-size: 13px; font-weight: 650; color: var(--ink-2); padding: 0 0 4px; }
+.wt-rc-table th, .wt-rc-table td { text-align: left; padding: 5px 12px 5px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+.wt-rc-table thead th { font-weight: 650; color: var(--ink-2); }
+.wt-rc-table tbody th { font-weight: 500; color: var(--ink); }
+.wt-rc-table td { white-space: nowrap; color: var(--ink); }
+.wt-rc-table td:nth-child(2), .wt-rc-table td:nth-child(3) { text-align: right; padding-right: 20px; }
+.wt-rc-table thead th:nth-child(2), .wt-rc-table thead th:nth-child(3) { text-align: right; padding-right: 20px; }
+.wt-rc-table tr[data-access="board"] td:last-child { color: var(--protect); font-weight: 600; }
+.wt-rc-table tr[data-access="unknown"] { background: var(--stop-soft); }
+.wt-rc-table tr[data-access="unknown"] td:last-child { color: var(--stop); font-weight: 650; }
+.wt-rc-failed { color: var(--ink-2); }
+
+/* Spotter's own checks (widget) */
+.wt-checks { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; }
+.wt-checks-sum { margin: 0; font-size: 16px; font-weight: 650; color: var(--ink); text-wrap: pretty; }
+.wt-checks-sum[data-flagged] { color: var(--stop); }
+.wt-checks-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.wt-checks-row { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--line); }
+.wt-checks-row p { margin: 0; }
+.wt-checks-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; color: var(--ink); }
+.wt-checks-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--go); }
+.wt-checks-row[data-flagged] .wt-checks-dot { background: var(--stop); border-radius: 2px; }
+.wt-checks-who { font-weight: 500; color: var(--ink-2); }
+.wt-checks-facts { font-size: 14px; color: var(--ink); text-wrap: pretty; }
+.wt-checks-row[data-flagged] .wt-checks-money { color: var(--stop); font-weight: 650; }
+.wt-checks-help, .wt-checks-note { font-size: 13px; color: var(--ink-2); }
+.wt-checks-note { margin: 0; }
+.wt-icon-checks { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--ink); border-radius: 3px; box-sizing: border-box; background: radial-gradient(circle, var(--go) 0 2px, transparent 2.5px) 2px 2px / 6px 6px no-repeat, linear-gradient(var(--ink-2), var(--ink-2)) 8px 3px / 4px 1.5px no-repeat, linear-gradient(var(--ink-2), var(--ink-2)) 2px 8px / 9px 1.5px no-repeat; }
+
+/* under Gran's answer */
+.gran-receipt { display: grid; gap: 4px; margin-top: 6px; padding-top: 10px; border-top: 2px dashed var(--g-go, #17694A); font-size: 18px; line-height: 1.45; }
+.gran-receipt p { margin: 0; text-wrap: pretty; }
+.gran-receipt-h { font-weight: 700; }
+.gran-receipt-money { font-weight: 600; color: var(--g-go, #17694A); }
+.gran-receipt[data-flagged] { border-top-color: var(--g-stop, #A3261D); }
+.gran-receipt[data-flagged] .gran-receipt-money { color: var(--g-stop, #A3261D); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-rc-btn { transition: none; }
+  .wt-rc-btn:active { transform: none; }
+}
+.wt-checks-label { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }

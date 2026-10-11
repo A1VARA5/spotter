@@ -6,8 +6,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { AgAiChatSession, AgAiHarness } from "ag-studio";
 import { GRAN_ID } from "@/watchtower/agents";
+import type { Receipt } from "@/watchtower/receipt";
+import { useBook, type ReceiptBook } from "./ReceiptBar";
 
-type Phase = { kind: "idle" } | { kind: "asking"; question: string } | { kind: "answered"; question: string; answer: string } | { kind: "failed"; question: string; why: string };
+type Phase = { kind: "idle" } | { kind: "asking"; question: string } | { kind: "answered"; question: string; answer: string; threadId: string } | { kind: "failed"; question: string; why: string };
 
 const MAX_QUESTION = 300;
 
@@ -20,7 +22,27 @@ function lastAnswer(s: AgAiChatSession): string {
 /** Markdown the model may still use, taken out so the answer reads as plain sentences. */
 const plain = (t: string) => t.replace(/\*\*|__|`/g, "").replace(/^#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "");
 
-export function GranAsk({ harness, spotter, onBusy }: { harness: () => AgAiHarness | null; spotter: string; onBusy: (busy: boolean) => void }) {
+const TIMES = ["", "once", "twice"];
+
+/** Under the answer: what Spotter did to get it, from AG Studio's own record of the run, in Gran's words. */
+function GranReceipt({ r, spotter }: { r: Receipt; spotter: string }) {
+  const looks = r.tools.find((t) => t.name === "my_month")?.calls ?? 0;
+  const other = r.tools.filter((t) => t.name !== "my_month").reduce((n, t) => n + t.calls, 0);
+  const s = Math.max(1, Math.round(r.ms / 1000));
+  return (
+    <div className="gran-receipt" data-flagged={r.flagged || undefined}>
+      <p className="gran-receipt-h">How Spotter got this answer</p>
+      <p>
+        {looks ? `It looked at your month ${TIMES[looks] ?? `${looks} times`}` : "It didn't need to look at your payments"}
+        {other ? ` and did ${other} other ${other === 1 ? "thing" : "things"}` : ""}. It took {s} {s === 1 ? "second" : "seconds"}.
+      </p>
+      <p className="gran-receipt-money">{r.flagged ? `Spotter used something it doesn't know. Please tell ${spotter}.` : "It can't move money, and it didn't."}</p>
+    </div>
+  );
+}
+
+export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgAiHarness | null; spotter: string; onBusy: (busy: boolean) => void; book?: ReceiptBook }) {
+  const { entries } = useBook(book);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [text, setText] = useState("");
   const session = useRef<AgAiChatSession | null>(null);
@@ -84,7 +106,7 @@ export function GranAsk({ harness, spotter, onBusy }: { harness: () => AgAiHarne
           why: capped ? `Spotter has answered all it can for today. Try again tomorrow, or ring ${spotter}.` : `Spotter couldn't answer just now. Try again in a minute, or ring ${spotter}.`,
         });
       } else {
-        setPhase({ kind: "answered", question, answer });
+        setPhase({ kind: "answered", question, answer, threadId: s.threadId });
         setText("");
       }
     } catch (e) {
@@ -154,6 +176,10 @@ export function GranAsk({ harness, spotter, onBusy }: { harness: () => AgAiHarne
                 {para}
               </p>
             ))}
+            {phase.kind === "answered" && (() => {
+              const r = entries.find((e) => e.receipt.threadId === phase.threadId)?.receipt;
+              return r ? <GranReceipt r={r} spotter={spotter} /> : null;
+            })()}
           </div>
         )}
       </div>

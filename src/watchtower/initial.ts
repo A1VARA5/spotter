@@ -22,6 +22,7 @@ export const INITIAL: AgReportState = {
         outcomes: { type: "donut-chart", dataMapping: { categoryKey: [{ id: "payments.outcome" }], valueKey: [{ id: "payments.id", aggregation: "count" }] }, format: title("What happened to each payment") },
         signs: { type: "bar-chart-grouped", dataMapping: { categoryKey: [{ id: "signs.sign" }], valueKey: [{ id: "signs.paymentId", aggregation: "count" }] }, format: title("Scam signs Spotter caught") },
         radar: { type: "scam-radar", dataMapping: {} },
+        checks: { type: "ai-checks", dataMapping: {} },
         people: { type: "column-chart-stacked", dataMapping: { categoryKey: [{ id: "payments.who" }], valueKey: [{ id: "payments.amount", aggregation: "sum" }], legendKey: [{ id: "payments.outcome" }] }, format: title("Who asked to pay, and what happened") },
         categories: {
           type: "grid",
@@ -44,7 +45,8 @@ export const INITIAL: AgReportState = {
         midair: { xTrack: 16, yTrack: 11, xSpan: 8, ySpan: 14 },
         watches: { xTrack: 0, yTrack: 25, xSpan: 12, ySpan: 14 },
         radar: { xTrack: 12, yTrack: 25, xSpan: 12, ySpan: 14 },
-        replay: { xTrack: 0, yTrack: 39, xSpan: 24, ySpan: 16 },
+        replay: { xTrack: 0, yTrack: 39, xSpan: 16, ySpan: 16 },
+        checks: { xTrack: 16, yTrack: 39, xSpan: 8, ySpan: 16 },
         outcomes: { xTrack: 0, yTrack: 55, xSpan: 12, ySpan: 13 },
         signs: { xTrack: 12, yTrack: 55, xSpan: 12, ySpan: 13 },
         people: { xTrack: 0, yTrack: 68, xSpan: 13, ySpan: 13 },
