@@ -162,9 +162,9 @@ Each key is `spt_` plus 32 random bytes, shown once, stored as a SHA-256 hash an
 
 A held payment with a link, or an agent payment with a shop page, gets one throwaway KERNEL cloud browser. One page load, 15 seconds, the browser is always deleted, and the code Spotter runs on the page only reads. It never types, clicks or submits, and the browser policy blocks downloads.
 
-![The booby trapped shop's case file: what a person sees next to the hidden line the agent read](docs/media/spotter-kernel.gif)
+![Two live case files. First the booby trapped shop: what a person sees next to the hidden line the agent read. Then the £1.99 parcel text: the desktop scanner page next to the UK phone page with a card form, and where the card details would go](docs/media/spotter-kernel.gif)
 
-<sub>Live case file. GadgetBarn is a made up demo page on Spotter's own site, and the real shop listing next to it is blurred in the recording.</sub>
+<sub>Two live case files. First the booby trapped shop: what a person sees next to the hidden line the agent read. Then the £1.99 parcel text: the same link as a desktop scanner saw it ("Your parcel is on its way") and as a UK phone saw it (a £1.99 card form), and the line saying the card details would go to collect-x.example, not the shop. GadgetBarn and Larkhill Parcels are made up demo pages on Spotter's own site, collect-x.example is a made up address, and the real shop listing next to GadgetBarn is blurred in the recording.</sub>
 
 - Two faces. The same link opens at the same moment as a desktop scanner and as Gran's phone on a UK mobile network (a GB mobile proxy when the KERNEL plan allows it, and the card says so when it doesn't). On the parcel text the desktop got "Your parcel is on its way" and the phone got a card form. [src/agents/twofaces.ts](src/agents/twofaces.ts)
 - Seen vs read. The same visit compares the text a person can see with all the text an agent reads (in an isolated world), and files hidden instructions as prompt injection with the hidden line quoted. On the demo shop that line tells the agent to ignore its budget and refund $200. [src/agents/seen.ts](src/agents/seen.ts)
