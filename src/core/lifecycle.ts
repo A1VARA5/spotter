@@ -190,7 +190,8 @@ async function marketCheck(deps: Deps, req: PaymentRequest): Promise<(MarketResu
   if (!deps.market || !req.item?.trim()) return null;
   try {
     const offers = await deps.market(req.item, req.money.currency);
-    return offers ? { ...priceCheck(req.money.amount, req.money.currency, offers), item: req.item } : null;
+    // "Priced like a used one" is skipped when the item or the message says it is used or refurbished.
+    return offers ? { ...priceCheck(req.money.amount, req.money.currency, offers, { item: `${req.item} ${req.context ?? ""}` }), item: req.item } : null;
   } catch (e) {
     console.error(`[spotter] market check failed for ${req.id}:`, e instanceof Error ? e.message : e);
     return null; // a missing price check never blocks or approves anything on its own

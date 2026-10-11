@@ -36,7 +36,8 @@ const pounds = (minor: number) => Math.round(minor) / 100;
 
 /** Cheapest and median real retailer price in pounds, with the cheapest few shops (one line each). */
 export function summarisePrices(item: string, offers: Offer[], currency: Currency): PriceSummary {
-  const same = offers.filter((o) => o.currency === currency && o.price > 0);
+  // New prices only: a used listing isn't what the family would pay for a new one.
+  const same = offers.filter((o) => o.condition !== "used" && o.currency === currency && o.price > 0);
   const byShop = new Map<string, number>();
   for (const o of same) byShop.set(o.domain, Math.min(o.price, byShop.get(o.domain) ?? Infinity));
   const shops = [...byShop.entries()].sort((a, b) => a[1] - b[1]).map(([shop, price]) => ({ shop, price: pounds(price) }));

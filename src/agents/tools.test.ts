@@ -99,6 +99,8 @@ describe("find_genuine_offer", () => {
       { id: "p1", title: "Apple AirPods Pro 2", offers: [
         { title: "Apple AirPods Pro 2", domain: "currys.co.uk", price: 17900, currency: "GBP" as const, url: "https://currys.co.uk/a" },
         { title: "Apple AirPods Pro 2", domain: "argos.co.uk", price: 18900, currency: "GBP" as const, url: "https://argos.co.uk/a" },
+        // A used listing is never offered as the safer way to buy a new one.
+        { title: "Apple AirPods Pro 2", domain: "resale.example", price: 9000, currency: "GBP" as const, url: "https://resale.example/a", condition: "used" as const },
       ] },
       { id: "p2", title: "AirPods Pro 2 case cover", offers: [{ title: "x", domain: "ebay.co.uk", price: 500, currency: "GBP" as const, url: "https://ebay.co.uk/x" }] },
     ]);

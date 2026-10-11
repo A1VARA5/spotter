@@ -13,6 +13,7 @@ import { CaseFile, CasePending } from "@/ui/CaseFile";
 import { PriceWatch, watchable } from "@/ui/PriceWatch";
 import type { WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
+import { PhotoCheck } from "@/ui/PhotoCheck";
 
 
 export function Dashboard({
@@ -158,6 +159,8 @@ export function Dashboard({
           </p>
         )}
       </section>
+
+      <PhotoCheck />
 
       {loose.length > 0 && (
         <section aria-labelledby="watches">

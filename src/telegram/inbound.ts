@@ -10,6 +10,8 @@ import { outcomeText } from "@/email/inbound";
 import { scanMessage } from "@/ai/scan";
 import { blockedText, warnSpotter } from "@/core/switchedoff";
 import { answerWasItYou, parseButton } from "@/core/was-it-you";
+import { captionAmount, householdCurrency, MAX_PHOTO_BYTES, photoMode, type PhotoAnswer, type PhotoInput, type PhotoResult } from "@/market/photo";
+import { formatMoney, type Currency } from "@/core/types";
 
 type TgEntity = { type: string; offset: number; length: number; url?: string };
 export type TgMessage = {
@@ -18,8 +20,8 @@ export type TgMessage = {
   from?: { id: number; is_bot?: boolean; first_name?: string };
   text?: string;
   caption?: string;
-  photo?: unknown[];
-  document?: unknown;
+  photo?: Array<{ file_id?: unknown; file_size?: unknown; width?: unknown; height?: unknown }>;
+  document?: { file_id?: unknown; mime_type?: unknown; file_size?: unknown };
   forward_origin?: unknown;
   entities?: TgEntity[];
   caption_entities?: TgEntity[];
@@ -40,9 +42,14 @@ export type TgCtx = {
   send: (chatId: number | string, html: string, extra?: Record<string, unknown>) => Promise<void>;
   /** Answers a button press (the little toast in Telegram). Optional in tests. */
   answer?: (callbackId: string, text: string) => Promise<void>;
+  /** Downloads a file Telegram holds (Bot API getFile), size checked; null when it can't. Photo checks need both of these. */
+  download?: (fileId: string) => Promise<Buffer | null>;
+  photoCheck?: (req: { householdId: string; input: PhotoInput }) => Promise<PhotoAnswer>;
 };
 
-export type TgOutcome = "switched_off" | "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked" | "failed" | "denied" | "refused" | "not_me" | "it_was_me";
+export type TgOutcome =
+  | "switched_off" | "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked"
+  | "failed" | "denied" | "refused" | "not_me" | "it_was_me" | "photo_checked" | "photo_failed";
 
 const PER_CHAT_PER_DAY = 12;
 
@@ -84,6 +91,8 @@ function helpFor(s: Spender) {
     "",
     "When a text, a message app or an email asks you for money, forward it here or paste it in. I check it, and if anything looks off, PayPal holds the money until " +
       `${esc(s.spotter_name)} says yes.`,
+    "",
+    "Got a photo of a quote, an ad, or things someone wants to buy from you? Send me the photo and I'll price each thing at real shops.",
   ].join("\n");
 }
 
@@ -119,6 +128,31 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
     return "paired";
   }
 
+  // A forwarded message with words gets the full check on those words (a scam often comes with a picture); a photo
+  // the person sends themselves, with or without a note, is priced.
+  const picture = forwarded && text ? null : pictureIn(m);
+  if (picture) {
+    const householdId = spender?.household_id ?? spotterOf?.id;
+    if (!householdId) {
+      await say(HELP_UNPAIRED);
+      return "unpaired";
+    }
+    await db.query("update inbound set sender = $2 where provider = 'telegram' and message_id = $1", [String(u.update_id), chat]);
+    if (await overLimit(db, chat)) {
+      await say("That's a lot of checks today. Please try again tomorrow, or ask your spotter.");
+      return "limited";
+    }
+    if (!ctx.download || !ctx.photoCheck) {
+      await say("I can't read pictures or files yet. Please copy the words of the message and send them to me instead. Nothing was paid.");
+      return "unsupported";
+    }
+    if (picture === "refused") {
+      await say("I can only check photos (JPEG, PNG or WEBP) under 4 MB. Nothing was paid.");
+      return "unsupported";
+    }
+    return checkPhoto({ ...ctx, download: ctx.download, photoCheck: ctx.photoCheck }, say, { fileId: picture.fileId, householdId, spender, caption: text });
+  }
+
   if (/^\/(start|help)\b/i.test(text)) {
     await say(spender ? helpFor(spender) : spotterOf ? "You're connected as the spotter. Payments that need you will show up here." : HELP_UNPAIRED);
     return "help";
@@ -131,10 +165,6 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
   if (await overLimit(db, chat)) {
     await say("That's a lot of checks today. Please try again tomorrow, or ask your spotter.");
     return "limited";
-  }
-  if (!text && (m.photo || m.document)) {
-    await say("I can't read pictures or files yet. Please copy the words of the message and send them to me instead. Nothing was paid.");
-    return "unsupported";
   }
 
   let paymentId: string | null = null;
@@ -172,6 +202,68 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
       console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err),
     );
     return "failed";
+  }
+}
+
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const fileIdOk = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length <= 200;
+const sizeOk = (v: unknown) => v === undefined || (typeof v === "number" && v > 0 && v <= MAX_PHOTO_BYTES);
+
+/** The photo to check: Telegram's largest size under the limit, or an image file. "refused" for other files or huge ones. */
+function pictureIn(m: TgMessage): { fileId: string } | "refused" | null {
+  if (Array.isArray(m.photo) && m.photo.length) {
+    const fits = m.photo.filter((p) => p && fileIdOk(p.file_id) && sizeOk(p.file_size));
+    const area = (p: (typeof fits)[number]) => (typeof p.width === "number" && typeof p.height === "number" ? p.width * p.height : 0);
+    const best = fits.sort((a, b) => area(b) - area(a))[0];
+    return best ? { fileId: best.file_id as string } : "refused";
+  }
+  const d = m.document;
+  if (d) return fileIdOk(d.file_id) && typeof d.mime_type === "string" && IMAGE_TYPES.has(d.mime_type) && sizeOk(d.file_size) ? { fileId: d.file_id } : "refused";
+  return null;
+}
+
+/** The answer as one Telegram message: a numbered line per thing, the total, the amount they named and a verdict. */
+export function photoText(r: PhotoResult, captioned: boolean): string {
+  const money = (minor: number) => formatMoney({ amount: minor, currency: r.currency });
+  const whole = (minor: number) => money(minor).replace(/\.00$/, "");
+  const lines = r.items.map((i) => {
+    if (!i.found) return `${i.n}. ${esc(i.thing)}: couldn't find this one`;
+    const price = r.mode === "buy" ? `about ${whole(i.typical)} at real shops` : i.low === i.high ? `used ones sell for about ${whole(i.low)}` : `used ones sell for ${whole(i.low)} to ${whole(i.high)}`;
+    return `${i.n}. ${esc(i.thing)}: ${price} (${esc(i.title.slice(0, 70))}, ${i.shops} ${i.shops === 1 ? "shop" : "shops"})`;
+  });
+  return [
+    `<b>Photo price check${r.fallback ? " (whole photo)" : ""}</b>`,
+    lines.join("\n"),
+    `<b>${esc(r.total)}</b>${r.quote ? `\n${esc(r.quote)}` : ""}${r.verdict ? `\n${esc(r.verdict)}` : ""}`,
+    "Prices come from real shop listings. Nothing was paid." + (captioned ? " This checked the things in the photo. To check the words of a message, send them to me as text." : ""),
+  ].join("\n\n");
+}
+
+async function checkPhoto(
+  ctx: TgCtx & Required<Pick<TgCtx, "download" | "photoCheck">>,
+  say: (html: string) => Promise<void>,
+  p: { fileId: string; householdId: string; spender: Spender | null; caption: string },
+): Promise<TgOutcome> {
+  try {
+    const currency: Currency = p.spender ? p.spender.allowance.weekly.currency : await householdCurrency(ctx.deps.db, p.householdId);
+    const bytes = await ctx.download(p.fileId);
+    if (!bytes) {
+      await say("I couldn't get that photo from Telegram. Nothing was paid. Try sending it again.");
+      return "photo_failed";
+    }
+    const r = await ctx.photoCheck({ householdId: p.householdId, input: { bytes, mode: photoMode(p.caption), currency, quoted: captionAmount(p.caption, currency) } });
+    if (!r.ok) {
+      await say(`${esc(r.error)} Nothing was paid.`);
+      return "photo_failed";
+    }
+    await say(photoText(r.result, Boolean(p.caption)));
+    return "photo_checked";
+  } catch (e) {
+    console.error(`[spotter] telegram photo check failed for ${p.householdId}:`, e instanceof Error ? e.message : e);
+    await say("Spotter couldn't check this photo just now. Nothing was paid. Try again in a few minutes.").catch((err) =>
+      console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err),
+    );
+    return "photo_failed";
   }
 }
 

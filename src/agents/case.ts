@@ -310,6 +310,7 @@ const PRICE_HEADLINE = {
   overpriced: "This costs well over what real shops charge for it.",
   too_cheap: "This is far cheaper than real shops sell it for, which is a fake shop tell.",
   normal: "The price is normal for what real shops charge, so the question is who is being paid.",
+  like_used: "This is priced like a used one, below what real shops charge for a new one.",
 } as const;
 
 function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number): Case {

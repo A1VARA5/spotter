@@ -107,7 +107,8 @@ export function getDeps(): Promise<Deps> {
                       {
                         db,
                         householdId: spender.household_id,
-                        imageSearch: searchByImage,
+                        // New and used both, so "priced like a used one" can compare the two sides.
+                        imageSearch: (img, currency) => searchByImage(img, currency, 10, ["new", "used"]),
                         priceHigh,
                         perHousehold: cap("SPOT_IMAGE_CHECKS_PER_FAMILY", 10),
                         overall: cap("SPOT_IMAGE_CHECKS_PER_DAY", 200),

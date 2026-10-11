@@ -7602,3 +7602,42 @@ h3 {
 .case-tool-where { font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .case-tool blockquote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--stop); border-radius: 0 8px 8px 0; background: var(--stop-soft); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
 .case-tool mark { background: color-mix(in srgb, var(--stop) 18%, transparent); color: var(--ink); padding: 1px 2px; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+/* Photo price check (src/ui/PhotoCheck.tsx): the photo with numbered boxes, then one line per thing and the total. */
+.photo { display: grid; gap: 14px; }
+.photo-form { display: grid; gap: 10px; max-width: 640px; padding: 16px; border-radius: var(--r-card); background: var(--paper); border: 1px solid var(--line); }
+.photo-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.photo-choose { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.photo-example { display: inline-flex; align-items: center; gap: 8px; }
+.photo-mode { margin: 4px 0 0; padding: 0; border: 0; display: grid; gap: 6px; }
+.photo-mode label { display: flex; align-items: flex-start; gap: 8px; font-size: 15px; color: var(--ink); line-height: 1.4; cursor: pointer; }
+.photo-mode input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--ink); flex: none; }
+.photo-label { font-size: 14px; font-weight: 650; color: var(--ink); padding: 0; margin-bottom: 2px; }
+.photo-optional { font-weight: 400; color: var(--ink-2); }
+.photo-amount { width: 100%; max-width: 220px; min-height: 44px; padding: 8px 12px; font: inherit; font-size: 16px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-btn); }
+.photo-amount:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.photo-go { justify-self: start; margin-top: 4px; }
+.photo-figure { margin: 0; display: grid; gap: 6px; max-width: 760px; }
+.photo-frame { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--chalk); line-height: 0; }
+.photo-frame img { display: block; width: 100%; height: auto; }
+.photo-box { position: absolute; border: 2.5px solid var(--hold); border-radius: 6px; box-shadow: 0 0 0 1px rgb(23 33 43 / 0.55); transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+.photo-box[data-found="false"] { border-style: dashed; border-color: #fff; }
+.photo-box[data-hot="true"] { background: rgb(242 183 5 / 0.18); }
+.photo-box .photo-num { position: absolute; top: 4px; left: 4px; }
+.photo-num { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 700; line-height: 1; }
+.photo-credit { font-size: 13px; color: var(--ink-2); }
+.photo-credit b { color: var(--ink); }
+.photo-result { display: grid; gap: 10px; max-width: 760px; }
+.photo-total { margin: 0; font-size: clamp(20px, 3.2vw, 26px); font-weight: 650; line-height: 1.25; color: var(--ink); text-wrap: balance; }
+.photo-total:focus { outline: none; }
+.photo-total:focus-visible { outline: 2px solid var(--protect); outline-offset: 4px; border-radius: 4px; }
+.photo-quote { margin: 0; font-size: 16px; color: var(--ink-2); text-wrap: pretty; }
+.photo-quote[data-alarm="true"] { color: var(--stop); font-weight: 600; }
+.photo-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.photo-items li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); font-size: 15px; line-height: 1.45; color: var(--ink-2); overflow-wrap: anywhere; }
+.photo-items li[data-found="false"] .photo-num { background: var(--ink-2); }
+.photo-items b { color: var(--ink); font-weight: 650; margin-right: 4px; }
+.photo-match { color: var(--ink-2); }
+.photo-items a { color: var(--protect); font-weight: 600; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .photo-box { transition: none; } }
+.photo-pick input:focus-visible + .photo-choose { outline: 2px solid var(--protect); outline-offset: 2px; }

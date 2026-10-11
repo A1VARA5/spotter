@@ -109,6 +109,13 @@ describe("offerSaferOption", () => {
     expect((await listEvents(db, stopped.id)).map((e) => e.type)).toContain("safer_option_offered");
   });
 
+  it("never offers a used listing as the safer way to buy a new one", async () => {
+    deps.market = vi.fn(async () => [...OFFERS, { ...offer("resale.example", 9900), condition: "used" as const }]);
+    const stopped = await gadgetBarn();
+    const opt = await offerSaferOption(deps, stopped, (await getSpender(db, "agent"))!, "hidden instructions");
+    expect(opt).toMatchObject({ retailer: "currys.co.uk", price: 17900 });
+  });
+
   it("prefers a listing with every word of the item over a cheaper near match", async () => {
     deps.market = vi.fn(async () => [
       offer("oasisfashion.com", 7995, "ATH-CKS30TW+ Wireless Earbuds"),

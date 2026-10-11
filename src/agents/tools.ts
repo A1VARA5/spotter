@@ -337,6 +337,7 @@ const findGenuineOffer = tool({
     const products = ctx.search ? await ctx.search(item, currency, 8) : null;
     if (!products) return { ok: false, summary: "Product search is unavailable right now." };
     const offers = offersFor(products, item)
+      .filter((o) => o.condition !== "used")
       .sort((a, b) => a.price - b.price)
       .filter((o, i, all) => all.findIndex((x) => x.domain === o.domain) === i)
       .slice(0, 3);

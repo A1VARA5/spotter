@@ -9,11 +9,11 @@
 // - Searches are cached by a hash of the picture and capped per family per day (image_checks, like price_checks).
 import { createHash } from "node:crypto";
 import type { Db } from "@/db";
-import type { Offer } from "@/core/market";
+import { claimsUsed, likeUsed, likeUsedText, type LikeUsed, type Offer } from "@/core/market";
 import { formatMoney, type Currency } from "@/core/types";
 import { sameProduct, type ImageQuery, type PriceHigh, type Product } from "./channel3";
 
-export type SpotDifference = { label: "Price" | "Was price" | "Web address" | "Seller"; here: string; real: string };
+export type SpotDifference = { label: "Price" | "Condition" | "Was price" | "Web address" | "Seller"; here: string; real: string };
 
 export type SpotTheDifference = {
   /** "£19.99 here, about £49.99 at real shops" */
@@ -28,6 +28,8 @@ export type SpotTheDifference = {
   currency: Currency;
   here: { host: string; price: number; payee: string };
   genuine: { title: string; domain: string; price: number; url: string; image?: string; offerId?: string };
+  /** Set when the item, sold as new, is priced below every new offer but inside the used range. */
+  likeUsed?: LikeUsed;
   at: string;
 };
 
@@ -193,13 +195,17 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   const shopHost = host(input.page.finalUrl);
   const payee = input.payee.trim().toLowerCase();
   type Listing = Offer & { productId: string; image?: string };
-  const listings: Listing[] = products
+  const matched: Listing[] = products
     .filter((p) => sameItem(item, p))
     .flatMap((p) =>
       p.offers.map((o) => ({ ...o, domain: o.domain.toLowerCase().replace(/^www\./, ""), productId: p.id, ...(p.image && CDN_IMAGE.test(p.image) ? { image: p.image } : {}) })),
     )
     .filter((o) => o.currency === input.currency && o.price > 0 && DOMAIN.test(o.domain) && o.domain !== shopHost && o.domain !== payee && BUY_URL.test(o.url));
+  // The going rate and the shop to show come from new listings (and ones whose condition isn't known); used ones
+  // only count for "priced like a used one".
+  const listings = matched.filter((o) => o.condition !== "used");
   if (!listings.length) return null;
+  const lu = claimsUsed(item) ? null : likeUsed(input.amount, input.currency, matched);
 
   const typical = median(listings.map((o) => o.price));
   const cheapest = listings.reduce((a, b) => (b.price < a.price ? b : a));
@@ -224,6 +230,7 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   const differences: SpotDifference[] = [];
   // The same middle price the verdict uses, so the row can never argue with it.
   if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: shops.size > 1 ? `about ${money(typical)}` : money(typical) });
+  if (lu) differences.push({ label: "Condition", here: `Sold as new for ${money(input.amount)}`, real: likeUsedText(lu, input.currency) });
   const wasHere = parseWas(input.page.was, input.currency);
   if (wasHere && deps.priceHigh) {
     // Optional, so it gets a short limit of its own: a slow history call drops this row, never the whole comparison.
@@ -252,6 +259,7 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
     direction,
     differences: differences.slice(0, 3),
     typical,
+    ...(lu ? { likeUsed: lu } : {}),
     offers: listings.length,
     currency: input.currency,
     here: { host: shopHost, price: input.amount, payee: payeeName },

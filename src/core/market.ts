@@ -3,11 +3,19 @@
 import type { Flag } from "./grounding";
 import { formatMoney, type Currency } from "./types";
 
-export type Offer = { title: string; brand?: string; domain: string; price: number; currency: Currency; url: string };
-export type MarketResult = { flag: Flag | null; median?: number; offers: number; cheapest?: Offer };
+/**
+ * condition is Channel3's offer condition (since July 2026): "new", "used", or null when the shop doesn't say.
+ * Channel3 turns "refurbished" into null, so null can hide a refurbished listing: it counts on the new side, which
+ * only ever makes "new ones cost at least" lower, never a claim that isn't true.
+ */
+export type Offer = { title: string; brand?: string; domain: string; price: number; currency: Currency; url: string; condition?: "new" | "used" | null };
+/** A "new" item priced below every new offer but inside what used ones sell for, in minor units. */
+export type LikeUsed = { newFrom: number; usedLow: number; usedHigh: number };
+export type MarketResult = { flag: Flag | null; median?: number; offers: number; cheapest?: Offer; likeUsed?: LikeUsed };
 
 const TOO_CHEAP = 0.4; // under 40% of the going rate: classic fake shop
 const TOO_DEAR = 1.3; // over 130%: you're overpaying
+const MIN_SIDE = 2; // offers needed on each side (new and used) before saying "priced like a used one"
 
 function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
@@ -15,13 +23,41 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[mid]! : Math.round((s[mid - 1]! + s[mid]!) / 2);
 }
 
-export type PriceVerdict = "too_cheap" | "overpriced" | "normal";
+const USED_WORDS = /\b(used|refurb(ished)?|renewed|pre[\s-]?owned|pre[\s-]?loved|second[\s-]?hand|ex[\s-]?display|open[\s-]?box|reconditioned)\b/i;
+
+/** True when the item is sold as used, refurbished or similar, so a used price is expected. */
+export function claimsUsed(text: string | undefined | null): boolean {
+  return Boolean(text && USED_WORDS.test(text));
+}
+
+const isUsed = (o: Offer) => o.condition === "used";
+
+/**
+ * The new side and the used side of the same product's offers, in one currency. Null unless both sides have at least
+ * two offers and the amount sits below every new offer and inside the used range.
+ */
+export function likeUsed(amount: number, currency: Currency, offers: Offer[]): LikeUsed | null {
+  const same = offers.filter((o) => o.currency === currency && o.price > 0);
+  const used = same.filter(isUsed).map((o) => o.price);
+  const fresh = same.filter((o) => !isUsed(o)).map((o) => o.price);
+  if (used.length < MIN_SIDE || fresh.length < MIN_SIDE) return null;
+  const newFrom = Math.min(...fresh);
+  const usedLow = Math.min(...used);
+  const usedHigh = Math.max(...used);
+  return amount < newFrom && amount >= usedLow && amount <= usedHigh ? { newFrom, usedLow, usedHigh } : null;
+}
+
+/** "Priced like a used one. New ones cost at least £679.00." */
+export const likeUsedText = (l: LikeUsed, currency: Currency) => `Priced like a used one. New ones cost at least ${formatMoney({ amount: l.newFrom, currency })}.`;
+
+export type PriceVerdict = "too_cheap" | "overpriced" | "normal" | "like_used";
 
 /** What the market check concluded, or null when it had too few offers to say. */
 export function priceVerdict(m: MarketResult | null | undefined): PriceVerdict | null {
   if (!m || m.median === undefined) return null;
   if (!m.flag) return "normal";
-  return m.flag.severity === "high" ? "too_cheap" : "overpriced";
+  if (m.flag.severity === "high") return "too_cheap";
+  return m.likeUsed ? "like_used" : "overpriced";
 }
 
 const PRICE = /\bpric/i;
@@ -47,12 +83,32 @@ export function marketFacts(m: (MarketResult & { item: string }) | null | undefi
   const money = (minor: number) => formatMoney({ amount: minor, currency });
   // Item and listing titles come from outside (the request, the retailer feed): no markup, kept short.
   const clean = (t: string) => t.replace(/[<>"\r\n]/g, " ").slice(0, 80).trim();
-  const said = { too_cheap: "far below the going rate (a fake shop tell)", overpriced: "overpriced, well over the going rate", normal: "a normal price" }[verdict];
+  const said = {
+    too_cheap: "far below the going rate (a fake shop tell)",
+    overpriced: "overpriced, well over the going rate",
+    normal: "a normal price",
+    like_used: "priced like a used one, below every new listing",
+  }[verdict];
   const cheapest = m.cheapest ? ` The cheapest listing found was ${money(m.cheapest.price)} ("${clean(m.cheapest.title)}"), which may not be the exact same product.` : "";
-  return `Spotter's market check, done by code from real retailer listings for "${clean(m.item)}": around ${money(m.median)} across ${m.offers} retailers. This payment is ${money(amount)}, which is ${said}.${cheapest}`;
+  const used = m.likeUsed
+    ? ` New ones cost at least ${money(m.likeUsed.newFrom)}; used ones sell for ${money(m.likeUsed.usedLow)} to ${money(m.likeUsed.usedHigh)}, and this price is inside that range.`
+    : "";
+  return `Spotter's market check, done by code from real retailer listings for "${clean(m.item)}": around ${money(m.median)} across ${m.offers} retailers. This payment is ${money(amount)}, which is ${said}.${used}${cheapest}`;
 }
 
-export function priceCheck(amount: number, currency: Currency, offers: Offer[]): MarketResult {
+/**
+ * The going rate comes from new offers (and ones whose condition isn't known); used offers only count for "priced like
+ * a used one", which is checked unless the item says it is used or refurbished itself.
+ */
+export function priceCheck(amount: number, currency: Currency, offers: Offer[], opts: { item?: string } = {}): MarketResult {
+  const lu = claimsUsed(opts.item) ? null : likeUsed(amount, currency, offers);
+  const base = goingRate(amount, currency, offers.filter((o) => !isUsed(o)));
+  if (!lu || base.median === undefined) return base;
+  if (base.flag) return { ...base, likeUsed: lu }; // the fake shop or overpaying flag stays the one flag
+  return { ...base, likeUsed: lu, flag: { kind: "price", severity: "medium", quote: "", why: likeUsedText(lu, currency) } };
+}
+
+function goingRate(amount: number, currency: Currency, offers: Offer[]): MarketResult {
   const same = offers.filter((o) => o.currency === currency && o.price > 0);
   if (same.length < 2) return { flag: null, offers: same.length };
   const m = median(same.map((o) => o.price));

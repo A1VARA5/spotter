@@ -125,9 +125,9 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
-/** Real offers only: the family's currency, and never a price far below the going rate (a fake shop tell). */
+/** Real offers only: new ones (a used listing is not a drop), the family's currency, never far below the going rate. */
 export function genuineOffers(offers: Offer[], currency: Currency): Offer[] {
-  const same = offers.filter((o) => o.currency === currency && o.price > 0);
+  const same = offers.filter((o) => o.condition !== "used" && o.currency === currency && o.price > 0);
   if (same.length < 2) return same;
   const going = median(same.map((o) => o.price));
   return same.filter((o) => o.price >= going * TOO_CHEAP);

@@ -282,4 +282,18 @@ create table if not exists image_search_cache (
   products jsonb not null,
   fetched_at timestamptz not null default now()
 );
+
+-- Photo price check block (src/market/photo.ts): each find products in image call (up to 7 Channel3 credits) counted
+-- per family per day, and Channel3's answer cached by a hash of the picture and the condition. The photo is never stored.
+create table if not exists photo_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists photo_checks_household_idx on photo_checks (household_id, at);
+create index if not exists photo_checks_at_idx on photo_checks (at);
+create table if not exists photo_cache (
+  key text primary key,
+  scene jsonb not null,
+  fetched_at timestamptz not null default now()
+);
 `;

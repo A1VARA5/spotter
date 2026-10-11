@@ -30,6 +30,47 @@ export async function answerCallback(id: string, text: string): Promise<void> {
   if (!res.ok) console.error("[spotter] telegram answerCallbackQuery failed:", res.status);
 }
 
+const FILE_PATH = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_.-]+)*$/;
+
+/**
+ * Downloads a file the bot was sent (getFile, then Telegram's file host), kept in memory only. Null when Telegram
+ * says no, the path looks wrong, or the file is over maxBytes. The file URL carries the token, so it is never logged.
+ */
+export async function downloadFile(fileId: string, maxBytes: number): Promise<Buffer | null> {
+  try {
+    const r = await tg("getFile", { file_id: fileId });
+    const j = (await r.json().catch(() => null)) as { ok?: boolean; result?: { file_path?: unknown; file_size?: unknown } } | null;
+    const path = j?.result?.file_path;
+    if (!r.ok || !j?.ok || typeof path !== "string" || !FILE_PATH.test(path) || path.includes("..")) {
+      console.error(`[spotter] telegram getFile gave no usable file (${r.status})`);
+      return null;
+    }
+    const size = j.result?.file_size;
+    if (typeof size === "number" && size > maxBytes) {
+      console.error(`[spotter] telegram file is ${size} bytes, over the ${maxBytes} limit, so it isn't downloaded`);
+      return null;
+    }
+    const f = await fetch(`${API}/file/bot${process.env.TELEGRAM_BOT_TOKEN ?? ""}/${path}`, { signal: AbortSignal.timeout(15_000) });
+    if (!f.ok) {
+      console.error(`[spotter] telegram file download failed (${f.status})`);
+      return null;
+    }
+    if (Number(f.headers.get("content-length") ?? 0) > maxBytes) {
+      console.error("[spotter] telegram file is over the size limit, so it isn't read");
+      return null;
+    }
+    const bytes = Buffer.from(await f.arrayBuffer());
+    if (bytes.length > maxBytes) {
+      console.error("[spotter] telegram file is over the size limit, so it isn't used");
+      return null;
+    }
+    return bytes;
+  } catch (e) {
+    console.error("[spotter] telegram file download error:", e instanceof Error ? e.name : "unknown");
+    return null;
+  }
+}
+
 /** Telegram signs nothing; the secret we set with setWebhook comes back in this header on every call. */
 export function secretOk(req: Request): boolean {
   const want = process.env.TELEGRAM_WEBHOOK_SECRET;

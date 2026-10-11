@@ -3,8 +3,10 @@
 import { after } from "next/server";
 import { getDeps } from "@/server/deps";
 import { extractPayment } from "@/ai/extract";
-import { answerCallback, secretOk, sendHtml, tg } from "@/telegram/api";
+import { answerCallback, downloadFile, secretOk, sendHtml, tg } from "@/telegram/api";
 import { handleTelegramUpdate, type TgUpdate } from "@/telegram/inbound";
+import { MAX_PHOTO_BYTES, photoCheck } from "@/market/photo";
+import { photoDeps } from "@/server/photo";
 
 export const maxDuration = 120;
 
@@ -18,8 +20,22 @@ export async function POST(req: Request) {
     try {
       const chat = update.message?.chat.id;
       if (chat && update.message?.chat.type === "private") await tg("sendChatAction", { chat_id: chat, action: "typing" }).catch(() => {});
+      const deps = await getDeps();
       const outcome = await handleTelegramUpdate(
-        { deps: await getDeps(), site, extract: (t) => extractPayment(t), send: sendHtml, answer: answerCallback },
+        {
+          deps,
+          site,
+          extract: (t) => extractPayment(t),
+          send: sendHtml,
+          answer: answerCallback,
+          // Photo price check: the photo is downloaded into memory, checked, and dropped. Off without a Channel3 key.
+          ...(process.env.CHANNEL3_API_KEY
+            ? {
+                download: (fileId: string) => downloadFile(fileId, MAX_PHOTO_BYTES),
+                photoCheck: ({ householdId, input }) => photoCheck(photoDeps(deps.db, householdId), input),
+              }
+            : {}),
+        },
         update,
       );
       console.log(`[spotter] telegram update ${update.update_id}: ${outcome}`);
