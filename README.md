@@ -215,7 +215,7 @@ Getting one honest price took work. At one point Channel3 priced a plain kettle 
 
 ## Technology
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,640 tests in 131 files, all passing.
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,661 tests in 132 files, all passing.
 
 ```mermaid
 flowchart LR
@@ -305,8 +305,7 @@ When things break:
 
 - Spotter can't read texts or chat apps by itself, and nothing should. People forward what asks them for money, and it can't stop someone paying directly in the PayPal app. For people it's a habit, like ringing a sensible friend. For AI agents it's enforced, because the agent only has Spotter's tools.
 - In the sandbox, agent holds use a sandbox test card. Whether PayPal renews a card funded hold on day 4 is unproven (PayPal said "too soon" on day 1, as it should), and the app never claims a renewal unless PayPal returned one. A live version would use a vaulted PayPal wallet.
-- If PayPal creates an authorisation but the answer never reaches Spotter, the ids aren't saved and that hold ends only when PayPal expires it.
-- After an agent lab run, the lab's payment shows as "Denied, money released" on the dashboard rail and in Activity, though the tripwire voided it and nobody pressed Deny.
+- If PayPal's answer to a new hold never arrives, Spotter asks PayPal again with the same request id for up to 6 hours, releases any hold it finds and says so. If PayPal forgets that request id first, a hold Spotter never heard about ends only when PayPal expires it.
 - Discord DM alerts to the spotter work in code but I haven't seen one land yet. Discord only lets an app DM you if you share a server or allow it in your settings.
 - The AI check can be wrong. When it can't run or isn't sure, the payment waits for a person.
 - The Polish hasn't been checked by a native speaker yet.
@@ -329,7 +328,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run     # 1,640 tests in 131 files
+npx vitest run     # 1,661 tests in 132 files
 npm run build
 ```
 
