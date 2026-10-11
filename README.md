@@ -9,7 +9,7 @@ Your kid and your AI shopping agent work the same way. The agent can ask to pay.
 **Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything on the PayPal sandbox with fake money)
 
 [![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-1%2C449%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-1%2C509%20passing-2ea44f)
 [![MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![Live demo](https://img.shields.io/badge/live%20demo-spotter--pay.vercel.app-0b7285)](https://spotter-pay.vercel.app)
 ![PayPal sandbox](https://img.shields.io/badge/PayPal-sandbox-003087)
@@ -74,7 +74,7 @@ Open the shopping agent's page (People, Shopping agent). In the connect panel pi
 
 ## Technology: how it's built
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,449 tests in 122 files, all passing in CI.
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,509 tests in 125 files, all passing in CI.
 
 Every payment takes the same path:
 
@@ -254,7 +254,7 @@ The short version is in [SECURITY.md](SECURITY.md) and the full one in [docs/thr
 
 When things break:
 
-- The AI is down, slow or out of credit: the payment is held, never waved through. That one is tested by accident too. My Anthropic key ran out of credit in the middle of testing, and Spotter held the payment anyway.
+- The AI is down, slow or out of credit: the payment is held, never waved through. That one is tested by accident too. My Anthropic key ran out of credit in the middle of testing, and Spotter held the payment anyway. Since then a dead key fails over to a second Claude key, and if Claude can't answer at all the scam check runs once on a backup model with the same prompt and the same quote check. The card says so, and anything the backup checks still waits for a yes. If every model is down the card says it straight: "The AI check is down right now, so Spotter held this for you. Nothing is paid."
 - PayPal doesn't answer: captures and voids that time out stay in `capturing` or `voiding` and `reconcileStuck` finishes them from PayPal's real state. A firm refusal makes Spotter ask PayPal before it changes any label, so a live hold is never relabelled as failed.
 - The case agent or KERNEL is slow: the 45 second cap ends the case and the payment still waits for a person.
 
@@ -285,7 +285,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run     # 1,449 tests in 122 files
+npx vitest run     # 1,509 tests in 125 files
 npm run build
 ```
 
