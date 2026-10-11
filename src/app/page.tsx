@@ -74,10 +74,12 @@ export default async function Home() {
 
           <div className="hero-grid">
             <div className="hero-copy">
-              <h1 className="hero-h1">PayPal holds the money until someone you trust says yes.</h1>
+              {/* Leads with what only Spotter does (asking the person the text pretends to be); the PayPal hold is how. */}
+              <h1 className="hero-h1">Banks ask the person paying. Spotter asks the person the text pretends to be.</h1>
               <p className="hero-p">
-                Gran forwards a text she isn&apos;t sure about. PayPal holds her &pound;250 while Spotter checks it and asks Sam, the family&apos;s
-                spotter. The text says it&apos;s from Tom, so Spotter asks the real Tom too. Your kid and your AI shopping agent get the same check.
+                A text says it&apos;s Tom and asks Gran for &pound;250. PayPal holds it, Spotter asks the real Tom, and his Not me releases it.
+                It also catches a shop page that shows phones a card form and security scanners nothing, and an AI agent reaching for a PayPal tool its job
+                never needs.
               </p>
               <StartButtons onDark who={who} label="Try it on fake money" />
               {!who && (

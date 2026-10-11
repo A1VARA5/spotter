@@ -20,8 +20,8 @@ import type { Payment } from "@/core/lifecycle";
 import { CaseFile } from "@/ui/CaseFile";
 import { realOne, whyLines } from "@/ui/caseFold";
 import { MarketNote } from "@/ui/components";
-import { topReason } from "@/core/reasons";
-import { outcomeLine, settledCase } from "@/core/settled";
+import { decidedReason } from "@/core/reasons";
+import { outcomeLine, settledCase, shownOutcome } from "@/core/settled";
 import { tripOutcome } from "@/core/tripped";
 import { TripFound } from "@/ui/TripFound";
 import "./ledger.css";
@@ -65,8 +65,8 @@ type Row = {
 
 /** The outcome a payment shows: a hold a tripwire let go is "Stopped by a tripwire", never a person's deny. */
 function shown(p: Payment): { state: TrackState; label: string } {
-  const trip = tripOutcome(p);
-  if (trip) return { state: trip.state, label: trip.long };
+  const own = shownOutcome(p);
+  if (own) return { state: own.state, label: own.long };
   const s = trackState(p.status);
   return { state: s, label: STATE_LABEL[s] };
 }
@@ -83,8 +83,8 @@ function toRow(p: Payment, names: Record<string, string>): Row {
     amount: Number(p.amount),
     currency: p.currency,
     state: s,
-    // The strongest sign, not whichever reason came first (src/core/reasons.ts).
-    why: s === "failed" ? (p.error ?? "") : (topReason(p) ?? "Within the rules."),
+    // The strongest sign, in the past tense once decided (src/core/reasons.ts decidedReason).
+    why: s === "failed" ? (p.error ?? "") : (decidedReason(p) ?? "Within the rules."),
     // The same going rate as the card's price note and the reasons line (src/core/market.ts marketSummary).
     market: marketCell(p.market, p.currency),
     paypal: p.paypal_capture_id ?? p.paypal_authorization_id ?? "",

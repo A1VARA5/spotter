@@ -675,13 +675,16 @@ p {
   align-content: center;
 }
 
+/* Two sentences (banks ask the payer, Spotter asks the person the text pretends to be): a size that keeps the
+   button above the fold at 1440 x 900. */
 .hero-h1 {
-  font-size: clamp(44px, 6vw, 80px);
+  font-size: clamp(38px, 4.1vw, 62px);
   font-weight: 650;
   letter-spacing: -0.04em;
-  line-height: 0.96;
+  line-height: 1;
   color: #fff;
-  max-width: 11ch;
+  max-width: 15ch;
+  text-wrap: balance;
 }
 
 .hero-p {
@@ -5068,6 +5071,13 @@ p {
 
 .tg-dots b:nth-child(3) {
   animation-delay: 240ms;
+}
+
+/* Reduced motion: the typing dots sit still (they were the last three loops still running). */
+@media (prefers-reduced-motion: reduce) {
+  .tg-dots b {
+    animation: none;
+  }
 }
 
 .story-source {

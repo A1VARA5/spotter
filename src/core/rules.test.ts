@@ -107,4 +107,12 @@ describe("checkRules", () => {
     expect(r.hits).toContainEqual(expect.objectContaining({ rule: "method", outcome: "protect" }));
     expect(r.hits.find((h) => h.rule === "method")!.reason).toMatch(/bank transfer/i);
   });
+
+  it("an ask me first limit of zero says every payment waits for a yes, never 'over the £0.00 limit'", () => {
+    const r = checkRules(req(), allowance({ askAbove: gbp(0) }));
+    const t = r.hits.find((h) => h.rule === "threshold")!;
+    expect(t.outcome).toBe("ask");
+    expect(t.reason).toBe("Set to ask first for every payment, whatever the amount.");
+    expect(t.reason).not.toMatch(/0\.00/);
+  });
 });

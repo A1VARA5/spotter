@@ -30,7 +30,7 @@ const SCENES: Scene[] = [
     key: "wiy",
     tab: "Was it you?",
     short: "Was it you",
-    caption: "A text says it's Tom and asks Gran for £250. PayPal holds it, Spotter asks the real Tom, and his Not me releases it.",
+    caption: "Gran forwards the text and PayPal holds her £250. Tom's phone gets the question, and one tap on Not me releases it.",
     ms: 7600,
     Back: TomPhone,
     backKind: "phone",

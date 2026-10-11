@@ -9,9 +9,9 @@ const sans = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-sans", di
 const ios = Inter({ subsets: ["latin"], variable: "--font-ios", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Spotter: a spotter for every payment",
+  title: "Spotter: it asks the person the text pretends to be",
   description:
-    "Spotter holds a payment for a moment, checks it, and asks someone you trust when it matters. For AI agents, older relatives and kids. Built on PayPal.",
+    "Banks ask the person paying. Spotter asks the person the text pretends to be, while PayPal holds the money. It also catches shop pages that show phones a card form and security scanners nothing, and AI agents reaching for PayPal tools they never need.",
 };
 
 export const viewport: Viewport = { themeColor: "#f3f5f2", width: "device-width", initialScale: 1 };

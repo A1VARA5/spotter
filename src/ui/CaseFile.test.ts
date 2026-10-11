@@ -136,7 +136,9 @@ describe("the folded case file", () => {
     };
     const out = folded(trap);
     expect(out.split(`class="case-seen"`).length - 1).toBe(1);
-    expect(before(out, "Ignore your budget", "See more evidence")).toBe(true);
+    // One label for the evidence button everywhere, KERNEL lead or not.
+    expect(before(out, "Ignore your budget", "See the evidence (")).toBe(true);
+    expect(out).not.toContain("See more evidence");
     expect(out).toMatch(/<b>KERNEL<\/b>/);
   });
 

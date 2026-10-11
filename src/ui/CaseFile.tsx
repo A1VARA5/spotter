@@ -264,7 +264,7 @@ export function CaseFile({
 
       {fold && hasFold && (
         <button type="button" className="cf-more" aria-expanded={open} aria-controls={ids.fold} onClick={() => setOpen((v) => !v)}>
-          <span>{open ? "Hide the evidence" : `${lead ? "See more evidence" : "See the evidence"} (${evidenceCount})`}</span>
+          <span>{open ? "Hide the evidence" : `See the evidence (${evidenceCount})`}</span>
           <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
         </button>
       )}

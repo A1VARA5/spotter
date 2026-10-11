@@ -23,13 +23,30 @@ export async function fileReport(db: Db, r: { householdId: string; identifier: s
   );
 }
 
-export async function networkCount(db: Db, identifier: string, householdId: string): Promise<{ families: number; last?: string }> {
-  if (!normName(identifier)) return { families: 0 };
+export type NetworkCount = { families: number; last?: string; demo: boolean };
+
+/**
+ * Other families that said no to this payee in the window. Demo families (people trying the demo) and real families
+ * are kept apart: a demo visitor's count is other demo visitors, and a real family never counts demo clicks.
+ * demo: which kind was counted, so the words can say so (networkLine).
+ */
+export async function networkCount(db: Db, identifier: string, householdId: string): Promise<NetworkCount> {
+  const [me] = await db.query<{ demo: boolean }>("select demo from households where id = $1", [householdId]);
+  const demo = me?.demo === true;
+  if (!normName(identifier)) return { families: 0, demo };
   const rows = await db.query<{ families: string | number; last: string | null }>(
-    `select count(*) as families, max(at) as last from reports
-     where key = $1 and household_id <> $2 and at > now() - interval '${WINDOW_DAYS} days'`,
-    [reportKey(identifier), householdId],
+    `select count(*) as families, max(r.at) as last from reports r join households h on h.id = r.household_id
+     where r.key = $1 and r.household_id <> $2 and h.demo = $3 and r.at > now() - interval '${WINDOW_DAYS} days'`,
+    [reportKey(identifier), householdId, demo],
   );
   const families = Number(rows[0]?.families ?? 0);
-  return families ? { families, last: String(rows[0]!.last) } : { families };
+  return families ? { families, last: String(rows[0]!.last), demo } : { families, demo };
+}
+
+/** The count in words: "Spotter families" for real ones, "demo families" (said plainly) for the demo. */
+export function networkLine(n: Pick<NetworkCount, "families" | "demo">, payee: string): string {
+  const kind = n.demo ? "demo" : "Spotter";
+  if (!n.families) return `No other ${kind} family has said no to ${payee} in the last ${WINDOW_DAYS} days.`;
+  const who = `${n.families} other ${kind} famil${n.families === 1 ? "y" : "ies"}${n.demo ? " (other people trying the demo)" : ""}`;
+  return `${who} said no to ${payee} in the last ${WINDOW_DAYS} days.`;
 }

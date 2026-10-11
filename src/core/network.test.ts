@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "./households";
-import { fileReport, networkCount, reportKey } from "./network";
+import { fileReport, networkCount, networkLine, reportKey } from "./network";
 
 let db: Db;
 let a: string, b: string, c: string;
@@ -53,6 +53,24 @@ describe("network", () => {
     await fileReport(db, { householdId: a, identifier: "x@y.com", kind: "denied" });
     await db.query("update reports set at = now() - interval '31 days'");
     expect((await networkCount(db, "x@y.com", c)).families).toBe(0);
+  });
+
+  it("keeps demo families and real families apart, and says which ones it counted", async () => {
+    const d1 = (await createHousehold(db, { name: "D1", spotterName: "Sam", demo: true })).id;
+    const d2 = (await createHousehold(db, { name: "D2", spotterName: "Sam", demo: true })).id;
+    await fileReport(db, { householdId: d1, identifier: "GadgetBarn", kind: "blocked" });
+    await fileReport(db, { householdId: a, identifier: "GadgetBarn", kind: "denied" });
+    // A demo visitor only hears about other demo families; a real family never counts demo clicks.
+    expect(await networkCount(db, "GadgetBarn", d2)).toMatchObject({ families: 1, demo: true });
+    expect(await networkCount(db, "GadgetBarn", b)).toMatchObject({ families: 1, demo: false });
+  });
+
+  it("labels demo counts as demo families, in plain words", () => {
+    expect(networkLine({ families: 7, demo: true }, "GadgetBarn")).toBe(
+      "7 other demo families (other people trying the demo) said no to GadgetBarn in the last 30 days.",
+    );
+    expect(networkLine({ families: 1, demo: false }, "GadgetBarn")).toBe("1 other Spotter family said no to GadgetBarn in the last 30 days.");
+    expect(networkLine({ families: 0, demo: true }, "GadgetBarn")).toBe("No other demo family has said no to GadgetBarn in the last 30 days.");
   });
 
   it("ignores empty identifiers", async () => {

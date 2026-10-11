@@ -246,6 +246,26 @@ describe("similar ones (everyday things with no model number)", () => {
     expect(i).toMatchObject({ found: true, match: "similar", typical: 9900 });
   });
 
+  it("cuts the designer tail like the market check does, so an everyday lamp isn't '£50 to £1,049' (live, 11 Oct)", () => {
+    const lamp = (id: string, title: string, price: number) => prod(id, title, "Maker " + id, [[`${id}.co.uk`, price, "new"]], ["lamps"]);
+    const matches = [
+      lamp("a", "Traditional Arch Floor Lamp", 5000),
+      lamp("b", "Retro Task Floor Lamp", 7900),
+      lamp("c", "Finn Floor Lamp", 9900),
+      lamp("d", "Charlie Floor Lamp", 12900),
+      lamp("e", "Sculpted Brass Floor Lamp", 49900),
+      lamp("f", "Arco Marble Floor Lamp", 89900),
+      lamp("g", "Idell Floor Lamp", 104900),
+      lamp("h", "Twin Arc Floor Lamp", 104900),
+    ];
+    const i = buildPhoto({ size: [100, 100], things: [{ thing: "floor lamp", bbox: null, categories: ["lamps"], matches }] }, "buy", "GBP", null).items[0]!;
+    if (!i.found) throw new Error("not found");
+    expect(i.match).toBe("similar");
+    expect(i.high).toBeLessThan(20000);
+    expect(i.low).toBe(5000);
+    expect(i.offers).toBe(4);
+  });
+
   it("keeps a confirmed model sold at one shop only (no similar ones to fall back on), as exact from one shop", () => {
     const one = HEADPHONES.slice(0, 2).map((p) => ({ ...p, offers: [{ ...p.offers[0]!, domain: "currys.co.uk" }] }));
     const i = buildPhoto({ size: [960, 720], things: [{ ...scene().things[0]!, matches: one }] }, "buy", "GBP", null).items[0]!;
