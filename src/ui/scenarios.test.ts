@@ -7,6 +7,7 @@ import { checkRules } from "@/core/rules";
 import { decide } from "@/core/decide";
 import type { Allowance, PaymentRequest } from "@/core/types";
 import type { Scenario } from "./scenarios";
+import { OUTCOME_WORDS } from "./labels";
 
 // Third party names a demo video must not show. Spotter's own integrations (PayPal, Telegram...) are fine.
 const BRANDS = /tesco|roblox|robux|steam|spotify|boots|ocado|waitrose|amazon|etsy|uber|apple|sony|currys|john lewis|whatsapp|royal mail|hmrc|facebook|marketplace|gmail|outlook|iphone|ipad|airpods|netflix/i;
@@ -93,5 +94,29 @@ describe("scenarios", () => {
     expect(paper.body.context).toMatch(/usual/i);
     expect((await outcome(paper, PRESETS.buyer.allowance)).outcome).toBe("ask");
     expect((await outcome(paper, DEMO_SPENDERS.find((s) => s.kind === "agent")!.allowance)).outcome).toBe("ask");
+  });
+
+  it("each expected line starts with the app's own word for that outcome", () => {
+    const word: Record<string, string> = {
+      "agent-gift": OUTCOME_WORDS.paid.long, "gran-chemist": OUTCOME_WORDS.paid.long,
+      "agent-big": OUTCOME_WORDS.held.long, "agent-too-cheap": OUTCOME_WORDS.held.long, "gran-hi-mum": OUTCOME_WORDS.held.long, "gran-redelivery": OUTCOME_WORDS.held.long,
+      "agent-trap": OUTCOME_WORDS.blocked.long, "leo-giftcard": OUTCOME_WORDS.blocked.long,
+      "gran-seller": OUTCOME_WORDS.protected.long, "biz-invoice": OUTCOME_WORDS.protected.long,
+      "biz-paper": "Waiting for the owner",
+    };
+    for (const s of [...SCENARIOS, ...BUSINESS_SCENARIOS]) expect(`${s.id}: ${s.expect}`).toMatch(new RegExp(`^${s.id}: ${word[s.id]}\\b`));
+  });
+
+  it("tags the scenarios that show the cloud browser and real shop prices, and only those", () => {
+    const shows = (id: string) => [...SCENARIOS, ...BUSINESS_SCENARIOS].find((s) => s.id === id)!.shows?.map((t) => t.engine) ?? [];
+    expect(shows("agent-trap")).toContain("KERNEL");
+    expect(shows("gran-redelivery")).toContain("KERNEL");
+    for (const id of ["agent-big", "agent-too-cheap", "biz-paper"]) expect(shows(id)).toContain("Channel3");
+    for (const s of [...SCENARIOS, ...BUSINESS_SCENARIOS]) {
+      // A KERNEL tag needs a link to open; a Channel3 tag needs a product to price.
+      if (shows(s.id).includes("KERNEL")) expect(s.body.context).toMatch(/https:\/\//);
+      if (shows(s.id).includes("Channel3")) expect(s.body.item).toBeTruthy();
+    }
+    expect(shows("gran-chemist")).toEqual([]);
   });
 });

@@ -1,13 +1,14 @@
 import { notFound, redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { requirePageSession } from "@/server/page-session";
-import { getSpender, listPayments, weekSpend } from "@/core/lifecycle";
+import { getSpender, listPayments } from "@/core/lifecycle";
+import { weekTally } from "./tally";
 import { hasAgentToken } from "@/core/pairing";
 import { AppShell } from "@/ui/AppShell";
 import { money, STATE_LABEL, trackState } from "@/ui/format";
 import { Connect } from "./Connect";
 import { Hint } from "@/ui/Hint";
-import { labelsFor } from "@/ui/labels";
+import { labelsFor, ON_HOLD, OUTCOME_WORDS } from "@/ui/labels";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Person | Spotter" };
@@ -19,8 +20,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const spender = await getSpender(db, (await params).id);
   if (!spender || spender.household_id !== household.id) notFound();
   const { weekly, askAbove, blockedCategories } = spender.allowance;
-  const used = await weekSpend(db, spender.id, weekly.currency);
-  const recent = (await listPayments(db, household.id, 200)).filter((p) => p.spender_id === spender.id).slice(0, 8);
+  const theirs = (await listPayments(db, household.id, 200)).filter((p) => p.spender_id === spender.id);
+  // Held money is waiting for you, not spent: shown apart, in the app's words.
+  const week = weekTally(theirs, weekly.currency);
+  const recent = theirs.slice(0, 8);
   const recentPayments = (
     <>
       <h2 className="section-title">Recent payments</h2>
@@ -49,8 +52,13 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         <div>
           <dt>Spent this week</dt>
           <dd className="num">
-            {money(used, weekly.currency)} <span>of {money(weekly.amount, weekly.currency)}</span>
+            {money(week.spent, weekly.currency)} <span>of {money(weekly.amount, weekly.currency)}</span>
           </dd>
+          {week.onHold > 0 && (
+            <dd className="num" style={{ fontSize: 14, fontWeight: 500, color: "var(--ink-2)" }}>
+              {money(week.onHold, weekly.currency)} {ON_HOLD}, {OUTCOME_WORDS.held.long.toLowerCase()}
+            </dd>
+          )}
         </div>
         <div>
           <dt>Asks you above</dt>

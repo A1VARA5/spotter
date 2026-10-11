@@ -29,7 +29,7 @@ const WAITS = [
   {
     icon: ShoppingBag,
     title: "A safer way to buy it",
-    text: "If it's a real product, Spotter looks for the same thing at a real shop. One tap denies the risky payment and buys it there instead, through PayPal, with buyer protection.",
+    text: "If it's a real product, Spotter prices it at real shops with Channel3, and says when it's far too dear or far too cheap. One tap denies the risky payment and buys it at a real shop instead, through PayPal, with buyer protection.",
   },
   {
     icon: FileCheck,
@@ -137,6 +137,16 @@ export default async function HowPage() {
               throwaway KERNEL cloud browser, notes where it really ends up and what the page asks for, takes a small screenshot, and the browser gets deleted. It
               only looks. It never types, clicks or submits anything.
             </p>
+            <p className="waits-kernel">
+              The same KERNEL browser checks a shop an AI agent is about to pay: what a person sees next to what the agent reads (hidden instructions), and the tools
+              the page offers AI agents. For a parcel style link it opens the page twice at once, as a desktop and as Gran&apos;s phone, because some scam pages only
+              show the card form to phones.
+            </p>
+            {who && (
+              <p className="waits-kernel">
+                <Link href="/checks">How Spotter checked it</Link> shows each of these on your own family&apos;s payments.
+              </p>
+            )}
           </div>
           <ul className="waits-list">
             {WAITS.map(({ icon: Icon, title, text }) => (
@@ -151,7 +161,7 @@ export default async function HowPage() {
           </ul>
         </div>
         <div className="how-wt">
-          <h3>Watchtower, the family&apos;s board</h3>
+          <h3>Watchtower, the family&apos;s board (built on AG Studio)</h3>
           <p>
             Every payment, hold and scam sign in one place, and you can just ask it things. &quot;What did Leo try to spend on games?&quot; and Claude builds the chart
             for you. It can read and rearrange the board, nothing else, and it never sees the scam messages themselves.
@@ -174,7 +184,8 @@ export default async function HowPage() {
                 "Stop gift card, crypto and Friends and Family payments outright.",
                 "Make AI agents pay only through it, with no way to approve themselves.",
                 "Look into a held payment for you and offer a safer shop when there is one.",
-                "Read a screenshot of a message and check its words, or price each thing in a photo of an ad or a quote at real shops.",
+                "Read a screenshot of a message and check its words, or price each thing in a photo of an ad or a quote at real shops (Channel3).",
+                "Watch a price for you at real shops (Channel3) and tell you when it drops. It never buys on its own.",
               ].map((t) => (
                 <li key={t}>
                   <Check size={17} strokeWidth={2.4} aria-hidden="true" />

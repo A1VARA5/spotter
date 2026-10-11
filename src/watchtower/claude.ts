@@ -85,13 +85,27 @@ export function toClaude(req: AgLlmRequest): ClaudeTurn {
   };
 }
 
+/** Markdown marks taken out, for text AG Studio shows raw (a delegated agent's complete_task summary). */
+export function plainText(s: string): string {
+  return s
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/^(\s*)\*\s+/gm, "$1- ");
+}
+
+const plainDeep = (v: unknown): unknown =>
+  typeof v === "string" ? plainText(v) : Array.isArray(v) ? v.map(plainDeep) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, plainDeep(x)])) : v;
+
 export function fromClaude(msg: Anthropic.Message): AgLlmResponse {
   const output: AgAiOutputItem[] = [];
   msg.content.forEach((block, i) => {
     if (block.type === "text" && block.text) {
       output.push({ id: `${msg.id}_${i}`, kind: "output", type: "message", role: "assistant", status: "completed", content: [{ type: "text", text: block.text, annotations: [] }] });
     } else if (block.type === "tool_use") {
-      output.push({ id: `${msg.id}_${i}`, kind: "output", type: "function_call", callId: block.id, name: block.name, arguments: JSON.stringify(block.input ?? {}), status: "completed" });
+      const input = block.name === "complete_task" ? plainDeep(block.input ?? {}) : (block.input ?? {});
+      output.push({ id: `${msg.id}_${i}`, kind: "output", type: "function_call", callId: block.id, name: block.name, arguments: JSON.stringify(input), status: "completed" });
     }
   });
   const u = msg.usage;
