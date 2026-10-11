@@ -132,6 +132,33 @@ describe("connecting people", () => {
     hh = saved;
   });
 
+  it("gives the decoy key with the real one, and the key card and Switch off now work for the signed in household only", async () => {
+    const agent = await addPerson("agent", "Bot");
+    const j = await (await h.agentToken(req({}, { unlocked: true }), agent)).json();
+    expect(j.decoy).toMatch(/^spt_/);
+    expect(j.decoy).not.toBe(j.token);
+    const card = await (await h.keyCard(req({}), agent)).json();
+    expect(card).toMatchObject({ status: "live", label: `spt_…${j.token.slice(-4)}` });
+    // PayPal's own record of the newest agent order: the custom_id PayPal returns from get_order.
+    await db.query(
+      "insert into payments (id, spender_id, request, status, amount, currency, paypal_order_id, paypal_custom_id) values ('pay_k1', $1, '{}'::jsonb, 'needs_approval', 100, 'USD', '8DD59221E7921940H', 'spt-abcd:pay_k1')",
+      [agent],
+    );
+    const read = async (id: string) => JSON.stringify({ id, purchase_units: [{ custom_id: "spt-abcd:pay_k1" }] });
+    expect(await (await h.keyCard(req({}), agent, read)).json()).toMatchObject({ order: { paypalOrderId: "8DD59221E7921940H" }, paypalCustomId: "spt-abcd:pay_k1", paypalStatus: "match" });
+    const other = async (id: string) => JSON.stringify({ id, purchase_units: [{ custom_id: "spt-zzzz:pay_k1" }] });
+    expect((await (await h.keyCard(req({}), agent, other)).json()).paypalStatus).toBe("mismatch");
+    const refused = async () => JSON.stringify({ error: { message: "not found", type: "paypal_error" } });
+    expect((await (await h.keyCard(req({}), agent, refused)).json()).paypalStatus).toBe("error");
+    expect((await h.keyOff(req({}), agent)).status).toBe(200);
+    expect((await (await h.keyCard(req({}), agent)).json()).status).toBe("switched_off");
+    const saved = hh;
+    hh = (await createHousehold(db, { name: "o", spotterName: "o" })).id;
+    expect((await h.keyCard(req({}), agent)).status).toBe(404);
+    expect((await h.keyOff(req({}), agent)).status).toBe(404);
+    hh = saved;
+  });
+
   it("refuses an agent token for a person who isn't an agent", async () => {
     const gran = await addPerson("relative", "Gran");
     expect((await h.agentToken(req({}, { unlocked: true }), gran)).status).toBe(400);

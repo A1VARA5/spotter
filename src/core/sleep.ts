@@ -7,7 +7,7 @@
 import type { Db } from "@/db";
 import { PayPalError } from "@/paypal/client";
 import { asDate, DAY, HONOR_DAYS, HOUR, holdEndsAt, LAST_REAUTH_DAY, nextNineAm, safeTz, whenText } from "./holdtime";
-import { getPayment, getSpender, type Deps, type Payment } from "./lifecycle";
+import { getPayment, getSpender, voidKey, type Deps, type Payment } from "./lifecycle";
 export { askingAgain, DEFAULT_TZ, holdEndLine, holdEndsAt, HOLD_DAYS, HONOR_DAYS, nextNineAm, safeTz, whenText } from "./holdtime";
 
 async function event(db: Db, paymentId: string, type: string, data: Record<string, unknown> = {}) {
@@ -146,7 +146,7 @@ async function renewOnce(deps: Pick<Deps, "db" | "paypal">, reauthorize: NonNull
   const from = claimed.paypal_authorization_id!;
   let fresh: { authorizationId: string; expiresAt?: string };
   try {
-    fresh = await reauthorize(from, `reauth-${p.id}`);
+    fresh = await reauthorize(from, `reauth-${p.id}-${from}`);
   } catch (e) {
     const issue = e instanceof PayPalError ? e.issue : undefined;
     const status = e instanceof PayPalError ? e.status : 0;
@@ -178,7 +178,7 @@ async function renewOnce(deps: Pick<Deps, "db" | "paypal">, reauthorize: NonNull
     // Release it first (that only ever gives money back), then write down what happened.
     let voidError: string | null = null;
     try {
-      await paypal.voidAuthorization(fresh.authorizationId);
+      await paypal.voidAuthorization(fresh.authorizationId, voidKey(p.id, fresh.authorizationId));
     } catch (e) {
       voidError = errText(e);
       console.error(`[spotter] releasing the spare reauthorization ${fresh.authorizationId} for ${p.id} failed: ${voidError}`);

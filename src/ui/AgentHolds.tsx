@@ -121,10 +121,25 @@ export function AgentHolds({ initial }: { initial: Holds }) {
           {trip ? (
             <>
               <p className="ah-line">
-                It reached for PayPal&apos;s <code>{trip.tool}</code> tool, which has nothing to do with its job. Spotter never ran it and nothing was sent to PayPal.
+                {trip.tool === "decoy_key" ? (
+                  <>Someone used the decoy key Spotter planted in its config, so its secrets leaked. Spotter switched off both keys.</>
+                ) : (
+                  <>
+                    It reached for PayPal&apos;s <code>{trip.tool}</code> tool, which has nothing to do with its job. Spotter never ran it and nothing was sent to PayPal.
+                  </>
+                )}
                 {trip.voided ? ` ${trip.voided === 1 ? "Its held payment was" : `Its ${trip.voided} held payments were`} let go.` : ""}{" "}
                 <span className="ah-when" suppressHydrationWarning>{timeAgo(trip.at)}</span>
               </p>
+              {trip.wouldHaveSent && (
+                <p className="ah-without">
+                  <span className="ah-without-label">Without Spotter</span>
+                  <s>{trip.wouldHaveSent.text}</s>
+                  <span className="ah-without-sent">
+                    {trip.wouldHaveSent.currency ? `${formatMoney({ amount: 0, currency: trip.wouldHaveSent.currency as Currency })} sent` : "Nothing sent"}
+                  </span>
+                </p>
+              )}
               <div className="ah-block">
                 <p className="ah-block-title">What it asked for</p>
                 <p className="ah-block-sub">Whoever steered it may have written this. Shown as plain text.</p>

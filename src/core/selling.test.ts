@@ -135,7 +135,7 @@ describe("the spotter decides a refund", () => {
     const req = await held();
     const r = await decideRefund(deps, run, hh, req.id, "approve", "Sam");
     expect(r.ok).toBe(true);
-    expect(run).toHaveBeenCalledWith("create_refund", { capture_id: "2GG279541U471931P", amount: { currency_code: "GBP", value: "20.00" }, note_to_payer: "Sorry, wrong size" });
+    expect(run).toHaveBeenCalledWith("create_refund", { capture_id: "2GG279541U471931P", amount: { currency_code: "GBP", value: "20.00" }, note_to_payer: "Sorry, wrong size" }, { requestId: `refund-${req.id}` });
     const [after] = await listRefunds(deps.db, hh);
     expect(after).toMatchObject({ status: "refunded", paypal_refund_id: "3RF12345AB678901C", decided_by: "Sam" });
   });
@@ -256,5 +256,6 @@ describe("a selling agent's own orders", () => {
     await sellPayOrder(deps, run, "seller", "4NEW3456CD789012E");
     const [sale] = await deps.db.query<{ capture_id: string }>("select capture_id from sales where paypal_order_id = '4NEW3456CD789012E'");
     expect(sale!.capture_id).toBe("5CAP79541U471931P");
+    expect(run).toHaveBeenCalledWith("pay_order", { id: "4NEW3456CD789012E" }, { requestId: expect.stringMatching(/^capture-sale_/) });
   });
 });

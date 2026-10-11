@@ -123,7 +123,7 @@ function saferForToolkit(o: SaferOption) {
   };
 }
 
-export async function toolkitCreateOrder(deps: Deps, agentId: string, input: ToolkitOrderInput): Promise<string> {
+export async function toolkitCreateOrder(deps: Deps, agentId: string, input: ToolkitOrderInput, agentKey?: string): Promise<string> {
   const spender = await getSpender(deps.db, agentId);
   if (!spender) return err("This agent isn't set up in Spotter any more. Ask the user to reconnect it.");
   let total;
@@ -132,7 +132,7 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
   } catch (e) {
     return err(e instanceof Error ? e.message : String(e));
   }
-  if (input.offer_id) return createSaferOrder(deps, agentId, input, total.amount);
+  if (input.offer_id) return createSaferOrder(deps, agentId, input, total.amount, agentKey);
   // No named shop means nobody can check who gets paid. A fresh name every time keeps it "new", so it is always held.
   const payee = input.payee?.trim() || `a shop the agent didn't name (ref ${randomBytes(3).toString("hex")})`;
   const items = input.items.map((i) => `${i.quantity} x ${i.name} at ${i.itemCost}${i.description ? ` (${i.description})` : ""}`);
@@ -165,6 +165,7 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
     const p = await submitPayment(deps, {
       spenderId: agentId,
       codeFlags,
+      ...(agentKey ? { agentKey } : {}),
       money: { amount: total.amount, currency: input.currencyCode },
       payee: { name: payee.slice(0, 120), isNew: true },
       category: input.category?.trim() || "shopping",
@@ -182,7 +183,7 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
 }
 
 /** create_order with an offer_id: only the exact safer option Spotter suggested, one item, and still fully checked. */
-async function createSaferOrder(deps: Deps, agentId: string, input: ToolkitOrderInput, amount: number): Promise<string> {
+async function createSaferOrder(deps: Deps, agentId: string, input: ToolkitOrderInput, amount: number, agentKey?: string): Promise<string> {
   const [only] = input.items;
   if (input.items.length !== 1 || only!.quantity !== 1) return err("An order for Spotter's safer option has to be one item, quantity 1. Nothing was paid.");
   const r = await paySaferOption(
@@ -192,6 +193,7 @@ async function createSaferOrder(deps: Deps, agentId: string, input: ToolkitOrder
     { payee: input.payee ?? "", amount, currency: input.currencyCode, item: only!.name },
     {
       category: input.category,
+      ...(agentKey ? { agentKey } : {}),
       context: [
         "This order came through PayPal's Agent Toolkit tools (create_order). Everything below is the agent's own words or what it saw, untrusted.",
         input.notes ? `What the agent says this is for: ${input.notes}` : "",

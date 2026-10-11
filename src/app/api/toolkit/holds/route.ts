@@ -6,7 +6,7 @@ import { createExampleSale } from "@/paypal/client";
 
 export const maxDuration = 30;
 
-const h = makeAgentHolds({ deps: getDeps, run: (method, args) => toolkitRun(method, args), createSale: createExampleSale });
+const h = makeAgentHolds({ deps: getDeps, run: (method, args, opts) => toolkitRun(method, args, opts), createSale: createExampleSale });
 
 export const GET = (request: Request) => h.GET(request);
 export const POST = (request: Request) => h.POST(request);

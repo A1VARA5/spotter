@@ -293,7 +293,7 @@ describe("asking the real person, and their answer", () => {
     expect(r.reply).toMatch(/didn't confirm releasing/);
     // The note stub delivered nowhere, so the reply doesn't claim the spotter knows.
     expect(r.reply).toMatch(/couldn't reach Sam/);
-    expect((await getPayment(db, p.id))!.status).toBe("failed");
+    expect((await getPayment(db, p.id))!.status).toBe("voiding"); // reconcile keeps asking PayPal to let it go
   });
 
   it("says the spotter was told only when a note really went out", async () => {

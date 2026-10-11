@@ -1,0 +1,39 @@
+/* The agent key card and the "PayPal didn't confirm yet" retry line. Tokens from docs/DESIGN.md. */
+.key-card { display: grid; gap: 14px; padding: 16px; border-radius: 14px; background: var(--chalk); min-width: 0; }
+.key-card .connect-icon { background: var(--paper); }
+.key-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.key-label { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.key-status { font-size: 14px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--chalk); color: var(--ink-2); }
+.key-status[data-status="live"] { background: var(--go-soft); color: var(--go); }
+.key-status[data-status="frozen"] { background: var(--hold-soft); color: var(--ink); }
+.key-status[data-status="switched_off"] { background: var(--stop-soft); color: var(--stop); }
+
+.key-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
+.key-facts dt { font-size: 13.5px; color: var(--ink-2); }
+.key-facts dd { margin: 0; font-size: 17px; font-weight: 650; }
+
+.key-record { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--go-soft); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+
+.key-calls { display: grid; gap: 8px; }
+.key-calls-title { margin: 0; font-size: 15px; font-weight: 700; }
+.key-call-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.key-call { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.key-call:first-child { border-top: 0; }
+.key-call-tool { font-weight: 650; overflow-wrap: anywhere; }
+.key-call-outcome { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.key-call[data-outcome="tripwire"] .key-call-outcome { color: var(--stop); }
+.key-call[data-outcome="bad"] .key-call-outcome { color: var(--stop); }
+.key-call-time { font-size: 13.5px; color: var(--ink-2); white-space: nowrap; }
+.key-call-args { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; white-space: pre-wrap; }
+.key-off { justify-self: start; }
+
+.paypal-retry { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: 12px; background: var(--hold-soft); }
+.paypal-retry p { margin: 0; font-size: 15px; line-height: 1.45; flex: 1 1 260px; }
+.paypal-retry .btn { min-height: 40px; }
+.paypal-retry-note { flex-basis: 100%; color: var(--ink-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .paypal-retry .spin { animation: key-spin 900ms linear infinite; }
+}
+@keyframes key-spin { to { transform: rotate(360deg); } }
+.key-record[data-status="mismatch"], .key-record[data-status="missing"] { background: var(--stop-soft); }
+.key-record[data-status="error"] { background: var(--chalk); }

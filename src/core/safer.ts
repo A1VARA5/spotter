@@ -154,7 +154,7 @@ export async function paySaferOption(
   agentId: string,
   offerId: string,
   claim: SaferClaim,
-  base: { category?: string; context: string },
+  base: { category?: string; context: string; agentKey?: string },
 ): Promise<{ payment: Payment } | { error: string }> {
   const { db } = deps;
   const r = (await db.query<Row>(`${SELECT} where id = $1 and spender_id = $2`, [offerId, agentId]))[0];
@@ -196,6 +196,7 @@ export async function paySaferOption(
   try {
     payment = await submitPayment(deps, {
     spenderId: agentId,
+    ...(base.agentKey ? { agentKey: base.agentKey } : {}),
     money: { amount: o.price, currency: o.currency },
     payee: { name: o.domain, isNew: true },
     category: base.category?.trim() || from.request.category,

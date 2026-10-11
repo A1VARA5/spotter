@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getDeps } from "@/server/deps";
 import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, agentWatchPrice } from "@/server/agent";
 import { getWatchDeps } from "@/server/watch-deps";
-import { verifyAgentToken } from "@/core/pairing";
+import { agentAuthInfo, guardAgentRoute, keyLabelOf, logged } from "@/server/agent-guard";
 import { getSpender } from "@/core/lifecycle";
 import { familySearch, searchProducts } from "@/market/channel3";
 
@@ -47,9 +47,22 @@ const handler = createMcpHandler(
         }),
       },
       async (input, ctx) => {
-        const r = await agentRequestPayment(await getDeps(), agentOf(ctx), input);
-        const safer = r.safer_option ? `\nsafer_option: ${JSON.stringify(r.safer_option)}` : "";
-        return text(`${r.message}${r.payment_id ? ` (payment_id: ${r.payment_id})` : ""}${safer}`);
+        const deps = await getDeps();
+        let status = "ok";
+        const reply = await logged(
+          deps.db,
+          ctx,
+          "request_payment",
+          input,
+          async () => {
+            const r = await agentRequestPayment(deps, agentOf(ctx), input, { agentKey: keyLabelOf(ctx) });
+            status = r.status;
+            const safer = r.safer_option ? `\nsafer_option: ${JSON.stringify(r.safer_option)}` : "";
+            return `${r.message}${r.payment_id ? ` (payment_id: ${r.payment_id})` : ""}${safer}`;
+          },
+          () => status,
+        );
+        return text(reply);
       },
     );
 
@@ -68,9 +81,13 @@ const handler = createMcpHandler(
       async ({ query, currency }, ctx) => {
         // Each search is a Channel3 credit: cached, and capped per family and per day (src/market/channel3.ts).
         const { db } = await getDeps();
-        const agent = await getSpender(db, agentOf(ctx));
-        if (!agent) return text("This agent isn't set up in Spotter any more. Ask the user to reconnect it.");
-        return text((await agentFindProducts((q, c, l) => familySearch(db, agent.household_id, searchProducts, q, c, l), query, currency)).message);
+        return text(
+          await logged(db, ctx, "find_products", { query, currency }, async () => {
+            const agent = await getSpender(db, agentOf(ctx));
+            if (!agent) return "This agent isn't set up in Spotter any more. Ask the user to reconnect it.";
+            return (await agentFindProducts((q, c, l) => familySearch(db, agent.household_id, searchProducts, q, c, l), query, currency)).message;
+          }),
+        );
       },
     );
 
@@ -81,7 +98,10 @@ const handler = createMcpHandler(
         description: "Check whether a payment you requested was paid, is still waiting for the user's spotter, or was refused.",
         inputSchema: z.object({ payment_id: z.string().min(1).max(64) }),
       },
-      async ({ payment_id }, ctx) => text((await agentPaymentStatus(await getDeps(), agentOf(ctx), payment_id)).message),
+      async ({ payment_id }, ctx) => {
+        const deps = await getDeps();
+        return text(await logged(deps.db, ctx, "payment_status", { payment_id }, async () => (await agentPaymentStatus(deps, agentOf(ctx), payment_id)).message));
+      },
     );
 
     server.registerTool(
@@ -100,7 +120,7 @@ const handler = createMcpHandler(
           currency: z.enum(["GBP", "USD"]).optional(),
         }),
       },
-      async (input, ctx) => text((await agentWatchPrice(await getWatchDeps(), agentOf(ctx), input)).message),
+      async (input, ctx) => text(await logged((await getDeps()).db, ctx, "watch_price", input, async () => (await agentWatchPrice(await getWatchDeps(), agentOf(ctx), input)).message)),
     );
 
     server.registerTool(
@@ -110,19 +130,16 @@ const handler = createMcpHandler(
         description: "See how much you can still spend this week, what needs the spotter's approval and what is never allowed.",
         inputSchema: z.object({}),
       },
-      async (_args, ctx) => text((await agentAllowance(await getDeps(), agentOf(ctx))).message),
+      async (_args, ctx) => {
+        const deps = await getDeps();
+        return text(await logged(deps.db, ctx, "my_allowance", {}, async () => (await agentAllowance(deps, agentOf(ctx))).message));
+      },
     );
   },
   { serverInfo: { name: "spotter", version: "0.1.0" } },
 );
 
-const authed = withMcpAuth(
-  handler,
-  async (_req, bearer) => {
-    const agent = await verifyAgentToken((await getDeps()).db, bearer);
-    return agent ? { token: bearer!, clientId: "spotter-agent", scopes: ["payments:request"], extra: { spenderId: agent.spenderId } } : undefined;
-  },
-  { required: true },
-);
+// Decoy key check and the daily rate limit run first (server/agent-guard.ts); then only a live, real key gets in.
+const authed = guardAgentRoute(getDeps, withMcpAuth(handler, async (_req, bearer) => agentAuthInfo((await getDeps()).db, bearer), { required: true }));
 
 export { authed as GET, authed as POST, authed as DELETE };

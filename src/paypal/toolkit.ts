@@ -18,11 +18,30 @@ export const SPOTTER_RUNS = new Set([
   "show_subscription_details",
 ]);
 
-/** The toolkit's own call. sandbox must be set: the toolkit defaults to the live API. Returns the toolkit's JSON string. */
-export async function toolkitRun(method: string, args: Record<string, unknown>, api?: { run: (m: string, a: unknown) => Promise<string> }): Promise<string> {
+type ToolkitApi = { run: (m: string, a: unknown) => Promise<string> };
+type Context = { sandbox: true; request_id?: string };
+export type RunOpts = {
+  /** PayPal-Request-Id for a money call (the toolkit sends context.request_id as that header), so a retry is one request. */
+  requestId?: string;
+  timeoutMs?: number;
+};
+const TIMEOUT_MS = 15_000;
+const realApi = async (context: Context): Promise<ToolkitApi> => new PayPalAPI(await token(), context);
+
+/**
+ * The toolkit's own call. sandbox must be set: the toolkit defaults to the live API. Returns the toolkit's JSON string.
+ * The toolkit's HTTP client has no timeout (axios timeout 0), so Spotter stops waiting after 15 seconds and throws a
+ * plain error. The request may still land at PayPal, which is why money calls carry a requestId.
+ */
+export async function toolkitRun(method: string, args: Record<string, unknown>, opts: RunOpts = {}, make: (c: Context) => Promise<ToolkitApi> = realApi): Promise<string> {
   if (!SPOTTER_RUNS.has(method)) throw new Error(`Spotter never runs the toolkit's ${method}.`);
-  const client = api ?? new PayPalAPI(await token(), { sandbox: true });
-  return client.run(method, args);
+  const ms = opts.timeoutMs ?? TIMEOUT_MS;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    // The token fetch is inside the race too, so a hung token request is bounded as well.
+    make(opts.requestId ? { sandbox: true, request_id: opts.requestId } : { sandbox: true }).then((client) => client.run(method, args)),
+    new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(`PayPal didn't answer ${method} within ${Math.round(ms / 1000)} seconds.`)), ms))),
+  ]).finally(() => clearTimeout(timer));
 }
 
 /** The toolkit's own get_order. */
