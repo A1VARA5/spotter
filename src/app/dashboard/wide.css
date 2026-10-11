@@ -30,18 +30,5 @@
 .tool-peek-title { display: flex; align-items: center; gap: 12px; font-size: 14.5px; font-weight: 650; }
 .tool-peek .case-watch { justify-self: start; margin-top: 4px; }
 
-/* A live price watch says so. */
-.watch-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: 2px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--go-soft);
-  color: var(--go);
-  font-size: 12px;
-  font-weight: 700;
-}
-.watch-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* How a live price watch is checked (its Live badge is in src/ui/pricewatch.css). */
 .watch-how { font-size: 13px; color: var(--ink-2); line-height: 1.4; }

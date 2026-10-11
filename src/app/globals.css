@@ -1477,35 +1477,6 @@ p {
   gap: 8px;
 }
 
-.setup-progress {
-  color: var(--ink-2);
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.setup-dots {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  list-style: none;
-  padding: 0;
-  margin: 0 0 20px;
-}
-
-.setup-dots li {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line);
-}
-
-.setup-dots li[data-done="true"] {
-  background: var(--ink);
-}
-
-.setup-dots li[data-now="true"] {
-  background: var(--hold);
-}
-
 .setup-q {
   font-size: 31px;
   line-height: 1.15;
@@ -2425,10 +2396,7 @@ p {
   padding-top: 28px;
 }
 
-.setup-preview {
-  display: none;
-}
-
+/* Under 1000 px the preview is a dark band after the question (src/app/setup/preview.css). */
 @media (min-width: 1000px) {
   .setup-preview {
     position: sticky;
@@ -2443,11 +2411,6 @@ p {
       radial-gradient(60% 50% at 60% 30%, rgb(242 183 5 / 0.12), transparent 70%),
       #0d141c;
   }
-}
-
-.preview-phone {
-  width: 280px;
-  height: 580px;
 }
 
 .setup-preview-cap {
@@ -7367,9 +7330,8 @@ h3 {
 .watch-ended { margin: 0; font-size: 14px; color: var(--ink-2); }
 .watch-ended:focus { outline: none; }
 .watch-ended:focus-visible { outline: 2px solid var(--protect); outline-offset: 3px; border-radius: 4px; }
-.watch-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 14px; }
+.watch-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
 .watch-list > li { display: grid; gap: 6px; }
-.watch-for { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 
 /* "Was it you?": the ask on held cards and feed rows */
 .wiy-line {

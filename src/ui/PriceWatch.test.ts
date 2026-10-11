@@ -47,3 +47,61 @@ describe("a live price watch", () => {
     expect(out).toContain("Example, checked earlier");
   });
 });
+
+// The panel in the dashboard's Price watches dialog: one heading per watch, current best against what was nearly
+// paid, a labelled chart, the source, and one status badge. The dialog says "never buys" once, so the panel doesn't.
+describe("the price watch panel", () => {
+  const dropped: WatchView = {
+    ...w,
+    who: "Gran",
+    item: "Over ear wireless headphones",
+    nearlyPaid: 8900,
+    target: 7600,
+    best: { price: 6900, shop: "harbourline-audio.co.uk", url: "" },
+    saving: 2000,
+    status: "dropped",
+    example: true,
+    history: {
+      source: "checks",
+      points: [
+        { at: "2026-10-01T09:00:00Z", price: 8900 },
+        { at: "2026-10-05T09:00:00Z", price: 8400 },
+        { at: "2026-10-11T09:00:00Z", price: 6900 },
+      ],
+    },
+  };
+  const panel = (watch: WatchView, updates?: "on_change" | "daily") => renderToStaticMarkup(createElement(PriceWatch, { watch, variant: "panel", updates }));
+
+  it("puts the item first, then the best price now against what was nearly paid", () => {
+    const out = panel(dropped);
+    expect(out.match(/<h3/g)?.length).toBe(1);
+    expect(out).toContain(">Over ear wireless headphones</h3>");
+    expect(out).toMatch(/Best price now.*£69\.00.*harbourline-audio\.co\.uk/s);
+    expect(out).toMatch(/Gran nearly paid.*£89\.00/s);
+    expect(out).toContain("£20.00 less");
+  });
+
+  it("draws the price line with labelled axis points and says it in words too", () => {
+    const out = panel(dropped);
+    expect(out).toContain('role="img"');
+    expect(out).toContain('aria-label="Price went from £89.00 on 1 Oct to £69.00 on 11 Oct. Target £76.00."');
+    for (const label of [">£89<", ">£69<", ">1 Oct<", ">11 Oct<", ">Target £76<"]) expect(out).toContain(label);
+  });
+
+  it("shows one status badge, names Channel3, and leaves the never buys line to the dialog", () => {
+    const out = panel(dropped);
+    expect(out.match(/class="pw-badge/g)?.length).toBe(1);
+    expect(out).toContain(">Example, checked earlier<");
+    expect(out).toContain("Channel3");
+    expect(out).not.toMatch(/never buys|Nothing is bought/);
+    expect(out).not.toContain(" · ");
+  });
+
+  it("marks a live watch Live, with its target, how it is checked, and a way to stop", () => {
+    const out = renderToStaticMarkup(createElement(PriceWatch, { watch: w, variant: "panel", updates: "daily", paymentId: "pay_1" }));
+    expect(out).toContain(">Live<");
+    expect(out).toContain("Watching until 25 Oct for <b>£219.00</b> or less");
+    expect(out).toMatch(/checks (it|the price) every day/);
+    expect(out).toContain("Stop watching");
+  });
+});

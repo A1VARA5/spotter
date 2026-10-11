@@ -104,7 +104,7 @@ export function engines(payments: CheckPayment[], names: Record<string, string>,
               label: "See what it saw",
               example: isExample(kernel),
               shows,
-              ...(page.screenshot && SHOT.test(page.screenshot) ? { thumb: { src: page.screenshot, alt: `What KERNEL's cloud browser saw on ${host(page.finalUrl || page.url)}` } } : {}),
+              ...(page.screenshot && SHOT.test(page.screenshot) ? { thumb: { src: page.screenshot, alt: `What the cloud browser (KERNEL) saw on ${host(page.finalUrl || page.url)}` } } : {}),
               ...(peekableHost(kernel) ? { peek: { paymentId: kernel.id, host: peekableHost(kernel)! } } : {}),
             }
           : null,
