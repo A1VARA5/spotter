@@ -77,17 +77,29 @@ export async function withClaude<T>(label: string, opts: ClientOptions, run: (cl
 
   let last: { reason: string; error: unknown } | null = null;
   for (const [i, s] of slots.entries()) {
+    let client: Anthropic;
     try {
-      const out = await run(make({ ...opts, ...(s.apiKey ? { apiKey: s.apiKey } : {}) }));
+      client = make({ ...opts, ...(s.apiKey ? { apiKey: s.apiKey } : {}) });
+    } catch (e) {
+      // The SDK refuses to build a client without credentials: that is "no key", not a bad request.
+      log.warn(`[spotter] claude ${label}: no ${s.slot} key is set up`);
+      last = { reason: "no Anthropic key set up", error: e };
+      continue;
+    }
+    try {
+      const out = await run(client);
       if (s.slot === "primary") primaryOutUntil = 0;
       else log.info(`[spotter] claude ${label}: answered with the backup key`);
       return out;
     } catch (e) {
       const reason = keyUnusable(e);
       if (!reason) throw e;
-      if (s.slot === "primary") primaryOutUntil = now() + PRIMARY_OUT_MS;
+      // Overloaded is Anthropic's state, not the key's: fail over for this request only, and don't blame the key.
+      const overloaded = reason.endsWith("overloaded");
+      if (s.slot === "primary" && !overloaded) primaryOutUntil = now() + PRIMARY_OUT_MS;
       const next = slots[i + 1];
-      log.warn(`[spotter] claude ${label}: the ${s.slot} key can't be used (${reason})${next ? `, trying the ${next.slot} key` : ""}`);
+      const what = overloaded ? `Anthropic is overloaded (${reason}) on the ${s.slot} key` : `the ${s.slot} key can't be used (${reason})`;
+      log.warn(`[spotter] claude ${label}: ${what}${next ? `, trying the ${next.slot} key` : ""}`);
       last = { reason, error: e };
     }
   }

@@ -33,7 +33,7 @@ const isScamPattern = (f: Flag) => f.severity === "high" && (f.kind === "imperso
 
 export function decide(
   rules: RulesResult,
-  ai: { ok: boolean; flags: Flag[] },
+  ai: { ok: boolean; flags: Flag[]; aiEngine?: "claude" | "openai_backup" },
   money: { amount: number; askAbove: number },
 ): Decision {
   if (!rules.valid) return { outcome: "block", reasons: ["The payment amount isn't valid."], flags: [] };
@@ -73,6 +73,10 @@ export function decide(
   if (!ai.ok) {
     // Fail closed: without the check, nothing is paid automatically.
     reasons.unshift("The AI check didn't run, so this needs your yes.");
+    outcome = stricter(outcome, "ask");
+  } else if (ai.aiEngine === "openai_backup") {
+    // The backup model may warn but never clears a payment on its own: a person says yes while Claude is out.
+    reasons.push("Claude was unavailable, so the backup AI model checked this. It can warn, but a person says yes.");
     outcome = stricter(outcome, "ask");
   }
   return { outcome, reasons, flags: ai.flags };

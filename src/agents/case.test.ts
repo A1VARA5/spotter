@@ -480,9 +480,19 @@ describe("buildCase", () => {
     const model: CaseModel = ({ signal }) =>
       new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
     const started = Date.now();
-    const c = await buildCase(ctx(), { model, budgetMs: 80 });
+    const c = await buildCase(ctx({ inspect }), { model, budgetMs: 80 });
     expect(Date.now() - started).toBeLessThan(2000);
-    expect(c.status).toBe("failed");
+    // The model never answered, so the case can't be "done"; the code checks got the part of the budget kept for them.
+    expect(c.status).not.toBe("done");
+    expect(c.verdict).toBe("unclear");
+    expect(c.calls.every((x) => x.id.startsWith("code_"))).toBe(true);
+  });
+
+  it("keeps part of the budget from a hung model so the checks made by code still run", async () => {
+    const model: CaseModel = ({ signal }) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
+    const c = await buildCase(ctx({ inspect }), { model, budgetMs: 600 });
+    expect(c.status).toBe("partial");
+    expect(c.findings.map((f) => f.tool)).toEqual(expect.arrayContaining(["payee_history", "network_reports", "check_links", "find_genuine_offer"]));
   });
 
   describe("Spotter's own market check is trusted", () => {
@@ -548,9 +558,10 @@ describe("buildCase", () => {
 
   it("stops a model that never files a case", async () => {
     const model: CaseModel = vi.fn(async () => turn(use(`t${Math.random()}`, "payee_history", { payee: "BargainPods" })));
-    const c = await buildCase(ctx(), { model });
+    const c = await buildCase(ctx({ inspect }), { model });
     expect(c.status).toBe("partial");
-    expect(c.calls.length).toBeLessThanOrEqual(6);
+    // The model's own calls stay capped; the checks made by code that it never ran are added after.
+    expect(c.calls.filter((x) => !x.id.startsWith("code_")).length).toBeLessThanOrEqual(6);
   });
 });
 

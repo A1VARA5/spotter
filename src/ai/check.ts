@@ -73,6 +73,8 @@ export type AiCheckResult = {
   claimedSender?: Claim | null;
   /** Which AI answered, when the check ran. Absent on older rows (those were all Claude). */
   aiEngine?: AiEngine;
+  /** The check didn't run because no AI could answer at all (an outage, not a bad answer). */
+  aiDown?: boolean;
 };
 
 export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaultModel): Promise<AiCheckResult> {
@@ -121,6 +123,7 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
       summary: "",
       injectionAttempt: false,
       error: e instanceof Error ? e.message : String(e),
+      ...(e instanceof AiUnavailable ? { aiDown: true } : {}),
       claimedSender: claimFromText(clean.text),
     };
   }
@@ -148,37 +151,71 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
  * could answer, Anthropic down or unreachable) does the backup AI model get the same prompt and schema. A request
  * Claude rejected or refused is not sent to the backup.
  */
+/** Every AI path was tried and none could answer (Claude unavailable, and the backup is off or failed too). */
+export class AiUnavailable extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "AiUnavailable";
+  }
+}
+
+/** The whole check, both Claude keys and the backup, fits in this; Claude gets the first CLAUDE_BUDGET_MS of it. */
+export const CHECK_BUDGET_MS = 45_000;
+export const CLAUDE_BUDGET_MS = 25_000;
+/** Less time than this left, and the backup isn't worth starting. */
+const MIN_BACKUP_MS = 3_000;
+
+type Engines = {
+  claude: (input: { system: string; user: string }, signal: AbortSignal) => Promise<unknown>;
+  backup: (input: { system: string; user: string }, timeoutMs: number) => Promise<unknown>;
+  hasBackup: () => boolean;
+  now?: () => number;
+};
+
 export async function defaultModel(
   { system, user }: { system: string; user: string },
-  call: { claude: ModelCall; backup: ModelCall; hasBackup: () => boolean } = { claude: claudeModel, backup: backupModel, hasBackup: () => backupConfigured() },
+  call: Engines = { claude: claudeModel, backup: backupModel, hasBackup: () => backupConfigured() },
 ): Promise<unknown> {
+  const now = call.now ?? Date.now;
+  const started = now();
+  // One limit for every Claude attempt (both keys, the SDK's retries, any retry-after wait), so a slow or rate
+  // limited Claude can't eat the time the backup and the payment request need.
+  const claudeTime = AbortSignal.timeout(CLAUDE_BUDGET_MS);
   try {
-    return answeredBy("claude", await call.claude({ system, user }));
+    return answeredBy("claude", await call.claude({ system, user }, claudeTime));
   } catch (e) {
-    if (!claudeUnavailable(e) || !call.hasBackup()) throw e;
-    const why = e instanceof Error ? e.message : String(e);
+    const down = claudeUnavailable(e) || claudeTime.aborted;
+    const why = claudeTime.aborted ? `no answer within ${CLAUDE_BUDGET_MS / 1000} s` : e instanceof Error ? e.message : String(e);
+    if (!down) throw e;
+    const left = CHECK_BUDGET_MS - (now() - started);
+    if (!call.hasBackup()) throw new AiUnavailable(`Claude is unavailable (${why}) and no backup AI model is set up`, { cause: e });
+    if (left < MIN_BACKUP_MS) throw new AiUnavailable(`Claude is unavailable (${why}) and there was no time left for the backup AI model`, { cause: e });
     console.warn(`[spotter] AI check: Claude is unavailable (${why}), asking the backup AI model`);
     try {
-      return answeredBy("openai_backup", await call.backup({ system, user }));
+      return answeredBy("openai_backup", await call.backup({ system, user }, left));
     } catch (b) {
-      throw new Error(`Claude is unavailable (${why}) and the backup AI model failed too (${b instanceof Error ? b.message : String(b)})`, { cause: b });
+      throw new AiUnavailable(`Claude is unavailable (${why}) and the backup AI model failed too (${b instanceof Error ? b.message : String(b)})`, { cause: b });
     }
   }
 }
 
-async function claudeModel({ system, user }: { system: string; user: string }): Promise<unknown> {
+async function claudeModel({ system, user }: { system: string; user: string }, signal: AbortSignal): Promise<unknown> {
   const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
   const res = await withClaude("check", { timeout: TIMEOUT_MS, maxRetries: 1 }, (client) =>
-    client.messages.parse({
-      model: CHECK_MODEL,
-      max_tokens: 4000,
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      output_config: { effort: "low", format: zodOutputFormat(CheckSchema) },
-      messages: [{ role: "user", content: user }],
-    }),
+    client.messages.parse(
+      {
+        model: CHECK_MODEL,
+        max_tokens: 4000,
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+        output_config: { effort: "low", format: zodOutputFormat(CheckSchema) },
+        messages: [{ role: "user", content: user }],
+      },
+      { signal },
+    ),
   );
   if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error(`model gave no usable output (${res.stop_reason})`);
   return res.parsed_output;
 }
 
-const backupModel: ModelCall = ({ system, user }) => backupParse({ system, user, schema: CheckSchema, name: "spotter_check", maxOutputTokens: 4000 });
+const backupModel = ({ system, user }: { system: string; user: string }, timeoutMs: number) =>
+  backupParse({ system, user, schema: CheckSchema, name: "spotter_check", maxOutputTokens: 4000, timeoutMs });

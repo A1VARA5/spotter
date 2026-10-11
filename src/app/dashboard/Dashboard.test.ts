@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { aiDown, checkComplete, feedEmpty, firstToOpen, withoutHoldFinding } from "./Dashboard";
+import { aiFailedLine, checkComplete, feedEmpty, firstToOpen, withoutHoldFinding } from "./Dashboard";
 import type { Case } from "@/agents/case";
 
 describe("checkComplete (Deny leads until the AI has looked)", () => {
@@ -18,10 +18,11 @@ describe("checkComplete (Deny leads until the AI has looked)", () => {
     expect(checkComplete({ ai: failed, case_file: done })).toBe(false);
     expect(checkComplete({ ai: null, case_file: done })).toBe(false);
   });
-  it("says the AI check is down only when it ran and failed", () => {
-    expect(aiDown({ ai: failed })).toBe(true);
-    expect(aiDown({ ai: ok })).toBe(false);
-    expect(aiDown({ ai: null })).toBe(false);
+  it("says the AI check is down only for an outage, and 'couldn't finish' for any other failure", () => {
+    expect(aiFailedLine({ ai: { ...failed!, aiDown: true } })).toBe("The AI check is down right now, so Spotter held this for you. Nothing is paid.");
+    expect(aiFailedLine({ ai: failed })).toBe("The AI check couldn't finish on this one, so Spotter held it for you. Nothing is paid.");
+    expect(aiFailedLine({ ai: ok })).toBeNull();
+    expect(aiFailedLine({ ai: null })).toBeNull();
   });
 });
 

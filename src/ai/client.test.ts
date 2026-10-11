@@ -133,6 +133,25 @@ describe("withClaude", () => {
     expect(s.keys).toEqual([PRIMARY]);
   });
 
+  it("fails over on 529 overloaded for that request only, without blaming or skipping the primary key afterwards", async () => {
+    let busy = true;
+    const s = stub((k) => (k === PRIMARY && busy ? apiError(529, "overloaded_error", "Overloaded") : "ok"));
+    await withClaude("check", {}, s.run, { make: s.make, env, log: s.log });
+    busy = false;
+    await withClaude("check", {}, s.run, { make: s.make, env, log: s.log });
+    expect(s.keys).toEqual([PRIMARY, BACKUP, PRIMARY]);
+    expect(JSON.stringify(s.log.warn.mock.calls)).toContain("Anthropic is overloaded");
+  });
+
+  it("treats no key at all (the SDK won't build a client) as 'no key could be used', so the scam check can use its backup", async () => {
+    const make = () => {
+      throw new Anthropic.AnthropicError("The ANTHROPIC_API_KEY environment variable is missing or empty");
+    };
+    const e = await withClaude("check", {}, async () => "never", { make, env: {}, log: { warn: vi.fn(), info: vi.fn() } }).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ClaudeKeysUnusable);
+    expect((e as Error).message).toContain("no Anthropic key set up");
+  });
+
   it("with only a backup key, uses it", async () => {
     const s = stub(() => "ok");
     await withClaude("check", {}, s.run, { make: s.make, env: { ANTHROPIC_API_KEY_BACKUP: BACKUP }, log: s.log });

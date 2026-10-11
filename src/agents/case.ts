@@ -23,6 +23,8 @@ const MAX_TURNS = 5;
 const MAX_CALLS = 6;
 // Spot the difference runs after the case: one image search (8 s timeout) and maybe one price history call.
 const SPOT_MS = 12_000;
+/** Kept back from the model for the checks made by code (at most a third of the budget). */
+const CODE_RESERVE_MS = 8_000;
 
 type TextBlock = { type: "text"; text: string };
 type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: unknown };
@@ -369,18 +371,24 @@ async function runCase(ctx: CaseCtx, opts: CaseOpts): Promise<Case> {
     brief += `\n\nSpotter already opened the shop page the agent was paying, before you started (cite it like any tool result):\n[source ${call.id}]\n${out.summary}`;
   }
   const messages: Message[] = [{ role: "user", content: brief }];
+  // The model never gets the last part of the budget: that time is kept for the checks made by code, so a hung
+  // model still leaves room for history, network, links, KERNEL and Channel3.
+  const reserve = Math.min(CODE_RESERVE_MS, Math.floor((deadline - started) / 3));
+  const modelDeadline = deadline - reserve;
+  // The model is out (failed, hung or never filed), but the checks made by code still run in the time left.
+  const giveUp = async (error: string, aiDown = false) => {
+    if (deadline - Date.now() > 0) await codeChecks(ctx, calls, deadline);
+    return fallback(calls, started, error, aiDown);
+  };
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const left = deadline - Date.now();
-    if (left <= 0) return fallback(calls, started, "ran out of time");
+    const left = modelDeadline - Date.now();
+    if (left <= 0) return giveUp("ran out of time");
     let res: ModelTurn;
     try {
       res = await model({ system: CASE_SYSTEM, messages, tools, signal: AbortSignal.timeout(left) });
     } catch (e) {
-      const aiDown = claudeUnavailable(e);
-      // The model is out, but the checks made by code can still run in the time left.
-      if (deadline - Date.now() > 0) await codeChecks(ctx, calls, deadline);
-      return fallback(calls, started, e instanceof Error ? e.message : String(e), aiDown);
+      return giveUp(e instanceof Error ? e.message : String(e), claudeUnavailable(e));
     }
     messages.push({ role: "assistant", content: res.content });
     const uses = res.content.filter((b): b is ToolUseBlock => b.type === "tool_use");
@@ -412,7 +420,7 @@ ${out.summary}`, ...(out.ok ? {} : { is_error: true }) };
     );
     messages.push({ role: "user", content: results });
   }
-  return fallback(calls, started, "the model never filed a case");
+  return giveUp("the model never filed a case");
 }
 
 const PRICE_HEADLINE = {

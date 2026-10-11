@@ -20,7 +20,7 @@ import { Peek } from "@/ui/Peek";
 import { peekableHost } from "@/ui/peekable";
 import { weekSummary } from "@/ui/week";
 import { approveWarning } from "@/ui/labels";
-import { AI_DOWN_LINE, BACKUP_LINE } from "@/core/aiwords";
+import { AI_DOWN_LINE, AI_UNFINISHED_LINE, BACKUP_LINE } from "@/core/aiwords";
 import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
 import "./allclear.css";
 import "./wide.css";
@@ -839,7 +839,7 @@ function HeldCard({
           <strong>Scam check:</strong> {p.ai.summary}
         </p>
       )}
-      {!c && aiDown(p) && <p className="held-summary">{AI_DOWN_LINE}</p>}
+      {!c && aiFailedLine(p) && <p className="held-summary">{aiFailedLine(p)}</p>}
       {p.ai?.ok && p.ai.aiEngine === "openai_backup" && <p className="held-summary">{BACKUP_LINE}</p>}
 
       {reasons.length > 0 && (
@@ -978,8 +978,14 @@ export function checkComplete(p: Pick<Payment, "ai" | "case_file">): boolean {
   return p.ai?.ok === true && !!c && c.status !== "failed" && !c.aiDown;
 }
 
-/** True when the message check couldn't run at all (no AI could answer), so the card says so plainly. */
-export const aiDown = (p: Pick<Payment, "ai">): boolean => !!p.ai && !p.ai.ok;
+/**
+ * What the card says when the message check didn't finish: an outage (no AI could answer) said as one, anything
+ * else (a refusal, an answer in the wrong shape) said as "couldn't finish". Null when the check ran.
+ */
+export function aiFailedLine(p: Pick<Payment, "ai">): string | null {
+  if (!p.ai || p.ai.ok) return null;
+  return p.ai.aiDown ? AI_DOWN_LINE : AI_UNFINISHED_LINE;
+}
 
 const VERDICT_LINE = { likely_scam: "Likely a scam", unclear: "Worth a closer look", looks_fine: "Looks genuine" } as const;
 
@@ -993,7 +999,8 @@ function HeldSummary({ p, pending }: { p: Payment; pending: boolean }) {
       </p>
     );
   }
-  if (aiDown(p)) return <p className="held-sum">{AI_DOWN_LINE}</p>;
+  const failed = aiFailedLine(p);
+  if (failed) return <p className="held-sum">{failed}</p>;
   const reason = p.decision?.reasons[0];
   return <p className="held-sum">{pending ? "Spotter is still looking into it." : (reason ?? "Open the case file to see why it was held.")}</p>;
 }

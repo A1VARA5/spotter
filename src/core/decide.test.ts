@@ -62,6 +62,14 @@ describe("decide", () => {
     expect(d.reasons.join(" ")).toMatch(/AI check didn't run/);
   });
 
+  it("never lets the backup AI model clear a payment on its own, but keeps its stricter outcomes", () => {
+    const clean = decide(rules(), { ...ai([]), aiEngine: "openai_backup" as const }, small);
+    expect(clean.outcome).toBe("ask");
+    expect(clean.reasons.join(" ")).toMatch(/backup AI model checked this/);
+    expect(decide(rules(), { ...ai([flag("prompt_injection", "high")]), aiEngine: "openai_backup" as const }, small).outcome).toBe("block");
+    expect(decide(rules(), { ...ai([]), aiEngine: "claude" as const }, small).outcome).toBe("allow");
+  });
+
   it("never lets flags weaken a rule block (every combination)", () => {
     const kinds: FlagKind[] = ["pressure", "impersonation", "friends_and_family", "gift_card_or_crypto", "prompt_injection", "price", "new_shop", "changed_bank_details", "other"];
     const sev: Severity[] = ["low", "medium", "high"];

@@ -213,6 +213,28 @@ describe("the backup AI model (only when no Anthropic key can answer)", () => {
     expect(both.error).toContain("backup AI model failed too (backup model error 401 invalid_api_key)");
   });
 
+  it("marks an outage as 'AI down', and a bad answer or refusal as not down", async () => {
+    expect((await aiCheck(req(ctx), engines(fails(keysOut), vi.fn(), false))).aiDown).toBe(true);
+    expect((await aiCheck(req(ctx), engines(fails(keysOut), fails(new Error("backup model timed out after 20 s"))))).aiDown).toBe(true);
+    expect((await aiCheck(req(ctx), engines(fails(new Error("model gave no usable output (refusal)")), vi.fn()))).aiDown).toBeUndefined();
+    expect((await aiCheck(req(ctx), engines(vi.fn(async () => ({ summary: 3 }) as never), vi.fn()))).aiDown).toBeUndefined();
+  });
+
+  it("gives the backup only the time left in the check, and skips it when there's no time left", async () => {
+    let t = 0;
+    const backup = vi.fn(async () => backupOut as never);
+    const slowFail = (ms: number): ModelCall => vi.fn(async () => ((t += ms), Promise.reject(keysOut)));
+    const call = (claude: ModelCall) => (input: { system: string; user: string }) => defaultModel(input, { claude, backup, hasBackup: () => true, now: () => t });
+    expect((await aiCheck(req(ctx), call(slowFail(30_000)))).aiEngine).toBe("openai_backup");
+    expect((backup.mock.calls[0] as unknown[])[1]).toBe(15_000);
+    t = 0;
+    const late = await aiCheck(req(ctx), call(slowFail(43_000)));
+    expect(late.ok).toBe(false);
+    expect(late.aiDown).toBe(true);
+    expect(late.error).toContain("no time left for the backup AI model");
+    expect(backup).toHaveBeenCalledTimes(1);
+  });
+
   it("puts the backup's answer through the schema too", async () => {
     const r = await aiCheck(req(ctx), engines(fails(keysOut), vi.fn(async () => ({ summary: 3 }) as never)));
     expect(r.ok).toBe(false);

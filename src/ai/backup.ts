@@ -11,10 +11,19 @@ export function backupConfigured(env: Record<string, string | undefined> = proce
   return !!env.OPENAI_API_KEY?.trim();
 }
 
-export async function backupParse<S extends z.ZodType>(opts: { system: string; user: string; schema: S; name: string; maxOutputTokens: number }): Promise<z.infer<S>> {
+export async function backupParse<S extends z.ZodType>(opts: {
+  system: string;
+  user: string;
+  schema: S;
+  name: string;
+  maxOutputTokens: number;
+  /** The time the caller has left; never more than BACKUP_TIMEOUT_MS. */
+  timeoutMs?: number;
+}): Promise<z.infer<S>> {
   const { default: OpenAI } = await import("openai");
   const { zodTextFormat } = await import("openai/helpers/zod");
-  const client = new OpenAI({ timeout: BACKUP_TIMEOUT_MS, maxRetries: 0 });
+  const timeout = Math.max(1, Math.min(BACKUP_TIMEOUT_MS, opts.timeoutMs ?? BACKUP_TIMEOUT_MS));
+  const client = new OpenAI({ timeout, maxRetries: 0 });
   let res;
   try {
     res = await client.responses.parse({
@@ -29,6 +38,8 @@ export async function backupParse<S extends z.ZodType>(opts: { system: string; u
   } catch (e) {
     // OpenAI's own messages can quote part of the key ("Incorrect API key provided: sk-...abcd"), so only the
     // status and error code travel on into logs and the payment's timeline.
+    if (e instanceof OpenAI.APIConnectionTimeoutError) throw new Error(`backup model timed out after ${Math.round(timeout / 1000)} s`);
+    if (e instanceof OpenAI.APIConnectionError) throw new Error("backup model couldn't be reached");
     if (e instanceof OpenAI.APIError) throw new Error(`backup model error ${e.status ?? "no response"}${e.code ? ` ${e.code}` : e.type ? ` ${e.type}` : ""}`);
     throw e;
   }
