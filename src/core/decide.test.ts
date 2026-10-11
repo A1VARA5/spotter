@@ -23,6 +23,13 @@ describe("decide", () => {
     expect(decide(rules(hit("allowance", "block")), ai(), small).outcome).toBe("block");
   });
 
+  it("leads with hidden instructions even when a high price flag came first", () => {
+    const price: Flag = { kind: "price", severity: "high", quote: "", why: "Far below real shops." };
+    const injection: Flag = { kind: "prompt_injection", severity: "high", quote: "q", why: "Hidden orders for AI." };
+    const d = decide(rules(), ai([price, injection]), small);
+    expect(d.reasons).toEqual(["Hidden orders for AI.", "Far below real shops."]);
+  });
+
   it("blocks on a high prompt injection flag", () => {
     expect(decide(rules(), ai([flag("prompt_injection", "high")]), small).outcome).toBe("block");
   });

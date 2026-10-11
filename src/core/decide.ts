@@ -65,7 +65,11 @@ export function decide(
   if (bankChanged) outcome = stricter(outcome, "ask");
   // The "pay with protection" line was dropped, so say plainly what to do instead.
   const lead = softened ? [SCAM_ADVICE] : bankChanged ? [CHANGED_BANK_ADVICE] : [];
-  const reasons = [...lead, ...urgent, ...ruleReasons, ...softer];
+  // Hidden orders for an AI lead: the feed, Activity and alerts all read reasons[0], and a booby trapped shop should
+  // be explained by its trap, not by its price (the market flag is added to the flags first).
+  const injections = ai.flags.filter((f) => f.kind === "prompt_injection" && f.severity === "high").map((f) => f.why);
+  const ordered = [...injections.filter((w) => urgent.includes(w)), ...urgent.filter((w) => !injections.includes(w))];
+  const reasons = [...lead, ...ordered, ...ruleReasons, ...softer];
   if (!ai.ok) {
     // Fail closed: without the check, nothing is paid automatically.
     reasons.unshift("The AI check didn't run, so this needs your yes.");
