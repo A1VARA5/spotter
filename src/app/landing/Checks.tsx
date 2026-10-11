@@ -1,18 +1,18 @@
 "use client";
 // "What Spotter checks that you can't": the two outside checks, each shown as the real piece of Spotter it produces,
 // drawn in Spotter's own style with example data. The cloud browser (KERNEL) panel switches between three views;
-// the market (Channel3) panel shows spot the difference and price watch side by side. "Two faces" is still being
-// built and says so. Wording mirrors src/ui/Peek.tsx, src/ui/CaseFile.tsx, src/ui/PriceWatch.tsx and
-// src/market/lookalike.ts.
+// the market (Channel3) panel shows spot the difference and price watch side by side. Wording mirrors
+// src/ui/Peek.tsx, src/ui/CaseFile.tsx (tools, two faces, where the money goes), src/ui/PriceWatch.tsx,
+// src/agents/twofaces.ts, src/agents/trail.ts and src/market/lookalike.ts.
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Eye } from "lucide-react";
-import { AGENT } from "./copy";
+import { AGENT, FACES } from "./copy";
 
-const VIEWS = [
+const VIEWS: ReadonlyArray<{ key: "peek" | "tools" | "faces"; tab: string; head: string }> = [
   { key: "peek", tab: "Looks for you", head: "Spotter opens the link so nobody in the family clicks it." },
   { key: "tools", tab: "Reads the agent tools", head: "Shops can now hand AI agents tools. Spotter reads every word of them first." },
-  { key: "faces", tab: "Two faces", head: "Some pages show a scanner one thing and a phone another.", soon: true },
-] as const;
+  { key: "faces", tab: "Two faces", head: "Some scam pages show scanners a blank page and Gran's phone a card form. Spotter opens it both ways." },
+];
 
 type Key = (typeof VIEWS)[number]["key"];
 
@@ -89,21 +89,28 @@ function ToolsView() {
 function FacesView() {
   return (
     <div className="ck-faces">
+      <p className="ck-faces-h">Two faces: what scanners see and what Gran&apos;s phone sees</p>
+      <p className="ck-faces-verdict">{FACES.verdict}</p>
       <div className="ck-face">
-        <p className="ck-face-cap">What a scanner is shown</p>
         <div className="ck-face-screen ck-face-blank">
-          <span>Nothing here</span>
+          <span>Nothing to see here</span>
         </div>
+        <p className="ck-face-cap">
+          <b>Desktop</b>, the way security scanners see it
+        </p>
       </div>
       <div className="ck-face">
-        <p className="ck-face-cap">What Gran&apos;s phone is shown</p>
         <div className="ck-face-screen">
           <CardForm title="Confirm your card" />
         </div>
+        <p className="ck-face-cap">
+          <b>Gran&apos;s phone</b>, on a UK mobile network
+        </p>
       </div>
-      <p className="ck-face-note">
-        Spotter will open the same link as a scanner and as a phone, compare the two, and follow where a card form would send its details.
-      </p>
+      <div className="ck-trail">
+        <p className="ck-faces-h">Where the money goes</p>
+        <p>{FACES.trail}</p>
+      </div>
     </div>
   );
 }
@@ -142,7 +149,6 @@ export function Checks({ cta }: { cta?: React.ReactNode }) {
   const [k, setK] = useState<Key>("tools");
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
   const at = VIEWS.findIndex((v) => v.key === k);
-  const view = VIEWS[at]!;
 
   const onKey = (e: React.KeyboardEvent) => {
     const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
@@ -164,7 +170,7 @@ export function Checks({ cta }: { cta?: React.ReactNode }) {
         <div className="ck-panel ck-kernel">
           <div className="ck-copy">
             <h3 className="ck-h3">It opens the page in a throwaway browser</h3>
-            <p className="ck-p">One cloud browser per check, thrown away after. Nothing on the page can reach Gran&apos;s phone or your laptop.</p>
+            <p className="ck-p">Every visit runs in a cloud browser that is thrown away after. Nothing on the page can reach Gran&apos;s phone or your laptop.</p>
             <div className="ck-tabs" role="tablist" aria-label="What the throwaway browser checks" aria-orientation="vertical" onKeyDown={onKey}>
               {VIEWS.map((v, n) => (
                 <button
@@ -183,7 +189,6 @@ export function Checks({ cta }: { cta?: React.ReactNode }) {
                 >
                   <span className="ck-tab-name">
                     {v.tab}
-                    {"soon" in v && <span className="ck-soon">Being built</span>}
                   </span>
                   <span className="ck-tab-head">{v.head}</span>
                 </button>
@@ -195,7 +200,7 @@ export function Checks({ cta }: { cta?: React.ReactNode }) {
             </p>
           </div>
           <div id="ck-view" className="ck-view" role="tabpanel" aria-labelledby={`ck-tab-${k}`} data-view={k} key={k}>
-            <span className="ck-example">Example{"soon" in view ? ", being built" : ""}</span>
+            <span className="ck-example">Example</span>
             {k === "peek" && <PeekView />}
             {k === "tools" && <ToolsView />}
             {k === "faces" && <FacesView />}

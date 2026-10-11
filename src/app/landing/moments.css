@@ -1104,11 +1104,43 @@
   font-size: 14px;
 }
 
-.ck-face-note {
+.ck-faces-h {
   grid-column: 1 / -1;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ck-faces-verdict {
+  grid-column: 1 / -1;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 550;
+  color: #a12a20;
+}
+
+.ck-face-cap {
+  font-weight: 400;
+  color: var(--ink-2);
+  font-size: 13.5px;
+}
+
+.ck-face-cap b {
+  color: var(--ink);
+}
+
+.ck-trail {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--chalk);
   font-size: 14px;
   line-height: 1.5;
-  color: var(--ink-2);
+}
+
+.ck-trail .ck-faces-h {
+  font-size: 14px;
 }
 
 /* The market panel: light, two real pieces side by side */

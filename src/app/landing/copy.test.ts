@@ -8,7 +8,9 @@ import { reply } from "@/server/agent";
 import { receiptLines, boardWords, type Receipt } from "@/watchtower/receipt";
 import { GRAN_TEXT } from "@/watchtower/granLang";
 import { HIDDEN_INSTRUCTION, TOOL_POISON } from "@/app/demo-shop/gadgetbarn/shop";
-import { GRAN, TOM, AGENT, RECEIPT, GRAN_VIEW, SHOP } from "./copy";
+import { compareFaces } from "@/agents/twofaces";
+import { moneyTrail, phoneTrail } from "@/agents/trail";
+import { GRAN, TOM, AGENT, RECEIPT, GRAN_VIEW, SHOP, FACES } from "./copy";
 
 const pay = (over: Record<string, unknown>) =>
   ({
@@ -54,6 +56,19 @@ describe("agent scene", () => {
     );
     expect(r.status).toBe(AGENT.status);
     expect(r.message).toBe(AGENT.message);
+  });
+});
+
+describe("two faces and where the money goes", () => {
+  it("are what the code says for a page that only shows phones a card form", () => {
+    const page = "https://parcel-redelivery.example/pay";
+    const snap = (card: boolean, text: string) => ({ finalUrl: page, title: "Redelivery", text, visibleChars: text.length, asks: { card, bank: false, login: false, giftCard: false } });
+    const r = compareFaces(snap(false, "Nothing to see here"), snap(true, "Confirm your card. Card number, expiry, CVV. Pay £2.99"), "uk_mobile");
+    expect(r.compared && r.differs).toBe(true);
+    expect(r.verdict).toBe(FACES.verdict);
+    const desk = moneyTrail({ startUrl: page, finalUrl: page, forms: [], scriptTargets: [], items: null });
+    const phone = moneyTrail({ startUrl: page, finalUrl: page, forms: [{ action: "https://collect-pay.example/c", money: true }], scriptTargets: [], items: null });
+    expect(phoneTrail(desk, phone).line).toBe(FACES.trail);
   });
 });
 

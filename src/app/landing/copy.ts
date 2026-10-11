@@ -34,6 +34,12 @@ export const AGENT = {
     'Held, not paid yet: Sam has to approve £89.99 to GadgetBarn. The money is reserved meanwhile. Tell the user, then check later with payment_status. Reasons: Over the £30.00 "ask me first" limit. First time paying GadgetBarn.',
 };
 
+/** Two faces and where the money goes, for a made up redelivery page that only shows phones its card form. */
+export const FACES = {
+  verdict: "This page shows something different to phones in the UK than to security scanners: only the phone was asked for card details.",
+  trail: "On the phone version, card details would go to collect-pay.example, not to the shop (parcel-redelivery.example).",
+};
+
 /** The AI's receipt in Watchtower. */
 export const RECEIPT = {
   money: "Money actions: 0",
