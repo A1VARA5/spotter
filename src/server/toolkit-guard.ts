@@ -8,6 +8,9 @@ import { getPayment, getSpender, InvalidPaymentError, submitPayment, type Deps, 
 import type { Db } from "@/db";
 import { offerSaferOption, paySaferOption, saferOptionFor, stopReason, type SaferOption } from "@/core/safer";
 import { reply, type AgentStatus } from "./agent";
+import { findCutUp } from "@/core/cutup";
+import { formatMoney, type Currency } from "@/core/types";
+import type { Flag } from "@/core/grounding";
 
 /** create_order's arguments, as PayPal's toolkit defines them (shared/parameters.ts, v1.11.0), plus optional extras. */
 export type ToolkitOrderInput = {
@@ -145,9 +148,23 @@ export async function toolkitCreateOrder(deps: Deps, agentId: string, input: Too
   ]
     .filter(Boolean)
     .join("\n");
+  // The same money cut up: a held or stopped order to this payee today, and now a smaller one.
+  const cut = input.payee?.trim() ? await findCutUp(deps.db, agentId, input.payee) : null;
+  const codeFlags: Flag[] =
+    cut && cut.held > total.amount
+      ? [
+          {
+            kind: "other",
+            severity: "medium",
+            quote: cut.payee,
+            why: `The same money cut up? ${formatMoney({ amount: cut.held, currency: cut.currency as Currency })} to ${cut.payee} was held or stopped earlier today, and now a smaller order to the same payee.`,
+          },
+        ]
+      : [];
   try {
     const p = await submitPayment(deps, {
       spenderId: agentId,
+      codeFlags,
       money: { amount: total.amount, currency: input.currencyCode },
       payee: { name: payee.slice(0, 120), isNew: true },
       category: input.category?.trim() || "shopping",

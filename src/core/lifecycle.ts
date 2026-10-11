@@ -6,6 +6,7 @@ import type { AiCheckResult } from "@/ai/check";
 import type { captureAuthorization, createAuthorizeOrder, voidAuthorization } from "@/paypal/client";
 import { checkRules, normName } from "./rules";
 import { decide, type Decision } from "./decide";
+import type { Flag } from "./grounding";
 import type { Allowance, Currency, Money, PaymentMethod, PaymentRequest } from "./types";
 import { priceCheck, type MarketResult, type Offer } from "./market";
 import { fileReport } from "./network";
@@ -26,7 +27,7 @@ export type Deps = {
   /** Tells the spotter PayPal confirmed a held payment was paid or released (from a PayPal webhook). Optional. */
   confirmed?: (payment: Payment, spender: Spender) => Promise<void>;
   /** Tells a household's spotter that someone switched a protection off (core/switchedoff.ts). Optional. */
-  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked"; text: string }) => Promise<void>;
+  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked" | "agent_hijacked" | "refund_held" | "subscription_held"; text: string }) => Promise<void>;
   /** Asks the real person a message claims to be from ("Was it you?") on their own linked channel. Optional. */
   ask?: (payment: Payment, payer: Spender, ask: WasItYou, to: Spender) => Promise<void>;
   /** A short plain note to the spotter (e.g. "Tom says it wasn't him"). Failures are logged, never fatal. Optional. */
@@ -55,6 +56,10 @@ export type Spender = {
   telegram_chat_id: string | null;
   discord_user_id: string | null;
   allowance: Omit<Allowance, "spentThisWeek">;
+  /** An AI agent's job for PayPal's toolkit (src/core/toolkit-coverage.ts). Optional so older rows and samples type check. */
+  agent_job?: string;
+  /** Set when an agent reached for a bait tool (src/core/tripwire.ts). Nothing it asks for goes through until the PIN clears it. */
+  frozen_at?: string | Date | null;
 };
 export type NewSpender = { id: string; householdId: string; name: string; kind: SpenderKind; spotterName: string; allowance: Omit<Allowance, "spentThisWeek"> };
 
@@ -104,6 +109,8 @@ export type PaymentInput = {
    * and the retailer Channel3 vouched for. That retailer doesn't count as a new payee; every other check still runs.
    */
   saferFor?: { paymentId: string; offerId: string; domain: string; reason: string; fromPayee: string };
+  /** Evidence found by code before the check (e.g. core/cutup.ts). Joins the AI's flags as is, like the price check. */
+  codeFlags?: Flag[];
 };
 
 export class InvalidPaymentError extends Error {
@@ -254,12 +261,14 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
   const { db } = deps;
   const spender = await getSpender(db, input.spenderId);
   if (!spender) throw new Error(`Unknown spender ${input.spenderId}`);
+  // A paused (frozen) agent reached for a tool its job doesn't use (core/tripwire.ts). Only the spotter's PIN unpauses it.
+  if (spender.frozen_at) throw new InvalidPaymentError(`${spender.name} is frozen: ${spender.spotter_name} paused it after it reached for a tool its job doesn't use. Nothing was paid. Ask ${spender.spotter_name} to check Spotter.`);
 
   if (!Number.isInteger(input.money.amount) || input.money.amount <= 0) {
     throw new InvalidPaymentError("Amount must be a whole number of pence or cents above zero.");
   }
   const id = newId();
-  const { saferFor, ...rest } = input;
+  const { saferFor, codeFlags, ...rest } = input;
   const req: PaymentRequest = {
     ...rest,
     id,
@@ -275,7 +284,7 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
   // From here on the row exists, so any crash must end as 'failed' with the reason, never stuck in 'checking'.
   let result: Payment;
   try {
-    result = await decideAndHold(deps, spender, req, saferFor?.domain);
+    result = await decideAndHold(deps, spender, req, saferFor?.domain, codeFlags);
   } catch (e) {
     return fail(db, id, "check", e);
   }
@@ -324,7 +333,7 @@ async function investigateAndAlert(deps: Deps, payment: Payment, spender: Spende
 }
 
 /** knownRetailer: a retailer Spotter itself suggested (validated in core/safer.ts), so it isn't a "first time" payee. */
-async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, knownRetailer?: string): Promise<Payment> {
+async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, knownRetailer?: string, codeFlags: Flag[] = []): Promise<Payment> {
   const { db } = deps;
   const id = req.id;
   await event(db, id, "requested", { amount: req.money.amount, payee: req.payee.name, ...(req.swappedFrom ? { swappedFrom: req.swappedFrom } : {}) });
@@ -341,7 +350,8 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
   // (a scam that is also over budget should be explained as a scam, not as "over budget").
   const [aiRaw, market] = await Promise.all([deps.check(req), marketCheck(deps, req)]);
   // Market evidence is code, not model output: it joins the flags as is.
-  const ai: AiCheckResult = market?.flag ? { ...aiRaw, flags: [market.flag, ...aiRaw.flags] } : aiRaw;
+  const found = [...(market?.flag ? [market.flag] : []), ...codeFlags];
+  const ai: AiCheckResult = found.length ? { ...aiRaw, flags: [...found, ...aiRaw.flags] } : aiRaw;
   if (market) await setStatus(db, id, "checking", { market });
   await event(db, id, "checked", { ok: ai.ok, flags: ai.flags.length, dropped: ai.dropped, ...(ai.error ? { error: ai.error } : {}) });
   if (!ai.ok) console.error(`[spotter] AI check failed for ${id}: ${ai.error ?? "unknown"}`);

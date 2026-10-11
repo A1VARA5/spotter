@@ -8,11 +8,15 @@ import { issueAgentToken } from "@/core/pairing";
 import type { AiCheckResult } from "@/ai/check";
 import { makeToolkitMcp } from "./toolkit-mcp";
 import type { OrderReader } from "./toolkit-guard";
+import type { Run } from "@/core/selling";
+import { toolsFor } from "@/core/toolkit-coverage";
 
 const clean = (): AiCheckResult => ({ ok: true, flags: [], dropped: 0, hidden: [], summary: "Fine.", injectionAttempt: false });
 let deps: Deps;
 let token: string;
 let read: ReturnType<typeof vi.fn<OrderReader>>;
+let run: ReturnType<typeof vi.fn<Run>>;
+let warn: ReturnType<typeof vi.fn<NonNullable<Deps["warn"]>>>;
 let handler: (req: Request) => Promise<Response> | Response;
 
 beforeEach(async () => {
@@ -27,8 +31,10 @@ beforeEach(async () => {
     allowance: { weekly: { amount: 40000, currency: "USD" }, askAbove: { amount: 3000, currency: "USD" }, blockedCategories: [], allowedPayees: [], blockedPayees: [] },
   });
   token = await issueAgentToken(db, "agent");
+  warn = vi.fn<NonNullable<Deps["warn"]>>(async () => {});
   deps = {
     db,
+    warn,
     check: vi.fn<Deps["check"]>(async () => clean()),
     paypal: {
       createAuthorizeOrder: vi.fn(async () => ({ orderId: "5O190127TN364715T", authorizationId: "A1" })),
@@ -37,7 +43,8 @@ beforeEach(async () => {
     },
   };
   read = vi.fn<OrderReader>(async (id) => JSON.stringify({ id, status: "COMPLETED" }));
-  handler = makeToolkitMcp({ deps: async () => deps, read });
+  run = vi.fn<Run>(async () => JSON.stringify({ error: { message: "not stubbed", type: "paypal_error" } }));
+  handler = makeToolkitMcp({ deps: async () => deps, read, run });
 });
 
 let rpcId = 0;
@@ -73,19 +80,56 @@ describe("guarded PayPal toolkit over MCP", () => {
     expect((await rpc("tools/list", {}, "spt_notarealtokennotarealtoken123")).status).toBe(401);
   });
 
-  it("lists only the toolkit tools Spotter can guard or scope, and nothing that approves", async () => {
+  it("lists exactly the coverage table's tools for a shopping agent: guarded, passed through and bait, never hidden or approving", async () => {
     const names: string[] = (await rpc("tools/list", {})).body.result.tools.map((t: { name: string }) => t.name).sort();
-    expect(names).toEqual(["create_order", "get_order", "pay_order"]);
-    for (const hidden of ["create_refund", "create_invoice", "send_invoice", "create_subscription", "accept_dispute_claim", "list_transactions"]) {
-      expect(names).not.toContain(hidden);
-    }
-    expect(names.some((n) => /approve|capture|deny|refund/.test(n))).toBe(false);
+    expect(names).toEqual(toolsFor("shopping").map((c) => c.tool).sort());
+    for (const hidden of ["get_merchant_insights", "list_products", "get_refund"]) expect(names).not.toContain(hidden);
+    expect(names.some((n) => /approve|capture|deny/.test(n))).toBe(false);
   });
 
   it("won't run a hidden toolkit tool", async () => {
-    const r = await rpc("tools/call", { name: "create_refund", arguments: { capture_id: "X", amount: "10" } });
+    const r = await rpc("tools/call", { name: "get_merchant_insights", arguments: {} });
     expect(r.body.error ?? r.body.result?.isError).toBeTruthy();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("a bait tool is offered with PayPal's own name, description and schema", async () => {
+    const tools: Array<{ name: string; description: string; inputSchema: { properties: Record<string, unknown>; required?: string[] } }> = (await rpc("tools/list", {})).body.result.tools;
+    const refund = tools.find((t) => t.name === "create_refund")!;
+    const theirs = officialAll.find((t) => t.method === "create_refund")!;
+    expect(refund.description).toBe(theirs.description.trim());
+    expect(Object.keys(refund.inputSchema.properties).sort()).toEqual(["amount", "capture_id", "invoice_id", "note_to_payer"]);
+    expect(refund.inputSchema.required).toEqual(["capture_id"]);
+  });
+
+  it("calling a bait tool never calls PayPal: the agent is frozen, its holds voided, the spotter told, and it gets a calm no", async () => {
+    const held = JSON.parse(callText(await rpc("tools/call", { name: "create_order", arguments: ORDER })));
+    expect(held.status).toBe("HELD_FOR_APPROVAL");
+    const r = await rpc("tools/call", { name: "create_refund", arguments: { capture_id: "2GG279541U471931P", amount: { currency_code: "USD", value: "200.00" } } });
+    expect(JSON.parse(callText(r)).error.message).toMatch(/Stop here and tell the user/);
+    expect(run).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+    expect(deps.paypal.voidAuthorization).toHaveBeenCalledOnce();
     expect(deps.paypal.captureAuthorization).not.toHaveBeenCalled();
+    expect(warn.mock.calls[0]![1].kind).toBe("agent_hijacked");
+    const again = JSON.parse(callText(await rpc("tools/call", { name: "create_order", arguments: ORDER })));
+    expect(again.error.message).toMatch(/frozen/i);
+  });
+
+  it("a bait call with junk arguments still springs the tripwire", async () => {
+    const r = await rpc("tools/call", { name: "list_transactions", arguments: { page_size: "lots", evil: "<script>" } });
+    expect(JSON.parse(callText(r)).error.message).toMatch(/spotter has been told/);
+    const [t] = await deps.db.query<{ tool: string }>("select tool from tripwires");
+    expect(t!.tool).toBe("list_transactions");
+  });
+
+  it("a selling agent is offered its own set: create_refund guarded, invoices not offered", async () => {
+    await deps.db.query("update spenders set agent_job = 'selling' where id = 'agent'");
+    const names: string[] = (await rpc("tools/list", {})).body.result.tools.map((t: { name: string }) => t.name).sort();
+    expect(names).toEqual(toolsFor("selling").map((c) => c.tool).sort());
+    const r = JSON.parse(callText(await rpc("tools/call", { name: "create_refund", arguments: { capture_id: "2GG279541U471931P" } })));
+    expect(r.error.message).toMatch(/only refund a payment Spotter took for this family/);
+    expect(await deps.db.query("select 1 from tripwires")).toHaveLength(0);
   });
 
   it("create_order with the toolkit's own arguments makes a held payment, and pay_order never captures it", async () => {
@@ -104,11 +148,13 @@ describe("guarded PayPal toolkit over MCP", () => {
   });
 });
 
+const officialAll = new PayPalMCPToolkit({
+  accessToken: "unused",
+  configuration: { actions: new Proxy({}, { get: () => new Proxy({}, { get: () => true }) }) as never, context: { sandbox: true } },
+}).getTools();
+
 describe("matches PayPal's official toolkit definitions (v1.11.0)", () => {
-  const official = new PayPalMCPToolkit({
-    accessToken: "unused",
-    configuration: { actions: { orders: { create: true, get: true, capture: true } }, context: { sandbox: true } },
-  }).getTools();
+  const official = officialAll;
 
   it("every tool Spotter offers exists in the toolkit, and an official call fits Spotter's schema", async () => {
     const ours: Array<{ name: string; inputSchema: { properties: Record<string, unknown>; required?: string[] } }> = (await rpc("tools/list", {})).body.result.tools;

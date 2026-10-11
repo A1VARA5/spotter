@@ -11,7 +11,9 @@ import type { Deps } from "./lifecycle";
 
 export const CONSENT_REVOKED = "IDENTITY.AUTHORIZATION-CONSENT.REVOKED";
 
-export type WarningKind = "paypal_disconnected" | "channel_moved" | "chat_blocked";
+export type WarningKind = "paypal_disconnected" | "channel_moved" | "chat_blocked" | AgentAlertKind;
+/** Sent on the spotter's channels only (sendWarning), never stored as dashboard warnings: they have their own cards. */
+export type AgentAlertKind = "agent_hijacked" | "refund_held" | "subscription_held";
 export type Warning = { kind: WarningKind; text: string };
 /** Sends a warning to a household's spotter on every channel they connected. Throws if any channel failed. */
 export type Warn = (householdId: string, w: Warning) => Promise<void>;

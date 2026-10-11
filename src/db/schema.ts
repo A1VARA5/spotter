@@ -337,4 +337,75 @@ create table if not exists pending_pictures (
   caption text not null default '',
   created_at timestamptz not null default now()
 );
+
+-- Agent toolkit block (src/core/toolkit-coverage.ts, tripwire.ts, selling.ts, subscriptions.ts). An agent's job decides
+-- which PayPal toolkit tools make sense for it. frozen_at is set when it reaches for a bait tool (only the PIN clears it).
+-- tripwires: each bait call, its arguments as untrusted text and the page line that may have caused it.
+-- sales: orders Spotter itself made for a family that sells (the only orders a selling agent may refund or ship).
+-- refund_requests and held_subscriptions: money a selling or shopping agent asked to move, waiting for the PIN.
+alter table spenders add column if not exists agent_job text not null default 'shopping';
+alter table spenders add column if not exists frozen_at timestamptz;
+create table if not exists tripwires (
+  id text primary key,
+  household_id text not null references households(id) on delete cascade,
+  spender_id text not null references spenders(id) on delete cascade,
+  tool text not null,
+  args jsonb not null,
+  cause jsonb,
+  voided int not null default 0,
+  at timestamptz not null default now(),
+  unfrozen_at timestamptz
+);
+create index if not exists tripwires_household_idx on tripwires (household_id, at desc);
+create table if not exists sales (
+  id text primary key,
+  household_id text not null references households(id) on delete cascade,
+  spender_id text references spenders(id) on delete set null,
+  paypal_order_id text not null unique,
+  capture_id text unique,
+  amount bigint not null check (amount > 0),
+  currency text not null check (currency in ('GBP', 'USD')),
+  item text not null,
+  example boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists sales_household_idx on sales (household_id, created_at desc);
+create table if not exists refund_requests (
+  id text primary key,
+  household_id text not null references households(id) on delete cascade,
+  spender_id text references spenders(id) on delete set null,
+  sale_id text not null references sales(id) on delete cascade,
+  amount bigint not null check (amount > 0),
+  currency text not null,
+  paid bigint not null,
+  note text,
+  status text not null check (status in ('held', 'refused', 'refunding', 'refunded', 'denied', 'failed')),
+  reason text,
+  paypal_refund_id text,
+  paypal_status text,
+  error text,
+  decided_by text,
+  confirmed_at timestamptz,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+create index if not exists refund_requests_household_idx on refund_requests (household_id, created_at desc);
+create index if not exists refund_requests_paypal_idx on refund_requests (paypal_refund_id) where paypal_refund_id is not null;
+create table if not exists held_subscriptions (
+  id text primary key,
+  household_id text not null references households(id) on delete cascade,
+  spender_id text references spenders(id) on delete set null,
+  plan_id text not null,
+  plan_name text not null,
+  payee text not null,
+  paypal_subscription_id text not null unique,
+  approve_url text,
+  tail jsonb not null,
+  cut_up jsonb,
+  status text not null check (status in ('held', 'released', 'denied')),
+  decided_by text,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+create index if not exists held_subscriptions_household_idx on held_subscriptions (household_id, created_at desc);
 `;

@@ -100,6 +100,25 @@ describe("create_order through Spotter", () => {
   });
 });
 
+describe("the same money cut up", () => {
+  it("a smaller order to a payee whose bigger order is held today is held too, and says why", async () => {
+    const big = parse(await toolkitCreateOrder(deps, "agent", order({ payee: "Clay & Kiln", items: [{ name: "Vase", quantity: 1, itemCost: 150, taxPercent: 0, itemTotal: 150 }] })));
+    expect(big.status).toBe("HELD_FOR_APPROVAL");
+    // Clay & Kiln is on the allowed list and under the ask amount: on its own this would just be paid.
+    const piece = parse(await toolkitCreateOrder(deps, "agent", order({ payee: "Clay & Kiln", items: [{ name: "Vase part 1", quantity: 1, itemCost: 25, taxPercent: 0, itemTotal: 25 }] })));
+    expect(piece.status).toBe("HELD_FOR_APPROVAL");
+    expect(deps.paypal.captureAuthorization).not.toHaveBeenCalled();
+    const p = await getPayment(deps.db, "pay_" + piece.id!.slice(3).toLowerCase());
+    expect(p?.decision?.reasons.join(" ")).toMatch(/cut up/i);
+  });
+
+  it("an order to a different payee isn't affected", async () => {
+    await toolkitCreateOrder(deps, "agent", order({ payee: "SoundDepot" }));
+    const small = parse(await toolkitCreateOrder(deps, "agent", order({ payee: "Clay & Kiln", items: [{ name: "Mug", quantity: 1, itemCost: 12, taxPercent: 0, itemTotal: 12 }] })));
+    expect(small.status).toBe("COMPLETED");
+  });
+});
+
 describe("pay_order through Spotter", () => {
   it("never captures a held payment, it says the spotter decides", async () => {
     const held = parse(await toolkitCreateOrder(deps, "agent", order()));

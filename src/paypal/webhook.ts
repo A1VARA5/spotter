@@ -5,6 +5,7 @@ import { getSpender, settleFromPayPal, type Deps, type Payment } from "@/core/li
 import type { PaymentStatus } from "@/db/schema";
 import { PayPalError, type WebhookHeaders } from "./client";
 import { CONSENT_REVOKED, consentRevoked } from "@/core/switchedoff";
+import { refundConfirmed } from "@/core/selling";
 
 export type PayPalEvent = { id: string; event_type: string; resource?: Record<string, unknown> };
 export type WebhookDeps = Pick<Deps, "db" | "confirmed" | "defer" | "warn">;
@@ -59,6 +60,10 @@ export async function handlePayPalEvent(deps: WebhookDeps, evt: PayPalEvent): Pr
   const resource = evt.resource ?? {};
   if (evt.event_type === CONSENT_REVOKED) return revoked(deps, evt, resource);
   const { resourceId, candidates } = idsOf(resource);
+  if (evt.event_type === "PAYMENT.CAPTURE.REFUNDED" && resourceId) {
+    const ours = await db.query("select 1 from refund_requests where paypal_refund_id = $1", [resourceId]);
+    if (ours.length) return sellerRefund(deps, evt, resource, resourceId);
+  }
   const payment = candidates.length
     ? ((
         await db.query<Payment>(
@@ -86,6 +91,17 @@ export async function handlePayPalEvent(deps: WebhookDeps, evt: PayPalEvent): Pr
     });
     throw e;
   }
+}
+
+/** PayPal confirms a refund the spotter approved for a family that sells (core/selling.ts). Only records it. */
+async function sellerRefund(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string, unknown>, refundId: string): Promise<HandleResult> {
+  const inserted = await deps.db.query(
+    "insert into paypal_events (id, event_type, resource_id, payment_id, summary) values ($1, $2, $3, null, $4) on conflict (id) do nothing returning id",
+    [evt.id, evt.event_type, refundId, JSON.stringify(summaryOf(resource))],
+  );
+  if (!inserted.length) return { outcome: "duplicate", paymentId: null };
+  await refundConfirmed(deps.db, refundId);
+  return { outcome: "refund_confirmed", paymentId: null };
 }
 
 /** Someone disconnected a household's PayPal login from Spotter: its spotter hears straight away. Never touches payments. */

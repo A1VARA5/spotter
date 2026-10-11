@@ -195,6 +195,19 @@ describe("PayPal webhook events", () => {
     expectNoMoneyMoved();
   });
 
+  it("CAPTURE.REFUNDED for a refund Spotter sent for a family that sells marks it confirmed by PayPal", async () => {
+    const hh = (await db.query<{ id: string }>("select id from households limit 1"))[0]!.id;
+    await db.query("insert into sales (id, household_id, paypal_order_id, capture_id, amount, currency, item) values ('sale_1', $1, 'O77', 'C77', 5000, 'GBP', 'Trainers')", [hh]);
+    await db.query("insert into refund_requests (id, household_id, sale_id, amount, currency, paid, status, paypal_refund_id) values ('rfd_1', $1, 'sale_1', 2000, 'GBP', 5000, 'refunded', 'R77')", [hh]);
+    const e = evt("PAYMENT.CAPTURE.REFUNDED", { id: "R77", status: "COMPLETED", links: [{ rel: "up", href: "https://api.sandbox.paypal.com/v2/payments/captures/C77" }] });
+    const r = await handlePayPalEvent(deps, e);
+    expect(r.outcome).toBe("refund_confirmed");
+    const [req] = await db.query<{ confirmed_at: string | null }>("select confirmed_at from refund_requests where id = 'rfd_1'");
+    expect(req!.confirmed_at).not.toBeNull();
+    expect((await handlePayPalEvent(deps, e)).outcome).toBe("duplicate");
+    expectNoMoneyMoved();
+  });
+
   it("a capture for a hold Spotter already voided is left alone but marked on the timeline", async () => {
     const p = await held();
     await setStatus(p.id, "voided");

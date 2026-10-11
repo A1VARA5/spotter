@@ -26,4 +26,14 @@ describe("sending a switched off warning", () => {
     await makeWarn(db, "https://x", { telegram })(hh, { kind: "chat_blocked", text: "x" });
     expect(telegram).not.toHaveBeenCalled();
   });
+
+  it("names an agent alert for what it is, not as a switched off protection", async () => {
+    const db = await pgliteDb();
+    const hh = (await createHousehold(db, { name: "H", spotterName: "Sam" })).id;
+    await db.query("update households set telegram_chat_id = '9' where id = $1", [hh]);
+    const telegram = vi.fn(async () => {});
+    await makeWarn(db, "https://x", { telegram })(hh, { kind: "agent_hijacked", text: "Shopping agent tried create_refund." });
+    expect(telegram).toHaveBeenCalledWith("9", expect.stringContaining("An AI agent was paused"), expect.anything());
+    expect(telegram).not.toHaveBeenCalledWith("9", expect.stringContaining("switched off"), expect.anything());
+  });
 });
