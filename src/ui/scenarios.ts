@@ -25,7 +25,10 @@ export type Scenario = {
 /** The made up GadgetBarn shop (src/app/demo-shop/gadgetbarn), on the live site so KERNEL's cloud browser can load it. */
 export const DEMO_SHOP_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app"}/demo-shop/gadgetbarn`;
 
-const tag = (s: string) => [...s].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join("");
+/** The made up two faced Larkhill Parcels page (src/app/demo-shop/redelivery): harmless to desktops, a card form to UK phones. */
+export const DEMO_REDELIVERY_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://spotter-pay.vercel.app"}/demo-shop/redelivery`;
+
+const tag =(s: string) => [...s].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join("");
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -91,6 +94,18 @@ export const SCENARIOS: Scenario[] = [
     body: {
       amount: 25000, currency: "GBP", payee: "jamie.k1994@mail.example", payeeIsNew: true, category: "family", method: "paypal_order",
       context: "Forwarded from +44 7700 900461: Hi mum its me, new number. Not really, phones dead and I cant get into my banking on this one. I've got a bill that has to be paid today or I get a late fee. Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow. jamie.k1994@mail.example. Please hurry mum x",
+    },
+  },
+  {
+    id: "gran-redelivery",
+    who: "Gran",
+    spender: "person",
+    title: "Gran gets a £1.99 redelivery fee text",
+    blurb: "A courier says it missed her and wants £1.99. The link looks harmless to scanners and only shows phones the card form.",
+    expect: "Held. Spotter opens the link as a desktop and as Gran's phone at the same moment and shows the two faces side by side.",
+    body: {
+      amount: 199, currency: "GBP", payee: "Larkhill Parcels", payeeIsNew: true, category: "delivery", method: "paypal_order",
+      context: `Text from LARKHILL: We missed you today. Your parcel LK 4471 0938 GB is waiting. A £1.99 redelivery fee is due within 24 hours or it goes back to the sender. Pay here: ${DEMO_REDELIVERY_URL}`,
     },
   },
   {

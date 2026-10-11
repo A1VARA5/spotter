@@ -174,6 +174,7 @@ export default async function HowPage() {
                 "Stop gift card, crypto and Friends and Family payments outright.",
                 "Make AI agents pay only through it, with no way to approve themselves.",
                 "Look into a held payment for you and offer a safer shop when there is one.",
+                "Read a screenshot of a message and check its words, or price each thing in a photo of an ad or a quote at real shops.",
               ].map((t) => (
                 <li key={t}>
                   <Check size={17} strokeWidth={2.4} aria-hidden="true" />
@@ -188,7 +189,6 @@ export default async function HowPage() {
               {[
                 "Read texts, chats or calls by itself. Phones don't allow it, and that's a good thing.",
                 "Stop someone paying directly in the PayPal app if they skip Spotter.",
-                "Read pictures yet. Send it a screenshot and it asks for the words instead.",
                 "Be right every time. When it isn't sure, it asks you instead of guessing.",
                 "Move real money in this demo: it runs on the PayPal sandbox.",
               ].map((t) => (

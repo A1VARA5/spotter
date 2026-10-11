@@ -68,6 +68,8 @@ export type Payment = {
   case_file: Case | null;
   /** "Was it you?": the ask to the person the message claims to be from, and their answer. Optional for older rows. */
   was_it_you?: WasItYou | null;
+  /** Scrolls the spotter made looking at the page safely (listPayments only), for the proof card. Null when never looked. */
+  peek_scrolls?: number | null;
   status: PaymentStatus;
   amount: string | number;
   currency: string;
@@ -156,7 +158,8 @@ export async function getPayment(db: Db, id: string, householdId?: string): Prom
 
 export async function listPayments(db: Db, householdId: string, limit = 50): Promise<Payment[]> {
   return db.query<Payment>(
-    "select p.* from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 order by p.created_at desc limit $2",
+    `select p.*, (select sum(k.scrolls)::int from peeks k where k.payment_id = p.id and k.session_sealed is not null) as peek_scrolls
+     from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 order by p.created_at desc limit $2`,
     [householdId, limit],
   );
 }
@@ -190,7 +193,8 @@ async function marketCheck(deps: Deps, req: PaymentRequest): Promise<(MarketResu
   if (!deps.market || !req.item?.trim()) return null;
   try {
     const offers = await deps.market(req.item, req.money.currency);
-    return offers ? { ...priceCheck(req.money.amount, req.money.currency, offers), item: req.item } : null;
+    // "Priced like a used one" is skipped when the item or the message says it is used or refurbished.
+    return offers ? { ...priceCheck(req.money.amount, req.money.currency, offers, { item: `${req.item} ${req.context ?? ""}` }), item: req.item } : null;
   } catch (e) {
     console.error(`[spotter] market check failed for ${req.id}:`, e instanceof Error ? e.message : e);
     return null; // a missing price check never blocks or approves anything on its own

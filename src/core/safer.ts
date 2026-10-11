@@ -103,7 +103,8 @@ async function findAndStore(deps: Deps, p: Payment, spender: Spender, reason: St
   if (!offers?.length) return null;
 
   const stopped = normDomain(p.request.payee.name);
-  const real = offers.filter((o) => o.currency === currency && o.price > 0 && DOMAIN.test(normDomain(o.domain)) && normDomain(o.domain) !== stopped);
+  // Used listings never count: the agent was buying a new one, and a used price isn't the going rate for it.
+  const real = offers.filter((o) => o.condition !== "used" && o.currency === currency && o.price > 0 && DOMAIN.test(normDomain(o.domain)) && normDomain(o.domain) !== stopped);
   const going = real.length >= 2 ? median(real.map((o) => o.price)) : 0;
   // The held payment's own reservation is let go when the agent switches, so it doesn't count against the replacement.
   const used = (await weekSpend(deps.db, spender.id, currency)) - (p.status === "needs_approval" ? Number(p.amount) : 0);

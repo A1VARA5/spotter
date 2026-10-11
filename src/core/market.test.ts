@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contradictsPrice, marketFacts, priceCheck, priceVerdict, type Offer } from "./market";
+import { claimsUsed, contradictsPrice, marketFacts, priceCheck, priceVerdict, type Offer } from "./market";
 
 const offer = (price: number, domain = "currys.co.uk", title = "Sony WF-1000XM5"): Offer => ({
   title,
@@ -88,5 +88,74 @@ describe("priceVerdict and contradictsPrice", () => {
     expect(f).toMatch(/overpriced/i);
     expect(f).toMatch(/4 retailers/);
     expect(marketFacts(null, 24900, "GBP")).toBeNull();
+  });
+});
+
+describe("priced like a used one", () => {
+  const cond = (price: number, condition: "new" | "used" | null, domain = `s${price}.co.uk`): Offer => ({ ...offer(price, domain), condition });
+  // New ones from £679, used ones £300 to £360 (Channel3 offers carry condition since July 2026).
+  const mixed = [cond(67900, "new"), cond(69900, "new"), cond(72900, null), cond(30000, "used"), cond(36000, "used"), cond(33000, "used")];
+
+  it("flags a 'new' item that sits below every new offer but inside the used range", () => {
+    const r = priceCheck(32000, "GBP", mixed);
+    expect(r.likeUsed).toEqual({ newFrom: 67900, usedLow: 30000, usedHigh: 36000 });
+    expect(r.flag).toMatchObject({ kind: "price", severity: "medium" });
+    expect(r.flag?.why).toBe("Priced like a used one. New ones cost at least £679.00.");
+    expect(priceVerdict(r)).toBe("like_used");
+  });
+
+  it("uses only new offers (and ones with no condition) for the going rate", () => {
+    const r = priceCheck(69900, "GBP", mixed);
+    expect(r.median).toBe(69900);
+    expect(r.offers).toBe(3);
+    expect(r.flag).toBeNull();
+    expect(r.likeUsed).toBeUndefined();
+  });
+
+  it("says nothing when the item itself is sold as used or refurbished", () => {
+    for (const item of ["Used Sony WF-1000XM5", "refurbished earbuds", "Pre-owned iPhone 13", "second hand sofa", "Renewed laptop"]) {
+      expect(priceCheck(32000, "GBP", mixed, { item }).likeUsed).toBeUndefined();
+    }
+  });
+
+  it("needs two offers on each side, in the payment's currency", () => {
+    const oneUsed = mixed.filter((o) => o.price !== 30000 && o.price !== 33000);
+    expect(priceCheck(36000, "GBP", oneUsed).likeUsed).toBeUndefined();
+    const usdUsed = mixed.map((o) => (o.condition === "used" ? { ...o, currency: "USD" as const } : o));
+    expect(priceCheck(32000, "GBP", usdUsed).likeUsed).toBeUndefined();
+    const oneNew = [cond(67900, "new"), cond(30000, "used"), cond(36000, "used")];
+    expect(priceCheck(32000, "GBP", oneNew).likeUsed).toBeUndefined();
+  });
+
+  it("stays quiet outside the used range or at a new price", () => {
+    expect(priceCheck(37000, "GBP", mixed).likeUsed).toBeUndefined(); // above the used range, below new
+    expect(priceCheck(67900, "GBP", mixed).likeUsed).toBeUndefined(); // the cheapest new price itself
+  });
+
+  it("keeps the fake shop flag when the price is also far below the going rate, with the used range noted", () => {
+    const deep = [cond(90000, "new"), cond(95000, "new"), cond(30000, "used"), cond(36000, "used")];
+    const r = priceCheck(31000, "GBP", deep);
+    expect(r.flag?.severity).toBe("high");
+    expect(r.likeUsed).toEqual({ newFrom: 90000, usedLow: 30000, usedHigh: 36000 });
+    expect(priceVerdict(r)).toBe("too_cheap");
+  });
+
+  it("the case agent can't call a used looking price normal or dear", () => {
+    expect(contradictsPrice("The price is normal for these.", "like_used")).toBe(true);
+    expect(contradictsPrice("That's well over what real shops charge.", "like_used")).toBe(true);
+    expect(contradictsPrice("Much cheaper than new ones.", "like_used")).toBe(false);
+    const m = { ...priceCheck(32000, "GBP", mixed), item: "earbuds" };
+    expect(marketFacts(m, 32000, "GBP")).toMatch(/used ones sell for £300\.00 to £360\.00/i);
+  });
+});
+
+describe("claimsUsed", () => {
+  it("reads used, refurbished and similar words", () => {
+    expect(claimsUsed("Refurbished Apple iPhone 13")).toBe(true);
+    expect(claimsUsed("ex-display sofa")).toBe(true);
+    expect(claimsUsed("open box headphones")).toBe(true);
+    expect(claimsUsed("Brand new, sealed")).toBe(false);
+    expect(claimsUsed("Usedom travel guide")).toBe(false);
+    expect(claimsUsed(undefined)).toBe(false);
   });
 });

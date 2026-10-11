@@ -8,10 +8,21 @@ const BASE = "https://api.trychannel3.com";
 const TIMEOUT_MS = 8_000;
 const CACHE_DAYS = 7;
 
-type C3Offer = { url: string; domain: string; price?: { price: number; currency: string } | null; availability?: string };
-type C3Product = { id: string; title: string; brands?: Array<{ name: string }>; offers?: C3Offer[]; images?: Array<{ url: string }> };
+type C3Offer = { url: string; domain: string; price?: { price: number; currency: string } | null; availability?: string; condition?: string | null };
+type C3Product = {
+  id: string;
+  title: string;
+  brands?: Array<{ name: string }>;
+  offers?: C3Offer[];
+  images?: Array<{ url: string }>;
+  category?: { slug?: unknown; path?: Array<{ slug?: unknown }> } | null;
+};
 
-export type Product = { id: string; title: string; brand?: string; image?: string; offers: Offer[] };
+/** categories: the product's category slug, then the slugs on its path (Channel3 category model). */
+export type Product = { id: string; title: string; brand?: string; image?: string; offers: Offer[]; categories?: string[] };
+
+/** Channel3's offer conditions filter: "refurbished" was retired as a filter value (it is rejected). */
+export type Condition = "new" | "used";
 
 const COUNTRY: Record<Currency, string> = { GBP: "GB", USD: "US" };
 
@@ -25,18 +36,36 @@ function toOffers(p: C3Product, currency: Currency): Offer[] {
       price: Math.round(o.price!.price * 100),
       currency,
       url: o.url,
+      // Left out when the shop doesn't say (null, or a value this code doesn't know): unknown counts as not used.
+      ...(o.condition === "new" || o.condition === "used" ? { condition: o.condition } : {}),
     }));
 }
 
-/** Raw search. Returns null (not []) when Channel3 can't be reached, so callers never mistake an outage for "no offers". */
-export async function searchProducts(query: string, currency: Currency, limit = 8): Promise<Product[] | null> {
+const SLUG = /^[a-z0-9-]{1,80}$/;
+function categoriesOf(p: C3Product): string[] | undefined {
+  const c = p.category;
+  if (!c || typeof c !== "object") return undefined;
+  const slugs = [c.slug, ...(Array.isArray(c.path) ? c.path.map((x) => x?.slug) : [])].filter((s): s is string => typeof s === "string" && SLUG.test(s));
+  return slugs.length ? [...new Set(slugs)] : undefined;
+}
+
+function toProduct(p: C3Product, currency: Currency): Product {
+  const categories = categoriesOf(p);
+  return { id: p.id, title: p.title, brand: p.brands?.[0]?.name, image: p.images?.[0]?.url, offers: toOffers(p, currency), ...(categories ? { categories } : {}) };
+}
+
+/**
+ * Raw search. Returns null (not []) when Channel3 can't be reached, so callers never mistake an outage for "no offers".
+ * conditions: Channel3's offer condition filter; left out, Channel3 uses ["new"] (which also matches unknown).
+ */
+export async function searchProducts(query: string, currency: Currency, limit = 8, conditions?: Condition[]): Promise<Product[] | null> {
   const key = process.env.CHANNEL3_API_KEY;
   if (!key) return null;
   try {
     const r = await fetch(`${BASE}/v1/search`, {
       method: "POST",
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ query: query.slice(0, 200), limit, config: { country: COUNTRY[currency], currency } }),
+      body: JSON.stringify({ query: query.slice(0, 200), limit, ...(conditions ? { filters: { conditions } } : {}), config: { country: COUNTRY[currency], currency } }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!r.ok) {
@@ -44,13 +73,7 @@ export async function searchProducts(query: string, currency: Currency, limit = 
       return null;
     }
     const j = (await r.json()) as { products?: C3Product[] };
-    return (j.products ?? []).map((p) => ({
-      id: p.id,
-      title: p.title,
-      brand: p.brands?.[0]?.name,
-      image: p.images?.[0]?.url,
-      offers: toOffers(p, currency),
-    }));
+    return (j.products ?? []).map((p) => toProduct(p, currency));
   } catch (e) {
     console.error("[spotter] Channel3 search error:", e instanceof Error ? e.message : e);
     return null;
@@ -64,7 +87,7 @@ export type ImageQuery = { base64: string } | { url: string };
  * crops the main product out of a page screenshot first. Same product shape as text search. null when Channel3 can't
  * be reached or answers with an error, so an outage is never mistaken for "no match".
  */
-export async function searchByImage(img: ImageQuery, currency: Currency, limit = 10): Promise<Product[] | null> {
+export async function searchByImage(img: ImageQuery, currency: Currency, limit = 10, conditions?: Condition[]): Promise<Product[] | null> {
   const key = process.env.CHANNEL3_API_KEY;
   if (!key) return null;
   try {
@@ -75,6 +98,7 @@ export async function searchByImage(img: ImageQuery, currency: Currency, limit =
         ...("base64" in img ? { base64_image: img.base64 } : { image_url: img.url }),
         limit,
         segment: "AUTO",
+        ...(conditions ? { filters: { conditions } } : {}),
         config: { country: COUNTRY[currency], currency },
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -88,13 +112,59 @@ export async function searchByImage(img: ImageQuery, currency: Currency, limit =
       console.error("[spotter] Channel3 image search answered without a product list");
       return null;
     }
-    return (j.products as C3Product[])
-      .filter((p) => p && typeof p.id === "string" && typeof p.title === "string")
-      .map((p) => ({ id: p.id, title: p.title, brand: p.brands?.[0]?.name, image: p.images?.[0]?.url, offers: toOffers(p, currency) }));
+    return (j.products as C3Product[]).filter((p) => p && typeof p.id === "string" && typeof p.title === "string").map((p) => toProduct(p, currency));
   } catch (e) {
     console.error("[spotter] Channel3 image search error:", e instanceof Error ? e.message : e);
     return null;
   }
+}
+
+// ---------- find products in an image (POST /experimental/find-products-in-image, docs/channel3/api-reference_v1_find-products-in-image.md) ----------
+// Alpha at Channel3. 1 credit plus 1 per detected thing. Live on 2026-10-11 it took about 3 to 13 seconds.
+
+/** bbox: [x1, y1, x2, y2] in pixels of size, or null when Channel3 gave no usable box. */
+export type SceneThing = { thing: string; bbox: [number, number, number, number] | null; categories: string[]; matches: Product[] };
+/** size: [width, height] of the picture the boxes belong to; null for the whole photo fallback. */
+export type Scene = { size: [number, number] | null; things: SceneThing[]; fallback?: boolean };
+
+const SCENE_TIMEOUT_MS = 25_000;
+export const MAX_THINGS = 6;
+
+const whole = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0;
+
+/** The live answer as a Scene, or null when it isn't one. Never trusts a box that falls outside the picture. */
+export function parseScene(j: unknown, currency: Currency): Scene | null {
+  const b = j as { things?: unknown; image_size?: unknown } | null;
+  if (!b || !Array.isArray(b.things)) return null;
+  const sz = b.image_size;
+  const size: [number, number] | null = Array.isArray(sz) && sz.length === 2 && whole(sz[0]) && whole(sz[1]) && sz[0] > 0 && sz[1] > 0 ? [sz[0], sz[1]] : null;
+  const things: SceneThing[] = [];
+  for (const raw of b.things.slice(0, MAX_THINGS)) {
+    const t = raw as { thing?: unknown; bbox?: unknown; category_ids?: unknown; matches?: unknown } | null;
+    if (!t || typeof t.thing !== "string") continue;
+    const bb = Array.isArray(t.bbox) && t.bbox.length === 4 && t.bbox.every(whole) ? (t.bbox as [number, number, number, number]) : null;
+    const bbox = size && bb && bb[2] > bb[0] && bb[3] > bb[1] && bb[2] <= size[0] && bb[3] <= size[1] ? bb : null;
+    const categories = Array.isArray(t.category_ids) ? t.category_ids.filter((c): c is string => typeof c === "string" && SLUG.test(c)) : [];
+    const matches = Array.isArray(t.matches)
+      ? (t.matches as C3Product[]).filter((p) => p && typeof p.id === "string" && typeof p.title === "string").map((p) => toProduct(p, currency))
+      : [];
+    things.push({ thing: t.thing.slice(0, 80), bbox, categories, matches });
+  }
+  return { size, things };
+}
+
+/** Every product Channel3 finds in a photo, grouped by thing. null on any failure, so the caller can fall back. */
+export async function findProductsInImage(base64: string, currency: Currency, condition: Condition, maxThings = MAX_THINGS): Promise<Scene | null> {
+  const a = await c3(
+    "POST",
+    "/experimental/find-products-in-image",
+    { base64_image: base64, max_things: Math.min(MAX_THINGS, Math.max(1, maxThings)), limit: 10, filters: { conditions: [condition] }, config: { country: COUNTRY[currency], currency } },
+    SCENE_TIMEOUT_MS,
+  );
+  if (!a || a.status !== 200) return null;
+  const s = parseScene(a.body, currency);
+  if (!s) console.error("[spotter] Channel3 find products in image answered 200 without a list of things");
+  return s;
 }
 
 /** Highest price over the last 30 days, in minor units of that currency. */
@@ -158,13 +228,14 @@ export function offersFor(products: Product[], item: string): Offer[] {
 /** Cached lookup used by the payment check. */
 export function makeMarket(db: Db) {
   return async (item: string, currency: Currency): Promise<Offer[] | null> => {
-    const key = `${currency}:${item.trim().toLowerCase()}`;
+    // "c2": offers carry their condition (new and used both asked for), so older cached rows without it aren't reused.
+    const key = `c2:${currency}:${item.trim().toLowerCase()}`;
     const hit = await db.query<{ offers: Offer[] }>(
       `select offers from market_cache where key = $1 and fetched_at > now() - interval '${CACHE_DAYS} days'`,
       [key],
     );
     if (hit[0]) return hit[0].offers;
-    const products = await searchProducts(item, currency);
+    const products = await searchProducts(item, currency, 8, ["new", "used"]);
     if (!products) return null;
     const offers = offersFor(products, item);
     await db.query(
@@ -235,7 +306,7 @@ const PRODUCT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 type Answer = { status: number; body: unknown } | null;
 
 /** One call to Channel3: null when it can't be reached (no key, network error, timeout). Logs status codes, never the key. */
-async function c3(method: "GET" | "POST", path: string, body?: unknown): Promise<Answer> {
+async function c3(method: "GET" | "POST", path: string, body?: unknown, timeoutMs = TIMEOUT_MS): Promise<Answer> {
   const key = process.env.CHANNEL3_API_KEY;
   if (!key) {
     console.error(`[spotter] CHANNEL3_API_KEY is not set, so Channel3 ${method} ${path.split("?")[0]} was skipped`);
@@ -246,7 +317,7 @@ async function c3(method: "GET" | "POST", path: string, body?: unknown): Promise
       method,
       headers: { "x-api-key": key, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!r.ok) console.error(`[spotter] Channel3 ${method} ${path.split("?")[0]} answered ${r.status}`);
     const answer = await r.json().catch(() => null);

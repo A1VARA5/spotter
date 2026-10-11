@@ -304,4 +304,37 @@ create table if not exists channel3_searches (
 );
 create index if not exists channel3_searches_household_idx on channel3_searches (household_id, at);
 create index if not exists channel3_searches_at_idx on channel3_searches (at);
+-- Proof block: scrolls the spotter asked for while looking at a page safely (peek), for "Spotter never touched it".
+alter table peeks add column if not exists scrolls integer not null default 0;
+
+-- Photo price check block (src/market/photo.ts): each find products in image call (up to 7 Channel3 credits) counted
+-- per family per day, and Channel3's answer cached by a hash of the picture and the condition. The photo is never stored.
+create table if not exists photo_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists photo_checks_household_idx on photo_checks (household_id, at);
+create index if not exists photo_checks_at_idx on photo_checks (at);
+create table if not exists photo_cache (
+  key text primary key,
+  scene jsonb not null,
+  fetched_at timestamptz not null default now()
+);
+
+-- Read screenshots block (src/core/picture.ts): each Claude vision read counted per family per day, and a picture
+-- waiting for "message or prices?" remembered by Telegram's file id only, never the picture, for an hour.
+create table if not exists vision_checks (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists vision_checks_household_idx on vision_checks (household_id, at);
+create index if not exists vision_checks_at_idx on vision_checks (at);
+create table if not exists pending_pictures (
+  token text primary key,
+  household_id text not null references households(id) on delete cascade,
+  chat text not null,
+  file_id text not null,
+  caption text not null default '',
+  created_at timestamptz not null default now()
+);
 `;

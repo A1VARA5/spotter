@@ -174,6 +174,25 @@ describe("spotTheDifference", () => {
     expect(s!.differences.map((d) => d.label)).not.toContain("Was price");
   });
 
+  it("says 'priced like a used one' when a new item sits below every new offer but inside the used range", async () => {
+    const withCondition = (id: string, title: string, offers: Array<[string, number, "new" | "used" | null]>): Product => ({
+      id,
+      title,
+      offers: offers.map(([domain, price, condition]) => ({ title, domain, price, currency: "GBP" as const, url: `https://buy.trychannel3.com/${id}-${domain}`, condition })),
+    });
+    search.mockResolvedValue([
+      withCondition("a", "Aurora X2 wireless earbuds", [["currys.co.uk", 67900, "new"], ["argos.co.uk", 69900, null], ["resale.example", 30000, "used"], ["second.example", 36000, "used"]]),
+    ]);
+    const s = await spotTheDifference(deps, input({ amount: 32000 }));
+    expect(s!.typical).toBe(68900); // the going rate comes from new offers only
+    expect(s!.offers).toBe(2);
+    expect(s!.likeUsed).toEqual({ newFrom: 67900, usedLow: 30000, usedHigh: 36000 });
+    expect(s!.differences[1]).toEqual({ label: "Condition", here: "Sold as new for £320.00", real: "Priced like a used one. New ones cost at least £679.00." });
+    // Not when the item is sold as refurbished.
+    const refurb = await spotTheDifference(deps, input({ paymentId: "p8", amount: 32000, item: "Aurora X2 wireless earbuds refurbished" }));
+    expect(refurb?.likeUsed).toBeUndefined();
+  });
+
   it("never fails the case: a broken search or history is logged and skipped", async () => {
     search.mockRejectedValueOnce(new Error("boom"));
     expect(await spotTheDifference(deps, input())).toBeNull();

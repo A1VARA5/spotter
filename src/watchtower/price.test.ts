@@ -40,6 +40,12 @@ describe("summarisePrices", () => {
     });
   });
 
+  it("leaves used listings out of the new price", () => {
+    const r = summarisePrices("Pro wireless earbuds 2", [...OFFERS, { ...offer("resale.example", 5000), condition: "used" as const }], "GBP");
+    expect(r.offers).toBe(4);
+    expect(r.cheapest).toEqual({ shop: "a.example", price: 169 });
+  });
+
   it("says plainly when there's nothing to compare", () => {
     expect(summarisePrices("Thing", [], "GBP")).toMatchObject({ offers: 0, cheapest: null, median: null, shops: [] });
   });

@@ -4,7 +4,7 @@
 export const MAX_CONTEXT_CHARS = 12_000;
 export type Hidden = { kind: "invisible_text" | "direction_override" | "zero_width" | "fake_delimiter"; text: string };
 
-const DELIMITERS = /<\/?\s*(context|evidence|request|rules|system|message)\s*>/gi;
+const DELIMITERS = /<\/?\s*(context|evidence|request|rules|system|message|email)\s*>/gi;
 const ZERO_WIDTH = /[​-‍⁠﻿]/g;
 const DIRECTION = /[‪-‮⁦-⁩]/g;
 const TAG_RUN = /[\u{E0000}-\u{E007F}]+/gu;
@@ -28,7 +28,7 @@ export function sanitizeContext(raw: string): { text: string; hidden: Hidden[]; 
     text = stripped;
     stripped = text.replace(DELIMITERS, "");
   } while (stripped !== text);
-  if (text !== raw && /<\/?\s*(context|evidence|request|rules|system|message)\s*>/i.test(raw)) {
+  if (text !== raw && /<\/?\s*(context|evidence|request|rules|system|message|email)\s*>/i.test(raw)) {
     hidden.push({ kind: "fake_delimiter", text: "content tried to fake Spotter's own sections" });
   }
 

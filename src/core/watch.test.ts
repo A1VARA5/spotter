@@ -83,6 +83,11 @@ describe("genuineOffers", () => {
     const got = genuineOffers([offer("a.co.uk", 15900), offer("b.co.uk", 16900), offer("c.co.uk", 17900), offer("fake.shop", 1999), { ...offer("us.com", 100), currency: "USD" }], "GBP");
     expect(got.map((o) => o.domain)).toEqual(["a.co.uk", "b.co.uk", "c.co.uk"]);
   });
+
+  it("never counts a used listing as a price drop", () => {
+    const got = genuineOffers([offer("a.co.uk", 15900), offer("b.co.uk", 16900), { ...offer("resale.example", 9000), condition: "used" as const }], "GBP");
+    expect(got.map((o) => o.domain)).toEqual(["a.co.uk", "b.co.uk"]);
+  });
 });
 
 describe("mergeHistory", () => {

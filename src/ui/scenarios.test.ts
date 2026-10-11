@@ -63,7 +63,7 @@ describe("scenarios", () => {
     // What each card promises, with a quiet model (the real check can only make things stricter).
     const promised: Record<string, string> = {
       "agent-gift": "allow", "agent-big": "ask", "agent-too-cheap": "ask", "agent-trap": "block",
-      "gran-hi-mum": "ask", "gran-seller": "protect", "gran-chemist": "allow", "leo-giftcard": "block",
+      "gran-hi-mum": "ask", "gran-redelivery": "ask", "gran-seller": "protect", "gran-chemist": "allow", "leo-giftcard": "block",
       "biz-invoice": "protect", "biz-paper": "ask",
     };
     const all = [...SCENARIOS, ...BUSINESS_SCENARIOS];

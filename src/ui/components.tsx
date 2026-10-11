@@ -109,6 +109,12 @@ export function MarketNote({ market, currency }: { market: (MarketResult & { ite
           {money(market.cheapest.price, currency)} at {market.cheapest.domain}
         </a>
         , around {money(market.median, currency)} across {market.offers} retailers.{" "}
+        {market.likeUsed && (
+          <>
+            <b>Priced like a used one.</b> Used ones sell for {money(market.likeUsed.usedLow, currency)} to {money(market.likeUsed.usedHigh, currency)}; new ones cost at least{" "}
+            {money(market.likeUsed.newFrom, currency)}.{" "}
+          </>
+        )}
         <span className="market-src">Prices from Channel3.</span>
       </span>
     </p>

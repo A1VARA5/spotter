@@ -269,6 +269,15 @@ export async function startPeek(db: Db, householdId: string, paymentId: string, 
 }
 
 /** The household's open, unexpired peek on this payment, with its session id opened. Expired ones are swept first. */
+/** How many times the family looked at this payment's page through Spotter, and how many scrolls they made in all. */
+export async function peekActivity(db: Db, paymentId: string): Promise<{ peeks: number; scrolls: number }> {
+  const rows = await db.query<{ peeks: number; scrolls: number }>(
+    "select count(*)::int as peeks, coalesce(sum(scrolls), 0)::int as scrolls from peeks where payment_id = $1 and session_sealed is not null",
+    [paymentId],
+  );
+  return { peeks: Number(rows[0]?.peeks ?? 0), scrolls: Number(rows[0]?.scrolls ?? 0) };
+}
+
 async function livePeek(db: Db, kernel: PeekKernel, householdId: string, paymentId: string) {
   await sweepPeeks(db, kernel);
   const rows = await db.query<{ id: string; view: PeekView; session_sealed: string | null }>(
@@ -346,6 +355,14 @@ export async function peekScroll(db: Db, householdId: string, paymentId: string,
   const peek = await livePeek(db, kernel, householdId, paymentId);
   if (!peek) return fail(410, ENDED);
   const v = VIEWPORT[peek.view] ?? VIEWPORT.desktop;
+  // Counted before it is sent, for the "Spotter never touched it" proof: the count is every scroll asked for, so it
+  // is never lower than what reached the page. If the count can't be stored, the scroll isn't sent.
+  try {
+    await db.query("update peeks set scrolls = scrolls + 1 where id = $1", [peek.id]);
+  } catch (e) {
+    console.error(`[spotter] peek: counting a scroll for ${paymentId} failed, so it wasn't sent:`, msg(e));
+    return fail(503, "The page didn't scroll.");
+  }
   try {
     // The mouse wheel in the middle of the screen: no click, no key, nothing typed.
     await withTimeout(kernel.browsers.computer.scroll(peek.sessionId, { x: Math.round(v.width / 2), y: Math.round(v.height / 2), delta_y: direction === "down" ? 5 : -5 }), CALL_MS, "scrolling");

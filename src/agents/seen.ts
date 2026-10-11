@@ -20,7 +20,7 @@ export type HiddenWhy =
 
 export type HiddenChunk = { text: string; why: HiddenWhy };
 /** truncated: the page hid more text than was collected (too many pieces, or a piece too long to keep whole). */
-export type SeenVsRead = { domChars: number; visibleChars: number; visibleSample: string; hidden: HiddenChunk[]; truncated?: boolean };
+export type SeenVsRead = { domChars: number; visibleChars: number; visibleSample: string; visibleText?: string; hidden: HiddenChunk[]; truncated?: boolean };
 
 export const SEEN_VS_READ = String.raw`() => {
   const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "TITLE", "svg", "SVG"]);
@@ -120,7 +120,7 @@ export const SEEN_VS_READ = String.raw`() => {
       return n.nodeValue && n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
     },
   });
-  let domChars = 0, visibleChars = 0, sample = "", truncated = false;
+  let domChars = 0, visibleChars = 0, sample = "", full = "", truncated = false;
   const groups = [];
   let last = null;
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -130,6 +130,7 @@ export const SEEN_VS_READ = String.raw`() => {
     if (!why) {
       visibleChars += text.length;
       if (sample.length < 600) sample += (sample ? " " : "") + text;
+      if (full.length < 4000) full += (full ? " " : "") + text;
       last = null;
       continue;
     }
@@ -141,7 +142,7 @@ export const SEEN_VS_READ = String.raw`() => {
   // Long hidden text keeps its start and its end, where a payload after filler would sit; cutting is reported.
   const cut = (t) => { if (t.length <= 1200) return t; truncated = true; return t.slice(0, 400) + " ... " + t.slice(-800); };
   const hidden = groups.map((g) => ({ text: cut(g.text), why: g.why }));
-  return { domChars, visibleChars, visibleSample: sample.slice(0, 600), hidden, truncated };
+  return { domChars, visibleChars, visibleSample: sample.slice(0, 600), visibleText: full.slice(0, 4000), hidden, truncated };
 }`;
 
 /** How each reason reads to a person. */
