@@ -42,8 +42,33 @@ export function plainSentence(text: string): string {
 export const ADVICE = gt("en", "advice");
 
 
+/**
+ * The best one line reason for a stop, in this order: the case file's headline (what the checks found,
+ * such as a two faced page), then a high, then a medium sign's own words, and only then decide()'s first
+ * reason, which can be a plain rule such as "First time paying".
+ */
+function bestReason(note: CaseNote | undefined): string {
+  if (!note) return "";
+  const sign = (sev: string) => note.signs.find((s) => s.severity.toLowerCase() === sev && s.why.trim())?.why;
+  return [note.caseHeadline, sign("high"), sign("medium"), note.reasons[0]].find((t) => t && t.trim()) ?? "";
+}
+
+/** Spotter's notes are written for the spotter ("Gran's card details"); Gran reads "your card details". */
+function yours(text: string, who: string): string {
+  const name = clean(who);
+  if (!name) return text;
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`\\b${esc}['’]s\\b`, "g"), "your");
+}
+
+/** "Tom: not me" (data.ts wasItYouWords) gives "Tom"; any other answer gives null. */
+function notMeWho(words: string | undefined): string | null {
+  const m = words?.match(/^(.+): not me$/);
+  return m ? clean(m[1]!).slice(0, MAX_NAME) || null : null;
+}
+
 /** currency is missing on rows that came through the board's data (pounds there for now). */
-export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample"> & { currency?: string };
+export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample"> & { currency?: string; wasItYou?: string };
 export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean };
 /** ends: when PayPal lets the hold go on its own; asleep: someone chose "ask again tomorrow". */
 export type GranWait = { id: string; when: Date; payee: string; amount: number; currency: string; status: string; ends?: string; asleep: boolean; sample: boolean };
@@ -66,15 +91,19 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
       // Spotter's own reasons are written in English, so in another language the stop is told by the
       // trick it used (hand translated), never by a machine translation of the reason.
       const trick = signsOf(r).map((s) => TRICK_KEY[s]).find(Boolean);
-      const said = lang === "en" ? plainSentence(notes.get(r.id)?.reasons[0] ?? "") : trick ? gt(lang, trick) : "";
+      const said = lang === "en" ? plainSentence(yours(bestReason(notes.get(r.id)), r.who)) : trick ? gt(lang, trick) : "";
+      // "Was it you?": when the real person said "not me", their answer released the money, not the spotter.
+      const notMe = denied ? notMeWho(r.wasItYou) : null;
+      const by = notMe ? gt(lang, "byNotMe", { who: notMe }) : gt(lang, denied ? "byDenied" : "byStopped", { spotter: o.spotter });
+      const fallback = notMe ? gt(lang, "notMeFallback", { who: notMe }) : gt(lang, denied ? "deniedFallback" : "stoppedFallback", { spotter: o.spotter });
       return {
         id: r.id,
         when: r.when,
         payee: r.payee,
         amount: r.amount,
         currency: r.currency ?? "GBP",
-        by: gt(lang, denied ? "byDenied" : "byStopped", { spotter: o.spotter }),
-        sentence: said || gt(lang, denied ? "deniedFallback" : "stoppedFallback", { spotter: o.spotter }),
+        by,
+        sentence: said || fallback,
         sample: r.sample === "Yes",
       };
     });

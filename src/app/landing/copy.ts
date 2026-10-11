@@ -1,6 +1,12 @@
 // Every line the landing quotes from the product, in one place. The people, shops and amounts are examples, but the
 // wording is what Spotter really sends: copy.test.ts checks each line against the code that writes it.
 
+/** The demo family's sample month (src/watchtower/sample.ts) as the live board adds it up, in pounds. copy.test.ts checks it. */
+export const SAMPLE_BOARD = { kept: 957.95, keptCount: 8, granKept: 452.98, paid: 717.58, stopped: 736.96, denied: 220.99, protected: 85 } as const;
+const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+/** £1,234.50, the way the board writes pounds. */
+export const gbp = (n: number) => GBP.format(n);
+
 /** "Was it you?": the text Gran forwards, and what Spotter tells her. */
 export const GRAN = {
   from: "+44 7700 900183",

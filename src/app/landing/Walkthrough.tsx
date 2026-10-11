@@ -24,13 +24,13 @@ const STOPS = [
     key: "asked",
     title: "Asked",
     head: "Gran forwards an offer she isn't sure about.",
-    body: "A text about a £79 tablet that's £249 everywhere else. She forwards it to Spotter in the chat app she already uses, the one habit you set up with her. It works the same by email, or when an AI agent asks to pay.",
+    body: "A text about a £79 tablet that's £249 everywhere else. She forwards it to Spotter in the chat app she already uses. Email and AI agents work the same way.",
   },
   {
     key: "checked",
     title: "Checked",
     head: "Spotter checks it the way you would, only faster.",
-    body: "Her rules first. Then an AI reads the message and has to quote the exact words that worried it. Spotter opens the link where it can't hurt anyone, looks up what real shops charge, and asks the Spotter network whether other families said no.",
+    body: "Her rules first. Then an AI reads the message and has to quote the exact words that worried it. Spotter opens the link safely, looks up real shop prices and asks whether other families said no.",
   },
   {
     key: "held",
@@ -48,7 +48,7 @@ const STOPS = [
     key: "done",
     title: "Paid or released",
     head: "PayPal confirms it, and the record stays.",
-    body: "You said no, so PayPal releases the hold and its webhook confirms it back to Spotter. Gran hears it from Spotter in the same chat. Watchtower keeps every decision, so you can ask about the month later.",
+    body: "You said no, so PayPal releases the hold and confirms it back to Spotter. Gran hears it in the same chat, and Watchtower keeps the record.",
   },
 ] as const;
 
@@ -430,14 +430,15 @@ export function Walkthrough({ cta }: { cta: React.ReactNode }) {
                   <h3>{s.head}</h3>
                   <p>{s.body}</p>
                 </div>
-                <div className="wk-inline" aria-hidden="true">
+                <div className="wk-inline" aria-hidden="true" inert>
                   <Art k={s.key} live={false} />
                 </div>
               </li>
             ))}
           </ol>
 
-          <div className="wk-stage" aria-hidden="true">
+          {/* Decorative copies of the stops above: inert, so nothing inside is a hidden tab stop (axe aria-hidden-focus). */}
+          <div className="wk-stage" aria-hidden="true" inert>
             <div className="wk-sticky">
               <Track k={k} />
               <div className="wk-arts">

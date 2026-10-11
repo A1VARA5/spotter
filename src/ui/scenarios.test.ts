@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUSINESS_SCENARIOS, SCENARIOS, scenariosFor } from "./scenarios";
+import { BUSINESS_SCENARIOS, JUDGE_TOUR, SCENARIOS, scenariosFor } from "./scenarios";
 import { DEMO_SPENDERS } from "@/server/seed";
 import { PRESETS } from "@/core/presets";
 import { aiCheck } from "@/ai/check";
@@ -118,5 +118,25 @@ describe("scenarios", () => {
       if (shows(s.id).includes("Channel3")) expect(s.body.item).toBeTruthy();
     }
     expect(shows("gran-chemist")).toEqual([]);
+  });
+});
+
+describe("the judge's tour", () => {
+  it("has four real family scenarios, each naming what it shows, with no repeats", () => {
+    expect(JUDGE_TOUR).toHaveLength(4);
+    expect(new Set(JUDGE_TOUR.map((t) => t.id)).size).toBe(4);
+    for (const t of JUDGE_TOUR) {
+      expect(SCENARIOS.some((s) => s.id === t.id)).toBe(true);
+      expect(t.shows).toBeTruthy();
+      expect(t.short).not.toMatch(BRANDS);
+    }
+  });
+
+  it("names the engine the scenario's own Shows tags list", () => {
+    for (const t of JUDGE_TOUR) {
+      const s = SCENARIOS.find((x) => x.id === t.id)!;
+      const engine = t.shows.split(":")[0]!;
+      if (engine === "KERNEL" || engine === "Channel3") expect(s.shows?.some((x) => x.engine === engine)).toBe(true);
+    }
   });
 });

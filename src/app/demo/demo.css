@@ -1,5 +1,22 @@
 /* Try a payment: small additions owned by this page (globals.css belongs to the shell). */
 
+.demo-lede.demo-lede { margin: 6px 0 18px; }
+.demo-rail { display: grid; gap: 12px; align-content: start; }
+.demo-rail-text { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
+
+/* The judge's tour: four sends in one row, before the full list. Same card language as the scenarios. */
+.tour { margin: 0 0 28px; display: grid; gap: 10px; }
+.tour-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+.tour-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.tour-stop { display: grid; grid-template-rows: auto 1fr auto; gap: 4px; padding: 12px 14px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--paper); min-width: 0; }
+.tour-stop[data-state="held"] { border-color: rgb(242 183 5 / 0.7); background: var(--hold-soft); }
+.tour-stop[data-state="blocked"], .tour-stop[data-state="returned"] { border-color: rgb(190 51 40 / 0.35); }
+.tour-name { margin: 0; font-size: 15px; font-weight: 650; color: var(--ink); }
+.tour-shows { margin: 0; font-size: 13px; color: var(--ink-2); }
+.tour-out { margin: 0; font-size: 14px; font-weight: 650; color: var(--ink); }
+.tour-btn.tour-btn { justify-self: start; margin-top: 6px; min-height: 40px; padding: 0 16px; font-size: 14px; }
+@media (max-width: 420px) { .tour-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* Tom's phone before anything happens: an obvious empty chat, not a blank gradient. */
 .wiy-empty.wiy-empty { display: grid; justify-items: center; gap: 8px; padding: 16px 14px; }
 .wiy-empty p { margin: 0; }

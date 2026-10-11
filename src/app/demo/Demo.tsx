@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HoldTrack } from "@/ui/components";
 import { trackState } from "@/ui/format";
-import { scenariosFor, type Scenario } from "@/ui/scenarios";
+import { JUDGE_TOUR, SCENARIOS, scenariosFor, type Scenario } from "@/ui/scenarios";
 import { labelsFor, OUTCOME_WORDS, type Labels } from "@/ui/labels";
 import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
@@ -96,7 +96,8 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
   );
 }
 
-function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLite; labels: Labels }) {
+/** Sends one scenario through Spotter as that person, for a scenario card and the judge's tour alike. */
+function useSend(s: Scenario, spender?: SpenderLite) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Payment | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +126,61 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
       setRunning(false);
     }
   }
+  return { running, result, error, next, run };
+}
 
+/** Four buttons at the top of Try: the demos that show the most, without scrolling for them. */
+export function JudgeTour({ spenders }: { spenders: SpenderLite[] }) {
+  const stops = JUDGE_TOUR.map((t) => ({ t, s: SCENARIOS.find((x) => x.id === t.id) })).filter((x): x is { t: (typeof JUDGE_TOUR)[number]; s: Scenario } => Boolean(x.s));
+  return (
+    <section className="tour" aria-labelledby="tour-title">
+      <h2 id="tour-title" className="tour-title">
+        Short on time? Start with these four
+      </h2>
+      <ul className="tour-list">
+        {stops.map(({ t, s }) => (
+          <TourStop key={t.id} short={t.short} shows={t.shows} s={s} spender={spenders.find((p) => p.kind === s.spender)} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function TourStop({ short, shows, s, spender }: { short: string; shows: string; s: Scenario; spender?: SpenderLite }) {
+  const { running, result, error, next, run } = useSend(s, spender);
+  const state = result ? trackState(result.status) : null;
+  return (
+    <li className="tour-stop" data-state={state ?? undefined}>
+      <p className="tour-name">{short}</p>
+      <p className="tour-shows">Shows {shows}</p>
+      {result && state ? (
+        <>
+          <p className="tour-out">{OUTCOME_WORDS[state].long}.</p>
+          <Link ref={next} className="btn btn-primary tour-btn" href={state === "paid" ? "/ledger" : `/dashboard#pay-${result.id}`}>
+            {state === "held" ? "Review it now" : state === "paid" ? "See it in Activity" : "See why"}
+          </Link>
+        </>
+      ) : spender ? (
+        <button type="button" className="btn btn-quiet tour-btn" onClick={run} aria-disabled={running || undefined} aria-label={running ? `Checking: ${short}` : `Send it: ${short}`}>
+          {running ? "Checking" : "Send it"}
+        </button>
+      ) : (
+        <p className="tour-shows">Needs {s.who} in the family.</p>
+      )}
+      <p className="sr-only" role="status">
+        {running ? `Checking ${short}.` : result ? outcomeLine(result) : ""}
+      </p>
+      {error && (
+        <p className="error-line" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLite; labels: Labels }) {
+  const { running, result, error, next, run } = useSend(s, spender);
   const state = result ? trackState(result.status) : running ? "checking" : null;
   return (
     <article className="scenario" aria-labelledby={`s-${s.id}`}>

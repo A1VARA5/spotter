@@ -42,7 +42,11 @@ export default function Privacy() {
         <li>Only your signed in household sees your data. Other households can&apos;t see or act on it. The Spotter network shares only a scrambled fingerprint of a payee, never names or messages.</li>
       </ul>
       <h2 className="section-title">How long</h2>
-      <p>Demo families are deleted after 48 hours. To delete your household, email the address on the project page and it is removed within a week.</p>
+      <p>
+        Demo families are deleted after 48 hours. To delete your household, open an issue on{" "}
+        <a href="https://github.com/A1VARA5/spotter/issues">Spotter&apos;s GitHub page</a> asking for it, and it is removed
+        within a week. Issues there are public, so leave personal details out.
+      </p>
     </main>
   );
 }

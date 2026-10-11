@@ -205,3 +205,54 @@ describe("the simple view's board", () => {
     expect((granBoard("Margaret") as unknown as P).pages[0]!.name).toBe("This month");
   });
 });
+
+describe("who decided, and why, in Gran's words", () => {
+  const parcelNote: CaseNote = {
+    id: "parcel",
+    reasons: ["First time paying Larkhill Parcels.", "A tight deadline is used to rush you before you can check whether the parcel is real."],
+    signs: [
+      { sign: "Pressure to hurry", severity: "medium", why: "A tight deadline is used to rush you before you can check whether the parcel is real." },
+      { sign: "Pretending to be someone", severity: "medium", why: "Scammers often pretend to be delivery companies by text." },
+    ],
+    caseHeadline: 'This looks like a fake parcel text: it uses a small £1.99 "redelivery fee" to get Gran\'s card details.',
+  };
+
+  it("names the impersonated relative when their Not me released the money, not the spotter", () => {
+    const notes = new Map([["tom", note("tom", ["Someone on a new number says they're Tom."])]]);
+    const m = granMonth([row({ id: "tom", who: "Gran", outcome: "Denied", amount: 250, wasItYou: "Tom: not me" })], notes, { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped[0]!.by).toBe('Tom said "not me"');
+    expect(m.stopped[0]!.sentence).toBe("Someone on a new number says they're Tom.");
+  });
+
+  it("still credits the spotter when the relative was only asked, or said it was them", () => {
+    for (const w of ["Asked Tom", "Tom: it was me", "Not asked"]) {
+      const m = granMonth([row({ id: "x", outcome: "Denied", wasItYou: w })], new Map(), { who: null, spotter: "Sam", now: NOW });
+      expect(m.stopped[0]!.by).toBe("Sam said no");
+    }
+  });
+
+  it("falls back to a calm line that names the relative when there is no reason, in English and Polish", () => {
+    const rows = [row({ id: "tom", outcome: "Denied", wasItYou: "Tom: not me" })];
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe('Tom said "not me", so nothing was paid.');
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.by).toBe('Tom powiedział(a): "to nie ja"');
+  });
+
+  it("explains a stop by what the check found (the case file), not by a rule like first time paying", () => {
+    const m = granMonth([row({ id: "parcel", who: "Gran", outcome: "Denied", amount: 1.99 })], new Map([["parcel", parcelNote]]), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped[0]!.sentence).toBe('This looks like a fake parcel text: it uses a small £1.99 "redelivery fee" to get your card details.');
+  });
+
+  it("without a case file, uses the strongest sign's own words before the rules", () => {
+    const noCase: CaseNote = { id: parcelNote.id, reasons: parcelNote.reasons, signs: parcelNote.signs };
+    const m = granMonth([row({ id: "parcel", outcome: "Denied" })], new Map([["parcel", noCase]]), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped[0]!.sentence).toBe("A tight deadline is used to rush you before you can check whether the parcel is real.");
+    const high: CaseNote = { ...noCase, signs: [...noCase.signs, { sign: "Pretending to be someone", severity: "high", why: "The text pretends to be a courier." }] };
+    const h = granMonth([row({ id: "parcel", outcome: "Denied" })], new Map([["parcel", high]]), { who: null, spotter: "Sam", now: NOW });
+    expect(h.stopped[0]!.sentence).toBe("The text pretends to be a courier.");
+  });
+
+  it("uses the rule reason only when nothing else was found", () => {
+    const m = granMonth([row({ id: "r", outcome: "Stopped" })], new Map([["r", note("r", ["Over the £30.00 limit."])]]), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped[0]!.sentence).toBe("Over the £30.00 limit.");
+  });
+});

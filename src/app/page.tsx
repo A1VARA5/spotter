@@ -9,7 +9,6 @@ import { ChannelHub } from "./landing/ChannelHub";
 import { AgentToolkit } from "./landing/AgentToolkit";
 import { WatchtowerPeek } from "./landing/WatchtowerPeek";
 import { Final } from "./landing/Sections";
-import { Business } from "./landing/Business";
 import { FAQ } from "./how/faq";
 import { LoopPauser } from "@/ui/LoopPauser";
 import { getDb } from "@/db";
@@ -102,8 +101,8 @@ export default async function Home() {
             <div className="hero-copy">
               <h1 className="hero-h1">PayPal holds the money until someone you trust says yes.</h1>
               <p className="hero-p">
-                Gran forwards a text she isn&apos;t sure about. PayPal holds her &pound;250 while Spotter checks, and when the text says it&apos;s from Tom,
-                Spotter asks the real Tom. Your kid and your AI shopping agent get the same check.
+                Gran forwards a text she isn&apos;t sure about. PayPal holds her &pound;250 while Spotter checks it and asks Sam, the family&apos;s
+                spotter. The text says it&apos;s from Tom, so Spotter asks the real Tom too. Your kid and your AI shopping agent get the same check.
               </p>
               <StartButtons onDark who={who} label="Try it on fake money" />
               {!who && (
@@ -157,11 +156,6 @@ export default async function Home() {
         }
       />
 
-      <Business
-        href={who ? "/setup?step=name" : "/api/auth/paypal/start"}
-        cta={who ? "Set up Spotter for a business" : "Log in with PayPal to set up a business"}
-      />
-
       <section className="shell how-sec land-faq" aria-labelledby="faq-title">
         <h2 id="faq-title" className="sec-title reveal">
           Questions people ask
@@ -176,6 +170,11 @@ export default async function Home() {
         </div>
         <p className="land-faq-more">
           <a href="/how">How Spotter works, step by step, with every channel</a>
+        </p>
+        <p className="land-biz">
+          Runs a business? The same Spotter holds a supplier invoice whose bank details suddenly changed, and an AI agent
+          that orders over budget.{" "}
+          <a href={who ? "/setup?step=name" : "/api/auth/paypal/start"}>{who ? "Set up Spotter for a business" : "Log in with PayPal to set up a business"}</a>
         </p>
       </section>
       <Final>

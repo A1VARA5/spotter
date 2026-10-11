@@ -112,6 +112,12 @@ export function DashboardState({
 }
 
 /** The hold that opens first: one Spotter thinks is a scam, else the oldest. */
+/** What Everything today says when it has no other rows: held payments count, so it never says "no payments" beside a hold. */
+export function feedEmpty(held: number): string {
+  if (held === 0) return "No payments yet.";
+  return held === 1 ? "Nothing else yet. The one payment so far is waiting for you." : `Nothing else yet. All ${held} payments so far are waiting for you.`;
+}
+
 export function firstToOpen(waiting: Payment[]): string | null {
   const risky = waiting.find((p) => p.case_file?.verdict === "likely_scam" || (p.ai?.flags ?? []).some((f) => f.severity === "high"));
   return (risky ?? waiting[waiting.length - 1])?.id ?? null;
@@ -256,7 +262,7 @@ export function DashboardRail() {
         </h2>
         {rest.length === 0 ? (
           <p className="feed-meta">
-            No payments yet. <Link href="/demo">Try one with fake money</Link>.
+            {feedEmpty(payments.length - rest.length)} <Link href="/demo">Try one with fake money</Link>.
           </p>
         ) : (
           <ul className="feed">
@@ -644,7 +650,12 @@ function HeldCard({
           <p className="held-confirm-title">
             Pay {money(p.amount, p.currency)} to {p.request.payee.name}?
           </p>
-          {scamLike && <p className="held-confirm-warn">Spotter thinks this is likely a scam. Once PayPal pays, it can&apos;t be pulled back.</p>}
+          {/* The warning matches the card's own verdict: "likely a scam" only when the case file says so. */}
+          {scamLike && (
+            <p className="held-confirm-warn">
+              {p.case_file?.verdict === "likely_scam" ? "Spotter thinks this is likely a scam." : "Spotter found a serious warning sign on this one."} Once PayPal pays, it can&apos;t be pulled back.
+            </p>
+          )}
           <label className="field-label" htmlFor={`pin-${p.id}`}>
             Your PIN{demo ? " (the demo family's PIN is 2468)" : ""}
           </label>
@@ -657,8 +668,16 @@ function HeldCard({
             autoComplete="off"
             autoFocus
             value={pin}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `pin-err-${p.id}` : undefined}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
           />
+          {/* A wrong PIN is said right under the PIN box, where the cursor goes back to. */}
+          {error && (
+            <p id={`pin-err-${p.id}`} className="error-line held-pin-error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="held-actions">
             <button type="submit" className={scamLike ? "btn btn-deny" : "btn btn-approve"} disabled={!pin} aria-disabled={busy !== null || undefined}>
               {busy === "approve" ? "Paying" : `Pay ${money(p.amount, p.currency)}`}
@@ -697,7 +716,7 @@ function HeldCard({
         </div>
       )}
       {pending && !confirming && <p className="held-wait">Approve opens once Spotter has finished looking into it (a few seconds). Deny works now.</p>}
-      {error && (
+      {error && !confirming && (
         <p className="error-line" role="alert">
           {error}
         </p>

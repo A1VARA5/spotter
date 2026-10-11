@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, fairPrice, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
+import { countdown, fairPrice, firstFew, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
 const h = (hours: number) => new Date(NOW.getTime() + hours * 3600_000);
@@ -134,5 +134,15 @@ describe("fair price", () => {
 
   it("has nothing to say without a price check", () => {
     expect(fairPrice([pr({ marketCheapest: null, marketMedian: null, priceGap: null })], NOW)).toMatchObject({ checked: 0, headline: "", caught: null, items: [] });
+  });
+});
+
+describe("tiles show the first few and say how many more", () => {
+  it("keeps the first n in order and counts the rest", () => {
+    expect(firstFew([1, 2, 3, 4, 5], 3)).toEqual({ shown: [1, 2, 3], more: 2 });
+  });
+  it("shows everything when it fits", () => {
+    expect(firstFew(["a"], 3)).toEqual({ shown: ["a"], more: 0 });
+    expect(firstFew([], 3)).toEqual({ shown: [], more: 0 });
   });
 });

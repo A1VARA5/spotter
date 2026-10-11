@@ -10,7 +10,26 @@ import { GRAN_TEXT } from "@/watchtower/granLang";
 import { HIDDEN_INSTRUCTION, TOOL_POISON } from "@/app/demo-shop/gadgetbarn/shop";
 import { compareFaces } from "@/agents/twofaces";
 import { moneyTrail, phoneTrail } from "@/agents/trail";
-import { GRAN, TOM, AGENT, RECEIPT, GRAN_VIEW, SHOP, FACES } from "./copy";
+import { GRAN, TOM, AGENT, RECEIPT, GRAN_VIEW, SHOP, FACES, SAMPLE_BOARD } from "./copy";
+import { sampleMonth } from "@/watchtower/sample";
+import { toSources } from "@/watchtower/data";
+import { DEMO_SPENDERS } from "@/server/seed";
+
+describe("the landing's sample numbers match the live board's sample month", () => {
+  it("adds up the same money kept, per outcome and for Gran", () => {
+    const spenders = DEMO_SPENDERS.map((s, i) => ({ ...s, id: `sp_${i}`, household_id: "hh" })) as unknown as Spender[];
+    const rows = toSources(sampleMonth(spenders), spenders).payments;
+    const sum = (f: (r: (typeof rows)[number]) => boolean) => Math.round(rows.filter(f).reduce((t, r) => t + r.amount, 0) * 100) / 100;
+    const kept = (r: (typeof rows)[number]) => r.outcome === "Stopped" || r.outcome === "Denied";
+    expect(sum(kept)).toBe(SAMPLE_BOARD.kept);
+    expect(rows.filter(kept)).toHaveLength(SAMPLE_BOARD.keptCount);
+    expect(sum((r) => kept(r) && r.who === "Gran")).toBe(SAMPLE_BOARD.granKept);
+    expect(sum((r) => r.outcome === "Paid")).toBe(SAMPLE_BOARD.paid);
+    expect(sum((r) => r.outcome === "Stopped")).toBe(SAMPLE_BOARD.stopped);
+    expect(sum((r) => r.outcome === "Denied")).toBe(SAMPLE_BOARD.denied);
+    expect(sum((r) => r.outcome === "Protected")).toBe(SAMPLE_BOARD.protected);
+  });
+});
 
 const pay = (over: Record<string, unknown>) =>
   ({
