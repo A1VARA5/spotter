@@ -5,6 +5,6 @@ import { toolkitReadOrder, toolkitRun } from "@/paypal/toolkit";
 
 export const maxDuration = 120;
 
-const handler = makeToolkitMcp({ deps: getDeps, read: toolkitReadOrder, run: (method, args) => toolkitRun(method, args) });
+const handler = makeToolkitMcp({ deps: getDeps, read: toolkitReadOrder, run: (method, args, opts) => toolkitRun(method, args, opts) });
 
 export { handler as GET, handler as POST, handler as DELETE };

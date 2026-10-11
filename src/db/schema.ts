@@ -255,6 +255,7 @@ alter table payments add column if not exists sleeps int not null default 0;
 alter table payments add column if not exists reauthorized_at timestamptz;
 alter table payments add column if not exists reauth_tried_at timestamptz;
 alter table payments add column if not exists reauth_note text;
+alter table payments add column if not exists paypal_custom_id text;
 create index if not exists payments_ask_again_idx on payments (ask_again_at) where ask_again_at is not null;
 -- Switched off block (src/core/switchedoff.ts): "someone switched Spotter off" warnings for the spotter, shown in the app
 -- as well as sent on their channels. key makes each one happen once (a PayPal event id, a pairing code, a chat update).

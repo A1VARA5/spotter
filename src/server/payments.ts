@@ -7,6 +7,7 @@ import {
   getSpender,
   InvalidPaymentError,
   listPayments,
+  retryWithPayPal,
   submitPayment,
   swap,
   type Deps,
@@ -83,6 +84,14 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
     approve: (householdId: string, id: string, by: string) => guarded("approve", async () => settle(await getDeps(), householdId, id, by, approve)),
 
     deny: (householdId: string, id: string, by: string) => guarded("deny", async () => settle(await getDeps(), householdId, id, by, deny)),
+
+    /** "Try PayPal again" on a capture or void PayPal didn't confirm. It only finishes what the spotter already decided,
+     * idempotently (same PayPal-Request-Id), so the signed in household is enough. */
+    retry: (householdId: string, id: string) =>
+      guarded("retry", async () => {
+        const r = await retryWithPayPal(await getDeps(), id, householdId);
+        return r.ok ? json({ payment: r.payment }) : json({ error: r.error }, r.status);
+      }),
 
     /** "Ask again tomorrow": never moves money (the hold just waits), so the signed in household is enough. */
     sleep: (householdId: string, id: string, by: string) =>

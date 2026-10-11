@@ -93,10 +93,15 @@ type OrderResponse = {
 
 export type CreatedOrder = { orderId: string; authorizationId?: string; expiresAt?: string; approveUrl?: string };
 
-/** Creates an AUTHORIZE order. "card" authorises immediately (agents); "approval_link" needs the payer to approve (people). */
+/**
+ * Creates an AUTHORIZE order. "card" authorises immediately (agents); "approval_link" needs the payer to approve (people).
+ * Every order carries invoice_id = spotter-<payment id>: PayPal refuses a second order with the same invoice_id, so a
+ * duplicate can't be made even past our own checks. customId (an agent's key and the payment id) is PayPal's own record
+ * of which agent key asked for the order: PayPal returns it in get_order and its reports, and never shows it to the payer.
+ */
 export async function createAuthorizeOrder(
   req: PaymentRequest,
-  opts: { source: "card" | "approval_link" },
+  opts: { source: "card" | "approval_link"; customId?: string },
 ): Promise<CreatedOrder> {
   const body = {
     intent: "AUTHORIZE",
@@ -105,6 +110,8 @@ export async function createAuthorizeOrder(
         reference_id: req.id,
         description: `${req.payee.name}: ${req.category}`.slice(0, 127),
         amount: { currency_code: req.money.currency, value: toDecimal(req.money.amount) },
+        invoice_id: `spotter-${req.id}`.slice(0, 127),
+        ...(opts.customId ? { custom_id: opts.customId.slice(0, 127) } : {}),
       },
     ],
     ...(opts.source === "card" ? { payment_source: { card: SANDBOX_CARD } } : {}),
@@ -155,8 +162,9 @@ export async function captureAuthorization(authorizationId: string, idempotencyK
   return { captureId: c.id, status: c.status };
 }
 
-export async function voidAuthorization(authorizationId: string) {
-  const v = await call<{ status?: string }>("POST", `/v2/payments/authorizations/${authorizationId}/void`, {});
+/** idempotencyKey: the same key for the same payment and authorisation, so a retried void is one request at PayPal. */
+export async function voidAuthorization(authorizationId: string, idempotencyKey?: string) {
+  const v = await call<{ status?: string }>("POST", `/v2/payments/authorizations/${authorizationId}/void`, {}, idempotencyKey);
   return { status: v.status ?? "VOIDED" };
 }
 

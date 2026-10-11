@@ -138,6 +138,7 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   const result = (outcome: string): HandleResult => ({ outcome, paymentId: payment.id });
 
   if (evt.event_type === "PAYMENT.AUTHORIZATION.CREATED") {
+    if (payment.paypal_authorization_id && resourceId !== payment.paypal_authorization_id) return result("recorded");
     const expires = str(resource.expiration_time);
     if (!expires || Number.isNaN(Date.parse(expires))) return result("recorded");
     await db.query("update payments set paypal_auth_expires_at = $2 where id = $1", [payment.id, expires]);
@@ -150,6 +151,18 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   if ((evt.event_type === "PAYMENT.CAPTURE.DENIED" || evt.event_type === "PAYMENT.CAPTURE.DECLINED") && payment.paypal_capture_id && payment.paypal_capture_id !== resourceId) return result("recorded");
 
   const isCapture = evt.event_type.startsWith("PAYMENT.CAPTURE.");
+  // The order id alone isn't enough: one order can carry an old authorisation (before a reauthorization, or a spare
+  // one Spotter let go) and the live one. An event only settles the payment when it is about the exact authorisation
+  // and capture Spotter holds. Anything else is a stale or out of order event, kept on the timeline, never acted on.
+  const stale = staleReason(evt.event_type, resource, resourceId, payment);
+  if (stale) {
+    console.error(`[spotter] paypal ${evt.event_type} for ${payment.id} ignored: ${stale}`);
+    await db.query("insert into events (payment_id, type, data) values ($1, 'paypal_mismatch', $2)", [
+      payment.id,
+      JSON.stringify({ event: evt.event_type, paypal_event: evt.id, spotter_status: payment.status, reason: stale }),
+    ]);
+    return result("mismatch");
+  }
   // A decline is final for that capture. PayPal doesn't promise order, so a PENDING or COMPLETED for the same
   // capture that arrives after it (a retried earlier delivery) must not turn the payment back into paid.
   const declined =
@@ -192,6 +205,21 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   }
   if (rule.confirm && wasHeld(payment)) await confirm(deps, now);
   return result(moved ? rule.to : "confirmed");
+}
+
+/** Why an event is about a different authorisation or capture than the one this payment holds, or null if it matches. */
+function staleReason(type: string, resource: Record<string, unknown>, resourceId: string | null, p: Payment): string | null {
+  if (type.startsWith("PAYMENT.AUTHORIZATION.")) {
+    if (p.paypal_authorization_id && resourceId !== p.paypal_authorization_id) return `authorisation ${resourceId ?? "(none)"} isn't the one Spotter holds (${p.paypal_authorization_id})`;
+    return null;
+  }
+  if (type.startsWith("PAYMENT.CAPTURE.")) {
+    const related = ((resource.supplementary_data as Record<string, unknown> | undefined)?.related_ids ?? {}) as Record<string, unknown>;
+    const auth = okId(related.authorization_id) ? related.authorization_id : null;
+    if (auth && p.paypal_authorization_id && auth !== p.paypal_authorization_id) return `capture of authorisation ${auth}, not the one Spotter holds (${p.paypal_authorization_id})`;
+    if (p.paypal_capture_id && resourceId !== p.paypal_capture_id) return `capture ${resourceId ?? "(none)"} isn't the one Spotter recorded (${p.paypal_capture_id})`;
+  }
+  return null;
 }
 
 /** "PayPal confirmed" note to the spotter. After the response, and never allowed to fail the webhook. */

@@ -15,6 +15,7 @@ import { PriceWatch, watchable } from "@/ui/PriceWatch";
 import type { WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 import { PhotoCheck } from "@/ui/PhotoCheck";
+import { PayPalRetry } from "@/ui/PayPalRetry";
 
 
 type DashCtx = {
@@ -453,6 +454,8 @@ function decidedLine(after: Payment, before: Payment) {
   const s = trackState(after.status);
   if (s === "paid") return `Paid. ${amount} went to ${payee}.`;
   if (s === "moving") return `Approved. PayPal is paying ${amount} to ${payee}.`;
+  if (after.status === "needs_approval" && after.error) return after.error;
+  if (after.status === "voiding" && after.error) return `Denied. PayPal didn't confirm releasing the ${amount} yet, Spotter is retrying. Nothing went to ${payee}.`;
   if (s === "returned") return `Denied. PayPal released the ${amount}, nothing went to ${payee}.`;
   if (s === "failed") return `PayPal said no to ${amount} for ${payee}. Nothing was paid.`;
   return `${amount} to ${payee}: ${STATE_LABEL[s]}.`;
@@ -798,6 +801,7 @@ function FeedRow({ p, all, who, now, watch, onWatchChanged }: { p: Payment; all:
         {STATE_LABEL[s]}
       </span>
       <WasItYouLine w={p.was_it_you} status={p.status} />
+      <PayPalRetry p={p} onDone={onWatchChanged} />
       {(p.case_file || canWatch) && (
         <div className="feed-open">
           <Sheet

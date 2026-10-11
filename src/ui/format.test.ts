@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { findQuotes, money, replacementLink, timeAgo, trackState } from "./format";
+import { findQuotes, money, paypalPending, replacementLink, timeAgo, trackState } from "./format";
+
+describe("paypalPending", () => {
+  it("says PayPal didn't confirm yet for a void or capture left for retry, and nothing otherwise", () => {
+    expect(paypalPending({ status: "voiding", error: "PayPal didn't confirm yet, Spotter is retrying: timeout" })).toEqual({
+      kind: "void",
+      text: "PayPal didn't confirm yet, retrying. Nothing was paid, and Spotter keeps asking PayPal to let the hold go.",
+    });
+    expect(paypalPending({ status: "capturing", error: "PayPal didn't confirm yet, Spotter is retrying: 503" })?.kind).toBe("capture");
+    expect(paypalPending({ status: "voiding", error: null })).toBeNull();
+    expect(paypalPending({ status: "voided", error: "old" })).toBeNull();
+  });
+});
 
 describe("ui format", () => {
   it("formats minor units as money", () => {

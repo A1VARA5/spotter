@@ -16,7 +16,7 @@ import { sendWarning } from "./switchedoff";
 import { orderTotal, type ToolkitOrderInput } from "@/server/toolkit-guard";
 
 /** The toolkit's own call (PayPalAPI.run): a JSON string, errors as {"error":{...}} rather than thrown. */
-export type Run = (method: string, args: Record<string, unknown>) => Promise<string>;
+export type Run = (method: string, args: Record<string, unknown>, opts?: { requestId?: string }) => Promise<string>;
 
 const err = (message: string) => JSON.stringify({ error: { message, type: "spotter_error" } });
 const MONEY = /^\d{1,7}(\.\d{1,2})?$/;
@@ -42,9 +42,9 @@ export function readRun(raw: string): { ok: true; data: any } | { ok: false; mes
   return { ok: true, data };
 }
 
-async function callRun(run: Run, method: string, args: Record<string, unknown>) {
+async function callRun(run: Run, method: string, args: Record<string, unknown>, opts?: { requestId?: string }) {
   try {
-    return readRun(await run(method, args));
+    return readRun(await (opts ? run(method, args, opts) : run(method, args)));
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e), noAnswer: true };
   }
@@ -248,7 +248,7 @@ export async function decideRefund(deps: Deps, run: Run, householdId: string, id
     capture_id: sale.capture_id,
     amount: { currency_code: req.currency, value: decimal(amount) },
     ...(req.note ? { note_to_payer: req.note } : {}),
-  });
+  }, { requestId: `refund-${id}` }); // the same refund request is one refund at PayPal, even if sent again
   if (!r.ok && r.noAnswer) {
     // PayPal may have refunded it: it stays "refunding" (shown as "check PayPal") so nobody sends it again blind.
     await db.query("update refund_requests set error = $2 where id = $1", [id, `PayPal didn't answer: ${r.message}`]);
@@ -337,7 +337,7 @@ export async function sellPayOrder(deps: Deps, run: Run, agentId: string, orderI
   if (typeof agent === "string") return agent;
   const sale = await saleBy(deps.db, agent.household_id, "paypal_order_id", orderId);
   if (!sale) return err("Spotter only takes payments for sales it made for this family.");
-  const raw = await run("pay_order", { id: orderId });
+  const raw = await run("pay_order", { id: orderId }, { requestId: `capture-${sale.id}` });
   const r = readRun(raw);
   const capture = r.ok ? (r.data?.response?.purchase_units?.[0]?.payments?.captures?.[0] as { id?: unknown } | undefined) : undefined;
   if (typeof capture?.id === "string") await deps.db.query("update sales set capture_id = $2 where id = $1", [sale.id, capture.id.slice(0, 64)]);

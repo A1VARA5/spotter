@@ -46,7 +46,7 @@ describe("the demo family's example hold", () => {
     const deps = { db, check: vi.fn(), paypal: pp } as unknown as Deps;
     const denied = await deny(deps, p!.id, "Sam");
     expect(denied.status).toBe("voided");
-    expect(pp.voidAuthorization).toHaveBeenCalledWith("AUTH1");
+    expect(pp.voidAuthorization).toHaveBeenCalledWith("AUTH1", expect.stringMatching(/^void-pay_.*-AUTH1$/));
 
     await createExampleHold({ db, paypal: pp }, hh);
     const [q] = (await listPayments(db, hh)).filter((x) => x.status === "needs_approval");

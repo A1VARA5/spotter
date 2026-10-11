@@ -40,7 +40,7 @@ describe("springing a tripwire", () => {
     const r = await springTripwire(deps, "agent", "create_refund", { capture_id: "2GG279541U471931P", amount: { currency_code: "USD", value: "200.00" } });
     expect(r.reply).toBe(TRIPWIRE_REPLY);
     expect(r.voided).toBe(1);
-    expect(deps.paypal.voidAuthorization).toHaveBeenCalledWith("A1");
+    expect(deps.paypal.voidAuthorization).toHaveBeenCalledWith("A1", `void-${held.id}-A1`);
     expect((await getPayment(deps.db, held.id))?.status).toBe("voided");
     const [spender] = await deps.db.query<{ frozen_at: string | null }>("select frozen_at from spenders where id = 'agent'");
     expect(spender!.frozen_at).not.toBeNull();
