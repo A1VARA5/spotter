@@ -81,23 +81,24 @@ export const startingBoard = (kind: HouseholdKind): AgReportState => (kind === "
 export function promptStarters(people: PersonRow[], kind: HouseholdKind): Array<{ label: string; prompt: string }> {
   const kid = people.find((p) => p.kind === "Kid")?.name;
   const relative = people.find((p) => p.kind === "Person")?.name;
-  // The first two go to Spotter's own agent: a live Channel3 price check, and the weekly brief it hands
-  // to the brief agent, which hands the building to Studio's page and widget agents.
+  // The fair price check goes to Spotter's own agent and Channel3. The "Show me" ones always become a new
+  // tile: Spotter places it and Studio's widget agent builds it, while the data agent works out the total.
   const fair = { label: "Did we pay fair prices this month?", prompt: "Did we pay fair prices this month? Compare what we paid with what real shops charge today, and show it on the board." };
   const brief = { label: "Write this week's brief", prompt: "Write our weekly brief for this week." };
+  const byPerson = { label: "Who spent the most?", prompt: "Show me what each person spent this month as a chart by person, and tell me anything odd." };
   if (kind === "business")
     return [
       fair,
-      brief,
+      byPerson,
+      { label: "Where did the money go?", prompt: "Show me this month's spending as a chart by supplier." },
       { label: "Which invoices were caught?", prompt: "Which supplier payments were held or stopped this month? Open the case files and explain in a few sentences." },
-      { label: "Who spent the most?", prompt: "Show spend by person this month and tell me anything odd." },
-      { label: "Build a supplier report", prompt: "Add a new page called Supplier report: spend by supplier, scam signs by kind, the scam radar, and a table of every stopped or denied payment." },
+      brief,
     ];
   return [
     fair,
-    brief,
+    kid ? { label: `What did ${kid} spend on games?`, prompt: `Show me what ${kid} spent on games this month, as a chart by shop.` } : byPerson,
+    { label: "Where did the money go?", prompt: "Show me this month's spending as a chart by category." },
     ...(relative ? [{ label: `Why was ${relative} stopped?`, prompt: `Why were ${relative}'s payments held or stopped this month? Open the case files and explain in a few sentences.` }] : []),
-    ...(kid ? [{ label: `What did ${kid} spend on games?`, prompt: `What did ${kid} spend on games this month? Add a widget that shows it.` }] : []),
-    { label: "Build a scam report", prompt: "Add a new page called Scam report: scam signs by person and by kind, the scam radar, and a table of every stopped or denied payment." },
+    brief,
   ];
 }

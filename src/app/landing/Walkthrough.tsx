@@ -37,7 +37,7 @@ const STOPS = [
     key: "held",
     title: "Held at PayPal",
     head: "PayPal holds the £79. Nothing has left.",
-    body: "Spotter asks PayPal to authorise the payment, not take it. The money is reserved on Gran's account and PayPal's own countdown starts. If nobody approves, nothing is ever paid.",
+    body: "Spotter asks PayPal to authorise the payment, not take it. The money is reserved on Gran's account and the PayPal countdown starts. If nobody approves, nothing is ever paid.",
   },
   {
     key: "decide",

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Hijack the agent | Spotter" };
 
 const LEDE =
-  "An AI agent shopping with PayPal's Agent Toolkit reads a shop page with a hidden line telling it to refund $200. Watch it try, and watch Spotter freeze it and release its PayPal hold.";
+  "An AI agent shopping with the PayPal Agent Toolkit reads a shop page with a hidden line telling it to refund $200. Watch it try, and watch Spotter freeze it and release its PayPal hold.";
 
 export default async function AgentLabPage() {
   const { db } = await getDeps();

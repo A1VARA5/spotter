@@ -115,7 +115,17 @@ export type PriceRow = {
 };
 export type PriceVerdict = "fake" | "over" | "under" | "fair";
 export type PriceItem = Omit<PriceRow, "when" | "kind" | "marketCheapest" | "marketMedian" | "priceGap"> & { cheapest: number; median: number; gap: number; verdict: PriceVerdict };
-export type FairPrice = { checked: number; overpaid: number; saved: number; headline: string; caught: string | null; items: PriceItem[] };
+export type FairPrice = {
+  checked: number;
+  overpaid: number;
+  /** Paid under the cheapest real shop, leaving out prices too cheap to be real: those are a scam sign, not a saving. */
+  saved: number;
+  headline: string;
+  caught: string | null;
+  /** A paid price far below real shops (a fake shop sign), said on its own line. */
+  warning: string | null;
+  items: PriceItem[];
+};
 
 /** Under 40% of the going rate is a fake shop tell, the same line the payment check uses. */
 const TOO_CHEAP = 0.4;
@@ -138,26 +148,39 @@ function verdictOf(amount: number, cheapest: number, median: number): PriceVerdi
  * checks Spotter stored when each payment was made. Only paid payments count towards overpaid or saved;
  * a fake shop price Spotter stopped is called out on its own.
  */
-export function fairPrice(rows: PriceRow[], now: Date): FairPrice {
+export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): FairPrice {
   const checked = rows.filter((r) => r.marketCheapest !== null && r.marketMedian !== null && now.getTime() - r.when.getTime() <= 30 * DAY);
-  if (!checked.length) return { checked: 0, overpaid: 0, saved: 0, headline: "", caught: null, items: [] };
+  if (!checked.length) return { checked: 0, overpaid: 0, saved: 0, headline: "", caught: null, warning: null, items: [] };
   const items: PriceItem[] = checked.map(({ when: _w, kind: _k, marketCheapest, marketMedian, priceGap, ...rest }) => {
     const cheapest = marketCheapest!;
     const gap = priceGap ?? round(rest.amount - cheapest);
     return { ...rest, cheapest, median: marketMedian!, gap, verdict: verdictOf(rest.amount, cheapest, marketMedian!) };
   });
-  const paid = items.filter((i) => i.outcome === "Paid");
+  const paidAll = items.filter((i) => i.outcome === "Paid");
+  // Far below the going rate is what fake shops charge: never a saving, and never "fair".
+  const paidFake = paidAll.filter((i) => i.verdict === "fake").sort((a, b) => b.median - b.amount - (a.median - a.amount));
+  const paid = paidAll.filter((i) => i.verdict !== "fake");
   const overpaid = round(paid.reduce((t, i) => t + Math.max(i.gap, 0), 0));
   const saved = round(paid.reduce((t, i) => t + Math.max(-i.gap, 0), 0));
 
-  const payers = [...new Set(checked.filter((r) => r.outcome === "Paid").map((r) => r.who))];
+  const fairIds = new Set(paid.map((i) => i.id));
+  const payers = [...new Set(checked.filter((r) => fairIds.has(r.id)).map((r) => r.who))];
   const onlyKind = payers.length === 1 ? checked.find((r) => r.who === payers[0])!.kind : "";
   const label = payers.length > 1 ? "Everyone together" : onlyKind === "AI agent" ? "Your agent" : (payers[0] ?? "");
+  const whoOf = (i: PriceItem) => (checked.find((r) => r.id === i.id)?.kind === "AI agent" ? "Your agent" : i.who);
+  const fake0 = paidFake[0];
+  const warning = fake0
+    ? `${whoOf(fake0)} paid ${poundsShort(fake0.amount)} for "${fake0.marketItem || fake0.payee}" that real shops sell for around ${poundsShort(fake0.median)}: far too cheap, a common sign of a fake shop`
+    : null;
   const headline = !paid.length
-    ? "Nothing paid this month had a price check yet"
+    ? paidFake.length
+      ? "Check what was paid for: a price looked too good to be real"
+      : "Nothing paid this month had a price check yet"
     : overpaid >= NOTICEABLE
       ? `${label} paid ${poundsShort(overpaid)} more than the cheapest real shop this month`
-      : `${label} paid fair prices this month: never more than the cheapest real shop`;
+      : paidFake.length
+        ? "Nothing overpaid this month, but one price looked too good to be real"
+        : `${label} paid fair prices this month: never more than the cheapest real shop`;
 
   const stopped = items.filter((i) => STOPPED_IN.has(i.outcome)).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
   const fake = stopped.find((i) => i.verdict === "fake");
@@ -169,7 +192,7 @@ export function fairPrice(rows: PriceRow[], now: Date): FairPrice {
       ? `Spotter stopped ${poundsShort(dear.amount)} for ${name(dear)} that the cheapest real shop sells for ${poundsShort(dear.cheapest)}`
       : null;
 
-  return { checked: checked.length, overpaid, saved, headline, caught, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, MAX_ITEMS) };
+  return { checked: checked.length, overpaid, saved, headline, caught, warning, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, maxItems) };
 }
 
 export type WatchSummaryRow = { status: string; saving: number };

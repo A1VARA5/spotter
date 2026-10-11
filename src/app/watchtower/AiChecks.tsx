@@ -57,7 +57,7 @@ export function AiChecksWidget(p: AgWidgetParams<AiChecksDef>) {
               <Row key={e.receipt.runId} r={e.receipt} />
             ))}
           </ul>
-          <p className="wt-checks-note">From AG Studio&apos;s own record of each run, not from what the assistant said.</p>
+          <p className="wt-checks-note">From the AG Studio record of each run, not from what the assistant said.</p>
         </>
       ) : (
         <p className="wt-checks-sum">No runs yet. Ask the assistant something and its receipt shows here.</p>

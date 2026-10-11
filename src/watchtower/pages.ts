@@ -56,15 +56,123 @@ export function addPage(s: AgReportState, rawName: string): { state: AgReportSta
 
 type Box = { xTrack: number; yTrack: number; xSpan: number; ySpan: number };
 
+/** Spotter's text tiles: their content gets shorter as the board gets wider, unlike a chart's. */
+const TEXT_TILES = new Set(["watch-alerts", "fair-price", "money-mid-air", "price-watches", "scam-radar"]);
+/**
+ * How much of its height a text tile row keeps at a window width (rows are a fixed pixel height in Studio).
+ * Tall rows (the alerts, fair price and money in mid air row) shrink most; shorter rows of lists a little.
+ * Measured on the demo board at 1920 and 2560 so the fullest tile still fits.
+ */
+export const wideFactor = (width: number, rows = 28) => (width >= 2300 ? (rows >= 25 ? 0.66 : 0.8) : width >= 1800 ? (rows >= 25 ? 0.8 : 0.9) : 1);
+
+export type Fitted = Record<string, { original: Record<string, Box>; fitted: Record<string, Box> }>;
+
+/**
+ * At 1920 px and wider the text tiles' rows get shorter (and every row below moves up), so the top of the
+ * board isn't half empty. Only pages laid out in clean full rows are touched; the result is for showing,
+ * and unfitWide puts the original back before the board is saved.
+ */
+export function fitWide(s: AgReportState, width: number): { state: AgReportState; fitted: Fitted } {
+  if (wideFactor(width) === 1) return { state: s, fitted: {} };
+  const fitted: Fitted = {};
+  type Pg = Page & { widgets?: Record<string, { type?: string }>; widgetLayout?: Record<string, Box> };
+  const pages = (pagesIn(s) as Pg[]).map((p) => {
+    const layout = p.widgetLayout ?? {};
+    const entries = Object.entries(layout);
+    if (!entries.length) return p;
+    const bands = [...new Set(entries.map(([, b]) => b.yTrack))].sort((a, b) => a - b);
+    // Clean rows only: every tile in a row has the row's height, and each row starts where the last one ended.
+    let y = 0;
+    for (const start of bands) {
+      const row = entries.filter(([, b]) => b.yTrack === start);
+      const h = row[0]![1].ySpan;
+      if (start !== y || row.some(([, b]) => b.ySpan !== h)) return p;
+      y = start + h;
+    }
+    let shift = 0;
+    let changed = false;
+    const next: Record<string, Box> = {};
+    for (const start of bands) {
+      const row = entries.filter(([, b]) => b.yTrack === start);
+      const h = row[0]![1].ySpan;
+      const text = row.every(([id]) => TEXT_TILES.has(p.widgets?.[id]?.type ?? ""));
+      const nh = text ? Math.max(8, Math.round(h * wideFactor(width, h))) : h;
+      for (const [id, b] of row) next[id] = { ...b, yTrack: b.yTrack - shift, ySpan: nh };
+      if (nh !== h) changed = true;
+      shift += h - nh;
+    }
+    if (!changed) return p;
+    fitted[p.id] = { original: layout, fitted: next };
+    return { ...p, widgetLayout: next };
+  });
+  return { state: { ...s, pages } as unknown as AgReportState, fitted };
+}
+
+const sameBox = (a: Box | undefined, b: Box | undefined) => !!a && !!b && a.xTrack === b.xTrack && a.yTrack === b.yTrack && a.xSpan === b.xSpan && a.ySpan === b.ySpan;
+
+/**
+ * The layout to save, so the shortened rows never reach the database (and never shrink again on the next
+ * load). Tiles still where fitWide put them get their original box back. Tiles someone moved or added since
+ * keep their size, and their row is mapped back onto the original rows.
+ */
+export function unfitWide(s: AgReportState, fitted: Fitted): AgReportState {
+  if (!Object.keys(fitted).length) return s;
+  type Pg = Page & { widgetLayout?: Record<string, Box> };
+  const pages = (pagesIn(s) as Pg[]).map((p) => {
+    const f = fitted[p.id];
+    if (!f || !p.widgetLayout) return p;
+    // Each fitted row start and where that row started originally, top to bottom.
+    const rows = [...new Map(Object.entries(f.fitted).map(([id, b]) => [b.yTrack, f.original[id]!.yTrack])).entries()].sort((a, b) => a[0] - b[0]);
+    const back = (y: number) => {
+      const row = [...rows].reverse().find(([fy]) => fy <= y);
+      return row ? row[1] + (y - row[0]) : y;
+    };
+    const widgetLayout = Object.fromEntries(
+      Object.entries(p.widgetLayout).map(([id, b]) => [id, sameBox(b, f.fitted[id]) ? f.original[id]! : { ...b, yTrack: back(b.yTrack) }]),
+    );
+    return { ...p, widgetLayout };
+  });
+  return { ...s, pages } as unknown as AgReportState;
+}
+
+/** Where answers to typed questions go: their own page, so the new tile is the first thing on screen. */
+export const ANSWERS_PAGE = "Answers";
+/** Rows an answer tile gets: room for a chart with its labels. */
+export const ANSWER_SPAN = 14;
+
+/**
+ * An empty tile of an allowed type for a typed question (the place_widget tool): newest at the top of the
+ * Answers page, full width, older answers pushed down. AG Studio's widget agent then configures it. Throws on
+ * a type outside the allowed catalogue, so no image or free text tile can be placed this way.
+ */
+export function placeAnswer(s: AgReportState, names: Record<string, string>, type: string, allowed: ReadonlySet<string>): { state: AgReportState; pageId: string; widgetId: string } {
+  if (!allowed.has(type)) throw new Error(`Spotter can't place a "${String(type).slice(0, 40)}" tile. Pick a chart or table type from the catalogue.`);
+  const { state, pageId } = addPage(withNames(s, names), ANSWERS_PAGE);
+  type Pg = Page & { widgets?: Record<string, unknown>; widgetLayout?: Record<string, Box> };
+  const pages = pagesIn(state) as Pg[];
+  const page = pages.find((p) => p.id === pageId)!;
+  const widgets = page.widgets ?? {};
+  let n = Object.keys(widgets).length + 1;
+  while (`answer-${n}` in widgets) n++;
+  const widgetId = `answer-${n}`;
+  const moved = Object.fromEntries(Object.entries(page.widgetLayout ?? {}).map(([id, b]) => [id, { ...b, yTrack: b.yTrack + ANSWER_SPAN }]));
+  const next: Pg = { ...page, widgets: { ...widgets, [widgetId]: { type } }, widgetLayout: { [widgetId]: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: ANSWER_SPAN }, ...moved } };
+  return { state: { ...state, pages: pages.map((p) => (p.id === pageId ? next : p)) } as unknown as AgReportState, pageId, widgetId };
+}
+
+export const PHONE_BAR_SPAN = 20;
+
 /** Phones get one widget per row, full width, in the order you'd read the desktop board. Never saved. */
 export function stackForPhone(s: AgReportState): AgReportState {
-  const pages = (s.pages as unknown as Array<{ widgetLayout?: Record<string, Box> }>).map((p) => {
+  const pages = (s.pages as unknown as Array<{ widgets?: Record<string, { type?: string }>; widgetLayout?: Record<string, Box> }>).map((p) => {
     const boxes = Object.entries(p.widgetLayout ?? {}).sort(([, a], [, b]) => a.yTrack - b.yTrack || a.xTrack - b.xTrack);
     let y = 0;
     const widgetLayout: Record<string, Box> = {};
     for (const [id, b] of boxes) {
-      widgetLayout[id] = { xTrack: 0, yTrack: y, xSpan: 24, ySpan: b.ySpan };
-      y += b.ySpan;
+      // A sideways bar chart needs height on a phone, or it skips every other label.
+      const ySpan = p.widgets?.[id]?.type?.startsWith("bar-chart") ? Math.max(b.ySpan, PHONE_BAR_SPAN) : b.ySpan;
+      widgetLayout[id] = { xTrack: 0, yTrack: y, xSpan: 24, ySpan };
+      y += ySpan;
     }
     return { ...p, widgetLayout };
   });

@@ -8,10 +8,10 @@ export function AgentToolkit({ connectHref, cta }: { connectHref: string; cta: R
       <div className="shell agent-grid">
         <div className="agent-copy">
           <h2 id="agent-title" className="sec-title">
-            PayPal&apos;s agent tools, with a spotter
+            PayPal agent tools, with a spotter
           </h2>
           <p className="sec-lede agent-why">
-            PayPal&apos;s Agent Toolkit lets an AI agent create and pay orders, with <b>no spending limit and no approval step</b>. Point the agent at Spotter
+            The PayPal Agent Toolkit lets an AI agent create and pay orders, with <b>no spending limit and no approval step</b>. Point the agent at Spotter
             instead and every order goes through the same check, then waits for you.
           </p>
           <div className="agent-ctas">
@@ -23,7 +23,7 @@ export function AgentToolkit({ connectHref, cta }: { connectHref: string; cta: R
         </div>
 
         <figure className="agent-run">
-          <div className="aterm" role="img" aria-label="A shopping agent calls PayPal's create_order for 119 dollars. Spotter answers HELD_FOR_APPROVAL, and the agent tells the user Sam has to approve it first.">
+          <div className="aterm" role="img" aria-label="A shopping agent calls create_order from the PayPal Agent Toolkit for 119 dollars. Spotter answers HELD_FOR_APPROVAL, and the agent tells the user Sam has to approve it first.">
             <p className="aterm-bar" aria-hidden="true">
               <i />
               <i />

@@ -383,7 +383,7 @@ export function MoneyMidAirWidget(p: AgWidgetParams<MoneyMidAirDef>) {
     return (
       <div className="wt-air wt-air-empty">
         <p className="wt-air-total">Nothing held at PayPal right now</p>
-        <p className="wt-air-note">When Spotter holds a payment for you, the money waits here inside PayPal, with PayPal&apos;s own countdown.</p>
+        <p className="wt-air-note">When Spotter holds a payment for you, the money waits here inside PayPal, with the PayPal countdown.</p>
       </div>
     );
   }
@@ -626,6 +626,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
     <div className="wt-fair" role="region" aria-label="Fair price" {...scroll}>
       <p className="wt-fair-label">Fair price</p>
       <p className="wt-fair-headline">{f.headline}</p>
+      {f.warning && <p className="wt-fair-caught">{f.warning}</p>}
       {f.caught && <p className="wt-fair-caught">{f.caught}</p>}
       <ul className="wt-fair-list">
         {firstFew(f.items, FAIR_SHOWN).shown.map((i) => (
