@@ -47,7 +47,7 @@ function HowChecked({ updates }: { updates?: WatchUpdates }) {
   return (
     <p className="watch-how">
       {updates === "on_change"
-        ? "Channel3 price tracking tells Spotter as soon as the price changes, and Spotter checks it every day as well."
+        ? "Channel3 price tracking tells Spotter when it sees the price change, usually within minutes, and Spotter checks it every day as well."
         : "Spotter checks the price every day with Channel3 price tracking. It only says it dropped when a real shop's listing shows it."}
     </p>
   );

@@ -14,5 +14,7 @@ describe("which page can be looked at again safely", () => {
     expect(peekableHost(p("https://a.example/", null))).toBeNull();
     expect(peekableHost(p("https://other.example/x", "Pay at parcels.example/t now"))).toBeNull();
     expect(peekableHost(p("javascript:alert(1)", "javascript:alert(1)"))).toBeNull();
+    // Only the whole address, never the tail of a longer one.
+    expect(peekableHost(p("https://a.com/x", "Pay at evila.com/x now"))).toBeNull();
   });
 });

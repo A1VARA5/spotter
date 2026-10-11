@@ -21,7 +21,7 @@ const TOOL_RANK: Record<string, number> = {
 const CLEAR_RANK: Record<string, number> = { inspect_shop: 0, open_link: 0, check_links: 1, network_reports: 2 };
 
 /** "Nothing found" lines: worth knowing, but never ahead of a finding that is a reason to worry. */
-const ALL_CLEAR = /\b(no other spotter famil|found nothing wrong|nothing wrong with|had no hidden text|no hidden (text|tricks|instructions))/i;
+const ALL_CLEAR = /\b(no other spotter famil|found nothing wrong|nothing wrong with|had no hidden text|no hidden (text|tricks|instructions)|couldn.t find|found no (exact )?(match|listing)|no (exact )?(match|listing)s? (was |were )?found)/i;
 /** Other families' reports only lead when there are some. */
 const NONE_REPORTED = /^no other spotter famil/i;
 
@@ -53,7 +53,8 @@ export function kernelLead(page: Page | undefined | null): Lead | null {
   return null;
 }
 
-export type RealOne = { title: string; domain: string; price: number; url: string };
+/** exact: the case's own offer, checked to be the same product. Otherwise the market check's cheapest real listing. */
+export type RealOne = { title: string; domain: string; price: number; url: string; exact: boolean };
 
 const HTTPS = /^https:\/\/[^\s"<>]+$/;
 
@@ -63,27 +64,24 @@ const HTTPS = /^https:\/\/[^\s"<>]+$/;
  */
 export function realOne(c: Pick<Case, "swap"> | null | undefined, market: (MarketResult & { item?: string }) | null | undefined): RealOne | null {
   const s = c?.swap;
-  if (s && HTTPS.test(s.url) && s.price > 0) return { title: s.title, domain: s.domain, price: s.price, url: s.url };
+  if (s && HTTPS.test(s.url) && s.price > 0) return { title: s.title, domain: s.domain, price: s.price, url: s.url, exact: true };
   const cheap = marketSummary(market)?.cheapest;
-  if (cheap && HTTPS.test(cheap.url) && cheap.price > 0) return { title: cheap.title, domain: cheap.domain, price: cheap.price, url: cheap.url };
+  if (cheap && HTTPS.test(cheap.url) && cheap.price > 0) return { title: cheap.title, domain: cheap.domain, price: cheap.price, url: cheap.url, exact: false };
   return null;
 }
 
-const KERNEL_KINDS = new Set<Flag["kind"]>(["prompt_injection"]);
-
 /**
- * The reasons a held card lists under the case file, without the ones the case file already says: price reasons when
- * Channel3's prices are on the card, "First time paying" when the family history finding is, and hidden orders when
- * KERNEL's panel shows them.
+ * The reasons a held card lists under the case file, without the ones the first view already says: price reasons when
+ * Channel3's prices are one of the three facts, "First time paying" when the family history finding is, and hidden
+ * orders when KERNEL's "seen vs read" panel is open. Anything else (the allowance, a rule) always stays.
  */
-export function unsaidReasons(reasons: string[], flags: Flag[], c: Pick<Case, "findings" | "spot"> | null | undefined, opts: { lead: LeadKind | null }): string[] {
+export function unsaidReasons(reasons: string[], flags: Flag[], c: Pick<Case, "findings"> | null | undefined, opts: { lead: LeadKind | null }): string[] {
   if (!c) return reasons;
-  const has = (tool: string) => c.findings.some((f) => f.tool === tool);
+  const shown = new Set(keyFacts(c.findings).facts.map((f) => f.tool));
   const said = new Set<string>();
-  const prices = has("find_genuine_offer") || !!c.spot;
   for (const fl of flags) {
-    if (fl.kind === "price" && prices) said.add(fl.why);
-    if (KERNEL_KINDS.has(fl.kind) && opts.lead) said.add(fl.why);
+    if (fl.kind === "price" && shown.has("find_genuine_offer")) said.add(fl.why);
+    if (fl.kind === "prompt_injection" && opts.lead === "seen") said.add(fl.why);
   }
-  return reasons.filter((r) => !said.has(r) && !(has("payee_history") && /^First time paying /.test(r)));
+  return reasons.filter((r) => !said.has(r) && !(shown.has("payee_history") && /^First time paying /.test(r)));
 }

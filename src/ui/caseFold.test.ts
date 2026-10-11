@@ -71,11 +71,11 @@ describe("the real one: a genuine listing the card can open", () => {
 
   it("uses the case's own Channel3 offer first, so the swap and the button name the same shop", () => {
     const c = { swap: { offer_id: "o1", title: "Cast Iron Skillet", domain: "dunelm.com", price: 2800, currency: "GBP", url: "https://www.dunelm.com/p/2" } } as Case;
-    expect(realOne(c, market)).toEqual({ title: "Cast Iron Skillet", domain: "dunelm.com", price: 2800, url: "https://www.dunelm.com/p/2" });
+    expect(realOne(c, market)).toEqual({ title: "Cast Iron Skillet", domain: "dunelm.com", price: 2800, url: "https://www.dunelm.com/p/2", exact: true });
   });
 
   it("falls back to the market check's cheapest real shop", () => {
-    expect(realOne(null, market)).toEqual({ title: "Cast Iron Skillet Pans", domain: "debenhams.com", price: 1599, url: "https://www.debenhams.com/p/1" });
+    expect(realOne(null, market)).toEqual({ title: "Cast Iron Skillet Pans", domain: "debenhams.com", price: 1599, url: "https://www.debenhams.com/p/1", exact: false });
   });
 
   it("is nothing without a listing, or when the link isn't a plain https page", () => {
@@ -100,6 +100,14 @@ describe("the held card's reasons, without what the case file already says", () 
   it("drops price reasons when Channel3 is on the card, the first time payee when family history is, and hidden orders when KERNEL's panel shows them", () => {
     const c = { findings: [f("find_genuine_offer", "x"), f("payee_history", "y")], page: page() } as unknown as Case;
     expect(unsaidReasons(reasons, flags, c, { lead: "seen" })).toEqual(['Over the £30.00 "ask me first" limit.']);
+  });
+
+  it("keeps hidden orders unless the seen vs read panel is the open one, and a price reason when the price finding is folded away", () => {
+    const c = { findings: [f("payee_history", "y")], page: page() } as unknown as Case;
+    expect(unsaidReasons(reasons, flags, c, { lead: "faces" })).toContain("Hidden orders for the agent.");
+    expect(unsaidReasons(reasons, flags, c, { lead: "faces" })).toContain(priceWhy);
+    const folded = { findings: [f("network_reports", "2 families reported it"), f("payee_history", "y"), f("inspect_shop", "z"), f("find_genuine_offer", "No listing found.")] } as unknown as Case;
+    expect(unsaidReasons(reasons, flags, folded, { lead: null })).toContain(priceWhy);
   });
 
   it("keeps everything when there is no case file", () => {

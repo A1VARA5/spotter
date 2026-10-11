@@ -281,8 +281,8 @@ export function PhotoCheck() {
       )}
 
       {result && (
-        <div className="photo-result case" data-verdict={result.verdict ? "likely_scam" : "unclear"}>
-          <p className="case-verdict">{result.verdict ? "Far below real shops" : "Real shop prices"}</p>
+        <div className="photo-result case" data-verdict={result.verdictKind === "far_below" ? "likely_scam" : "unclear"}>
+          <p className="case-verdict">{photoChip(result)}</p>
           <h3 ref={resultRef} tabIndex={-1} className="photo-total">
             {result.total}
           </h3>
@@ -311,6 +311,14 @@ export function PhotoCheck() {
       </div>
     </section>
   );
+}
+
+/** The chip over the result, from which way the verdict went (never from reading its sentence). */
+export function photoChip(r: Pick<PhotoResult, "verdictKind" | "fallback">): string {
+  if (r.verdictKind === "far_below") return "Far below real shops";
+  if (r.verdictKind === "well_over") return "Well over real shops";
+  if (r.verdictKind === "under_used") return "Well under used prices";
+  return r.fallback ? "Rough prices from the whole photo" : "Real shop prices";
 }
 
 function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: string }) {

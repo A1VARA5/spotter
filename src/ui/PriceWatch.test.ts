@@ -34,11 +34,11 @@ describe("a live price watch", () => {
     expect(out).toContain("£219.00");
     expect(out).toContain("Channel3");
     expect(out).toMatch(/checks (it|the price) every day/);
-    expect(out).not.toMatch(/as soon as/);
+    expect(out).not.toMatch(/within minutes/);
   });
 
-  it("says Channel3 tells Spotter as soon as the price changes only when the webhook is set up", () => {
-    expect(html(w, "on_change")).toMatch(/as soon as the price changes/);
+  it("says Channel3 tells Spotter when the price changes only when the webhook is set up", () => {
+    expect(html(w, "on_change")).toMatch(/when it sees the price change, usually within minutes/);
   });
 
   it("leaves the live mark off the labelled example", () => {

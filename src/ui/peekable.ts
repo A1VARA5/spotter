@@ -16,7 +16,9 @@ export function peekableHost(p: P): string | null {
     return null;
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-  if (!p.request.context.includes(bare(page.url))) return null;
+  const at = p.request.context.toLowerCase().indexOf(bare(page.url).toLowerCase());
+  // Not inside a longer address ("a.com" in "evila.com"): what comes before must be the start, a space or "://".
+  if (at < 0 || (at > 0 && !/[\s/("'<]/.test(p.request.context[at - 1]!))) return null;
   try {
     return new URL(page.finalUrl || page.url).hostname;
   } catch {

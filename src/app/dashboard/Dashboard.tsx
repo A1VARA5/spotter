@@ -232,7 +232,7 @@ export function DashboardMain() {
           {notice.real && (
             <>
               {" "}
-              Here&apos;s the real one at {notice.real.domain} for {money(notice.real.price, notice.real.currency)}:{" "}
+              {notice.real.exact ? "Here's the real one" : "Here's a real listing"} at {notice.real.domain} for {money(notice.real.price, notice.real.currency)}:{" "}
               <a href={notice.real.url} target="_blank" rel="noopener noreferrer nofollow" className="dash-notice-real">
                 {notice.real.title}
                 <ExternalLink size={14} strokeWidth={2.2} aria-hidden="true" />
@@ -882,7 +882,7 @@ function HeldCard({
             aside={priceWatch}
             actions={decideInCase ? decision : undefined}
             more={extras}
-            moreCount={p.request.context ? 1 : 0}
+            moreCount={(p.request.context ? 1 : 0) + (reasons.length ? 1 : 0)}
           />
         ) : (
           <>
