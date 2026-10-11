@@ -93,10 +93,10 @@ describe("PayPal login consent revoked (IDENTITY.AUTHORIZATION-CONSENT.REVOKED)"
 describe("a protected person's chat moved to another Spotter family", () => {
   it("warns the family it was taken from", async () => {
     const own = await createPairingCode(db, { householdId: mine, spenderId: "gran", channel: "telegram" });
-    await redeemPairingCode(db, own, "telegram", "555", warn);
+    await redeemPairingCode(db, own, "telegram", "555", { warn });
     expect(warn).not.toHaveBeenCalled(); // first connection: nothing to warn about
     const stranger = await createPairingCode(db, { householdId: theirs, spenderId: "victim", channel: "telegram" });
-    await redeemPairingCode(db, stranger, "telegram", "555", warn);
+    await redeemPairingCode(db, stranger, "telegram", "555", { warn });
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0]![0]).toBe(mine);
     expect(warn.mock.calls[0]![1].text).toBe(disconnectedText("Gran", "chat"));
@@ -105,8 +105,8 @@ describe("a protected person's chat moved to another Spotter family", () => {
   });
 
   it("moving it between people in the same family (the spotter's own code) is not a warning", async () => {
-    await redeemPairingCode(db, await createPairingCode(db, { householdId: mine, spenderId: "gran", channel: "email" }), "email", "gran@example.com", warn);
-    await redeemPairingCode(db, await createPairingCode(db, { householdId: mine, spenderId: "aunt", channel: "email" }), "email", "gran@example.com", warn);
+    await redeemPairingCode(db, await createPairingCode(db, { householdId: mine, spenderId: "gran", channel: "email" }), "email", "gran@example.com", { warn });
+    await redeemPairingCode(db, await createPairingCode(db, { householdId: mine, spenderId: "aunt", channel: "email" }), "email", "gran@example.com", { warn });
     expect(warn).not.toHaveBeenCalled();
   });
 });

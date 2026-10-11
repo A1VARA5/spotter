@@ -105,7 +105,7 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
   // A code counts only in the person's own words, never inside something they forwarded.
   const code = forwarded ? null : findCode(text);
   if (code) {
-    const paired = await redeemPairingCode(db, code, "telegram", chat, ctx.deps.warn);
+    const paired = await redeemPairingCode(db, code, "telegram", chat, ctx.deps);
     if (!paired) {
       await say("That code didn't work. It may be used or more than a day old. Ask your spotter for a new one.");
       return "unpaired";
@@ -181,7 +181,14 @@ async function handleMembership(ctx: TgCtx, updateId: number, m: NonNullable<TgU
   if (await seen(db, updateId)) return "duplicate";
   const spender = (await db.query<Spender>("select * from spenders where telegram_chat_id = $1", [String(m.chat.id)]))[0];
   if (!spender) return "ignored"; // the spotter's own alerts chat, or nobody Spotter knows
-  await warnSpotter(ctx.deps, spender.household_id, `blocked:telegram:${updateId}`, { kind: "chat_blocked", text: blockedText(spender.name) });
+  try {
+    await warnSpotter(ctx.deps, spender.household_id, `blocked:telegram:${updateId}`, { kind: "chat_blocked", text: blockedText(spender.name) });
+  } catch (e) {
+    // Not stored: forget the update so Telegram's retry (or a replay) gets a real second chance.
+    console.error(`[spotter] couldn't store the blocked chat warning for ${spender.id} in ${spender.household_id}:`, e instanceof Error ? e.message : e);
+    await db.query("delete from inbound where provider = 'telegram' and message_id = $1", [String(updateId)]).catch(() => {});
+    return "failed";
+  }
   return "switched_off";
 }
 

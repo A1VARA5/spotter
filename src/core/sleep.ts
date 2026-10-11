@@ -62,28 +62,39 @@ export async function askAgainDue(deps: Pick<Deps, "db" | "notify">, now = new D
   );
   let asked = 0;
   for (const p of due) {
-    // Claimed by clearing the time, so two runs at once can't both send it.
-    const [claimed] = await db.query<Payment>(
-      "update payments set ask_again_at = null where id = $1 and status = 'needs_approval' and ask_again_at = $2 returning *",
-      [p.id, p.ask_again_at],
-    );
-    if (!claimed) continue;
-    asked++;
-    await event(db, p.id, "asked_again");
-    if (!deps.notify) continue;
     try {
-      const spender = await getSpender(db, claimed.spender_id);
-      if (!spender) throw new Error(`spender ${claimed.spender_id} not found`);
-      await deps.notify(claimed, spender);
+      if (await askOnce(deps, p)) asked++;
     } catch (e) {
-      const error = e instanceof Error ? e.message : String(e);
-      console.error(`[spotter] asking again about ${p.id} failed: ${error}`);
-      await event(db, p.id, "alert_failed", { error, step: "ask_again" }).catch((err) =>
-        console.error(`[spotter] could not record the failed ask again for ${p.id}:`, err instanceof Error ? err.message : err),
-      );
+      // One payment's trouble never stops the rest of the morning run.
+      console.error(`[spotter] asking again about ${p.id} crashed:`, e instanceof Error ? e.message : e);
     }
   }
   return asked;
+}
+
+async function askOnce(deps: Pick<Deps, "db" | "notify">, p: Payment): Promise<boolean> {
+  const { db } = deps;
+  // Claimed by clearing the time, so two runs at once can't both send it.
+  const [claimed] = await db.query<Payment>(
+    "update payments set ask_again_at = null where id = $1 and status = 'needs_approval' and ask_again_at = $2 returning *",
+    [p.id, p.ask_again_at],
+  );
+  if (!claimed) return false;
+  let error: string | null = null;
+  try {
+    if (!deps.notify) throw new Error("no alert channels are set up on this server");
+    const spender = await getSpender(db, claimed.spender_id);
+    if (!spender) throw new Error(`spender ${claimed.spender_id} not found`);
+    await deps.notify(claimed, spender);
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+    console.error(`[spotter] asking again about ${p.id} failed: ${error}`);
+  }
+  // Written after the send, so a database hiccup can't stop the alert; if this fails it is logged.
+  await event(db, p.id, error ? "alert_failed" : "asked_again", error ? { error, step: "ask_again" } : {}).catch((err) =>
+    console.error(`[spotter] could not record the ask again for ${p.id} (${error ?? "sent"}):`, err instanceof Error ? err.message : err),
+  );
+  return true;
 }
 
 const TRY_AGAIN_ISSUES = new Set(["REAUTHORIZATION_TOO_SOON"]);
@@ -113,48 +124,72 @@ export async function keepHoldsAlive(deps: Pick<Deps, "db" | "paypal">, now = ne
   let renewed = 0;
   for (const p of candidates) {
     if (holdEndsAt(p).getTime() - now.getTime() <= DAY) continue;
-    const [claimed] = await db.query<Payment>(
-      "update payments set reauth_tried_at = now() where id = $1 and reauth_tried_at is null and status = 'needs_approval' returning *",
-      [p.id],
-    );
-    if (!claimed) continue;
-    const from = claimed.paypal_authorization_id!;
-    let fresh: { authorizationId: string; expiresAt?: string };
     try {
-      fresh = await reauthorize(from, `reauth-${p.id}`);
+      if (await renewOnce(deps, reauthorize, p)) renewed++;
     } catch (e) {
-      const issue = e instanceof PayPalError ? e.issue : undefined;
-      const status = e instanceof PayPalError ? e.status : 0;
-      const retry = !(e instanceof PayPalError) || status === 0 || status === 429 || status >= 500 || TRY_AGAIN_ISSUES.has(issue ?? "");
-      const error = e instanceof Error ? e.message : String(e);
-      console.error(`[spotter] reauthorizing ${p.id} failed (${status} ${issue ?? ""}), ${retry ? "will try again tomorrow" : "not trying again"}: ${error}`);
-      await db.query("update payments set reauth_tried_at = case when $2 then null else reauth_tried_at end, reauth_note = case when $2 then reauth_note else $3 end where id = $1", [
-        p.id,
-        retry,
-        reauthNote(issue),
-      ]);
-      await event(db, p.id, "reauth_failed", { status, ...(issue ? { issue } : {}), retry, error: error.slice(0, 300) });
-      continue;
+      // One payment's trouble never stops the rest of the run.
+      console.error(`[spotter] keeping the hold for ${p.id} alive crashed:`, e instanceof Error ? e.message : e);
     }
-    const [moved] = await db.query(
+  }
+  return renewed;
+}
+
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+async function renewOnce(deps: Pick<Deps, "db" | "paypal">, reauthorize: NonNullable<Deps["paypal"]["reauthorizeAuthorization"]>, p: Payment): Promise<boolean> {
+  const { db, paypal } = deps;
+  const [claimed] = await db.query<Payment>(
+    "update payments set reauth_tried_at = now() where id = $1 and reauth_tried_at is null and status = 'needs_approval' returning *",
+    [p.id],
+  );
+  if (!claimed) return false;
+  const from = claimed.paypal_authorization_id!;
+  let fresh: { authorizationId: string; expiresAt?: string };
+  try {
+    fresh = await reauthorize(from, `reauth-${p.id}`);
+  } catch (e) {
+    const issue = e instanceof PayPalError ? e.issue : undefined;
+    const status = e instanceof PayPalError ? e.status : 0;
+    const retry = !(e instanceof PayPalError) || status === 0 || status === 429 || status >= 500 || TRY_AGAIN_ISSUES.has(issue ?? "");
+    const error = errText(e);
+    console.error(`[spotter] reauthorizing ${p.id} failed (${status} ${issue ?? ""}), ${retry ? "will try again tomorrow" : "not trying again"}: ${error}`);
+    await db.query("update payments set reauth_tried_at = case when $2 then null else reauth_tried_at end, reauth_note = case when $2 then reauth_note else $3 end where id = $1", [
+      p.id,
+      retry,
+      reauthNote(issue),
+    ]);
+    await event(db, p.id, "reauth_failed", { status, ...(issue ? { issue } : {}), retry, error: error.slice(0, 300) });
+    return false;
+  }
+
+  let moved = false;
+  try {
+    const rows = await db.query(
       `update payments set paypal_authorization_id = $3, paypal_auth_expires_at = coalesce($4, paypal_auth_expires_at), reauthorized_at = now(), reauth_note = null
        where id = $1 and status = 'needs_approval' and paypal_authorization_id = $2 returning id`,
       [p.id, from, fresh.authorizationId, fresh.expiresAt ?? null],
     );
-    if (!moved) {
-      // Approved, denied or released while PayPal was answering. The fresh hold belongs to nothing: release it.
-      await event(db, p.id, "reauth_released", { to: fresh.authorizationId });
-      try {
-        await paypal.voidAuthorization(fresh.authorizationId);
-      } catch (e) {
-        const error = e instanceof Error ? e.message : String(e);
-        console.error(`[spotter] releasing the spare reauthorization ${fresh.authorizationId} for ${p.id} failed: ${error}`);
-        await event(db, p.id, "failed", { step: "release_reauthorization", error });
-      }
-      continue;
-    }
-    await event(db, p.id, "reauthorized", { from, to: fresh.authorizationId, ...(fresh.expiresAt ? { expires: fresh.expiresAt } : {}) });
-    renewed++;
+    moved = rows.length > 0;
+  } catch (e) {
+    console.error(`[spotter] PayPal renewed the hold for ${p.id} (${fresh.authorizationId}) but saving it failed:`, errText(e));
   }
-  return renewed;
+  if (!moved) {
+    // Approved, denied or released while PayPal was answering, or the save failed: the fresh hold belongs to nothing.
+    // Release it first (that only ever gives money back), then write down what happened.
+    let voidError: string | null = null;
+    try {
+      await paypal.voidAuthorization(fresh.authorizationId);
+    } catch (e) {
+      voidError = errText(e);
+      console.error(`[spotter] releasing the spare reauthorization ${fresh.authorizationId} for ${p.id} failed: ${voidError}`);
+    }
+    await event(db, p.id, voidError ? "failed" : "reauth_released", voidError ? { step: "release_reauthorization", to: fresh.authorizationId, error: voidError } : { to: fresh.authorizationId }).catch(
+      (err) => console.error(`[spotter] could not record the released reauthorization for ${p.id}:`, errText(err)),
+    );
+    return false;
+  }
+  await event(db, p.id, "reauthorized", { from, to: fresh.authorizationId, ...(fresh.expiresAt ? { expires: fresh.expiresAt } : {}) }).catch((err) =>
+    console.error(`[spotter] hold for ${p.id} renewed (${from} -> ${fresh.authorizationId}) but the timeline entry failed:`, errText(err)),
+  );
+  return true;
 }

@@ -122,7 +122,7 @@ export async function handleInboundEmail(ctx: InboundCtx, evt: MailEvent): Promi
     // Pairing codes only count in the sender's own words, never inside a forwarded email: a scammer could plant one.
     const code = findCode(ownWords(subject, body));
     if (code) {
-      const paired = await redeemPairingCode(db, code, "email", from, ctx.deps.warn);
+      const paired = await redeemPairingCode(db, code, "email", from, ctx.deps);
       if (paired) {
         await say(
           paired.spender

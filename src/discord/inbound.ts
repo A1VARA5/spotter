@@ -124,7 +124,7 @@ export async function runInteraction(ctx: DcCtx, i: Interaction): Promise<DcRepl
     const sub = i.data.options?.[0];
     if (sub?.name === "connect") {
       const code = findCode(String(sub.options?.find((o) => o.name === "code")?.value ?? ""));
-      const paired = code ? await redeemPairingCode(db, code, "discord", userId, ctx.deps.warn) : null;
+      const paired = code ? await redeemPairingCode(db, code, "discord", userId, ctx.deps) : null;
       if (!paired) return { content: "That code didn't work. It may be used or more than a day old. Ask your spotter for a new one." };
       return {
         content: paired.spender

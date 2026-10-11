@@ -20,15 +20,20 @@ export function makeWarn(db: Db, site: string, ch: { telegram?: TgSend; discord?
     if (!hh) throw new Error(`household ${householdId} not found`);
     const link = `${site}/dashboard`;
     const tasks: Array<Promise<void>> = [];
+    // Each failure names its channel, so "403" in the log says which one.
+    const tagged = (name: string, p: Promise<void>) =>
+      p.catch((e) => {
+        throw new Error(`${name}: ${e instanceof Error ? e.message : String(e)}`);
+      });
     if (ch.telegram && hh.telegram_chat_id) {
-      tasks.push(ch.telegram(hh.telegram_chat_id, `<b>${esc(HEADING)}</b>\n\n${esc(w.text)}`, { reply_markup: { inline_keyboard: [[{ text: "Open Spotter", url: link }]] } }));
+      tasks.push(tagged("telegram", ch.telegram(hh.telegram_chat_id, `<b>${esc(HEADING)}</b>\n\n${esc(w.text)}`, { reply_markup: { inline_keyboard: [[{ text: "Open Spotter", url: link }]] } })));
     }
     if (ch.discord && hh.discord_user_id) {
-      tasks.push(ch.discord(hh.discord_user_id, `**${HEADING}**\n${w.text}`, [{ type: 1, components: [{ type: 2, style: 5, label: "Open Spotter", url: link }] }]));
+      tasks.push(tagged("discord", ch.discord(hh.discord_user_id, `**${HEADING}**\n${w.text}`, [{ type: 1, components: [{ type: 2, style: 5, label: "Open Spotter", url: link }] }])));
     }
     if (ch.email && hh.alert_email) {
       const html = layout({ site, preheader: w.text, tone: "stopped", eyebrow: "Switched off", headline: HEADING, sub: w.text, body: "", cta: { label: "Open Spotter", href: link } });
-      tasks.push(ch.email(hh.alert_email, HEADING, `${HEADING}\n\n${w.text}\n\n${link}`, html, `warn-${householdId}-${w.kind}-${Date.now()}`));
+      tasks.push(tagged("email", ch.email(hh.alert_email, HEADING, `${HEADING}\n\n${w.text}\n\n${link}`, html, `warn-${householdId}-${w.kind}-${Date.now()}`)));
     }
     const failed = (await Promise.allSettled(tasks)).filter((r): r is PromiseRejectedResult => r.status === "rejected");
     if (failed.length) throw new Error(failed.map((f) => (f.reason instanceof Error ? f.reason.message : String(f.reason))).join("; "));

@@ -29,26 +29,38 @@ export const paypalDisconnectedText = (household: string) =>
 /** Stores the warning (once per key), then sends it. Returns false if this key was already warned about. Never throws
  * for a delivery failure: the stored warning still shows on the dashboard. */
 export async function warnSpotter(deps: { db: Db; warn?: Warn; defer?: Deps["defer"] }, householdId: string, key: string, w: Warning): Promise<boolean> {
-  const rows = await deps.db.query(
+  if (!(await storeWarning(deps.db, householdId, key, w))) return false;
+  await sendWarning(deps, householdId, w);
+  return true;
+}
+
+/** The half that can't be lost: the dashboard copy. False if this key was already stored. */
+export async function storeWarning(db: Db, householdId: string, key: string, w: Warning): Promise<boolean> {
+  const rows = await db.query(
     "insert into warnings (household_id, key, kind, text) values ($1, $2, $3, $4) on conflict (key) do nothing returning id",
     [householdId, key.slice(0, 200), w.kind, w.text],
   );
-  if (!rows.length) return false;
-  console.info(`[spotter] warned household ${householdId}: ${w.kind}`);
+  if (rows.length) console.info(`[spotter] warning stored for household ${householdId}: ${w.kind}`);
+  return rows.length > 0;
+}
+
+/** The channels half. Never throws: a failed channel is logged and the stored copy still shows in the app. */
+export function sendWarning(deps: { warn?: Warn; defer?: Deps["defer"] }, householdId: string, w: Warning): Promise<void> {
   const warn = deps.warn;
-  if (warn) {
-    const send = async () => {
-      try {
-        await warn(householdId, w);
-      } catch (e) {
-        console.error(`[spotter] the ${w.kind} warning for ${householdId} couldn't be sent on every channel (it still shows in the app):`, e instanceof Error ? e.message : e);
-      }
-    };
-    // After the response when we can (a webhook should answer quickly), otherwise now.
-    if (deps.defer) deps.defer(send);
-    else await send();
+  if (!warn) return Promise.resolve();
+  const send = async () => {
+    try {
+      await warn(householdId, w);
+    } catch (e) {
+      console.error(`[spotter] the ${w.kind} warning for ${householdId} couldn't be sent on every channel (it still shows in the app):`, e instanceof Error ? e.message : e);
+    }
+  };
+  // After the response when we can (webhooks and Discord should answer quickly), otherwise now.
+  if (deps.defer) {
+    deps.defer(send);
+    return Promise.resolve();
   }
-  return true;
+  return send();
 }
 
 /** Recent warnings the spotter hasn't dismissed, newest first. */

@@ -4,7 +4,7 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import type { Db } from "@/db";
 import { getSpender, type Spender } from "./lifecycle";
-import { disconnectedText, warnSpotter, type Warn } from "./switchedoff";
+import { disconnectedText, sendWarning, storeWarning, type Warn } from "./switchedoff";
 
 export type Channel = "email" | "telegram" | "discord";
 export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
@@ -36,8 +36,8 @@ export async function redeemPairingCode(
   rawCode: string,
   channel: Channel,
   rawIdentity: string,
-  /** Tells another family's spotter when this takes their person's chat or email (core/switchedoff.ts). */
-  warn?: Warn,
+  /** Tells another family's spotter when this takes their person's chat or email (core/switchedoff.ts), after the reply. */
+  notice?: { warn?: Warn; defer?: (task: () => Promise<void>) => void },
 ): Promise<{ householdId: string; spender: Spender | null } | null> {
   const identity = `${channel}:${rawIdentity.trim().toLowerCase()}`;
   const value = channel === "email" ? rawIdentity.trim().toLowerCase() : rawIdentity.trim();
@@ -64,16 +64,14 @@ export async function redeemPairingCode(
       `select id, name, household_id from spenders where lower(${column}) = lower($1) and household_id <> $2`,
       [value, hit.household_id],
     );
+    // Their spotter's warning is stored BEFORE the move: if it can't be stored, the move doesn't happen either.
+    const warnings = takenFrom.map((s) => ({ s, w: { kind: "channel_moved" as const, text: disconnectedText(s.name, channel === "email" ? "email" : "chat") } }));
+    const fresh: typeof warnings = [];
+    for (const x of warnings) if (await storeWarning(db, x.s.household_id, `moved:${code}:${x.s.id}`, x.w)) fresh.push(x);
     // An address or chat belongs to one person at a time: pairing it here unpairs it anywhere else.
     await db.query(`update spenders set ${column} = null where lower(${column}) = lower($1)`, [value]);
     await db.query(`update spenders set ${column} = $2 where id = $1`, [hit.spender_id, value]);
-    for (const s of takenFrom) {
-      try {
-        await warnSpotter({ db, warn }, s.household_id, `moved:${code}:${s.id}`, { kind: "channel_moved", text: disconnectedText(s.name, channel === "email" ? "email" : "chat") });
-      } catch (e) {
-        console.error(`[spotter] couldn't warn ${s.household_id} that ${s.id}'s ${channel} moved:`, e instanceof Error ? e.message : e);
-      }
-    }
+    for (const x of fresh) await sendWarning(notice ?? {}, x.s.household_id, x.w);
     return { householdId: hit.household_id, spender: await getSpender(db, hit.spender_id) };
   }
   // The spotter's own email is where alerts go, so it lives in its own column (PayPal's email may be a sandbox one).

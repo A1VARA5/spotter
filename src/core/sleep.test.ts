@@ -193,6 +193,15 @@ describe("asking again in the morning", () => {
     expect(alertText(p, spender)).not.toContain("Asking again");
   });
 
+  it("with no alert channel set up, that is written down instead of pretending it asked", async () => {
+    const p = await held();
+    const now = new Date();
+    await askAgainTomorrow(deps, { id: p.id, householdId: hhId, by: "Sam", now });
+    await askAgainDue({ db }, new Date(now.getTime() + 2 * DAY));
+    const failed = (await listEvents(db, p.id)).find((e) => e.type === "alert_failed");
+    expect(failed?.data).toMatchObject({ step: "ask_again" });
+  });
+
   it("a failed alert is written on the timeline, not lost", async () => {
     const p = await held();
     notify.mockReset().mockRejectedValue(new Error("Telegram down"));
@@ -278,6 +287,27 @@ describe("keeping a sleeping hold alive (reauthorize)", () => {
     await keepHoldsAlive(deps);
     expect(await keepHoldsAlive(deps)).toBe(1);
     expect(reauth).toHaveBeenCalledTimes(2);
+  });
+
+  it("if saving the renewed hold fails, the new hold is let go and the run carries on", async () => {
+    const a = await sleeping(4);
+    const b = await sleeping(4);
+    const real = db.query.bind(db);
+    let broke = false;
+    const flaky: Db = {
+      query: (async (sql: string, params?: unknown[]) => {
+        if (!broke && sql.includes("reauthorized_at = now()")) {
+          broke = true;
+          throw new Error("database blip");
+        }
+        return real(sql, params);
+      }) as Db["query"],
+    };
+    expect(await keepHoldsAlive({ ...deps, db: flaky })).toBe(1);
+    expect(voidAuth).toHaveBeenCalledWith("A2");
+    const events = [...(await listEvents(db, a.id)), ...(await listEvents(db, b.id))].map((e) => e.type);
+    expect(events).toContain("reauth_released");
+    expect(events).toContain("reauthorized");
   });
 
   it("if the spotter decided while PayPal was answering, the new hold is let go", async () => {
