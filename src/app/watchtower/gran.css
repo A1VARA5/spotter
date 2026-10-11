@@ -1,0 +1,104 @@
+/* The simple view (Gran view), for the person Spotter looks out for.
+   Colours come from gran.ts GRAN_TOKENS (every text pair is tested to 4.5:1). Type: 20px body, 1.5 line
+   height, scale 1.25 (20 / 25 / 31), under 60 characters a line, like GOV.UK and NHS pages. Focus is the
+   GOV.UK pattern, a yellow fill with a thick ink bar, which older readers find without hunting for a thin
+   ring. No motion beyond press feedback, and none at all with reduced motion. */
+
+.wt-frame > .wt-tools { flex-wrap: wrap; }
+.wt-view { flex: none; display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: var(--chalk); border: 1px solid var(--line); }
+.wt-view-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 36px; padding: 6px 12px; border-radius: 7px; font-size: 14px; font-weight: 650; color: var(--ink-2); white-space: nowrap; transition: transform 160ms var(--ease-out); }
+.wt-view-btn[aria-pressed="true"] { background: var(--ink); color: var(--chalk); }
+.wt-view-btn:not([aria-pressed="true"]):hover { color: var(--ink); background: var(--paper); }
+.wt-view-btn:active { transform: scale(0.97); }
+.wt-view-btn:disabled { cursor: progress; opacity: 0.7; }
+.wt-view-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+@media (pointer: coarse) { .wt-view-btn { min-height: 44px; } }
+.wt-tools[data-audience="spotter"] .wt-pages { flex: 1; }
+.wt-view-note { margin: 0 auto 0 4px; font-size: 15px; color: #384552; min-width: 0; text-wrap: pretty; }
+.wt-sr, .gran-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.wt-frame > .wt-gran-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; background: #EEF1ED; }
+.wt-frame > .wt-gran-body > .wt-studio { height: 100%; min-height: 0; }
+/* Narrow screens: the board keeps a fixed window and Ask Spotter follows below it in the page's own
+   scroll, so neither squeezes the other. */
+@media (max-width: 1100px) {
+  .wt-frame:has(> .wt-gran-body) { height: auto; min-height: 0; }
+  .wt-frame > .wt-gran-body { display: block; flex: none; }
+  .wt-frame > .wt-gran-body > .wt-studio { height: 72dvh; min-height: 460px; }
+  .wt-frame > .wt-gran-body > .gran-ask { overflow: visible; border-left: 0; border-top: 1px solid #B9C2BC; }
+}
+
+.gran, .gran-ask { --g-ink: #17212B; --g-ink2: #384552; --g-line: #B9C2BC; --g-stop: #A3261D; --g-stop-soft: #FBEDEB; --g-go: #17694A; --g-go-soft: #E8F3EE; --g-hold: #F2B705; --g-focus: #FFDD00; }
+.gran {
+  height: 100%; overflow: auto; padding: 2px 2px 8px; display: grid; align-content: start; gap: 14px;
+  font-size: 20px; line-height: 1.5; color: var(--g-ink); font-variant-numeric: lining-nums proportional-nums;
+}
+.gran-h { margin: 0; font-size: 25px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; color: var(--g-ink); text-wrap: balance; }
+.gran-statement { margin: 0; max-width: 30ch; font-size: 25px; line-height: 1.35; font-weight: 500; text-wrap: pretty; }
+.gran-money { font-weight: 700; white-space: nowrap; }
+.gran-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.gran-item { display: grid; gap: 4px; padding: 14px 0; border-top: 1px solid var(--g-line); max-width: 60ch; }
+.gran-item-head { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-weight: 600; min-width: 0; }
+.gran-amount { font-weight: 700; white-space: nowrap; }
+.gran-payee { overflow-wrap: anywhere; }
+.gran-item-body { margin: 0; text-wrap: pretty; }
+.gran-item-meta { margin: 0; font-size: 18px; color: var(--g-ink2); }
+.gran-stop { flex: none; width: 16px; height: 16px; border-radius: 4px; background: var(--g-stop); box-shadow: 0 0 0 4px var(--g-stop-soft); }
+.gran-sample { font-size: 15px; font-weight: 650; padding: 0 8px; border-radius: 6px; border: 1px solid var(--g-line); color: var(--g-ink2); }
+.gran-failed { margin: 0; font-size: 20px; color: var(--g-ink); }
+
+/* The hold track, Spotter's own object, at Gran size: the amount sits in the amber clamp, paused. */
+.gran-track { display: flex; align-items: center; max-width: 420px; }
+.gran-line { flex: 1; height: 3px; background: var(--g-ink); }
+.gran-line-ahead { background: repeating-linear-gradient(90deg, var(--g-ink2) 0 8px, transparent 8px 14px); }
+.gran-clamp { flex: none; font-size: 22px; font-weight: 700; padding: 2px 14px; border-radius: 10px; background: var(--g-hold); border: 2px solid var(--g-ink); }
+
+/* Things that looked like scams: the tricks, then the advice as GOV.UK style warning text. */
+.gran-scams { container-type: inline-size; }
+.gran-scams-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px 40px; align-items: start; }
+@container (max-width: 640px) { .gran-scams-cols { grid-template-columns: minmax(0, 1fr); } }
+.gran-tricks { list-style: none; margin: 0; padding: 0; display: grid; }
+.gran-tricks li { padding: 12px 0; border-top: 1px solid var(--g-line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.gran-tricks li:first-child { border-top: 0; padding-top: 0; }
+.gran-trick { font-weight: 600; text-wrap: pretty; }
+.gran-times { color: var(--g-ink2); white-space: nowrap; }
+.gran-warning { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: start; }
+.gran-warning p { margin: 0; font-size: 21px; line-height: 1.45; text-wrap: pretty; }
+.gran-warning strong { font-weight: 700; }
+.gran-warning-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--g-ink); color: #fff; font-size: 26px; font-weight: 800; line-height: 1; }
+
+/* Ask Spotter */
+.gran-ask {
+  min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 20px 20px 24px; background: #fff; border-left: 1px solid var(--g-line);
+  display: grid; align-content: start; gap: 14px; font-size: 20px; line-height: 1.5; color: var(--g-ink);
+}
+.gran-ask-lede { margin: 0; color: var(--g-ink2); font-size: 18px; text-wrap: pretty; }
+.gran-starters { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gran-starter, .gran-ask-btn { all: unset; box-sizing: border-box; cursor: pointer; font-size: 18px; line-height: 1.35; font-weight: 600; transition: transform 160ms var(--ease-out); }
+.gran-starter { display: block; width: 100%; padding: 10px 14px; min-height: 48px; border-radius: 10px; border: 2px solid var(--g-ink); color: var(--g-ink); background: #fff; text-wrap: pretty; }
+.gran-starter:hover { background: #EEF1ED; }
+.gran-ask-form { display: grid; gap: 8px; }
+.gran-label { font-size: 20px; font-weight: 700; }
+.gran-ask-form textarea { box-sizing: border-box; width: 100%; font: inherit; font-size: 20px; line-height: 1.4; padding: 10px 12px; border: 2px solid var(--g-ink); border-radius: 8px; background: #fff; color: var(--g-ink); resize: vertical; min-height: 64px; }
+.gran-ask-btn { justify-self: start; padding: 12px 28px; min-height: 52px; border-radius: 10px; background: var(--g-ink); color: #fff; font-size: 20px; box-shadow: 0 3px 0 #000; }
+.gran-starter:active, .gran-ask-btn:active { transform: translateY(2px); }
+.gran-starter:disabled, .gran-ask-btn:disabled { cursor: progress; opacity: 0.6; }
+.gran-answer:empty { display: none; }
+.gran-thinking { margin: 0; font-weight: 600; }
+.gran-answer-box { display: grid; gap: 8px; padding: 16px; border-radius: 12px; background: var(--g-go-soft); border: 1px solid var(--g-go); outline: none; }
+.gran-answer-box[data-failed] { background: var(--g-stop-soft); border-color: var(--g-stop); }
+.gran-asked { margin: 0; font-size: 18px; color: var(--g-ink2); }
+.gran-answer-text { margin: 0; text-wrap: pretty; }
+
+/* Focus, the GOV.UK way: yellow fill, ink text, a thick ink bar underneath. */
+.gran-starter:focus-visible, .gran-ask-btn:focus-visible {
+  outline: 3px solid transparent; background: var(--g-focus); color: var(--g-ink); box-shadow: 0 -2px var(--g-focus), 0 4px var(--g-ink);
+}
+.gran-answer-box:focus-visible { outline: 3px solid var(--g-ink); outline-offset: 3px; }
+.gran-ask-form textarea:focus-visible { outline: 3px solid var(--g-focus); outline-offset: 0; box-shadow: inset 0 0 0 2px var(--g-ink); }
+.gran[data-scroll]:focus-visible { outline: 4px solid var(--g-focus); outline-offset: -4px; box-shadow: inset 0 0 0 7px var(--g-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-view-btn, .gran-starter, .gran-ask-btn { transition: none; }
+  .wt-view-btn:active, .gran-starter:active, .gran-ask-btn:active { transform: none; }
+}

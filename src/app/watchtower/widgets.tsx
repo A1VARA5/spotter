@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AgBaseRegistry, AgBaseWidgetDefinition, AgWidgetApi, AgWidgetDataFormat, AgWidgetField, AgWidgetFieldReference, AgWidgetParams } from "ag-studio";
 import type { CaseNote, WatchAlert } from "@/watchtower/data";
+import type { GranLabels } from "@/watchtower/gran";
+import type { GranSafeDef, GranScamsDef, GranWaitingDef } from "./GranWidgets";
 import { countdown, fairPrice, pickCase, poundsShort, radarLines, shortId, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -28,6 +30,9 @@ export interface SpotterRegistry extends AgBaseRegistry {
     | AgBaseWidgetDefinition<"scam-radar", ScamRadarDef>
     | AgBaseWidgetDefinition<"case-file", CaseFileDef>
     | AgBaseWidgetDefinition<"fair-price", FairPriceDef>
+    | AgBaseWidgetDefinition<"gran-safe", GranSafeDef>
+    | AgBaseWidgetDefinition<"gran-waiting", GranWaitingDef>
+    | AgBaseWidgetDefinition<"gran-scams", GranScamsDef>
   )[];
 }
 
@@ -44,7 +49,7 @@ export type WatchSnapshot = {
 };
 export type WatchStore = { get(): WatchSnapshot; subscribe(fn: () => void): () => void };
 /** Studio's `context` is read once, so it carries a store the page updates rather than the values. */
-export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void> };
+export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void>; gran?: GranLabels };
 
 /**
  * Widgets scroll inside their tile when the text is longer than the tile. A scrolling box has to be
