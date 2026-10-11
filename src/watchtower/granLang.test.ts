@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GLOSSARY, GRAN_TEXT, PL_NEVER, TRICK_KEY, granAiText, granLanguageRule, granLocaleText, gt, outcomeIn } from "./granLang";
+import { GLOSSARY, GRAN_TEXT, PL_NEVER, TRICK_KEY, granAiText, granLanguageRule, granLocaleText, gt, outcomeIn, whenIn } from "./granLang";
 import { SIGN_LABEL } from "./data";
 
 const holes = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
@@ -39,6 +39,21 @@ describe("the words that matter", () => {
   it("fills placeholders as plain text and leaves unknown ones alone", () => {
     expect(gt("en", "byDenied", { spotter: "<b>Sam</b>" })).toBe("<b>Sam</b> said no");
     expect(gt("en", "byDenied")).toBe("{spotter} said no");
+  });
+});
+
+describe("days and times in Gran's language", () => {
+  it("keeps Spotter's English words in English, and writes the same moment in Polish in the family's time zone", () => {
+    expect(whenIn("en", "Monday 9 November at 12:11am", "2026-11-09T00:11:00.000Z", "Europe/London")).toBe("Monday 9 November at 12:11am");
+    const pl = whenIn("pl", "Monday 9 November at 12:11am", "2026-11-09T00:11:00.000Z", "Europe/London");
+    expect(pl).toMatch(/poniedziałek/);
+    expect(pl).toMatch(/listopada/);
+    expect(pl).toMatch(/00:11/);
+  });
+  it("falls back to the English words when it can't format", () => {
+    expect(whenIn("pl", "Monday", undefined, "Europe/London")).toBe("Monday");
+    expect(whenIn("pl", "Monday", "not a date", "Europe/London")).toBe("Monday");
+    expect(whenIn("pl", "Monday", "2026-11-09T00:11:00.000Z", "Not/AZone")).toBe("Monday");
   });
 });
 

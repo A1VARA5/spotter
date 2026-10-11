@@ -45,7 +45,7 @@ const T = {
   waitingTitle: GLOSSARY.waitingFor,
   waitingStatus: { en: "{spotter} has been asked. PayPal keeps the money safe until they decide.", pl: "Poprosiliśmy o decyzję: {spotter}. Do tego czasu PayPal trzyma pieniądze bezpiecznie." },
   sleepStatus: { en: "Sleeping on it. Spotter asks {spotter} again {when}. The money stays put until then.", pl: "Czekamy do jutra. Spotter zapyta ponownie: {spotter}, {when}. Do tego czasu pieniądze zostają na miejscu." },
-  holdEnds: { en: "If nobody says yes by {when}, the money comes back to you.", pl: "Jeśli nikt się nie zgodzi do {when}, pieniądze wrócą do Ciebie." },
+  holdEnds: { en: "If nobody says yes by {when}, the money comes back to you.", pl: "Jeśli nikt się nie zgodzi, pieniądze wrócą do Ciebie. Termin: {when}." },
   sleepButton: { en: "Not sure? Ask again tomorrow", pl: "Nie wiesz? Zapytaj ponownie jutro" },
   sleepSaving: { en: "Saving…", pl: "Zapisuję…" },
   sleptFallback: { en: "Sleeping on it. Spotter asks again tomorrow.", pl: "Czekamy do jutra. Spotter zapyta ponownie jutro." },
@@ -131,6 +131,22 @@ export const GRAN_TEXT: Readonly<Record<GranKey, { en: string; pl: string }>> = 
 /** One of Gran's strings in her language, with {placeholders} filled in. Values are inserted as plain text. */
 export function gt(lang: GranLang, key: GranKey, vars: Record<string, string | number> = {}): string {
   return GRAN_TEXT[key][lang].replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
+}
+
+/**
+ * A day and time for Gran. English keeps Spotter's own wording (whenText); another language formats the
+ * same moment in the household's time zone, and falls back to the English words if it can't.
+ */
+export function whenIn(lang: GranLang, english: string, iso?: string, tz?: string): string {
+  if (lang === "en" || !iso) return english;
+  const at = new Date(iso);
+  if (!Number.isFinite(at.getTime())) return english;
+  try {
+    return new Intl.DateTimeFormat(GRAN_LANGS[lang].tag, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: tz }).format(at);
+  } catch (e) {
+    console.warn("[watchtower] couldn't format a date for Gran's language:", e);
+    return english;
+  }
 }
 
 /** Spotter's sign labels (data.ts SIGN_LABEL) to the trick they stand for. */

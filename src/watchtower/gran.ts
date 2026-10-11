@@ -5,7 +5,7 @@
 import type { AgReportState, AgStudioThemeParams } from "ag-studio";
 import type { HouseholdKind } from "@/core/households";
 import type { CaseNote, PaymentRow, PersonRow } from "./data";
-import { TRICK_KEY, gt, type GranLang } from "./granLang";
+import { TRICK_KEY, gt, whenIn, type GranLang } from "./granLang";
 
 export type GranLabels = { who: string | null; viewLabel: string; waitingTitle: string; spotter: string };
 
@@ -87,8 +87,8 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
         payee: r.payee,
         amount: r.amount,
         // The day and time come from Spotter's hold clock (whenText), written in English.
-        status: wait?.askAgain ? gt(lang, "sleepStatus", { spotter: o.spotter, when: wait.askAgain }) : gt(lang, "waitingStatus", { spotter: o.spotter }),
-        ...(wait?.holdEnds ? { ends: gt(lang, "holdEnds", { when: wait.holdEnds }) } : {}),
+        status: wait?.askAgain ? gt(lang, "sleepStatus", { spotter: o.spotter, when: whenIn(lang, wait.askAgain, wait.askAgainAt, wait.tz) }) : gt(lang, "waitingStatus", { spotter: o.spotter }),
+        ...(wait?.holdEnds ? { ends: gt(lang, "holdEnds", { when: whenIn(lang, wait.holdEnds, wait.holdEndsAt, wait.tz) }) } : {}),
         asleep: Boolean(wait?.askAgain),
         sample: r.sample === "Yes",
       };

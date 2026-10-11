@@ -76,7 +76,14 @@ export async function loadWatchtower(db: Db, household: Household, now = new Dat
     signs: (p.decision?.flags ?? p.ai?.flags ?? []).map((f) => ({ sign: SIGN_LABEL[f.kind], severity: f.severity, why: f.why })),
     ...(p.case_file ? { caseHeadline: p.case_file.headline, caseFindings: p.case_file.findings.map((f) => f.text) } : {}),
     ...(p.status === "needs_approval"
-      ? { wait: { holdEnds: whenText(holdEndsAt(p), tz), ...(p.ask_again_at ? { askAgain: whenText(new Date(p.ask_again_at), tz) } : {}) } }
+      ? {
+          wait: {
+            holdEnds: whenText(holdEndsAt(p), tz),
+            holdEndsAt: holdEndsAt(p).toISOString(),
+            tz,
+            ...(p.ask_again_at ? { askAgain: whenText(new Date(p.ask_again_at), tz), askAgainAt: new Date(p.ask_again_at).toISOString() } : {}),
+          },
+        }
       : {}),
   }));
   return {

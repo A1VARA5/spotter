@@ -50,7 +50,8 @@ export type CaseNote = {
   caseHeadline?: string;
   caseFindings?: string[];
   /** Held payments only, already in household time words: when Spotter asks again (sleep on it) and when the hold ends. */
-  wait?: { askAgain?: string; holdEnds: string };
+  /** holdEnds and askAgain are English (whenText); the ISO times and time zone let Gran's view say them in her language. */
+  wait?: { askAgain?: string; holdEnds: string; askAgainAt?: string; holdEndsAt?: string; tz?: string };
 };
 /** One thing PayPal told us about a payment (a webhook or a status check). */
 export type PaypalRow = { id: string; when: Date; eventType: string; label: string; paymentId: string; amount: number };
