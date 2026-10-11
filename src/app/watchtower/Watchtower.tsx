@@ -10,6 +10,7 @@ import { revive, type WireSources } from "@/watchtower/wire";
 import type { HouseholdKind } from "@/core/households";
 import type { WatchSnapshot, WatchStore } from "./widgets";
 import "./watchtower.css";
+import "./gran.css";
 
 const Studio = dynamic(() => import("./Studio"), { ssr: false, loading: () => <Loading /> });
 
@@ -81,7 +82,7 @@ const snapshotOf = (b: Board, canAsk: boolean, version: number): WatchSnapshot =
   canAsk,
 });
 
-export function Watchtower({ board, initialState, since, kind }: { board: Board; initialState: unknown; since: string; kind: HouseholdKind }) {
+export function Watchtower({ board, initialState, since, kind, spotterName }: { board: Board; initialState: unknown; since: string; kind: HouseholdKind; spotterName: string }) {
   const [wire, setWire] = useState(board.sources);
   const [store] = useState(() => makeStore(snapshotOf(board, typeof window !== "undefined" && !window.matchMedia("(max-width: 760px)").matches, 0)));
   const [notices, setNotices] = useState<Array<{ id: number; text: string; tone: "news" | "problem" }>>([]);
@@ -161,7 +162,7 @@ export function Watchtower({ board, initialState, since, kind }: { board: Board;
           ))}
         </ol>
       </div>
-      <Studio sources={sources} initialState={initialState} store={store} notify={notify} kind={kind} />
+      <Studio sources={sources} initialState={initialState} store={store} notify={notify} kind={kind} spotterName={spotterName} />
     </div>
   );
 }
