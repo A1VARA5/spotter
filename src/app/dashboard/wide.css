@@ -1,0 +1,47 @@
+/* Waiting for you: tools, live watches and wide screens (m6).
+   From 1800 px the dashboard stops being a 1160 px column with empty space on both sides: the waiting queue takes
+   all the room left of the rail, and the rail grows a little. The case file's own container queries then open its
+   evidence into more columns. */
+@media (min-width: 1800px) {
+  .page-frame[data-layout="rail"][data-rail]:has(.dash) {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) clamp(360px, 19vw, 460px);
+    gap: 48px;
+  }
+}
+
+/* The decision under the facts (or under the card while Spotter is still looking). */
+.held-decide { display: grid; gap: 8px; }
+.held-decide .held-actions { max-width: 880px; }
+
+/* Deny, then the real one: the link inside the notice. */
+.dash-notice-real { display: inline-flex; align-items: center; gap: 5px; color: var(--go); font-weight: 650; }
+.dash-notice-real svg { flex: none; }
+
+/* Look at a link safely (KERNEL): the latest page Spotter opened, looked at again live. */
+.tool-peek {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.tool-peek-title { display: flex; align-items: center; gap: 12px; font-size: 14.5px; font-weight: 650; }
+.tool-peek .case-watch { justify-self: start; margin-top: 4px; }
+
+/* A live price watch says so. */
+.watch-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--go-soft);
+  color: var(--go);
+  font-size: 12px;
+  font-weight: 700;
+}
+.watch-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.watch-how { font-size: 13px; color: var(--ink-2); line-height: 1.4; }

@@ -18,6 +18,7 @@ import { money, STATE_LABEL, timeAgo, trackState, type TrackState } from "@/ui/f
 import { marketCell } from "@/core/market";
 import type { Payment } from "@/core/lifecycle";
 import { CaseFile } from "@/ui/CaseFile";
+import { kernelLead, realOne, unsaidReasons } from "@/ui/caseFold";
 import { MarketNote } from "@/ui/components";
 import "./ledger.css";
 
@@ -228,6 +229,10 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
 
   const s = p ? trackState(p.status) : null;
   const evidence = p && EVIDENCE_FOR.has(p.status) ? `/api/payments/${encodeURIComponent(p.id)}/evidence` : null;
+  // The reasons and the price note, minus what the case file below already says.
+  const c = p?.case_file ?? null;
+  const reasons = p ? unsaidReasons(p.decision?.reasons ?? [], p.decision?.flags ?? p.ai?.flags ?? [], c, { lead: kernelLead(c?.page)?.kind ?? null }) : [];
+  const channel3OnCard = !!c && (c.findings.some((f) => f.tool === "find_genuine_offer") || !!c.spot);
   return (
     <dialog
       ref={ref}
@@ -257,13 +262,13 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
 
           {s === "failed" && p.error ? (
             <p className="ledger-drawer-why">{p.error}</p>
-          ) : p.decision?.reasons.length ? (
+          ) : reasons.length ? (
             <section aria-labelledby="ledger-why">
               <h3 id="ledger-why" className="ledger-drawer-label">
                 Why
               </h3>
               <ul className="ledger-drawer-reasons">
-                {p.decision.reasons.map((r) => (
+                {reasons.map((r) => (
                   <li key={r}>{r}</li>
                 ))}
               </ul>
@@ -272,14 +277,22 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
             <p className="ledger-drawer-why">Within the rules.</p>
           )}
 
-          <MarketNote market={p.market} currency={p.currency} />
+          {!channel3OnCard && <MarketNote market={p.market} currency={p.currency} />}
 
           {p.case_file ? (
             <section aria-labelledby="ledger-case">
               <h3 id="ledger-case" className="ledger-drawer-label">
                 Case file
               </h3>
-              <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} />
+              <CaseFile
+                c={p.case_file}
+                currency={p.currency}
+                paymentId={p.id}
+                peekScrolls={p.peek_scrolls}
+                fold
+                settled={p.status !== "needs_approval"}
+                real={s === "paid" ? null : realOne(p.case_file, p.market)}
+              />
             </section>
           ) : (
             <p className="ledger-drawer-why">

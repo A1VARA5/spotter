@@ -181,7 +181,7 @@ export default async function HowPage() {
                 "Check anything sent to it: a forwarded email, a forwarded Telegram message, a Discord message (right click, Apps, Check with Spotter), an agent's request.",
                 "Hold a payment at PayPal while you decide, then pay or release it.",
                 "Show you why, quoting the exact words that worried it.",
-                "Stop gift card, crypto and Friends and Family payments outright.",
+                "Refuse payments with no way back if it's a scam: gift cards, crypto and Friends and Family.",
                 "Make AI agents pay only through it, with no way to approve themselves.",
                 "Look into a held payment for you and offer a safer shop when there is one.",
                 "Read a screenshot of a message and check its words, or price each thing in a photo of an ad or a quote at real shops (Channel3).",

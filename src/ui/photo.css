@@ -1,0 +1,19 @@
+/* Photo check result, read like a case file: a verdict chip, one headline, the one fact that matters (their price
+   against real shops), then each thing in the photo. On a wide panel the photo with its numbered boxes sits beside
+   the list, so the numbers can be matched without scrolling. */
+.photo { container: photo / inline-size; }
+.photo-out { display: grid; gap: 14px; align-items: start; min-width: 0; }
+.photo-out > * { min-width: 0; }
+@container photo (min-width: 820px) {
+  .photo-out[data-done] { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 22px; }
+  .photo-out[data-done] > .photo-figure { position: sticky; top: 64px; }
+}
+
+.photo-result.case { max-width: none; }
+.photo-result .photo-total { font-size: 18px; line-height: 1.38; text-wrap: pretty; letter-spacing: -0.01em; }
+.photo-result .photo-quote { padding: 10px 12px; border-radius: 10px; background: var(--paper); font-size: 15px; line-height: 1.45; color: var(--ink); }
+.photo-result .photo-quote[data-alarm="true"] { background: var(--stop-soft); color: var(--ink); font-weight: 600; }
+.photo-result .photo-items li { padding: 9px 11px; font-size: 14.5px; line-height: 1.42; }
+.photo-price { color: var(--ink); }
+.photo-match { display: block; margin-top: 2px; font-size: 13.5px; color: var(--ink-2); }
+.photo-items .photo-match a { white-space: normal; }

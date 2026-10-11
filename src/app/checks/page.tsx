@@ -7,6 +7,7 @@ import { listPayments } from "@/core/lifecycle";
 import { engines } from "./checks";
 import "./checks.css";
 import { ToolkitCoverage } from "@/ui/ToolkitCoverage";
+import { Peek } from "@/ui/Peek";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "How Spotter checked it | Spotter" };
@@ -41,7 +42,11 @@ export default async function ChecksPage() {
               </h2>
               <p className="ck-does">{e.does}</p>
             </div>
-            <div className="ck-live" data-empty={!e.example || undefined}>
+            <div className="ck-live" data-empty={!e.example || undefined} data-thumb={e.example?.thumb ? "true" : undefined}>
+              {e.example?.thumb && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="ck-thumb" src={e.example.thumb.src} alt={e.example.thumb.alt} width={320} height={240} />
+              )}
               <p className="ck-live-label">{e.example ? "From your family" : "Not used yet"}</p>
               {e.example ? (
                 <>
@@ -55,21 +60,22 @@ export default async function ChecksPage() {
                       ))}
                     </ul>
                   )}
-                  <p className="ck-links">
+                  <div className="ck-links">
                     <Link href={e.example.href}>{e.example.label}</Link>
+                    {e.example.peek && <Peek paymentId={e.example.peek.paymentId} host={e.example.peek.host} label="Look at it again, safely" />}
                     {e.example.evidence && (
                       <a href={e.example.evidence} target="_blank" rel="noopener">
                         Evidence pack
                       </a>
                     )}
-                  </p>
+                  </div>
                 </>
               ) : (
                 <>
                   <p className="ck-live-text">{e.empty.text}</p>
-                  <p className="ck-links">
+                  <div className="ck-links">
                     <Link href={e.empty.href}>{e.empty.label}</Link>
-                  </p>
+                  </div>
                 </>
               )}
             </div>

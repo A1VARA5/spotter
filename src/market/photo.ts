@@ -52,6 +52,8 @@ export type PhotoResult = {
   /** "They're asking £49 for all of it." or "They offered £40.", when an amount was given. */
   quote: string | null;
   verdict: string | null;
+  /** Which way the verdict goes, so the page can label it without reading the sentence. */
+  verdictKind?: "far_below" | "well_over" | "under_used" | null;
   quoted: number | null;
   fallback: boolean;
   at: string;
@@ -324,6 +326,7 @@ export function buildPhoto(scene: Scene, mode: PhotoMode, currency: Currency, qu
 
   const quote = quoted === null ? null : mode === "buy" ? `They're asking ${exact(quoted, currency)} for all of it.` : `They offered ${exact(quoted, currency)}.`;
   let verdict: string | null = null;
+  let verdictKind: PhotoResult["verdictKind"] = null;
   // Channel3 stops at MAX_THINGS, so a full list may still have left things out: no "well over" then.
   // Similar ones are a range of other makes, so "far below" is judged against the low end and "well over" never said.
   const exactOnly = found.every((i) => i.match === "exact");
@@ -331,13 +334,16 @@ export function buildPhoto(scene: Scene, mode: PhotoMode, currency: Currency, qu
   if (quoted !== null && found.length && !scene.fallback) {
     if (mode === "buy" && quoted < (exactOnly ? typical : low) * 0.4) {
       verdict = "That's far below what real shops charge. Deals this cheap are a common scam: never pay by bank transfer or Friends and Family.";
+      verdictKind = "far_below";
     } else if (mode === "buy" && complete && quoted > typical * 1.3) {
       verdict = "That's well over what real shops charge for these.";
+      verdictKind = "well_over";
     } else if (mode === "sell" && quoted < low * 0.6) {
       verdict = "That's well under what used ones sell for.";
+      verdictKind = "under_used";
     }
   }
-  return { mode, currency, size: scene.size, items, total, quote, verdict, quoted, fallback: Boolean(scene.fallback), at: new Date().toISOString() };
+  return { mode, currency, size: scene.size, items, total, quote, verdict, verdictKind, quoted, fallback: Boolean(scene.fallback), at: new Date().toISOString() };
 }
 
 // ---------- input ----------

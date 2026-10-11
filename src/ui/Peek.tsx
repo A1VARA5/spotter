@@ -3,7 +3,7 @@
 // The browser here only ever gets pictures of that computer's screen from our own server (/api/payments/[id]/peek),
 // never a KERNEL link, and the only things it can do there are scroll up and scroll down. Built on the native
 // <dialog>, which keeps focus inside, closes on Escape and gives focus back to the button.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Eye, X } from "lucide-react";
 
 type State = { kind: "idle" } | { kind: "opening" } | { kind: "live" } | { kind: "ended"; text: string } | { kind: "error"; text: string };
@@ -12,7 +12,9 @@ const FRAME_GAP_MS = 700;
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-export function Peek({ paymentId, host }: { paymentId: string; host: string }) {
+export function Peek({ paymentId, host, label = "Look at it safely" }: { paymentId: string; host: string; label?: string }) {
+  // The same payment can offer a look in two places (its card and the dashboard's tools), so ids come from useId.
+  const uid = useId().replace(/[^A-Za-z0-9_-]/g, "");
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -170,13 +172,13 @@ export function Peek({ paymentId, host }: { paymentId: string; host: string }) {
   return (
     <>
       <button ref={trigger} type="button" className="case-watch" onClick={start} aria-haspopup="dialog">
-        <Eye size={15} strokeWidth={2.2} aria-hidden="true" /> Look at it safely
+        <Eye size={15} strokeWidth={2.2} aria-hidden="true" /> {label}
       </button>
       <dialog
         ref={dialog}
         className="peek"
-        aria-labelledby={`peek-title-${paymentId}`}
-        aria-describedby={`peek-about-${paymentId}`}
+        aria-labelledby={`peek-title-${uid}`}
+        aria-describedby={`peek-about-${uid}`}
         onCancel={(e) => {
           e.preventDefault();
           close();
@@ -189,10 +191,10 @@ export function Peek({ paymentId, host }: { paymentId: string; host: string }) {
         <div className="peek-box">
           <div className="peek-head">
             <div>
-              <h2 id={`peek-title-${paymentId}`} className="peek-title">
+              <h2 id={`peek-title-${uid}`} className="peek-title">
                 {host}
               </h2>
-              <p id={`peek-about-${paymentId}`} className="peek-about">
+              <p id={`peek-about-${uid}`} className="peek-about">
                 Cloud browser (KERNEL): open on a separate computer in the cloud. Only a picture of its screen reaches yours.
               </p>
             </div>
