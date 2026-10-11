@@ -171,6 +171,7 @@ describe("paypal rows", () => {
 describe("watch alerts", () => {
   const row = (over: Partial<PaymentRow>): PaymentRow => ({
     id: "pay_x",
+    currency: "GBP",
     when: NOW,
     who: "Gran",
     kind: "Person",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PL_NEVER } from "./granLang";
 import { BRIEF_ID, GRAN_ID, SPOTTER_ID, buildGranRoster, buildRoster, catalogueText, paypalStatus, weekOf, type SpotterTools } from "./agents";
 import type { PaymentRow, PaypalRow } from "./data";
 
@@ -159,6 +160,21 @@ describe("the simple view's agent (Gran mode)", () => {
 
   it("keeps runs short so a question costs a turn or two", () => {
     expect(g().maxTurns).toBeLessThanOrEqual(4);
+  });
+
+  it("in Polish: answers in Polish with the hand checked words, and still never approves anything", () => {
+    const pl = said(buildGranRoster({ month, who: "Margaret", spotter: "Sam", lang: "pl" }).agents[0]!);
+    const en = said();
+    // every English rule is still there, word for word
+    expect(pl.startsWith(en)).toBe(true);
+    expect(pl).toMatch(/never tell .*approve/i);
+    expect(pl).toMatch(/only Sam decides/i);
+    expect(pl).toMatch(/always answer in Polish/);
+    expect(pl).toMatch(/in any language/);
+    expect(pl).toContain('"czeka"');
+    expect(pl).toContain("Nie płać. Zadzwoń do tej osoby na numer, który już masz");
+    for (const w of PL_NEVER) expect(pl).toContain(`"${w}"`);
+    expect(en).not.toMatch(/Polish/);
   });
 
   it("works without a name", () => {

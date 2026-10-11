@@ -48,20 +48,20 @@ describe("handleChannel3Webhook", () => {
     expect(await res.json()).toEqual({ checked: 1 });
   });
 
-  it("without a secret, still treats the delivery as a hint only", async () => {
+  it("without a secret, refuses every delivery (503) and says why in the log", async () => {
     const hint = vi.fn(async () => 0);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect((await handleChannel3Webhook(req(EVENT), undefined, hint)).status).toBe(200);
-    expect(hint).toHaveBeenCalledWith("VpRxZ86");
-    expect(warn.mock.calls.flat().join(" ")).toContain("CHANNEL3_WEBHOOK_SECRET");
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect((await handleChannel3Webhook(signed(EVENT), undefined, hint)).status).toBe(503);
+    expect(hint).not.toHaveBeenCalled();
+    expect(err.mock.calls.flat().join(" ")).toContain("CHANNEL3_WEBHOOK_SECRET");
   });
 
   it("ignores other event types and odd product ids, and says 400 for a body that isn't JSON", async () => {
     const hint = vi.fn(async () => 0);
-    expect((await handleChannel3Webhook(req(JSON.stringify({ type: "other", canonical_product_id: "a" })), undefined, hint)).status).toBe(200);
-    expect((await handleChannel3Webhook(req(JSON.stringify({ type: "price.changed", canonical_product_id: "../x" })), undefined, hint)).status).toBe(200);
+    expect((await handleChannel3Webhook(signed(JSON.stringify({ type: "other", canonical_product_id: "a" })), SECRET, hint)).status).toBe(200);
+    expect((await handleChannel3Webhook(signed(JSON.stringify({ type: "price.changed", canonical_product_id: "../x" })), SECRET, hint)).status).toBe(200);
     expect(hint).not.toHaveBeenCalled();
-    expect((await handleChannel3Webhook(req("not json"), undefined, hint)).status).toBe(400);
+    expect((await handleChannel3Webhook(signed("not json"), SECRET, hint)).status).toBe(400);
   });
 
   it("answers 500 when checking fails, so Svix retries", async () => {
@@ -69,6 +69,6 @@ describe("handleChannel3Webhook", () => {
       throw new Error("db down");
     });
     vi.spyOn(console, "error").mockImplementation(() => {});
-    expect((await handleChannel3Webhook(req(EVENT), undefined, hint)).status).toBe(500);
+    expect((await handleChannel3Webhook(signed(EVENT), SECRET, hint)).status).toBe(500);
   });
 });

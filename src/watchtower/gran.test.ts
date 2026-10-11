@@ -71,6 +71,18 @@ describe("the month as Gran sees it", () => {
   ]);
   const m = granMonth(rows, notes, { who: "Margaret", spotter: "Sam", now: NOW });
 
+  it("in Polish: tells each stop by its trick (hand translated), never by Spotter's English reason", () => {
+    const pl = granMonth(rows, notes, { who: "Margaret", spotter: "Sam", now: NOW, lang: "pl" });
+    expect(pl.kept).toBeCloseTo(402.99);
+    expect(pl.stopped[0]).toMatchObject({ sentence: "Udawali kogoś, komu ufasz.", by: "Spotter ją zatrzymał" });
+    expect(pl.stopped[1]!.by).toBe("Sam powiedział(a) nie");
+    expect(pl.waiting[0]!.status).toBe("Poprosiliśmy o decyzję: Sam. Do tego czasu PayPal trzyma pieniądze bezpiecznie.");
+    expect(pl.tricks[0]!.plain).toBe("Udawali kogoś, komu ufasz.");
+    expect(JSON.stringify(pl)).not.toContain("A stranger was pretending");
+    const forAgent = granForAgent(pl, NOW, "pl");
+    expect(forAgent.advice).toBe("Nie płać. Zadzwoń do tej osoby na numer, który już masz, a nie na numer z wiadomości.");
+  });
+
   it("adds up only this person's stopped and denied money from the last 30 days", () => {
     expect(m.kept).toBeCloseTo(402.99);
     expect(m.stopped.map((s) => s.id)).toEqual(["p1", "p2"]);
@@ -182,5 +194,14 @@ describe("the simple view's board", () => {
   it("has no filter when there is no one person", () => {
     const b = granBoard(null) as unknown as { pages: Array<{ filter?: unknown }> };
     expect(b.pages[0]!.filter).toBeUndefined();
+  });
+
+  it("names the page and the table in Gran's language, and shows outcomes in it", () => {
+    type P = { pages: Array<{ name: string; widgets: Record<string, { dataMapping: { cols?: Array<{ id: string }> }; format?: { title: { text: string } } }> }> };
+    const pl = granBoard("Margaret Jones", false, "pl") as unknown as P;
+    expect(pl.pages[0]!.name).toBe("Ten miesiąc");
+    expect(pl.pages[0]!.widgets.payments!.format!.title.text).toBe("Płatności: Margaret");
+    expect(pl.pages[0]!.widgets.payments!.dataMapping.cols!.map((c) => c.id)).toContain("payments.outcomeText");
+    expect((granBoard("Margaret") as unknown as P).pages[0]!.name).toBe("This month");
   });
 });

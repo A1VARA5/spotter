@@ -14,7 +14,7 @@
 import type { Db } from "@/db";
 import { getPayment } from "@/core/lifecycle";
 import { open as openSealed, seal as sealValue } from "@/core/seal";
-import { extractUrls, safeToFetch } from "@/agents/links";
+import { extractUrls, followRedirects, safeToFetch, type Redirects } from "@/agents/links";
 
 export const PEEK = {
   /** How long one peek lasts. */
@@ -56,6 +56,8 @@ type Opts = {
   apiKey?: string;
   /** The same check the link inspector uses: refuses localhost, private and link local addresses. */
   isPublicHost?: (host: string) => Promise<boolean>;
+  /** Walks the link's redirects again right before the browser opens, checking every hop (tests pass a fake). */
+  resolve?: (url: string, isPublic: (host: string) => Promise<boolean>) => Promise<Redirects>;
   seal?: (purpose: string, value: string) => string;
   /** How long starting the browser may take (tests shorten it). */
   createMs?: number;
@@ -151,7 +153,19 @@ const canon = (u: string) => {
   }
 };
 
-/** The page to show: the one on the case file, only if it is a link from the payment's own message, on a public web address. */
+const web = (u: string | null): URL | null => {
+  const c = u ? canon(u) : null;
+  if (!c) return null;
+  const parsed = new URL(c);
+  return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed : null;
+};
+
+/**
+ * The page to show: the one on the case file, only if it is a link from the payment's own message, on a public web
+ * address. Where the case agent saw it end up (finalUrl) must be public too, and the redirects are walked again now,
+ * every hop checked, so the browser starts at a page that was public a moment ago. This can't stop a page that
+ * navigates somewhere private with script after it opens; that depends on KERNEL's own network (docs/kernel-notes.md).
+ */
 async function pageFor(db: Db, householdId: string, paymentId: string, opts: Opts): Promise<{ url: string } | Response> {
   const p = await getPayment(db, paymentId, householdId);
   if (!p) return fail(404, "There's no payment like that in your family.");
@@ -164,8 +178,23 @@ async function pageFor(db: Db, householdId: string, paymentId: string, opts: Opt
   const inMessage = new Set(extractUrls(p.request.context ?? "").map(canon).filter(Boolean));
   if (!inMessage.has(url)) return fail(400, "That page isn't a link from this payment's message, so it won't be opened.");
   const isPublic = opts.isPublicHost ?? safeToFetch;
-  if (!(await isPublic(u.hostname))) return fail(400, "That link points at a private address, so it won't be opened.");
-  return { url };
+  const PRIVATE_LINK = "That link points at a private address, so it won't be opened.";
+  if (!(await isPublic(u.hostname))) return fail(400, PRIVATE_LINK);
+  const recorded = p.case_file?.page?.finalUrl;
+  if (recorded) {
+    const f = web(recorded);
+    if (!f || !(await isPublic(f.hostname))) return fail(400, PRIVATE_LINK);
+  }
+  // Every hop that was reached was checked. "site did not answer" means the first (checked) hop just didn't reply
+  // to us, so the browser may still try it; any other error means a hop wasn't checked or wasn't public.
+  const walk = await (opts.resolve ?? followRedirects)(url, isPublic);
+  if (walk.error && walk.error !== "site did not answer") {
+    console.error(`[spotter] peek: refused ${paymentId}, its link's redirects ended with: ${walk.error}`);
+    return fail(400, PRIVATE_LINK);
+  }
+  const start = web(walk.finalUrl ?? url);
+  if (!start || !(await isPublic(start.hostname))) return fail(400, PRIVATE_LINK);
+  return { url: start.toString() };
 }
 
 export async function startPeek(db: Db, householdId: string, paymentId: string, view: PeekView, opts: Opts = {}): Promise<Response> {
@@ -178,12 +207,14 @@ export async function startPeek(db: Db, householdId: string, paymentId: string, 
   await sweepPeeks(db, kernel);
   const id = `peek_${crypto.randomUUID().replace(/-/g, "")}`;
   // One statement: the caps are counted and the open slot is claimed together. The partial unique index is what
-  // really keeps it to one open peek per household when two starts race.
+  // really keeps it to one open peek per household when two starts race. A start that failed counts only when it
+  // got as far as asking KERNEL for a browser (create_called_at), since a timed out create can still be billed.
+  const counts = "started_at > now() - interval '1 day' and (close_reason is distinct from 'failed' or create_called_at is not null)";
   const claimed = await db.query<{ id: string }>(
     `insert into peeks (id, household_id, payment_id, view, ends_at)
      select $1, $2, $3, $4, now() + make_interval(secs => $5)
-     where (select count(*) from peeks where household_id = $2 and started_at > now() - interval '1 day' and close_reason is distinct from 'failed') < $6
-       and (select count(*) from peeks where started_at > now() - interval '1 day' and close_reason is distinct from 'failed') < $7
+     where (select count(*) from peeks where household_id = $2 and ${counts}) < $6
+       and (select count(*) from peeks where ${counts}) < $7
      on conflict (household_id) where closed_at is null do nothing
      returning id`,
     [id, householdId, paymentId, view, PEEK.seconds, PEEK.perHouseholdDaily, PEEK.globalDaily],
@@ -198,6 +229,7 @@ export async function startPeek(db: Db, householdId: string, paymentId: string, 
   let handedOver = false;
   let abandoned = false;
   try {
+    await db.query("update peeks set create_called_at = now() where id = $1", [id]);
     const creating = kernel.browsers.create({
       headless: false,
       stealth: false,

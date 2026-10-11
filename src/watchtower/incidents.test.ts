@@ -7,6 +7,7 @@ const NOW = new Date("2026-10-10T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600_000);
 const row = (over: Partial<PaymentRow>): PaymentRow => ({
   id: "pay_x",
+  currency: "GBP",
   when: hoursAgo(1),
   who: "Gran",
   kind: "Person",

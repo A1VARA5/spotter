@@ -5,6 +5,7 @@
 import type { AgReportState, AgStudioThemeParams } from "ag-studio";
 import type { HouseholdKind } from "@/core/households";
 import type { CaseNote, PaymentRow, PersonRow } from "./data";
+import { TRICK_KEY, gt, whenIn, type GranLang } from "./granLang";
 
 export type GranLabels = { who: string | null; viewLabel: string; waitingTitle: string; spotter: string };
 
@@ -38,25 +39,14 @@ export function plainSentence(text: string): string {
 }
 
 /** The advice the rest of Spotter gives (decide.ts, alerts): don't pay, ring a number you trust. */
-export const ADVICE = "Don't pay. Ring them on a number you already have, not one from the message.";
+export const ADVICE = gt("en", "advice");
 
-// Spotter's sign labels (data.ts SIGN_LABEL) as the trick a scammer tried, in plain words.
-const TRICK: Record<string, string> = {
-  "Pressure to hurry": "They tried to rush you.",
-  "Pretending to be someone": "They pretended to be someone you trust.",
-  "Asks for Friends and Family": "They asked for Friends and Family, which can't be undone.",
-  "Gift cards or crypto": "They asked for gift cards or crypto.",
-  "Hidden instructions for AI": "The shop hid orders for a computer in its page.",
-  "Price looks wrong": "The price was too good to be true.",
-  "Brand new shop": "The shop was brand new.",
-  "Bank details changed": "They said their bank details had changed.",
-  "Something else odd": "Something about it didn't add up.",
-};
 
-export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample">;
-export type GranStop = { id: string; when: Date; payee: string; amount: number; by: string; sentence: string; sample: boolean };
+/** currency is missing on rows that came through the board's data (pounds there for now). */
+export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample"> & { currency?: string };
+export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean };
 /** ends: when PayPal lets the hold go on its own; asleep: someone chose "ask again tomorrow". */
-export type GranWait = { id: string; when: Date; payee: string; amount: number; status: string; ends?: string; asleep: boolean; sample: boolean };
+export type GranWait = { id: string; when: Date; payee: string; amount: number; currency: string; status: string; ends?: string; asleep: boolean; sample: boolean };
 export type GranTrick = { sign: string; plain: string; count: number };
 export type GranMonth = { kept: number; stopped: GranStop[]; waiting: GranWait[]; tricks: GranTrick[] };
 
@@ -64,21 +54,27 @@ const MONTH = 30 * 24 * 3600_000;
 const round = (n: number) => Math.round(n * 100) / 100;
 
 /** This month for one person (or everyone when `who` is null): what was stopped, what waits, which tricks. */
-export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { who: string | null; spotter: string; now: Date }): GranMonth {
+export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { who: string | null; spotter: string; now: Date; lang?: GranLang }): GranMonth {
+  const lang = o.lang ?? "en";
+  const signsOf = (r: GranRow) => notes.get(r.id)?.signs.map((s) => s.sign) ?? (r.topSign !== "None" ? [r.topSign] : []);
   const mine = rows.filter((r) => (o.who === null || r.who === o.who) && o.now.getTime() - r.when.getTime() < MONTH);
   const stopped = mine
     .filter((r) => r.outcome === "Stopped" || r.outcome === "Denied")
     .sort((a, b) => b.when.getTime() - a.when.getTime())
     .map((r): GranStop => {
       const denied = r.outcome === "Denied";
-      const said = plainSentence(notes.get(r.id)?.reasons[0] ?? "");
+      // Spotter's own reasons are written in English, so in another language the stop is told by the
+      // trick it used (hand translated), never by a machine translation of the reason.
+      const trick = signsOf(r).map((s) => TRICK_KEY[s]).find(Boolean);
+      const said = lang === "en" ? plainSentence(notes.get(r.id)?.reasons[0] ?? "") : trick ? gt(lang, trick) : "";
       return {
         id: r.id,
         when: r.when,
         payee: r.payee,
         amount: r.amount,
-        by: denied ? `${o.spotter} said no` : "Spotter stopped it",
-        sentence: said || (denied ? `${o.spotter} said no, so nothing was paid.` : "Spotter stopped it before any money left."),
+        currency: r.currency ?? "GBP",
+        by: gt(lang, denied ? "byDenied" : "byStopped", { spotter: o.spotter }),
+        sentence: said || gt(lang, denied ? "deniedFallback" : "stoppedFallback", { spotter: o.spotter }),
         sample: r.sample === "Yes",
       };
     });
@@ -92,10 +88,10 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
         when: r.when,
         payee: r.payee,
         amount: r.amount,
-        status: wait?.askAgain
-          ? `Sleeping on it. Spotter asks ${o.spotter} again ${wait.askAgain}. The money stays put until then.`
-          : `${o.spotter} has been asked. PayPal keeps the money safe until they decide.`,
-        ...(wait?.holdEnds ? { ends: `If nobody says yes by ${wait.holdEnds}, the money comes back to you.` } : {}),
+        currency: r.currency ?? "GBP",
+        // The day and time come from Spotter's hold clock (whenText), written in English.
+        status: wait?.askAgain ? gt(lang, "sleepStatus", { spotter: o.spotter, when: whenIn(lang, wait.askAgain, wait.askAgainAt, wait.tz) }) : gt(lang, "waitingStatus", { spotter: o.spotter }),
+        ...(wait?.holdEnds ? { ends: gt(lang, "holdEnds", { when: whenIn(lang, wait.holdEnds, wait.holdEndsAt, wait.tz) }) } : {}),
         asleep: Boolean(wait?.askAgain),
         sample: r.sample === "Yes",
       };
@@ -103,24 +99,38 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
   const counts = new Map<string, number>();
   for (const r of mine) {
     if (r.outcome === "Paid") continue;
-    const signs = notes.get(r.id)?.signs.map((s) => s.sign) ?? (r.topSign !== "None" ? [r.topSign] : []);
-    for (const sign of new Set(signs)) if (TRICK[sign]) counts.set(sign, (counts.get(sign) ?? 0) + 1);
+    for (const sign of new Set(signsOf(r))) if (TRICK_KEY[sign]) counts.set(sign, (counts.get(sign) ?? 0) + 1);
   }
-  const tricks = [...counts].map(([sign, count]) => ({ sign, plain: TRICK[sign]!, count })).sort((a, b) => b.count - a.count || a.sign.localeCompare(b.sign));
+  const tricks = [...counts].map(([sign, count]) => ({ sign, plain: gt(lang, TRICK_KEY[sign]!), count })).sort((a, b) => b.count - a.count || a.sign.localeCompare(b.sign));
   return { kept: round(stopped.reduce((t, s) => t + s.amount, 0)), stopped, waiting, tricks };
 }
 
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const daysAgo = (when: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - when.getTime()) / (24 * 3600_000)));
 
-/** What the simple view's agent reads (the my_month tool): the month in words and pounds, no ids at all. */
-export function granForAgent(m: GranMonth, now: Date) {
+const cash = (amount: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "en-GB", { style: "currency", currency }).format(amount);
+  } catch {
+    return gbp.format(amount); // an unknown code: Spotter only takes GBP and USD
+  }
+};
+
+/** Money kept per currency ("£25.00 and $119.00"): pounds and dollars are never added together. */
+function keptByCurrency(stopped: GranStop[]): string {
+  const totals = new Map<string, number>();
+  for (const s of stopped) totals.set(s.currency, round((totals.get(s.currency) ?? 0) + s.amount));
+  return totals.size ? [...totals].map(([c, n]) => cash(n, c)).join(" and ") : gbp.format(0);
+}
+
+/** What the simple view's agent reads (the my_month tool): the month in words and each payment's own money, no ids at all. */
+export function granForAgent(m: GranMonth, now: Date, lang: GranLang = "en") {
   return {
-    keptThisMonth: gbp.format(m.kept),
-    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: gbp.format(s.amount), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample })),
-    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: gbp.format(w.amount), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
+    keptThisMonth: keptByCurrency(m.stopped),
+    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample })),
+    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: cash(w.amount, w.currency), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
     tricks: m.tricks.map((t) => ({ trick: t.plain, times: t.count })),
-    advice: ADVICE,
+    advice: gt(lang, "advice"),
   };
 }
 
@@ -237,7 +247,7 @@ const title = (text: string) => ({ title: { enabled: true, text } });
 const SPANS = { wide: { safe: 38, waiting: 22, scams: 25, payments: 36 }, phone: { safe: 62, waiting: 46, scams: 56, payments: 40 } };
 
 /** One page, read from top to bottom: safe, waiting, scams, then every payment. No charts. */
-export function granBoard(who: string | null, phone = false): AgReportState {
+export function granBoard(who: string | null, phone = false, lang: GranLang = "en"): AgReportState {
   const h = SPANS[phone ? "phone" : "wide"];
   const order = ["safe", "waiting", "scams", "payments"] as const;
   let y = 0;
@@ -248,7 +258,7 @@ export function granBoard(who: string | null, phone = false): AgReportState {
   }
   const page: Record<string, unknown> = {
     id: "gran",
-    name: "This month",
+    name: gt(lang, "pageName"),
     widgets: {
       safe: { type: "gran-safe", dataMapping: {} },
       waiting: { type: "gran-waiting", dataMapping: {} },
@@ -256,9 +266,10 @@ export function granBoard(who: string | null, phone = false): AgReportState {
       payments: {
         type: "grid",
         // Three columns that fit at Gran's type size: who, how much, what happened. Newest first.
-        dataMapping: { cols: [{ id: "payments.payee" }, { id: "payments.amount" }, { id: "payments.outcome" }] },
+        // outcomeText is the outcome in Gran's language (Studio.tsx adds it to the simple view's data).
+        dataMapping: { cols: [{ id: "payments.payee" }, { id: "payments.amount" }, { id: "payments.outcomeText" }] },
         sort: [{ field: { id: "payments.when" }, direction: "desc" }],
-        format: title(who ? `${who.split(" ")[0]}'s payments` : "Every payment"),
+        format: title(who ? gt(lang, "gridTitleWho", { who: who.split(" ")[0]! }) : gt(lang, "gridTitleAll")),
       },
     },
     // One column, read top to bottom like a GOV.UK page; tall enough that most months need no scrolling inside.

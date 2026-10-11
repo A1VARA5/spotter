@@ -4,7 +4,8 @@
 // store, and shape them with src/watchtower/gran.ts. Payee names are only ever rendered as plain text.
 import { useState } from "react";
 import type { AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
-import { ADVICE, granMonth, type GranLabels, type GranRow } from "@/watchtower/gran";
+import { granMonth, type GranLabels, type GranRow } from "@/watchtower/gran";
+import { gt, type GranLang } from "@/watchtower/granLang";
 import { usePaymentRows, useScrollBox, useWatch, type WatchContext } from "./widgets";
 
 type NoMapping<T extends string> = { type: T; dataMapping: Record<string, never>; format?: AgWidgetDataFormat<unknown> };
@@ -17,18 +18,19 @@ const FIELDS =["id", "when", "who", "payee", "amount", "outcome", "topSign", "sa
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const FALLBACK: GranLabels = { who: null, viewLabel: "Simple view", waitingTitle: "Waiting for your spotter", spotter: "your spotter" };
 
-function ago(when: Date, now: number): string {
+function ago(when: Date, now: number, lang: GranLang): string {
   const h = Math.floor((now - when.getTime()) / 3600_000);
-  if (h < 1) return "Just now";
-  if (h < 24) return h === 1 ? "An hour ago" : `${h} hours ago`;
+  if (h < 1) return gt(lang, "justNow");
+  if (h < 24) return h === 1 ? gt(lang, "hourAgo") : gt(lang, "hoursAgo", { n: h });
   const d = Math.floor(h / 24);
-  return d === 1 ? "Yesterday" : `${d} days ago`;
+  return d === 1 ? gt(lang, "yesterday") : gt(lang, "daysAgo", { n: d });
 }
 
 /** This month for the person, from Studio's rows (page filters applied) and Spotter's notes. */
 function useGranMonth(p: AgWidgetParams<never>) {
   const snap = useWatch(p.context);
   const labels = (p.context as WatchContext | undefined)?.gran ?? FALLBACK;
+  const lang: GranLang = (p.context as WatchContext | undefined)?.granLang ?? "en";
   const { rows, failed } = usePaymentRows(p, FIELDS, snap.version);
   const [now] = useState(() => Date.now());
   // A row with no usable amount or date can't be added up honestly: say so rather than count it as £0.
@@ -37,27 +39,29 @@ function useGranMonth(p: AgWidgetParams<never>) {
   if (bad.length) console.error("[watchtower] simple view got payments without a usable amount or date:", bad.map((r) => r.id));
   // Studio has already applied the page or widget filter (the simple board filters to the person), so
   // the rows are the right ones whoever the widget is focused on: no second filter by name here.
-  const month = clean && !bad.length ? granMonth(clean, snap.notes, { who: null, spotter: labels.spotter, now: new Date(now) }) : null;
-  return { month, failed: failed || bad.length > 0, labels, now };
+  const month = clean && !bad.length ? granMonth(clean, snap.notes, { who: null, spotter: labels.spotter, now: new Date(now), lang }) : null;
+  return { month, failed: failed || bad.length > 0, labels, now, lang };
 }
 
-const Sample = ({ on }: { on: boolean }) => (on ? <span className="gran-sample">Sample</span> : null);
-const Failed = () => <p className="gran-failed">This part didn&apos;t load. Reload the page, or ask your spotter.</p>;
+const Sample = ({ on, lang }: { on: boolean; lang: GranLang }) => (on ? <span className="gran-sample">{gt(lang, "sample")}</span> : null);
+const Failed = ({ lang, spotter }: { lang: GranLang; spotter: string }) => <p className="gran-failed">{gt(lang, "failed", { spotter })}</p>;
 
 export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
-  const { month, failed, now } = useGranMonth(p as never);
+  const { month, failed, now, lang, labels } = useGranMonth(p as never);
   const scroll = useScrollBox<HTMLElement>();
-  if (failed) return <Failed />;
+  if (failed) return <Failed lang={lang} spotter={labels.spotter} />;
   if (!month) return null;
   return (
     <section className="gran gran-safe" aria-labelledby="gran-safe-h" {...scroll}>
       <h2 id="gran-safe-h" className="gran-h">
-        Your money is safe
+        {gt(lang, "safeTitle")}
       </h2>
       {month.stopped.length ? (
         <>
           <p className="gran-statement">
-            Spotter kept <span className="gran-money">{gbp.format(month.kept)}</span> away from scammers this month.
+            {gt(lang, "keptBefore")}
+            <span className="gran-money">{gbp.format(month.kept)}</span>
+            {gt(lang, "keptAfter")}
           </p>
           <ul className="gran-list">
             {month.stopped.map((s) => (
@@ -66,27 +70,27 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
                   <span className="gran-stop" aria-hidden="true" />
                   <span className="gran-amount">{gbp.format(s.amount)}</span>
                   <span>
-                    to <span className="gran-payee">{s.payee}</span>
+                    {gt(lang, "to")} <span className="gran-payee">{s.payee}</span>
                   </span>
-                  <Sample on={s.sample} />
+                  <Sample on={s.sample} lang={lang} />
                 </p>
                 <p className="gran-item-body">{s.sentence}</p>
                 <p className="gran-item-meta">
-                  {s.by}. {ago(s.when, now)}.
+                  {s.by}. {ago(s.when, now, lang)}.
                 </p>
               </li>
             ))}
           </ul>
         </>
       ) : (
-        <p className="gran-statement">Nothing needed stopping this month. Spotter checks every payment for you.</p>
+        <p className="gran-statement">{gt(lang, "safeNone")}</p>
       )}
     </section>
   );
 }
 
 export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
-  const { month, failed, labels, now } = useGranMonth(p as never);
+  const { month, failed, labels, now, lang } = useGranMonth(p as never);
   const scroll = useScrollBox<HTMLElement>();
   // "Ask again tomorrow" only makes the hold wait a day: it never pays or releases anything, so Gran can choose it too.
   const [slept, setSlept] = useState<Record<string, string>>({});
@@ -100,24 +104,26 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
       const r = await fetch(`/api/payments/${encodeURIComponent(id)}/sleep`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ as: "person" }) });
       const j = (await r.json().catch(() => ({}))) as { message?: string; error?: string };
       if (!r.ok) throw new Error(j.error ?? `That didn't work (${r.status}).`);
-      setSlept((s) => ({ ...s, [id]: `Sleeping on it. ${j.message ?? "Spotter asks again tomorrow."}` }));
+      // The server's message is in English; in another language Spotter's own fixed words say the same.
+      setSlept((s) => ({ ...s, [id]: lang === "en" ? `Sleeping on it. ${j.message ?? "Spotter asks again tomorrow."}` : gt(lang, "sleptFallback") }));
     } catch (e) {
-      setSleepError((s) => ({ ...s, [id]: e instanceof Error ? e.message : "That didn't work. Try again, or ask your spotter." }));
+      console.warn("[watchtower] ask again tomorrow failed:", e);
+      setSleepError((s) => ({ ...s, [id]: lang === "en" && e instanceof Error ? e.message : gt(lang, "sleepFailed", { spotter: labels.spotter }) }));
     } finally {
       setBusy(null);
     }
   }
-  if (failed) return <Failed />;
+  if (failed) return <Failed lang={lang} spotter={labels.spotter} />;
   if (!month) return null;
   return (
     <section className="gran gran-waiting" aria-labelledby="gran-waiting-h" {...scroll}>
       <h2 id="gran-waiting-h" className="gran-h">
-        {labels.waitingTitle}
+        {gt(lang, "waitingTitle", { spotter: labels.spotter })}
       </h2>
       {month.waiting.length ? (
         <>
           <p className="gran-statement">
-            {month.waiting.length === 1 ? "One payment is" : `${month.waiting.length} payments are`} waiting. You don&apos;t need to do anything.
+            {month.waiting.length === 1 ? gt(lang, "waitingOne") : gt(lang, "waitingMany", { n: month.waiting.length })}
           </p>
           <ul className="gran-list">
             {month.waiting.map((w) => (
@@ -130,16 +136,16 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
                 <p className="gran-item-head">
                   <span className="gran-amount gran-sr">{gbp.format(w.amount)}</span>
                   <span>
-                    To <span className="gran-payee">{w.payee}</span>
+                    {gt(lang, "toCap")} <span className="gran-payee">{w.payee}</span>
                   </span>
-                  <Sample on={w.sample} />
+                  <Sample on={w.sample} lang={lang} />
                 </p>
                 <p className="gran-item-body">{slept[w.id] ?? w.status}</p>
                 {w.ends && <p className="gran-item-body">{w.ends}</p>}
-                <p className="gran-item-meta">Asked {ago(w.when, now).toLowerCase()}.</p>
+                <p className="gran-item-meta">{gt(lang, "asked", { ago: ago(w.when, now, lang).toLocaleLowerCase(lang) })}</p>
                 {!w.asleep && !w.sample && !slept[w.id] && (
                   <button type="button" className="gran-sleep" aria-disabled={busy === w.id || undefined} onClick={() => void sleepOn(w.id)}>
-                    {busy === w.id ? "Saving…" : "Not sure? Ask again tomorrow"}
+                    {busy === w.id ? gt(lang, "sleepSaving") : gt(lang, "sleepButton")}
                   </button>
                 )}
                 {sleepError[w.id] && (
@@ -152,21 +158,21 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
           </ul>
         </>
       ) : (
-        <p className="gran-statement">Nothing is waiting. Payments that look fine go straight through.</p>
+        <p className="gran-statement">{gt(lang, "waitingNone")}</p>
       )}
     </section>
   );
 }
 
 export function GranScamsWidget(p: AgWidgetParams<GranScamsDef>) {
-  const { month, failed } = useGranMonth(p as never);
+  const { month, failed, lang, labels } = useGranMonth(p as never);
   const scroll = useScrollBox<HTMLElement>();
-  if (failed) return <Failed />;
+  if (failed) return <Failed lang={lang} spotter={labels.spotter} />;
   if (!month) return null;
   return (
     <section className="gran gran-scams" aria-labelledby="gran-scams-h" {...scroll}>
       <h2 id="gran-scams-h" className="gran-h">
-        Things that looked like scams
+        {gt(lang, "scamsTitle")}
       </h2>
       {/* The advice first: it's the one thing to remember. Then the tricks, most common first. */}
       <div className="gran-scams-cols">
@@ -175,20 +181,20 @@ export function GranScamsWidget(p: AgWidgetParams<GranScamsDef>) {
             !
           </span>
           <p>
-            <span className="gran-sr">Advice: </span>
-            <strong>If anyone asks you for money:</strong> {ADVICE}
+            <span className="gran-sr">{gt(lang, "adviceSr")}</span>
+            <strong>{gt(lang, "adviceLead")}</strong> {gt(lang, "advice")}
           </p>
         </div>
         {month.tricks.length ? (
-          <ul className="gran-tricks" aria-label="Tricks scammers tried this month">
+          <ul className="gran-tricks" aria-label={gt(lang, "tricksLabel")}>
             {month.tricks.slice(0, MAX_TRICKS).map((t) => (
               <li key={t.sign}>
-                <span className="gran-trick">{t.plain}</span> <span className="gran-times">{t.count === 1 ? "Once" : `${t.count} times`}</span>
+                <span className="gran-trick">{t.plain}</span> <span className="gran-times">{t.count === 1 ? gt(lang, "once") : gt(lang, "times", { n: t.count })}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="gran-statement">No scam tricks this month.</p>
+          <p className="gran-statement">{gt(lang, "noTricks")}</p>
         )}
       </div>
     </section>
