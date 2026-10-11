@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import type { Db } from "@/db";
 import type { Offer } from "@/core/market";
 import type { Currency } from "@/core/types";
+import { plausibleOffers } from "./sanity";
 import { MAX_THINGS, type Condition, type ImageQuery, type Product, type Scene, type SceneThing } from "./channel3";
 
 export type PhotoMode = "buy" | "sell";
@@ -268,10 +269,16 @@ function priceThing(t: SceneThing, n: number, mode: PhotoMode, currency: Currenc
     };
   }
   // One price per listing (its cheapest usable offer), so a listing sold by many shops doesn't outweigh the rest.
-  const each = similar.flatMap((p) => {
+  const all = similar.flatMap((p) => {
     const o = usable([p], mode, currency);
     return o.length ? [{ p, o: o.reduce((a, b) => (b.price < a.price ? b : a)) }] : [];
   });
+  // The market check's sanity (src/market/sanity.ts): fashion shops, designer brands and a premium tail above a big
+  // price gap don't set the range for an everyday thing. Only used when enough listings are left to price it.
+  const fair = new Set(plausibleOffers(all.map((e) => e.o), t.thing));
+  const trimmed = all.filter((e) => fair.has(e.o));
+  if (trimmed.length < SIMILAR_MIN && trimmed.length < all.length) console.warn(`[spotter] photo check: "${label(t.thing)}" priced from untrimmed listings (${trimmed.length} left after the sanity rules)`);
+  const each = trimmed.length >= SIMILAR_MIN ? trimmed : all;
   if (each.length < SIMILAR_MIN) return { ...base, found: false };
   const sorted = each.map((e) => e.o.price).sort((a, b) => a - b);
   const q = quartiles(sorted);

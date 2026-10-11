@@ -2,7 +2,7 @@
 // evidence pack) says what happened, in the past tense. Nothing says the money is still held once it isn't.
 import { describe, expect, it } from "vitest";
 import type { Case } from "@/agents/case";
-import { holdFact, outcomeLine, settledAs, settledCase, type SettledInput } from "./settled";
+import { holdFact, outcomeLine, settledAs, settledCase, shownOutcome, type SettledInput } from "./settled";
 import { LATE_BY, LATE_HOLD, PAUSED_BY } from "./lifecycle";
 import { CAPTURED_WHILE_RELEASING } from "./decidedBy";
 
@@ -119,5 +119,25 @@ describe("holdFact and settledCase", () => {
   it("keeps the other findings and their order", () => {
     const out = settledCase(c, p());
     expect(out.findings.map((f) => f.tool)).toEqual(["find_genuine_offer", "payee_history", "paypal_hold"]);
+  });
+});
+
+describe("shownOutcome: a Not me release has its own words, never a person's Deny", () => {
+  const wiy = (who: string, channel: string) => ({ state: "not_me", who, channel });
+  it("Tom said not me: Not me, Tom didn't send it (the pill fits the rail; the line under it says PayPal released it)", () => {
+    const o = shownOutcome(p({ status: "voided", decided_by: "Tom", was_it_you: wiy("Tom", "example") }));
+    expect(o).toMatchObject({ state: "returned", short: "Not me" });
+    expect(o?.long).toBe("Not me: Tom didn't send it");
+    expect(o?.long).not.toMatch(/denied/i);
+  });
+  it("the spotter answered their own question: talks to them as you", () => {
+    const o = shownOutcome(p({ status: "voided", decided_by: "Sam", was_it_you: wiy("Sam", "alert") }));
+    expect(o?.long).toBe("Not me: you didn't send it");
+  });
+  it("a real Deny stays Denied, a tripwire stays Stopped, a waiting payment has no special words", () => {
+    expect(shownOutcome(p({ status: "voided", decided_by: "Sam", was_it_you: null }))).toBeNull();
+    expect(shownOutcome(p({ status: "voided", decided_by: "Sam", was_it_you: wiy("Tom", "example") }))).toBeNull();
+    expect(shownOutcome(p({ status: "needs_approval", decided_by: null, was_it_you: { state: "asked", who: "Tom" } }))).toBeNull();
+    expect(shownOutcome(p({ status: "voided", decided_by: PAUSED_BY }))?.long).toMatch(/^Stopped/);
   });
 });

@@ -7,7 +7,7 @@
 import type { Db } from "@/db";
 import { getHousehold } from "@/core/households";
 import { getPayment, getSpender, listEvents, type Payment } from "@/core/lifecycle";
-import { networkCount } from "@/core/network";
+import { networkCount, networkLine } from "@/core/network";
 import { formatMoney, type Currency } from "@/core/types";
 import { safeTz, whenText } from "@/core/holdtime";
 import { SIGN_LABEL } from "@/watchtower/data";
@@ -204,8 +204,7 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
 
   let network = "Spotter couldn't count other families' reports for this payee.";
   try {
-    const n = (await networkCount(db, r.payee.name, householdId)).families;
-    network = n ? `${n} other Spotter ${n === 1 ? "family" : "families"} said no to this payee in the last 30 days.` : "No other Spotter family has said no to this payee in the last 30 days.";
+    network = networkLine(await networkCount(db, r.payee.name, householdId), "this payee");
   } catch (e) {
     console.error(`[spotter] evidence pack network count for ${p.id} failed:`, e instanceof Error ? e.message : e);
   }

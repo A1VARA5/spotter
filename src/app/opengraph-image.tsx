@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Spotter: a second look before the money goes";
+export const alt = "Spotter asks the person the text pretends to be, while PayPal holds Gran's £250";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -27,7 +27,7 @@ export default function OpenGraphImage() {
           </div>
           Spotter
         </div>
-        <div style={{ display: "flex", fontSize: 84, fontWeight: 700, letterSpacing: -3, lineHeight: 1, maxWidth: 900 }}>A second look before the money goes.</div>
+        <div style={{ display: "flex", fontSize: 72, fontWeight: 700, letterSpacing: -3, lineHeight: 1.02, maxWidth: 980 }}>Spotter asks the person the text pretends to be.</div>
         <div style={{ display: "flex", alignItems: "center", gap: 20, fontSize: 28, color: "#aeb9c3" }}>
           <span style={{ color: "#fff", fontWeight: 600 }}>Gran</span>
           <div style={{ width: 160, height: 4, background: "#3a4652", borderRadius: 2 }} />

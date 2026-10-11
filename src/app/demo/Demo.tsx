@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { HoldTrack } from "@/ui/components";
 import { trackState } from "@/ui/format";
 import { JUDGE_TOUR, SCENARIOS, scenariosFor, type Scenario } from "@/ui/scenarios";
@@ -24,6 +25,7 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
   const [round, setRound] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const router = useRouter();
 
   async function reset() {
     setResetting(true);
@@ -37,6 +39,7 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
       const { cleared } = await readJson(r);
       setNote(cleared ? `Cleared ${cleared} payments. Allowances are full again.` : "Already fresh.");
       setRound((n) => n + 1);
+      router.refresh();
     } catch {
       setNote("Couldn't reset. Try again in a moment.");
     } finally {
@@ -105,6 +108,7 @@ function useSend(s: Scenario, spender?: SpenderLite) {
   // Bumped after each finished send, so focus moves to the new result even when the outcome is the same.
   const [sent, setSent] = useState(0);
   const next = useRef<HTMLAnchorElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (sent) next.current?.focus();
@@ -121,6 +125,8 @@ function useSend(s: Scenario, spender?: SpenderLite) {
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
       setResult(j.payment);
       setSent((n) => n + 1);
+      // A new hold changes the sidebar's "Waiting for you" count: re-render the server shell (client state stays).
+      router.refresh();
     } catch (e) {
       setError(plainError(e));
     } finally {

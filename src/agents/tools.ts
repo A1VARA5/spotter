@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Db } from "@/db";
 import type { Payment } from "@/core/lifecycle";
 import { genuineOffers, marketSummary, type Offer } from "@/core/market";
-import { networkCount } from "@/core/network";
+import { networkCount, networkLine } from "@/core/network";
 import { normName } from "@/core/rules";
 import { NOT_LAB_SQL } from "@/core/tripped";
 import { formatMoney, type Currency } from "@/core/types";
@@ -156,9 +156,8 @@ const networkReports = tool({
   schema: z.object({ identifier: z.string().min(1).max(200) }),
   async run({ identifier }, ctx) {
     const n = await networkCount(ctx.db, identifier, ctx.householdId);
-    const summary = n.families
-      ? `${n.families} other Spotter famil${n.families === 1 ? "y" : "ies"} said no to ${identifier} in the last 30 days.`
-      : `No other Spotter family has reported ${identifier} in the last 30 days.`;
+    // Demo counts say "demo families", so a case file never passes demo clicks off as real families.
+    const summary = networkLine(n, identifier);
     return { ok: true, summary, data: n };
   },
 });

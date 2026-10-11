@@ -23,7 +23,9 @@ export function checkRules(req: PaymentRequest, a: Allowance): RulesResult {
     if (amount > left) {
       hit("allowance", "block", `Only ${formatMoney({ amount: Math.max(0, left), currency })} left this week, this payment is ${formatMoney(req.money)}.`);
     }
-    if (amount > a.askAbove.amount) hit("threshold", "ask", `Over the ${formatMoney(a.askAbove)} "ask me first" limit.`);
+    // A limit of zero means "ask about everything": say that, not "over the £0.00 limit".
+    if (amount > a.askAbove.amount)
+      hit("threshold", "ask", a.askAbove.amount <= 0 ? "Set to ask first for every payment, whatever the amount." : `Over the ${formatMoney(a.askAbove)} "ask me first" limit.`);
   }
 
   if (a.blockedCategories.map(normCategory).includes(normCategory(req.category))) {

@@ -7,6 +7,7 @@ import type { Decision } from "./decide";
 import { CHANGED_BANK_ADVICE, SCAM_ADVICE } from "./decide";
 import type { Flag, FlagKind, Severity } from "./grounding";
 import { tripReason, type TripInput } from "./tripped";
+import { settledAs, type SettledInput } from "./settled";
 
 type ProofFinding = { kind?: "prompt_injection" | "cloaking" | "money_offsite"; severity?: "high"; toolName?: string };
 export type ReasonInput = { decision: Decision | null | undefined; case_file?: { findings: ProofFinding[] } | null } & Partial<TripInput>;
@@ -66,4 +67,53 @@ export function rankedReasons(p: ReasonInput): string[] {
 /** The strongest reason, or null when there is nothing to say. */
 export function topReason(p: ReasonInput): string | null {
   return rankedReasons(p)[0] ?? null;
+}
+
+// ---------- the why after the decision, in the past tense ----------
+// A paid skillet next to "Prices this low are a fake shop tell" reads as if it's still being decided. Reasons code
+// writes itself are turned into a past tense clause; anything else (the AI check's own words) keeps its words after
+// a "Held:" or "Stopped:" label, so the line never pretends the AI's sentence was rewritten.
+const PAST: Array<[RegExp, (m: RegExpExecArray) => string]> = [
+  [/^(.+?) is far below what real shops charge \((.+?)\)\. Prices this low are a fake shop tell\.$/, (m) => `${m[1]} was far below what real shops charge (${m[2]})`],
+  [/^The shop page hides orders for AI agents\.$/, () => "the shop page hid orders for AI agents"],
+  [/^The shop gives AI agents a tool with hidden orders in it\.$/, () => "the shop gave AI agents a tool with hidden orders in it"],
+  [/^The link shows phones a card form it hides from security scanners\.$/, () => "the link showed phones a card form it hid from security scanners"],
+  [/^Card details typed on this page would go to a different site\.$/, () => "card details typed on that page would have gone to a different site"],
+  [/^First time paying (.+)\.$/, (m) => `it was the first time paying ${m[1]}`],
+  [/^Over the (.+) limit\.$/, (m) => `it was over the ${m[1]} limit`],
+  [/^Set to ask first for every payment, whatever the amount\.$/, () => "it was set to ask first for every payment"],
+  [new RegExp(`^${SCAM_ADVICE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), () => "it looked like a scam"],
+  [new RegExp(`^${CHANGED_BANK_ADVICE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), () => "the bank details had changed"],
+];
+
+const pastClause = (reason: string): string | null => {
+  for (const [re, f] of PAST) {
+    const m = re.exec(reason);
+    if (m) return f(m);
+  }
+  return null;
+};
+
+export type DecidedInput = ReasonInput & SettledInput;
+
+/**
+ * The one line why for a feed or Activity row. While it waits, the strongest reason as it is. Once decided: "Held
+ * because ..." / "Stopped because ..." in the past tense, plus who approved a paid one. A tripwire's line is already
+ * past tense. null: nothing to say (paid within the rules).
+ */
+export function decidedReason(p: DecidedInput): string | null {
+  const s = settledAs(p);
+  if (s === "paid_by_rules" && p.decision?.outcome === "allow") return null;
+  const top = topReason(p);
+  if (!s || !top || s === "paused" || s === "failed") return top;
+  const verb = s === "stopped" ? "Stopped" : s === "not_sent" ? "Not sent" : "Held";
+  const clause = pastClause(top);
+  // The AI's own sentence keeps its words after a short label: "Held: Someone on a new number says ...".
+  const why = clause ? `${verb} because ${clause}.` : `${verb}: ${top}`;
+  // Endings where money moved after the hold say so, so "Held because" never sits alone next to a payment.
+  if (s === "paid") return `${why} Paid after ${p.decided_by} approved.`;
+  if (s === "paying") return `${why} ${p.decided_by && p.decided_by !== "Spotter" ? `${p.decided_by} approved it` : "It was approved"} and PayPal is paying it.`;
+  if (s === "paid_anyway") return `${why} PayPal took it anyway.`;
+  if (s === "paid_by_rules") return `${why} Paid within the rules.`;
+  return why;
 }

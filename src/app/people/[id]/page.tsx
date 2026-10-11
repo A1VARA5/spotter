@@ -6,6 +6,7 @@ import { weekTally } from "./tally";
 import { hasAgentToken } from "@/core/pairing";
 import { AppShell } from "@/ui/AppShell";
 import { money, STATE_LABEL, trackState } from "@/ui/format";
+import { shownOutcome } from "@/core/settled";
 import { Connect } from "./Connect";
 import { Hint } from "@/ui/Hint";
 import { labelsFor, ON_HOLD, OUTCOME_WORDS } from "@/ui/labels";
@@ -37,7 +38,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             <li key={p.id} className="person-row">
               <span className="person-name">{p.request.payee.name}</span>
               <span className="person-kind num">{money(p.amount, p.currency)}</span>
-              <span className="feed-state" data-state={trackState(p.status)}>{STATE_LABEL[trackState(p.status)]}</span>
+              <span className="feed-state" data-state={shownOutcome(p)?.state ?? trackState(p.status)}>{shownOutcome(p)?.long ?? STATE_LABEL[trackState(p.status)]}</span>
             </li>
           ))}
         </ul>

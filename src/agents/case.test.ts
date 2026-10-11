@@ -429,7 +429,20 @@ describe("one fact, said once", () => {
     );
     const c = await buildCase(ctx(), { model });
     expect(c.findings).toHaveLength(1);
-    expect(c.findings[0]!.text).toBe("2 other Spotter families said no to BargainPods in the last 30 days.");
+    // Said once, in the network tool's own words.
+    expect(c.findings[0]!.text).toBe(c.calls.find((x) => x.tool === "network_reports")!.summary);
+  });
+
+  it("the network count is said in the tool's own words, so demo counts can't be retold as real families", async () => {
+    const model = scripted(
+      turn(use("n1", "network_reports", { identifier: "BargainPods" })),
+      turn(use("f", "file_case", { verdict: "unclear", headline: "Worth a closer look.", findings: [{ text: "Lots of Spotter families said no to BargainPods.", source: "n1" }], ask: [] })),
+    );
+    const c = await buildCase(ctx(), { model });
+    const call = c.calls.find((x) => x.tool === "network_reports")!;
+    expect(c.findings).toHaveLength(1);
+    expect(c.findings[0]!.text).toBe(call.summary);
+    expect(c.findings[0]!.text).not.toContain("Lots of");
   });
 
   it("a shop with hidden orders for AI agents is explained by them first, whatever the model led with", async () => {

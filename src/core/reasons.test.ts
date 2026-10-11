@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import type { Flag } from "./grounding";
 import type { Decision } from "./decide";
-import { rankedReasons, topReason } from "./reasons";
+import { decidedReason, rankedReasons, topReason } from "./reasons";
+import { CAPTURED_WHILE_RELEASING, PAUSED_BY } from "./decidedBy";
 import { SCAM_ADVICE } from "./decide";
 
 const flag = (kind: Flag["kind"], severity: Flag["severity"], why: string): Flag => ({ kind, severity, quote: "", why });
@@ -71,5 +72,44 @@ describe("rankedReasons", () => {
   it("keeps every reason once, strongest first", () => {
     const d = decision([FIRST, INJECTION, LIMIT], [flag("prompt_injection", "high", INJECTION)]);
     expect(rankedReasons({ decision: d })).toEqual([INJECTION, LIMIT, FIRST]);
+  });
+});
+
+describe("decidedReason: once decided, the why is in the past tense", () => {
+  const base = { status: "needs_approval", decided_by: null as string | null, error: null, amount: 499, currency: "GBP", request: { payee: { name: "Panmoor Kitchen" } } };
+  const held = decision([FIRST, PRICE], [flag("price", "high", PRICE)]);
+  it("still waiting: the reason as it is", () => {
+    expect(decidedReason({ ...base, decision: held })).toBe(PRICE);
+  });
+  it("paid after a hold: held because, in the past tense, then who approved", () => {
+    const r = decidedReason({ ...base, status: "captured", decided_by: "Sam", decision: held });
+    expect(r).toBe("Held because £4.99 was far below what real shops charge (around £15.99 across 3 retailers). Paid after Sam approved.");
+    expect(r).not.toMatch(/fake shop tell| is far below/);
+  });
+  it("denied and not me: held because", () => {
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Sam", decision: decision([FIRST]) })).toBe("Held because it was the first time paying GadgetBarn.");
+    const proof = { findings: [{ kind: "cloaking" as const, severity: "high" as const }] };
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Tom", was_it_you: { state: "not_me", who: "Tom" }, decision: decision([FIRST]), case_file: proof })).toBe(
+      "Held because the link showed phones a card form it hid from security scanners.",
+    );
+  });
+  it("stopped: stopped because; an AI sign it can't rewrite keeps its words after a short 'Stopped:' label", () => {
+    const d = decision([INJECTION], [flag("prompt_injection", "high", INJECTION)]);
+    expect(decidedReason({ ...base, status: "blocked", decision: d })).toBe(`Stopped: ${INJECTION}`);
+    expect(decidedReason({ ...base, status: "blocked", decision: decision([LIMIT]) })).toBe('Stopped because it was over the £5.00 "ask me first" limit.');
+  });
+  it("says when money moved after the hold: approved and being paid, or paid while Spotter was letting it go", () => {
+    expect(decidedReason({ ...base, status: "capturing", decided_by: "Sam", decision: decision([FIRST]) })).toBe(
+      "Held because it was the first time paying GadgetBarn. Sam approved it and PayPal is paying it.",
+    );
+    expect(decidedReason({ ...base, status: "captured", decided_by: "Sam", error: CAPTURED_WHILE_RELEASING, decision: decision([FIRST]) })).toBe(
+      "Held because it was the first time paying GadgetBarn. PayPal took it anyway.",
+    );
+  });
+
+  it("paid within the rules: no reason; a tripwire keeps its own past tense line", () => {
+    expect(decidedReason({ ...base, status: "captured", decided_by: "Spotter", decision: { outcome: "allow", reasons: [], flags: [] } })).toBeNull();
+    const trip = decidedReason({ ...base, status: "voided", decided_by: PAUSED_BY, tripwire: { id: "t", tool: "create_refund", at: "", cause: null }, decision: decision([LIMIT]) });
+    expect(trip).toMatch(/^Reached for create_refund/);
   });
 });

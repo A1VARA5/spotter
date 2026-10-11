@@ -23,8 +23,8 @@ import { weekSummary } from "@/ui/week";
 import { approveWarning } from "@/ui/labels";
 import { AI_DOWN_LINE, AI_UNFINISHED_LINE, BACKUP_LINE } from "@/core/aiwords";
 import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
-import { topReason } from "@/core/reasons";
-import { outcomeLine, settledCase } from "@/core/settled";
+import { decidedReason, topReason } from "@/core/reasons";
+import { outcomeLine, settledCase, shownOutcome } from "@/core/settled";
 import { tripOutcome } from "@/core/tripped";
 import { TripFound } from "@/ui/TripFound";
 import "./allclear.css";
@@ -1039,13 +1039,14 @@ function FeedRow({
   watchUpdates?: WatchUpdates;
   onWatchChanged: () => void;
 }) {
-  // A hold a tripwire let go reads as stopped by it, never as a person's deny (src/core/tripped.ts).
+  // A hold a tripwire let go, or a Not me released, never reads as a person's deny (src/core/settled.ts shownOutcome).
   const trip = tripOutcome(p);
-  const s = trip ? trip.state : trackState(p.status);
-  const label = trip ? trip.long : STATE_LABEL[s];
+  const own = shownOutcome(p);
+  const s = own ? own.state : trackState(p.status);
+  const label = own ? own.long : STATE_LABEL[s];
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
-  // The strongest sign, not whichever reason came first; a paid payment only has one if Spotter held it.
-  const firstReason = p.decision?.outcome === "allow" ? null : topReason(p);
+  // The strongest sign, in the past tense once it's decided; a paid payment only has one if Spotter held it.
+  const firstReason = p.decision?.outcome === "allow" ? null : decidedReason(p);
   const canWatch = watchable(p) || !!watch;
   // A finding like hidden orders or two faces is the reason to look, so its button stands out.
   const serious = !!p.case_file?.findings.some((f) => f.severity === "high");

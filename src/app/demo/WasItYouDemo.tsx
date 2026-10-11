@@ -4,6 +4,7 @@
 // sandbox authorisation for the demo family, and Not me on Tom's phone really voids it.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MessageCircleOff, ShieldCheck } from "lucide-react";
 import { Iphone, SmsScreen } from "@/app/landing/Devices";
 import { BrandMark } from "@/ui/components";
@@ -49,6 +50,7 @@ export function WasItYouDemo({ spotter, resume }: { spotter: string; resume?: { 
   const [n, setN] = useState(0);
   const result = useRef<HTMLParagraphElement>(null);
   const notMe = useRef<HTMLButtonElement>(null);
+  const router = useRouter();
 
   // After each step, focus lands where the news is: Tom's Not me button, then the result line.
   useEffect(() => {
@@ -70,6 +72,7 @@ export function WasItYouDemo({ spotter, resume }: { spotter: string; resume?: { 
       setToken(j.token);
       setPhase("asked");
       setN((x) => x + 1);
+      router.refresh(); // the new hold joins the sidebar's "Waiting for you" count
     } catch (e) {
       setError(plainError(e));
       setPhase("idle");
@@ -98,6 +101,7 @@ export function WasItYouDemo({ spotter, resume }: { spotter: string; resume?: { 
       setReply(j.reply);
       setPhase(a);
       setN((x) => x + 1);
+      router.refresh(); // Not me released it: the sidebar count follows
     } catch (e) {
       setError(plainError(e));
       setPhase("asked");

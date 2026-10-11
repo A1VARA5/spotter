@@ -524,7 +524,10 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
   };
   const sourced = c.findings.flatMap((f) => {
     const call = resolve(f.source);
-    return call && !contradictsPrice(f.text, price) && !namesUnchecked(f.text) ? [{ text: withoutIds(f.text), source: call.id, tool: call.tool }] : [];
+    if (!call || contradictsPrice(f.text, price) || namesUnchecked(f.text)) return [];
+    // The network count is code: its line is the tool's own words, so "demo families" can't become "Spotter families".
+    const text = withoutIds(call.tool === "network_reports" && call.summary ? call.summary : f.text);
+    return [{ text, source: call.id, tool: call.tool }];
   });
   // The model sometimes says one check's fact twice in other words: the first one stays.
   const findings = sourced.filter((f, i) => !sourced.slice(0, i).some((g) => g.tool === f.tool && sameFact(g.text, f.text)));
