@@ -125,8 +125,8 @@ describe("paypal_hold", () => {
     const getAuthorization = vi.fn(async () => ({ status: "CREATED", expiresAt: "2026-11-07T00:00:00Z" }));
     const out = await runTool("paypal_hold", {}, ctx(held, { getAuthorization }));
     expect(getAuthorization).toHaveBeenCalledWith("A9");
-    expect(out.summary).toContain("CREATED");
-    expect(out.summary).toContain("2026-11-07");
+    // Plain words and a plain date: no raw PayPal status, no id, no ISO date.
+    expect(out.summary).toBe("PayPal is holding the money, so nothing has moved yet. If nobody approves by Saturday 7 November, the hold simply ends and nothing is paid.");
   });
 });
 

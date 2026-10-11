@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import "./responsive.css";
+import "@/ui/casefile.css";
 
 const sans = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 // Phone screens use Inter, the closest open face to Apple's SF, so mockups read as real iOS.

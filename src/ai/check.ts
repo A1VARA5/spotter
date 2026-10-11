@@ -69,7 +69,7 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
   const codeFlags: Flag[] = clean.hidden.map((h): Flag => {
     switch (h.kind) {
       case "invisible_text":
-        return { kind: "prompt_injection", severity: "high", quote: h.text, why: "This text was hidden from people but readable by an AI." };
+        return { kind: "prompt_injection", severity: "high", quote: h.text, why: "It hides text from people that an AI still reads, a way to slip orders to an AI." };
       case "fake_delimiter":
         return { kind: "prompt_injection", severity: "high", quote: "", why: "The content tried to fake Spotter's own markers to sneak in instructions." };
       case "direction_override":
