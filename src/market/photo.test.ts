@@ -225,6 +225,12 @@ describe("similar ones (everyday things with no model number)", () => {
     expect(i).toMatchObject({ found: true, match: "similar", typical: 9900 });
   });
 
+  it("keeps a confirmed model sold at one shop only (no similar ones to fall back on), as exact from one shop", () => {
+    const one = HEADPHONES.slice(0, 2).map((p) => ({ ...p, offers: [{ ...p.offers[0]!, domain: "currys.co.uk" }] }));
+    const i = buildPhoto({ size: [960, 720], things: [{ ...scene().things[0]!, matches: one }] }, "buy", "GBP", null).items[0]!;
+    expect(i).toMatchObject({ found: true, match: "exact", shops: 1 });
+  });
+
   it("an exact model match still wins, and is marked exact", () => {
     expect(buildPhoto(scene(), "buy", "GBP", null).items[0]).toMatchObject({ found: true, match: "exact" });
   });

@@ -238,13 +238,16 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
   const product = bestProduct(products, item);
   if (!product) return { error: "Spotter couldn't find this exact product at real shops, so there's no price to watch.", status: 404 };
 
+  // A price far below what real shops charge (or priced like a used one) is a fake shop sign, not a deal to wait for.
+  // Checked before an existing watch is handed back, so an agent can't get a fake price watched that way either.
+  const check = priceCheck(input.nearly, input.currency, product.offers, { item });
+  if (check.flag?.severity === "high" || check.likeUsed) {
+    console.error(`[spotter] price watch refused for ${input.householdId}: ${check.likeUsed ? "priced like a used one" : "far below real shops"}`);
+    return { error: "That price is far below what real shops charge for a new one, which is a fake shop sign. There's no lower price to wait for.", status: 409 };
+  }
+
   const existing = (await db.query<Row>(`${SELECT} where w.household_id = $1 and w.product_id = $2 and w.status = 'watching'`, [input.householdId, product.id]))[0];
   if (existing) return { watch: toView(existing) };
-
-  // A price far below what real shops charge is a fake shop, not a deal to wait for: nothing to watch.
-  if (priceCheck(input.nearly, input.currency, product.offers).flag?.severity === "high") {
-    return { error: "That price is far below what real shops charge, which is a fake shop sign. There's no lower price to wait for.", status: 409 };
-  }
   const best = cheapest(genuineOffers(product.offers, input.currency));
   const target = targetPrice(input.nearly, best?.price ?? null);
 

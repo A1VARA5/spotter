@@ -282,7 +282,11 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
               <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} />
             </section>
           ) : (
-            <p className="ledger-drawer-why">No case file: Spotter only opens one for payments it held or stopped.</p>
+            <p className="ledger-drawer-why">
+              {EVIDENCE_FOR.has(p.status)
+                ? "Spotter couldn't finish a case file for this payment. The reasons above still stand."
+                : "No case file: Spotter only opens one for payments it held or stopped."}
+            </p>
           )}
 
           <footer className="ledger-drawer-links">

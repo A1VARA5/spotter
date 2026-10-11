@@ -234,8 +234,8 @@ export function offersFor(products: Product[], item: string): Offer[] {
 /** Cached lookup used by the payment check. */
 export function makeMarket(db: Db) {
   return async (item: string, currency: Currency): Promise<Offer[] | null> => {
-    // "c2": offers carry their condition (new and used both asked for), so older cached rows without it aren't reused.
-    const key = `c2:${currency}:${item.trim().toLowerCase()}`;
+    // "c3": offers carry their condition (c2) and far below listings are left out (offersFor), so older rows aren't reused.
+    const key = `c3:${currency}:${item.trim().toLowerCase()}`;
     const hit = await db.query<{ offers: Offer[] }>(
       `select offers from market_cache where key = $1 and fetched_at > now() - interval '${CACHE_DAYS} days'`,
       [key],

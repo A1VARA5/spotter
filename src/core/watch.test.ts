@@ -159,6 +159,11 @@ describe("startWatch", () => {
     expect(await listWatches(db, hh)).toEqual([]);
   });
 
+  it("refuses a fake price even when the product is already watched (no handing back the old watch)", async () => {
+    expect("watch" in (await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" }))).toBe(true);
+    expect(await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 2499, createdBy: "agent" })).toMatchObject({ status: 409 });
+  });
+
   it("doesn't save a watch when Channel3 refuses to track", async () => {
     c3.start.mockResolvedValueOnce(null);
     expect(await startWatch(deps, { householdId: hh, item: "Over ear wireless headphones X2", currency: "GBP", nearly: 21900, createdBy: "spotter" })).toMatchObject({ status: 502 });

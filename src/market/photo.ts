@@ -240,7 +240,27 @@ function priceThing(t: SceneThing, n: number, mode: PhotoMode, currency: Currenc
     }
   }
   const similar = similarMatch(t);
-  if (!similar) return { ...base, found: false };
+  if (!similar) {
+    // A confirmed model sold at one shop only, with no "similar ones" to fall back on: still the exact thing, from one shop.
+    const one = group ? usable(group, mode, currency) : [];
+    if (!group || !one.length) return { ...base, found: false };
+    const top = group[0]!;
+    const low = one.reduce((a, b) => (b.price < a.price ? b : a));
+    const prices = one.map((o) => o.price);
+    return {
+      ...base,
+      found: true,
+      match: "exact",
+      title: plain(top.title),
+      ...(top.image && CDN_IMAGE.test(top.image) ? { image: top.image } : {}),
+      low: Math.min(...prices),
+      high: Math.max(...prices),
+      typical: median(prices),
+      offers: one.length,
+      shops: 1,
+      cheapest: { domain: low.domain, price: low.price, url: low.url },
+    };
+  }
   // One price per listing (its cheapest usable offer), so a listing sold by many shops doesn't outweigh the rest.
   const each = similar.flatMap((p) => {
     const o = usable([p], mode, currency);
