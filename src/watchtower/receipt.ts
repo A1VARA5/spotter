@@ -19,6 +19,7 @@ export const TOOL_ACCESS: Readonly<Record<string, Access>> = Object.freeze({
   scam_radar: "read",
   paypal_status: "read",
   real_price: "read",
+  fair_prices: "read",
   my_month: "read",
   add_page: "board",
   // Studio's built in tools (api.getAiTools(), checked in the running app)
@@ -55,6 +56,7 @@ export const TOOL_WORDS: Readonly<Record<string, string>> = Object.freeze({
   scam_radar: "Checked the scam radar",
   paypal_status: "Read PayPal's record",
   real_price: "Checked real shop prices",
+  fair_prices: "Checked this month's prices",
   my_month: "Looked at this month",
   add_page: "Added a page",
   view_schema: "Read how the data is laid out",
