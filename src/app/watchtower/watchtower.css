@@ -222,6 +222,23 @@
     radial-gradient(farthest-side at 50% 100%, rgb(23 33 43 / 0.14), transparent) center bottom / 100% 10px no-repeat scroll;
 }
 
+/* Answers: one line naming the newest answer and its total, and a calm placeholder while its chart is
+   built. The newest answer tile is always the one at the top left of the Answers page (placeAnswer), and
+   Studio gives its widgets no ids in the page, so the tile is found by its position. */
+.wt-frame > .wt-answer-line { flex: none; margin: 0; padding: 10px 14px; background: var(--paper); border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink); font-variant-numeric: lining-nums proportional-nums; text-wrap: pretty; }
+.wt-answer-kicker { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-right: 6px; }
+.wt-studio[data-answer-building] .ag-studio-layout-content-container > .ag-studio-layout-widget[style*="left: 0px"][style*="top: 0px"] :is(.ag-studio-layout-widget-container, .ag-studio-layout-widget-skeleton-overlay-container) { visibility: hidden; }
+.wt-studio[data-answer-building] .ag-studio-layout-content-container > .ag-studio-layout-widget[style*="left: 0px"][style*="top: 0px"]::after {
+  content: "Building your chart…"; position: absolute; inset: 0; z-index: 2; display: grid; place-items: center;
+  font-size: 15px; font-weight: 600; color: var(--ink-2); background-color: var(--paper);
+  background-image: linear-gradient(100deg, transparent 30%, rgb(243 245 242 / 0.95) 50%, transparent 70%);
+  background-size: 200% 100%; animation: wt-building 1.6s linear infinite;
+}
+@keyframes wt-building { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .wt-studio[data-answer-building] .ag-studio-layout-content-container > .ag-studio-layout-widget[style*="left: 0px"][style*="top: 0px"]::after { animation: none; }
+}
+
 /* Phones: the board is part of the page. Studio.tsx (usePhoneFullHeight) sets the box to the canvas's full height. */
 @media (max-width: 760px) {
   .wt-frame > div.wt-studio:last-child { flex: none; min-height: 560px; }
