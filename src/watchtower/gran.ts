@@ -53,10 +53,11 @@ const TRICK: Record<string, string> = {
   "Something else odd": "Something about it didn't add up.",
 };
 
-export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample">;
-export type GranStop = { id: string; when: Date; payee: string; amount: number; by: string; sentence: string; sample: boolean };
+/** currency is missing on rows that came through the board's data (pounds there for now). */
+export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample"> & { currency?: string };
+export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean };
 /** ends: when PayPal lets the hold go on its own; asleep: someone chose "ask again tomorrow". */
-export type GranWait = { id: string; when: Date; payee: string; amount: number; status: string; ends?: string; asleep: boolean; sample: boolean };
+export type GranWait = { id: string; when: Date; payee: string; amount: number; currency: string; status: string; ends?: string; asleep: boolean; sample: boolean };
 export type GranTrick = { sign: string; plain: string; count: number };
 export type GranMonth = { kept: number; stopped: GranStop[]; waiting: GranWait[]; tricks: GranTrick[] };
 
@@ -77,6 +78,7 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
         when: r.when,
         payee: r.payee,
         amount: r.amount,
+        currency: r.currency ?? "GBP",
         by: denied ? `${o.spotter} said no` : "Spotter stopped it",
         sentence: said || (denied ? `${o.spotter} said no, so nothing was paid.` : "Spotter stopped it before any money left."),
         sample: r.sample === "Yes",
@@ -92,6 +94,7 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
         when: r.when,
         payee: r.payee,
         amount: r.amount,
+        currency: r.currency ?? "GBP",
         status: wait?.askAgain
           ? `Sleeping on it. Spotter asks ${o.spotter} again ${wait.askAgain}. The money stays put until then.`
           : `${o.spotter} has been asked. PayPal keeps the money safe until they decide.`,
@@ -113,12 +116,27 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const daysAgo = (when: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - when.getTime()) / (24 * 3600_000)));
 
-/** What the simple view's agent reads (the my_month tool): the month in words and pounds, no ids at all. */
+const cash = (amount: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "en-GB", { style: "currency", currency }).format(amount);
+  } catch {
+    return gbp.format(amount); // an unknown code: Spotter only takes GBP and USD
+  }
+};
+
+/** Money kept per currency ("£25.00 and $119.00"): pounds and dollars are never added together. */
+function keptByCurrency(stopped: GranStop[]): string {
+  const totals = new Map<string, number>();
+  for (const s of stopped) totals.set(s.currency, round((totals.get(s.currency) ?? 0) + s.amount));
+  return totals.size ? [...totals].map(([c, n]) => cash(n, c)).join(" and ") : gbp.format(0);
+}
+
+/** What the simple view's agent reads (the my_month tool): the month in words and each payment's own money, no ids at all. */
 export function granForAgent(m: GranMonth, now: Date) {
   return {
-    keptThisMonth: gbp.format(m.kept),
-    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: gbp.format(s.amount), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample })),
-    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: gbp.format(w.amount), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
+    keptThisMonth: keptByCurrency(m.stopped),
+    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample })),
+    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: cash(w.amount, w.currency), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
     tricks: m.tricks.map((t) => ({ trick: t.plain, times: t.count })),
     advice: ADVICE,
   };
