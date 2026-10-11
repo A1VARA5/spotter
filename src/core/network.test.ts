@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "./households";
 import { fileReport, networkCount, networkLine, reportKey } from "./network";
@@ -63,6 +63,14 @@ describe("network", () => {
     // A demo visitor only hears about other demo families; a real family never counts demo clicks.
     expect(await networkCount(db, "GadgetBarn", d2)).toMatchObject({ families: 1, demo: true });
     expect(await networkCount(db, "GadgetBarn", b)).toMatchObject({ families: 1, demo: false });
+  });
+
+  it("an unknown household never sees real families' reports: it is counted as a demo one, and warned about", async () => {
+    await fileReport(db, { householdId: a, identifier: "GadgetBarn", kind: "denied" });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await networkCount(db, "GadgetBarn", "hh_missing")).toMatchObject({ families: 0, demo: true });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("labels demo counts as demo families, in plain words", () => {

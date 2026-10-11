@@ -526,7 +526,7 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
     const call = resolve(f.source);
     if (!call || contradictsPrice(f.text, price) || namesUnchecked(f.text)) return [];
     // The network count is code: its line is the tool's own words, so "demo families" can't become "Spotter families".
-    const text = call.tool === "network_reports" && call.summary ? call.summary : withoutIds(f.text);
+    const text = withoutIds(call.tool === "network_reports" && call.summary ? call.summary : f.text);
     return [{ text, source: call.id, tool: call.tool }];
   });
   // The model sometimes says one check's fact twice in other words: the first one stays.

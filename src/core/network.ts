@@ -32,7 +32,9 @@ export type NetworkCount = { families: number; last?: string; demo: boolean };
  */
 export async function networkCount(db: Db, identifier: string, householdId: string): Promise<NetworkCount> {
   const [me] = await db.query<{ demo: boolean }>("select demo from households where id = $1", [householdId]);
-  const demo = me?.demo === true;
+  // No household row (a bad id, or a demo family cleaned up mid request): never show it real families' reports.
+  if (!me) console.warn(`[spotter] network count: household ${householdId} not found, counting demo families only`);
+  const demo = !me || me.demo === true;
   if (!normName(identifier)) return { families: 0, demo };
   const rows = await db.query<{ families: string | number; last: string | null }>(
     `select count(*) as families, max(r.at) as last from reports r join households h on h.id = r.household_id

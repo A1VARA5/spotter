@@ -277,6 +277,7 @@ function priceThing(t: SceneThing, n: number, mode: PhotoMode, currency: Currenc
   // price gap don't set the range for an everyday thing. Only used when enough listings are left to price it.
   const fair = new Set(plausibleOffers(all.map((e) => e.o), t.thing));
   const trimmed = all.filter((e) => fair.has(e.o));
+  if (trimmed.length < SIMILAR_MIN && trimmed.length < all.length) console.warn(`[spotter] photo check: "${label(t.thing)}" priced from untrimmed listings (${trimmed.length} left after the sanity rules)`);
   const each = trimmed.length >= SIMILAR_MIN ? trimmed : all;
   if (each.length < SIMILAR_MIN) return { ...base, found: false };
   const sorted = each.map((e) => e.o.price).sort((a, b) => a - b);

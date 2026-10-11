@@ -73,9 +73,10 @@ export function settledAs(p: SettledInput): Settled | null {
 export function shownOutcome(p: SettledInput): { state: "blocked" | "returned"; short: string; long: string; explain: string } | null {
   const trip = tripOutcome(p);
   if (trip) return trip;
-  if (settledAs(p) !== "not_me") return null;
+  const w = p.was_it_you;
+  if (!w || settledAs(p) !== "not_me") return null;
   // "alert": the message said it was from the spotter, and the spotter answered, so talk to them as "you".
-  const who = p.was_it_you?.channel === "alert" ? "you" : p.was_it_you!.who;
+  const who = w.channel === "alert" ? "you" : w.who;
   // Short enough for the rail's pill; the Was it you? line under it says PayPal released the hold.
   return { state: "returned", short: "Not me", long: `Not me: ${who} didn't send it`, explain: "PayPal released the hold. Nothing was paid." };
 }

@@ -110,5 +110,10 @@ export function decidedReason(p: DecidedInput): string | null {
   const clause = pastClause(top);
   // The AI's own sentence keeps its words after a short label: "Held: Someone on a new number says ...".
   const why = clause ? `${verb} because ${clause}.` : `${verb}: ${top}`;
-  return s === "paid" ? `${why} Paid after ${p.decided_by} approved.` : why;
+  // Endings where money moved after the hold say so, so "Held because" never sits alone next to a payment.
+  if (s === "paid") return `${why} Paid after ${p.decided_by} approved.`;
+  if (s === "paying") return `${why} ${p.decided_by && p.decided_by !== "Spotter" ? `${p.decided_by} approved it` : "It was approved"} and PayPal is paying it.`;
+  if (s === "paid_anyway") return `${why} PayPal took it anyway.`;
+  if (s === "paid_by_rules") return `${why} Paid within the rules.`;
+  return why;
 }
