@@ -248,7 +248,7 @@ create unique index if not exists price_watches_one_active_idx on price_watches 
 alter table payments add column if not exists was_it_you jsonb;
 create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
 -- Sleep on it block (src/core/sleep.ts): a held payment can wait a day and be asked about again at 9am household time.
--- The PayPal hold stays; the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
+-- The PayPal hold stays, and the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
 alter table households add column if not exists time_zone text not null default 'Europe/London';
 alter table payments add column if not exists ask_again_at timestamptz;
 alter table payments add column if not exists sleeps int not null default 0;
