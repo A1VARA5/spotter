@@ -5,6 +5,7 @@
 import type { Payment, Spender } from "@/core/lifecycle";
 import type { FlagKind, Severity } from "@/core/grounding";
 import { money, trackState } from "@/ui/format";
+import type { WatchView } from "@/core/watch";
 
 export type PaymentRow = {
   id: string;
@@ -38,6 +39,8 @@ export type PaymentRow = {
   marketShop: string;
   /** The item that was price checked. */
   marketItem: string;
+  /** "Was it you?": who the message claimed to be, whether Spotter asked them and what they said. */
+  wasItYou: string;
 };
 /** Spotter's own words about one payment, for the case file widget and the open_case_file tool. */
 export type CaseNote = {
@@ -53,7 +56,46 @@ export type CaseNote = {
 export type PaypalRow = { id: string; when: Date; eventType: string; label: string; paymentId: string; amount: number };
 export type SignRow = { paymentId: string; when: Date; who: string; payee: string; sign: string; severity: string };
 export type PersonRow = { name: string; kind: string; weeklyAllowance: number; spentThisWeek: number };
-export type Sources = { payments: PaymentRow[]; signs: SignRow[]; people: PersonRow[]; paypal?: PaypalRow[] };
+/** One price watch (src/core/watch.ts), in pounds. saving is what they nearly paid minus the drop price, else 0. */
+export type WatchRow = {
+  id: string;
+  started: Date;
+  who: string;
+  item: string;
+  status: "Watching" | "Dropped" | "Stopped" | "Expired";
+  nearlyPaid: number;
+  target: number;
+  bestPrice: number | null;
+  shop: string;
+  saving: number;
+  example: "Yes" | "No";
+  sample: "Yes" | "No";
+};
+export type Sources = { payments: PaymentRow[]; signs: SignRow[]; people: PersonRow[]; paypal?: PaypalRow[]; watches?: WatchRow[] };
+
+const WATCH_STATUS: Record<WatchView["status"], WatchRow["status"]> = { dropped: "Dropped", watching: "Watching", expired: "Expired", stopped: "Stopped" };
+const WATCH_ORDER: WatchRow["status"][] = ["Dropped", "Watching", "Expired", "Stopped"];
+/** Sample watches (demo families only) carry this marker on their id. */
+export const SAMPLE_WATCH_PREFIX = "watch_sample_";
+
+export function toWatchRows(watches: WatchView[]): WatchRow[] {
+  return watches
+    .map((w) => ({
+      id: w.id,
+      started: new Date(w.createdAt),
+      who: w.who ?? "Someone",
+      item: w.item,
+      status: WATCH_STATUS[w.status],
+      nearlyPaid: pounds(w.nearlyPaid),
+      target: pounds(w.target),
+      bestPrice: w.best ? pounds(w.best.price) : null,
+      shop: w.best?.shop ?? "",
+      saving: w.saving ? pounds(w.saving) : 0,
+      example: w.example ? ("Yes" as const) : ("No" as const),
+      sample: w.id.startsWith(SAMPLE_WATCH_PREFIX) ? ("Yes" as const) : ("No" as const),
+    }))
+    .sort((a, b) => WATCH_ORDER.indexOf(a.status) - WATCH_ORDER.indexOf(b.status) || b.started.getTime() - a.started.getTime());
+}
 
 export const SIGN_LABEL: Record<FlagKind, string> = {
   pressure: "Pressure to hurry",
@@ -95,6 +137,13 @@ export const SAMPLE_PREFIX = "pay_sample_";
 const pounds = (minor: string | number) => Number(minor) / 100;
 const flagsOf = (p: Payment) => p.decision?.flags ?? p.ai?.flags ?? [];
 
+function wasItYouWords(p: Payment): string {
+  const w = p.was_it_you;
+  if (!w) return "Not asked";
+  const who = w.who;
+  return { asked: `Asked ${who}`, not_me: `${who}: not me`, it_was_me: `${who}: it was me`, no_channel: `${who} not linked`, send_failed: `Couldn't reach ${who}` }[w.state];
+}
+
 export function toSources(payments: Payment[], spenders: Spender[], now = new Date()): Sources {
   const byId = new Map(spenders.map((s) => [s.id, s]));
   const rows: PaymentRow[] = [];
@@ -135,6 +184,7 @@ export function toSources(payments: Payment[], spenders: Spender[], now = new Da
       priceGap: cheapest === null ? null : Math.round((amount - cheapest) * 100) / 100,
       marketShop: m?.cheapest?.domain ?? "",
       marketItem: m?.item ?? "",
+      wasItYou: wasItYouWords(p),
     });
     for (const f of flags) {
       signs.push({ paymentId: p.id, when, who: who?.name ?? "Someone", payee: p.request.payee.name, sign: SIGN_LABEL[f.kind], severity: SEVERITY_LABEL[f.severity] });

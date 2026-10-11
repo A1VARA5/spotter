@@ -6,8 +6,9 @@ import { listSpenders } from "@/core/households";
 import { listPayments } from "@/core/lifecycle";
 import { networkCount } from "@/core/network";
 import { holdEndsAt, safeTz, whenText } from "@/core/holdtime";
-import { SIGN_LABEL, toPaypalRows, toSources, watchAlerts, type CaseNote, type PaypalRow, type Sources, type WatchAlert } from "./data";
-import { SAMPLE_NETWORK, sampleMonth } from "./sample";
+import { SIGN_LABEL, toPaypalRows, toSources, toWatchRows, watchAlerts, type CaseNote, type PaypalRow, type Sources, type WatchAlert } from "./data";
+import { listWatches } from "@/core/watch";
+import { SAMPLE_NETWORK, sampleMonth, sampleWatches } from "./sample";
 import { radarKey, type RadarCount } from "./widgetLogic";
 
 export type WatchtowerData = { sources: Sources; alerts: WatchAlert[]; notes: CaseNote[]; radar: Record<string, RadarCount>; sampleIds: string[] };
@@ -64,7 +65,9 @@ export async function loadWatchtower(db: Db, household: Household, now = new Dat
   // Demo families get a labelled sample month so there's something to explore. Real families never do.
   const sample = household.demo ? sampleMonth(spenders, now) : [];
   const payments = [...real, ...sample];
-  const sources = toSources(payments, spenders, now);
+  // Price watches: the family's own (the demo family's example is labelled in the row), plus a sample one for demos.
+  const watches = toWatchRows([...(await listWatches(db, household.id, 50)), ...(household.demo ? sampleWatches(spenders, now) : [])]);
+  const sources = { ...toSources(payments, spenders, now), watches };
   const [paypal, radar] = await Promise.all([loadPaypal(db, household.id), radarCounts(db, household.id, sources.payments)]);
   const tz = safeTz(household.time_zone);
   const notes: CaseNote[] = payments.map((p) => ({

@@ -3,7 +3,8 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import { getDeps } from "@/server/deps";
-import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment } from "@/server/agent";
+import { agentAllowance, agentFindProducts, agentPaymentStatus, agentRequestPayment, agentWatchPrice } from "@/server/agent";
+import { getWatchDeps } from "@/server/watch-deps";
 import { verifyAgentToken } from "@/core/pairing";
 import { searchProducts } from "@/market/channel3";
 
@@ -75,6 +76,25 @@ const handler = createMcpHandler(
         inputSchema: z.object({ payment_id: z.string().min(1).max(64) }),
       },
       async ({ payment_id }, ctx) => text((await agentPaymentStatus(await getDeps(), agentOf(ctx), payment_id)).message),
+    );
+
+    server.registerTool(
+      "watch_price",
+      {
+        title: "Watch a price for your spotter",
+        description:
+          "When the user or Spotter says a purchase is too expensive or 'not now', ask Spotter to watch the price instead of retrying. " +
+          "Spotter watches real retailers (Channel3) for 14 days and tells the user's spotter if a real shop sells it at a fair price. " +
+          "This never buys anything: when the price drops you are not told to buy and must not order it yourself; the spotter decides. " +
+          "Pass payment_id for one of your own payments, or item with price_pence (the price you were going to pay).",
+        inputSchema: z.object({
+          payment_id: z.string().max(64).optional().describe("One of your own payments that was held, denied or stopped"),
+          item: z.string().min(2).max(120).optional().describe("The product name, when there is no payment, e.g. 'Pro wireless earbuds 2'"),
+          price_pence: z.number().int().positive().max(1_000_000).optional().describe("The price you were going to pay, in pence (or cents)"),
+          currency: z.enum(["GBP", "USD"]).optional(),
+        }),
+      },
+      async (input, ctx) => text((await agentWatchPrice(await getWatchDeps(), agentOf(ctx), input)).message),
     );
 
     server.registerTool(

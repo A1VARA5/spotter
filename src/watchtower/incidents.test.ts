@@ -29,6 +29,7 @@ const row = (over: Partial<PaymentRow>): PaymentRow => ({
   priceGap: null,
   marketShop: "",
   marketItem: "",
+  wasItYou: "Not asked",
   ...over,
 });
 

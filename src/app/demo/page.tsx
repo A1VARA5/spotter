@@ -1,5 +1,6 @@
 import { AppShell } from "@/ui/AppShell";
 import { Demo } from "./Demo";
+import { WasItYouDemo } from "./WasItYouDemo";
 import { Hint } from "@/ui/Hint";
 import { getDeps } from "@/server/deps";
 import { requirePageSession } from "@/server/page-session";
@@ -28,6 +29,7 @@ export default async function DemoPage() {
           <li>If it can go ahead, PayPal (sandbox) authorises the money. If it needs you, it waits on your dashboard. Nothing real moves.</li>
         </ol>
       </Hint>
+      {household.demo && household.kind === "family" && <WasItYouDemo spotter={household.spotter_name} />}
       <Demo spenders={spenders} kind={household.kind} />
     </AppShell>
   );

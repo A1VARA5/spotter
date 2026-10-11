@@ -212,6 +212,41 @@ create table if not exists peeks (
 create unique index if not exists peeks_one_open_idx on peeks (household_id) where closed_at is null;
 create index if not exists peeks_started_idx on peeks (started_at);
 create index if not exists peeks_household_started_idx on peeks (household_id, started_at);
+-- Price watch block, one table: a product Spotter watches at Channel3 (price tracking, 1 credit per product per day)
+-- after a payment for it was too dear, held or denied. Money amounts in minor units. household_id is set to null
+-- (not deleted) when a demo family goes, so the daily job can still stop the Channel3 subscription, then deletes it.
+create table if not exists price_watches (
+  id text primary key,
+  household_id text references households(id) on delete set null,
+  payment_id text references payments(id) on delete set null,
+  spender_id text references spenders(id) on delete set null,
+  product_id text not null,
+  item text not null,
+  title text not null,
+  currency text not null check (currency in ('GBP', 'USD')),
+  nearly_paid bigint not null check (nearly_paid > 0),
+  target bigint not null check (target > 0),
+  best_price bigint,
+  best_shop text,
+  best_url text,
+  history jsonb,
+  status text not null default 'watching' check (status in ('watching', 'dropped', 'stopped', 'expired')),
+  tracking boolean not null default false,
+  example boolean not null default false,
+  created_by text not null default 'spotter',
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  last_checked_at timestamptz,
+  notified_at timestamptz
+);
+create index if not exists price_watches_household_idx on price_watches (household_id, created_at desc);
+create index if not exists price_watches_product_idx on price_watches (product_id) where status = 'watching';
+create index if not exists price_watches_created_idx on price_watches (created_at);
+create unique index if not exists price_watches_one_active_idx on price_watches (household_id, product_id) where status = 'watching' and household_id is not null;
+-- Was it you? block, one column: when a held payment's message claims to come from someone in the family,
+-- Spotter asks that real person. The ask, who it went to and their answer (never a secret: tokens are HMACs).
+alter table payments add column if not exists was_it_you jsonb;
+create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
 -- Sleep on it block (src/core/sleep.ts): a held payment can wait a day and be asked about again at 9am household time.
 -- The PayPal hold stays; the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
 alter table households add column if not exists time_zone text not null default 'Europe/London';

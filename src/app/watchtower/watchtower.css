@@ -166,6 +166,7 @@
 .wt-icon-replay::after { content: ""; position: absolute; left: 6px; top: 1px; width: 4px; height: 7px; border-radius: 1px; background: var(--stop); }
 .wt-icon-radar { background: radial-gradient(circle, var(--stop) 2.5px, transparent 3px) 0 50% / 5px 5px repeat-x; }
 .wt-icon-case { border: 2px solid var(--ink); border-radius: 3px; box-sizing: border-box; background: linear-gradient(var(--hold), var(--hold)) 2px 3px / 8px 2px no-repeat, linear-gradient(var(--ink-2), var(--ink-2)) 2px 7px / 6px 1.5px no-repeat; }
+.wt-icon-watch { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ink); background: radial-gradient(circle, var(--go) 0 3px, transparent 3.5px); }
 .wt-icon-fair { display: inline-block; width: 16px; height: 16px; position: relative; background: linear-gradient(var(--line), var(--line)) center / 100% 2px no-repeat; }
 .wt-icon-fair::before, .wt-icon-fair::after { content: ""; position: absolute; top: 4px; width: 8px; height: 8px; border-radius: 50%; }
 .wt-icon-fair::before { left: 1px; background: var(--go); }
