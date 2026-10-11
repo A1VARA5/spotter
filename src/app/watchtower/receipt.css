@@ -86,3 +86,4 @@
   .wt-rc-btn:active { transform: none; }
 }
 .wt-checks-label { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.wt-checks-warn { margin: 0; font-size: 13px; font-weight: 600; color: var(--stop); }

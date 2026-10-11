@@ -32,11 +32,16 @@ export function makeReceiptStore(db: Db, opts: { keep?: number } = {}) {
          on conflict (household_id, run_id) do nothing`,
         [hh, value.runId, JSON.stringify(value), value.flagged],
       );
-      await db.query(
-        `delete from watchtower_receipts where household_id = $1 and run_id in (
-           select run_id from watchtower_receipts where household_id = $1 order by created_at desc, run_id desc offset $2)`,
-        [hh, keep],
-      );
+      // The receipt is kept by now: a failed tidy up is logged, not reported as a failed save.
+      try {
+        await db.query(
+          `delete from watchtower_receipts where household_id = $1 and run_id in (
+             select run_id from watchtower_receipts where household_id = $1 order by created_at desc, run_id desc offset $2)`,
+          [hh, keep],
+        );
+      } catch (e) {
+        console.error(`[spotter] couldn't trim old receipts for ${hh}:`, e instanceof Error ? e.message : e);
+      }
       return json({ ok: true });
     },
 

@@ -148,7 +148,7 @@ export function describeCall(name: string, _args: Record<string, unknown>, call:
   const r = call.result;
   if (!settled) return { ...card, lines: ["Working…"] };
   if (!r) return { ...card, pill: "Stopped", lines: ["Stopped before it finished. No money was touched."] };
-  if (!r.success) return { ...card, lines: ["It found nothing to read. No money was touched."] };
+  if (!r.success) return { ...card, lines: ["It didn't work. No money was touched."] };
   const d = obj(r.data);
   const took = num(d.took);
   if (took !== null) card.took = took;

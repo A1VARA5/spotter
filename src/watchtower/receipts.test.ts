@@ -25,6 +25,7 @@ const receipt = (runId: string, extra: Record<string, unknown> = {}) => ({
   unknown: [],
   moneyActions: 0,
   boardChanges: 1,
+  boardKnown: true,
   flagged: false,
   ...extra,
 });

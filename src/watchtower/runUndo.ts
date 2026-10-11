@@ -44,9 +44,18 @@ export function captureEnd(api: BoardApi, start: RunStartSnapshot): RunChanges {
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const undone = (n: number) => `Undone: ${plural(n, "change")} made while Spotter worked. The board is back as it was before you asked.`;
 const back = (n: number) => `Redone: ${n === 1 ? "Spotter's change is" : `Spotter's ${n} changes are`} back.`;
 const BLOCKED = "The board has changed since, so undoing would lose those changes too. Remove what Spotter added by hand, or reset the board.";
+const DIDNT_UNDO = "Undo didn't take: the board wasn't changed back. Remove what Spotter added by hand, or reset the board.";
+const DIDNT_REDO = "Redo didn't take: Spotter's changes aren't back.";
+const onStack = (api: BoardApi, ids: string[]) => {
+  const have = new Set(api.getHistory().undo.map((e) => e.id));
+  return ids.filter((id) => have.has(id)).length;
+};
 
+// Every step is checked after it is taken: Studio treats an unknown id as a no-op, so a call that did
+// nothing must never be reported as done.
 export function undoRun(current: BoardApi | null, rc: RunChanges): UndoResult {
   if (!current) return { ok: false, message: "The board is still loading. Try again in a moment." };
   if (rc.undone) return { ok: false, message: "Already undone." };
@@ -55,14 +64,16 @@ export function undoRun(current: BoardApi | null, rc: RunChanges): UndoResult {
     const target = undoTarget(rc.ids, current.getHistory());
     if (target) {
       current.undo(target);
+      if (onStack(current, rc.ids) !== 0) return { ok: false, message: DIDNT_UNDO };
       rc.undone = true;
-      return { ok: true, message: `Undone: ${plural(rc.count, "change")} Spotter made. The board is back as it was before you asked.` };
+      return { ok: true, message: undone(rc.count) };
     }
   }
   if (durable(current.getState()) !== durable(rc.after)) return { ok: false, message: BLOCKED };
   current.setState({ ...rc.before, selectedPageId: pageOr(rc.before, current.getState().selectedPageId) } as AgReportState);
+  if (durable(current.getState()) !== durable(rc.before)) return { ok: false, message: DIDNT_UNDO };
   rc.undone = true;
-  return { ok: true, message: `Undone: ${plural(rc.count, "change")} Spotter made. The board is back as it was before you asked.` };
+  return { ok: true, message: undone(rc.count) };
 }
 
 export function redoRun(current: BoardApi | null, rc: RunChanges): UndoResult {
@@ -72,12 +83,14 @@ export function redoRun(current: BoardApi | null, rc: RunChanges): UndoResult {
     const target = redoTarget(rc.ids, current.getHistory());
     if (target) {
       current.redo(target);
+      if (onStack(current, rc.ids) !== rc.ids.length) return { ok: false, message: DIDNT_REDO };
       rc.undone = false;
       return { ok: true, message: back(rc.count) };
     }
   }
   if (durable(current.getState()) !== durable(rc.before)) return { ok: false, message: "The board has changed since, so Spotter's changes can't be put back without losing yours." };
   current.setState(rc.after);
+  if (durable(current.getState()) !== durable(rc.after)) return { ok: false, message: DIDNT_REDO };
   rc.undone = false;
   return { ok: true, message: back(rc.count) };
 }

@@ -21,10 +21,10 @@ import { GranSafeWidget, GranScamsWidget, GranWaitingWidget } from "./GranWidget
 import { GranAsk } from "./GranAsk";
 import { radarLines } from "@/watchtower/widgetLogic";
 import type { PriceSummary } from "@/watchtower/price";
-import { createRecorder } from "@/watchtower/receipt";
+import { createRecorder, type Recorder } from "@/watchtower/receipt";
 import { captureEnd, captureStart, type RunStartSnapshot } from "@/watchtower/runUndo";
 import { spotterToolDisplay } from "./ToolCards";
-import { ReceiptBar, createReceiptBook, keepReceipt } from "./ReceiptBar";
+import { ReceiptBar, createReceiptBook, record, type ReceiptBook } from "./ReceiptBar";
 import { AiChecksWidget } from "./AiChecks";
 
 type Shape = { object(p: Record<string, unknown>): unknown; string(o?: { description?: string }): unknown };
@@ -115,6 +115,42 @@ function lookIntoPrompt(a: WatchAlert): string {
     `Open the case file for each payment and explain in a few plain sentences what happened and what I should do.`,
     `Then add a new page called "Look into: ${a.who}" with a case-file widget and a grid of those payments, filtered to them.`,
   ].join(" ");
+}
+
+/**
+ * The receipt for one harness: AG's telemetry folded per run. When a run starts, the board and its history
+ * are noted (synchronously, before any tool runs) so the run's changes can be counted and undone. If that
+ * snapshot is missing, the board count is marked unknown rather than shown as 0.
+ */
+function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[]): Recorder {
+  const starts = new Map<string, RunStartSnapshot | null>();
+  const recorder = createRecorder({
+    onStart: (run) => {
+      try {
+        starts.set(run.runId, captureStart(api));
+      } catch (e) {
+        console.error("[watchtower] couldn't note the board before the assistant's run:", e);
+        starts.set(run.runId, null);
+      }
+      book.setRunning(true);
+    },
+    onFinish: (receipt) => {
+      const start = starts.get(receipt.runId);
+      starts.delete(receipt.runId);
+      let changes = null;
+      try {
+        changes = start ? captureEnd(api, start) : null;
+      } catch (e) {
+        console.error("[watchtower] couldn't compare the board after the assistant's run:", e);
+      }
+      const r = { ...receipt, boardChanges: changes?.count ?? 0, boardKnown: !!changes };
+      if (r.flagged) console.error("[watchtower] the assistant called a tool outside Spotter's list:", r.unknown);
+      record(book, { receipt: r, changes });
+      book.setRunning(starts.size > 0);
+    },
+  });
+  live.push(recorder);
+  return recorder;
 }
 
 /** Spotter's tools time themselves, so each call's card in the chat can say how long it took. */
@@ -299,6 +335,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       const api = apiRef.current;
       shownData.current = sources;
       setSwapping(true);
+      abandonRuns();
       // In the simple view the mounted board is the simple one: the spotter's board stays as it was.
       setMount((m) => ({ key: m.key + 1, state: api && audienceRef.current === "spotter" ? withNames(api.getState(), names.current) : m.state }));
       t = setTimeout(() => setSwapping(false), 2500);
@@ -397,12 +434,20 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         if (!res.ok || !body?.receipts) throw new Error(body?.error ?? `status ${res.status}`);
         if (live) book.seed(body.receipts);
       })
-      .catch((e: unknown) => console.warn("[watchtower] couldn't load the assistant's receipts:", e));
+      .catch((e: unknown) => {
+        console.warn("[watchtower] couldn't load the assistant's receipts:", e);
+        if (live) book.setLoadFailed();
+      });
     return () => {
       live = false;
     };
   }, [book]);
   const [toolDisplay] = useState(spotterToolDisplay);
+  // Every harness's recorder, so runs still going when Studio remounts get a receipt marked stopped.
+  const recorders = useRef<Recorder[]>([]);
+  const abandonRuns = useCallback(() => {
+    for (const r of recorders.current.splice(0)) r.abandon();
+  }, []);
 
   const [context] = useState<WatchContext>(() => ({ store, lookInto: (a) => lookIntoRef.current(a), gran: labels, receipts: book }));
   const lookIntoRef = useRef(lookInto);
@@ -652,25 +697,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         }),
       } as never) as AgAiTool;
 
-      // The receipt: AG's harness telemetry, folded per run. At the start of a run the board and its
-      // history are noted (synchronously, before any tool runs), so the run's changes can be undone.
-      const starts = new Map<string, RunStartSnapshot>();
-      const recorder = createRecorder({
-        onStart: (run) => {
-          starts.set(run.runId, captureStart(api));
-          book.setRunning(true);
-        },
-        onFinish: (receipt) => {
-          const start = starts.get(receipt.runId);
-          starts.delete(receipt.runId);
-          const changes = start ? captureEnd(api, start) : null;
-          const r = { ...receipt, boardChanges: changes?.count ?? 0 };
-          if (r.flagged) console.error("[watchtower] the assistant called a tool outside Spotter's list:", r.unknown);
-          book.add({ receipt: r, changes });
-          book.setRunning(starts.size > 0);
-          keepReceipt(r);
-        },
-      });
+      const recorder = receiptRecorder(api, book, recorders.current);
 
       const inner = createAiHarness(api, ({ builtIn }) => {
         // Our own "spotter" agent leads (its own tools.delegateTo reaches "brief" and Studio's built ins),
@@ -719,14 +746,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
     } as never) as AgAiTool;
     const roster = buildGranRoster({ month, who: labels.who, spotter: labels.spotter });
     const adapter = spotterAdapter();
-    // The simple view's runs get a receipt too, shown under the answer. Its one tool only reads.
-    const recorder = createRecorder({
-      onFinish: (receipt) => {
-        if (receipt.flagged) console.error("[watchtower] the simple view's assistant called a tool outside Spotter's list:", receipt.unknown);
-        book.add({ receipt, changes: null });
-        keepReceipt(receipt);
-      },
-    });
+    // The simple view's runs get a receipt too, shown under the answer.
+    const recorder = receiptRecorder(api, book, recorders.current);
     const harness = createAiHarness(api, () => ({ agents: roster.agents.map((d) => directLlmRunner({ ...d, adapter } as never)), primary: roster.primary, observers: [recorder] }));
     granHarness.current = { api, harness };
     return harness;
@@ -751,6 +772,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         setMount((m) => ({ key: m.key + 1, state: now }));
       } else setMount((m) => ({ key: m.key + 1, state: m.state }));
       apiRef.current = null;
+      abandonRuns();
       setAudience(next);
       setSaid(next === "gran" ? `Showing ${labels.viewLabel}, as ${labels.who ?? "they"} would see it.` : "Showing your view.");
       const url = new URL(window.location.href);

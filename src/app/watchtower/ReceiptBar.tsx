@@ -4,11 +4,12 @@
 // outside Spotter's list ran, which turns the line red and flags the run), and board changes with a real
 // "Undo what Spotter changed" button backed by Studio's history.
 import { useId, useRef, useState, useSyncExternalStore } from "react";
-import { helperName, receiptLines, toolWords, type Receipt } from "@/watchtower/receipt";
+import { boardWords, forServer, helperName, receiptLines, toolWords, type Receipt } from "@/watchtower/receipt";
 import { redoRun, undoRun, type BoardApi, type RunChanges } from "@/watchtower/runUndo";
 
-export type BookEntry = { receipt: Receipt; changes: RunChanges | null; said?: string };
-type Snap = { entries: BookEntry[]; running: boolean; version: number };
+export type BookEntry = { receipt: Receipt; changes: RunChanges | null; said?: string; notKept?: boolean };
+/** loadFailed: the receipts kept from earlier visits couldn't be loaded, so the list is this visit only. */
+type Snap = { entries: BookEntry[]; running: boolean; loadFailed: boolean; version: number };
 export type ReceiptBook = {
   get(): Snap;
   subscribe(fn: () => void): () => void;
@@ -16,13 +17,14 @@ export type ReceiptBook = {
   /** Receipts kept on the server from earlier visits (no undo for those). */
   seed(rs: Receipt[]): void;
   setRunning(running: boolean): void;
+  setLoadFailed(): void;
   touch(): void;
 };
 
 const KEEP = 20;
 
 export function createReceiptBook(): ReceiptBook {
-  let snap: Snap = { entries: [], running: false, version: 0 };
+  let snap: Snap = { entries: [], running: false, loadFailed: false, version: 0 };
   const subs = new Set<() => void>();
   const emit = (next: Partial<Snap>) => {
     snap = { ...snap, ...next, version: snap.version + 1 };
@@ -40,12 +42,13 @@ export function createReceiptBook(): ReceiptBook {
       emit({ entries: [...snap.entries, ...rs.filter((r) => !have.has(r.runId)).map((receipt) => ({ receipt, changes: null }))].slice(0, KEEP) });
     },
     setRunning: (running) => emit({ running }),
+    setLoadFailed: () => emit({ loadFailed: true }),
     touch: () => emit({}),
   };
 }
 
 export const useBook = (book: ReceiptBook | undefined) => useSyncExternalStore(book?.subscribe ?? (() => () => {}), book?.get ?? EMPTY_SNAP, EMPTY_SNAP);
-const EMPTY: Snap = { entries: [], running: false, version: 0 };
+const EMPTY: Snap = { entries: [], running: false, loadFailed: false, version: 0 };
 function EMPTY_SNAP() {
   return EMPTY;
 }
@@ -54,13 +57,27 @@ const time = new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "2-digi
 const secs = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
 const ACCESS: Record<string, string> = { read: "Read only", chat: "Chat only", board: "Board", unknown: "Not on the list" };
 
-/** Sends a finished receipt to the server. Never throws: on screen it's already shown. */
-export function keepReceipt(r: Receipt) {
-  fetch("/api/watchtower/receipts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(r), keepalive: true })
+/**
+ * Sends a finished receipt to the server, in the shape it accepts (a flagged run stays flagged even with odd
+ * tool names). Never throws: the receipt is already on screen. If it isn't kept, its entry says so.
+ */
+export function keepReceipt(book: ReceiptBook, entry: BookEntry) {
+  const failed = (why: unknown) => {
+    console.warn("[watchtower] receipt wasn't kept:", why);
+    entry.notKept = true;
+    book.touch();
+  };
+  fetch("/api/watchtower/receipts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(forServer(entry.receipt)), keepalive: true })
     .then(async (res) => {
-      if (!res.ok) console.warn("[watchtower] receipt wasn't kept:", ((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status);
+      if (!res.ok) failed(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.status);
     })
-    .catch((e: unknown) => console.warn("[watchtower] receipt wasn't kept:", e));
+    .catch(failed);
+}
+
+/** Adds a finished run to the book and keeps it on the server. */
+export function record(book: ReceiptBook, entry: BookEntry) {
+  book.add(entry);
+  keepReceipt(book, entry);
 }
 
 export function ReceiptBar(props: { book: ReceiptBook; api: () => BoardApi | null }) {
@@ -101,7 +118,13 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
   const rc = entry.changes;
   const act = (fn: typeof undoRun) => {
     if (!rc) return;
-    const res = fn(api(), rc);
+    let res: { message: string };
+    try {
+      res = fn(api(), rc);
+    } catch (e) {
+      console.error("[watchtower] undo or redo failed:", e);
+      res = { message: "That didn't work, so nothing was changed back. Remove Spotter's changes by hand, or reset the board." };
+    }
     entry.said = res.message;
     setSaid(res.message);
     book.touch();
@@ -130,7 +153,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
           <span className="wt-rc-dot" aria-hidden="true" />
           {r.flagged ? `Money actions: ${r.moneyActions} unchecked` : "Money actions: 0"}
         </p>
-        <p className="wt-rc-fact">Board changes: {r.boardChanges}</p>
+        <p className="wt-rc-fact">{boardWords(r).replace(/\.$/, "")}</p>
         <div className="wt-rc-actions">
           {rc && rc.count > 0 && (
             rc.undone ? (
@@ -173,7 +196,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
               <tr key={t.name} data-access={t.access}>
                 <th scope="row">
                   {toolWords(t.name)}
-                  {t.failed > 0 && <span className="wt-rc-failed"> ({t.failed} found nothing)</span>}
+                  {t.failed > 0 && <span className="wt-rc-failed"> ({t.failed} failed)</span>}
                 </th>
                 <td>{t.calls}</td>
                 <td>{t.ms ? secs(t.ms) : "Under 1 ms"}</td>
@@ -183,6 +206,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
           </tbody>
         </table>
         {r.helpers.length > 0 && <p className="wt-rc-note">Handed work to: {r.helpers.map(helperName).join(", ")}.</p>}
+        {entry.notKept && <p className="wt-rc-alarm">This receipt couldn&apos;t be kept on the server, so it goes when you leave the page.</p>}
         <p className="wt-rc-note">Names, times and counts only. The receipt never keeps your question, the payees or what the tools returned.</p>
       </div>
     </section>

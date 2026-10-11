@@ -112,6 +112,8 @@ export type Receipt = {
   moneyActions: number;
   /** Changes this run left in Studio's undo history. Filled in by the page, which can see the history. */
   boardChanges: number;
+  /** False when the page couldn't compare the board before and after the run: the count is then unknown. */
+  boardKnown: boolean;
   flagged: boolean;
 };
 
@@ -134,6 +136,8 @@ export type RunStart = { runId: string; threadId: string; agentId: string; start
 export type Recorder = AgAiTelemetryObserver & {
   /** How long one tool call took, once it finished (for the call's card in the chat). */
   callMs(toolCallId: string): number | undefined;
+  /** The harness is going away: every run still in flight gets a receipt now, marked as stopped. */
+  abandon(): void;
 };
 
 const MAX_TIMES = 500;
@@ -156,7 +160,11 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
     }
     return l;
   };
-  const noteCall = (run: Run, name: string, callId: string | undefined) => {
+  // A call is counted once, whichever of its events (asked for, started, finished) arrives. With no call
+  // id each event counts on its own: that can only overcount, never hide a call.
+  // A tool that doesn't run in the page (server or provided) is outside what Spotter can vouch for.
+  const noteCall = (run: Run, given: string, callId: string | undefined, kind?: string) => {
+    const name = kind && kind !== "client" ? "server_tool" : given;
     const key = `${name}\u0000${callId ?? Math.random()}`;
     if (run.seenCalls.has(key)) return;
     run.seenCalls.add(key);
@@ -167,8 +175,34 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
     }
   };
 
+  const warned = new Set<string>();
+  const finish = (run: Run, at: number, status: Receipt["status"]) => {
+    runs.delete(run.runId);
+    for (const [k, v] of rootOf) if (v === run.runId) rootOf.delete(k);
+    o.onFinish({
+      runId: run.runId,
+      threadId: run.threadId,
+      agentId: run.agentId,
+      startedAt: run.startedAt,
+      ms: Math.max(0, at - run.startedAt),
+      status,
+      turns: run.turns,
+      tokens: run.tokens,
+      tools: [...run.tools.values()],
+      helpers: run.helpers,
+      unknown: run.unknown,
+      moneyActions: run.unknownCalls,
+      boardChanges: 0,
+      boardKnown: true,
+      flagged: run.unknownCalls > 0,
+    });
+  };
+
   return {
     callMs: (id) => times.get(id),
+    abandon() {
+      for (const run of [...runs.values()]) finish(run, Date.now(), "cancelled");
+    },
     onEvent(e: AgAiTelemetryEvent) {
       const t = e.trace;
       if (e.type === "run_started") {
@@ -187,7 +221,13 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
       }
       const rootId = rootOf.get(t.runId);
       const run = rootId ? runs.get(rootId) : undefined;
-      if (!run) return;
+      if (!run) {
+        if (!warned.has(t.runId)) {
+          warned.add(t.runId);
+          console.warn(`[watchtower] telemetry for a run the receipt never saw start (${e.type}); it isn't on any receipt.`);
+        }
+        return;
+      }
       switch (e.type) {
         case "turn_finished":
           run.turns++;
@@ -198,13 +238,14 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
           if (e.itemKind === "tool_call" && e.toolName) noteCall(run, e.toolName, e.toolCallId);
           break;
         case "tool_execution_started":
-          noteCall(run, e.name, e.toolCallId);
+          noteCall(run, e.name, e.toolCallId, e.kind);
           started.set(e.toolCallId, e.timestamp);
           break;
         case "tool_execution_finished": {
           const from = started.get(e.toolCallId);
           started.delete(e.toolCallId);
-          const l = line(run, e.name);
+          noteCall(run, e.name, e.toolCallId, e.kind);
+          const l = line(run, e.kind && e.kind !== "client" ? "server_tool" : e.name);
           if (from !== undefined) {
             l.ms += Math.max(0, e.timestamp - from);
             times.set(e.toolCallId, Math.max(0, e.timestamp - from));
@@ -215,24 +256,7 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
         }
         case "run_finished": {
           if (t.runId !== rootId) break; // a sub-run ended; the receipt waits for its parent
-          runs.delete(run.runId);
-          for (const [k, v] of rootOf) if (v === run.runId) rootOf.delete(k);
-          o.onFinish({
-            runId: run.runId,
-            threadId: run.threadId,
-            agentId: run.agentId,
-            startedAt: run.startedAt,
-            ms: Math.max(0, e.timestamp - run.startedAt),
-            status: e.status,
-            turns: run.turns,
-            tokens: run.tokens,
-            tools: [...run.tools.values()],
-            helpers: run.helpers,
-            unknown: run.unknown,
-            moneyActions: run.unknownCalls,
-            boardChanges: 0,
-            flagged: run.unknownCalls > 0,
-          });
+          finish(run, e.timestamp, e.status);
           break;
         }
       }
@@ -280,9 +304,46 @@ export function receiptLines(r: Receipt): { summary: string; money: string; boar
     ? `Money actions: ${r.moneyActions} unchecked. Spotter saw a tool it doesn't know (${r.unknown.join(", ")}). This run is flagged.`
     : "Money actions: 0. Every call was a tool that can't move money.";
   return {
-    summary: `${plural(calls, "tool call")} in ${secs(r.ms)}. Money actions: ${r.flagged ? `${r.moneyActions} unchecked` : 0}. Board changes: ${r.boardChanges}.`,
+    summary: `${plural(calls, "tool call")} in ${secs(r.ms)}. Money actions: ${r.flagged ? `${r.moneyActions} unchecked` : 0}. ${boardWords(r)}`,
     money,
-    board: r.boardChanges ? `Board changes: ${r.boardChanges}.` : "Board changes: 0. The board is as it was.",
+    board: boardWords(r),
+  };
+}
+
+export const boardWords = (r: Pick<Receipt, "boardChanges" | "boardKnown">) => (r.boardKnown ? `Board changes: ${r.boardChanges}.` : "Board changes: couldn't be checked.");
+
+const SAFE_NAME = /^[a-z][a-z0-9_]{0,47}$/;
+const cap = (n: number, max: number) => Math.min(max, Math.max(0, Math.round(Number.isFinite(n) ? n : 0)));
+
+/**
+ * The receipt as the server will take it. A flagged run must never be dropped for having an odd tool name
+ * in it, so names that aren't plain snake case become "unrecognised_tool" (still unknown, still flagged),
+ * long lists are cut, and numbers are kept in range.
+ */
+export function forServer(r: Receipt): Receipt {
+  const safe = (n: string) => (SAFE_NAME.test(n) ? n : "unrecognised_tool");
+  const lines = new Map<string, ToolLine>();
+  for (const l of r.tools) {
+    const name = safe(l.name);
+    const prev = lines.get(name);
+    lines.set(name, { name, calls: cap((prev?.calls ?? 0) + l.calls, 1000), ms: cap((prev?.ms ?? 0) + l.ms, 3_600_000), failed: cap((prev?.failed ?? 0) + l.failed, 1000), access: accessOf(name) });
+  }
+  const tools = [...lines.values()];
+  // every unknown line survives the cut
+  const kept = [...tools.filter((t) => t.access === "unknown"), ...tools.filter((t) => t.access !== "unknown")].slice(0, 40);
+  const unknown = [...new Set(r.unknown.map(safe))].slice(0, 20);
+  const flagged = r.flagged || unknown.length > 0 || kept.some((t) => t.access === "unknown");
+  return {
+    ...r,
+    ms: cap(r.ms, 3_600_000),
+    turns: cap(r.turns, 1000),
+    tokens: { input: cap(r.tokens.input, 1e9), output: cap(r.tokens.output, 1e9) },
+    tools: flagged && !kept.some((t) => t.access === "unknown") ? [{ name: "unrecognised_tool", calls: 1, ms: 0, failed: 0, access: "unknown" as const }, ...kept].slice(0, 40) : kept,
+    helpers: [...new Set(r.helpers.map((h) => (SAFE_NAME.test(h) ? h : "other_helper")))].slice(0, 20),
+    unknown: flagged && !unknown.length ? ["unrecognised_tool"] : unknown,
+    moneyActions: flagged ? Math.max(1, cap(r.moneyActions, 1000)) : 0,
+    boardChanges: cap(r.boardChanges, 1000),
+    flagged,
   };
 }
 
@@ -290,7 +351,7 @@ export function receiptLines(r: Receipt): { summary: string; money: string; boar
 
 const NAME = /^[a-z][a-z0-9_]{0,47}$/;
 const ID = /^[A-Za-z0-9_:.-]{1,100}$/;
-const KEYS = ["runId", "threadId", "agentId", "startedAt", "ms", "status", "turns", "tokens", "tools", "helpers", "unknown", "moneyActions", "boardChanges", "flagged"];
+const KEYS = ["runId", "threadId", "agentId", "startedAt", "ms", "status", "turns", "tokens", "tools", "helpers", "unknown", "moneyActions", "boardChanges", "boardKnown", "flagged"];
 const count = (v: unknown, max = 1e9) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max;
 
 /** A receipt the browser sent: exactly the compact shape, names only, nothing free text. */
@@ -301,7 +362,7 @@ export function isReceipt(v: unknown): v is Receipt {
   if (![r.runId, r.threadId].every((x) => typeof x === "string" && ID.test(x))) return false;
   if (typeof r.agentId !== "string" || !NAME.test(r.agentId)) return false;
   if (!count(r.startedAt, 1e13) || !count(r.ms, 3_600_000) || !count(r.turns, 1000) || !count(r.moneyActions, 1000) || !count(r.boardChanges, 1000)) return false;
-  if (!["ok", "error", "cancelled"].includes(r.status as string) || typeof r.flagged !== "boolean") return false;
+  if (!["ok", "error", "cancelled"].includes(r.status as string) || typeof r.flagged !== "boolean" || typeof r.boardKnown !== "boolean") return false;
   const tk = r.tokens as Record<string, unknown> | null;
   if (!tk || typeof tk !== "object" || Object.keys(tk).length !== 2 || !count(tk.input) || !count(tk.output)) return false;
   const names = (a: unknown, max: number) => Array.isArray(a) && a.length <= max && a.every((x) => typeof x === "string" && NAME.test(x));
@@ -314,5 +375,6 @@ export function isReceipt(v: unknown): v is Receipt {
     if (t.access !== accessOf(t.name)) return false;
   }
   // The flag has to agree with what the receipt itself lists.
-  return r.flagged === ((r.unknown as string[]).length > 0) && r.flagged === (r.moneyActions as number) > 0;
+  const tools = r.tools as ToolLine[];
+  return r.flagged === ((r.unknown as string[]).length > 0) && r.flagged === (r.moneyActions as number) > 0 && r.flagged === tools.some((t) => t.access === "unknown");
 }

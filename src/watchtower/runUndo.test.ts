@@ -54,12 +54,36 @@ describe("undo what Spotter changed", () => {
     expect(rc.count).toBe(2);
     const u = undoRun(api, rc);
     expect(u.ok).toBe(true);
-    expect(u.message).toBe("Undone: 2 changes Spotter made. The board is back as it was before you asked.");
+    expect(u.message).toBe("Undone: 2 changes made while Spotter worked. The board is back as it was before you asked.");
     expect(durable(api.getState())).toBe(durable(board(["month", "mine"])));
     expect(undoRun(api, rc).ok).toBe(false);
     const r = redoRun(api, rc);
     expect(r).toEqual({ ok: true, message: "Redone: Spotter's 2 changes are back." });
     expect(durable(api.getState())).toBe(durable(board(["month", "mine", "spotter2"])));
+  });
+
+  it("never says undone when Studio's undo did nothing", () => {
+    const api = fakeStudio(board(["month"]));
+    const start = captureStart(api);
+    api.change(board(["month", "spotter"]));
+    const rc = captureEnd(api, start);
+    const deaf = { ...api, undo: () => {}, redo: () => {} };
+    rc.api = deaf;
+    const u = undoRun(deaf, rc);
+    expect(u.ok).toBe(false);
+    expect(u.message).toMatch(/didn't take/);
+    expect(rc.undone).toBe(false);
+  });
+
+  it("never says undone when restoring the saved board didn't stick", () => {
+    const first = fakeStudio(board(["month"]));
+    const start = captureStart(first);
+    first.change(board(["month", "spotter"]));
+    const rc = captureEnd(first, start);
+    const second = fakeStudio(first.getState());
+    const stuck = { ...second, setState: () => {} };
+    expect(undoRun(stuck, rc).ok).toBe(false);
+    expect(rc.undone).toBe(false);
   });
 
   it("says so when the run changed nothing", () => {

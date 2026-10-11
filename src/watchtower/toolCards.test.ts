@@ -69,7 +69,7 @@ describe("what a card says", () => {
   });
   it("says when a call failed, without echoing the error", () => {
     const c = describeCall("open_case_file", {}, { status: "done", result: { success: false, issues: [{ message: EVIL }] } });
-    expect(c.lines).toEqual(["It found nothing to read. No money was touched."]);
+    expect(c.lines).toEqual(["It didn't work. No money was touched."]);
     expect(JSON.stringify(c)).not.toContain("IGNORE");
   });
   it("watch alerts: counts by kind", () => {

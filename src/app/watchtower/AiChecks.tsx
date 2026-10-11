@@ -4,7 +4,7 @@
 // server (this family's last 20), this visit's runs arrive live from the harness telemetry.
 import { useEffect } from "react";
 import type { AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
-import { helperName, type Receipt } from "@/watchtower/receipt";
+import { boardWords, helperName, type Receipt } from "@/watchtower/receipt";
 import { useBook } from "./ReceiptBar";
 import { useScrollBox, type WatchContext } from "./widgets";
 
@@ -24,7 +24,7 @@ function Row({ r }: { r: Receipt }) {
         <span className="wt-checks-who">{who}</span>
       </p>
       <p className="wt-checks-facts">
-        {calls} {calls === 1 ? "call" : "calls"} in {secs(r.ms)}. <span className="wt-checks-money">{r.flagged ? `Money actions: ${r.moneyActions} unchecked, flagged.` : "Money actions: 0."}</span> Board changes: {r.boardChanges}.
+        {calls} {calls === 1 ? "call" : "calls"} in {secs(r.ms)}. <span className="wt-checks-money">{r.flagged ? `Money actions: ${r.moneyActions} unchecked, flagged.` : "Money actions: 0."}</span> {boardWords(r)}
         {r.status !== "ok" && (r.status === "error" ? " Ended with a problem." : " Stopped.")}
       </p>
       {r.helpers.length > 0 && <p className="wt-checks-help">Helpers: {r.helpers.map(helperName).join(", ")}.</p>}
@@ -33,7 +33,7 @@ function Row({ r }: { r: Receipt }) {
 }
 
 export function AiChecksWidget(p: AgWidgetParams<AiChecksDef>) {
-  const { entries } = useBook((p.context as WatchContext | undefined)?.receipts);
+  const { entries, loadFailed } = useBook((p.context as WatchContext | undefined)?.receipts);
   const scroll = useScrollBox<HTMLDivElement>();
   useEffect(() => {
     p.widgetApi.setDisplayState("displayed");
@@ -42,10 +42,15 @@ export function AiChecksWidget(p: AgWidgetParams<AiChecksDef>) {
   return (
     <div className="wt-checks" {...scroll}>
       <p className="wt-checks-label">Spotter&apos;s own checks on its assistant</p>
+      {loadFailed && <p className="wt-checks-warn">Couldn&apos;t load the receipts from earlier visits, so this only shows runs from this visit.</p>}
       {entries.length ? (
         <>
           <p className="wt-checks-sum" data-flagged={flagged > 0 || undefined}>
-            {flagged ? `${flagged} of the last ${entries.length} runs used a tool outside Spotter's list.` : `The last ${entries.length === 1 ? "run" : `${entries.length} runs`} touched no money.`}
+            {flagged
+              ? `${flagged} of the last ${entries.length} runs used a tool outside Spotter's list.`
+              : loadFailed
+                ? `This visit's ${entries.length === 1 ? "run" : `${entries.length} runs`} touched no money.`
+                : `The last ${entries.length === 1 ? "run" : `${entries.length} runs`} touched no money.`}
           </p>
           <ul className="wt-checks-list" aria-label="The assistant's recent runs">
             {entries.map((e) => (
