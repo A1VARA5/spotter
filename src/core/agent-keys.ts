@@ -1,7 +1,6 @@
 // The life of an agent key after it is made: a daily rate limit on the MCP routes, a log of every tool call, the key
 // card the spotter sees (label, job, allowance left, status, last calls), "Switch off now", and the canary: a decoy key
 // planted next to the real one. Nothing legitimate ever sends the decoy, so its use means the agent leaked its secrets.
-import { randomBytes } from "node:crypto";
 import type { Db } from "@/db";
 import { deny, getSpender, PAUSED_BY, weekSpend, type Deps } from "./lifecycle";
 import type { AgentAuth } from "./pairing";
@@ -76,30 +75,34 @@ export const leakText = (agent: string, voided: number) =>
 /** The decoy was used. Freeze the agent, burn every key it has, let go of its holds, record it and alert the spotter. */
 export async function springCanary(deps: Deps, hit: Extract<AgentAuth, { kind: "canary" }>): Promise<void> {
   const { db } = deps;
-  // Burn first: one conditional update, so two requests with the decoy can't both alert.
-  const burned = await db.query("update agent_tokens set revoked_at = now() where spender_id = $1 and revoked_at is null returning hash", [hit.spenderId]);
-  if (!burned.length) return;
+  // Freeze and record BEFORE burning: if either fails, the decoy still works, so its next use tries the whole thing
+  // again. The record's id comes from the decoy, so a retry or two requests at once write it only once.
   await db.query("update spenders set frozen_at = coalesce(frozen_at, now()) where id = $1", [hit.spenderId]);
-  const spender = await getSpender(db, hit.spenderId);
-  console.warn(`[spotter] decoy key used for agent ${hit.spenderId}: both keys burned, agent paused`);
-  const open = await db.query<{ id: string }>("select id from payments where spender_id = $1 and status = 'needs_approval'", [hit.spenderId]);
-  let voided = 0;
-  for (const p of open) {
-    try {
-      if ((await deny(deps, p.id, PAUSED_BY)).status === "voided") voided++;
-    } catch (e) {
-      console.error(`[spotter] decoy key: couldn't let go of hold ${p.id}:`, e instanceof Error ? e.message : e);
-    }
-  }
-  const id = `trip_${randomBytes(8).toString("hex")}`;
+  const id = `trip_decoy_${hit.hash.slice(0, 20)}`;
   const note = { text: "The decoy key planted in this agent's config was sent to Spotter. Nothing legitimate ever sends it.", cut: false };
-  await db.query("insert into tripwires (id, household_id, spender_id, tool, args, cause, voided) values ($1, $2, $3, 'decoy_key', $4, null, $5)", [
+  await db.query("insert into tripwires (id, household_id, spender_id, tool, args, cause, voided) values ($1, $2, $3, 'decoy_key', $4, null, 0) on conflict (id) do nothing", [
     id,
     hit.householdId,
     hit.spenderId,
     JSON.stringify(note),
-    voided,
   ]);
+  // Then burn: one conditional update, so only one request goes on to let go of holds and alert.
+  const burned = await db.query("update agent_tokens set revoked_at = now() where spender_id = $1 and revoked_at is null returning hash", [hit.spenderId]);
+  if (!burned.length) return;
+  console.warn(`[spotter] decoy key used for agent ${hit.spenderId}: both keys burned, agent paused`);
+  const spender = await getSpender(db, hit.spenderId);
+  const open = await db.query<{ id: string }>("select id from payments where spender_id = $1 and status = 'needs_approval'", [hit.spenderId]);
+  let voided = 0;
+  for (const p of open) {
+    try {
+      const after = await deny(deps, p.id, PAUSED_BY);
+      if (after.status === "voided") voided++;
+      else console.error(`[spotter] decoy key: hold ${p.id} ended ${after.status}, not voided (reconcile keeps asking PayPal)`);
+    } catch (e) {
+      console.error(`[spotter] decoy key: couldn't let go of hold ${p.id}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  await db.query("update tripwires set voided = $2 where id = $1", [id, voided]);
   await sendWarning(deps, hit.householdId, { kind: "agent_hijacked", text: leakText(spender?.name ?? "Your agent", voided) });
 }
 

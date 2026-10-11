@@ -19,7 +19,8 @@ export function PayPalRetry({ p, onDone }: { p: { id: string; status: string; er
     try {
       const r = await fetch(`/api/payments/${encodeURIComponent(p.id)}/retry`, { method: "POST" });
       const j = await readJson(r);
-      if (!r.ok) setNote(j.error ?? `PayPal still hasn't confirmed (${r.status}). Spotter keeps trying on its own.`);
+      if (r.status === 409) onDone(); // already settled: show where it is now
+      else if (!r.ok) setNote(j.error ?? `PayPal still hasn't confirmed (${r.status}). Spotter asks again within a day.`);
       else onDone();
     } catch (e) {
       setNote(plainError(e));

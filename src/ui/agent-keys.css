@@ -33,3 +33,5 @@
   .paypal-retry .spin { animation: key-spin 900ms linear infinite; }
 }
 @keyframes key-spin { to { transform: rotate(360deg); } }
+.key-record[data-status="mismatch"], .key-record[data-status="missing"] { background: var(--stop-soft); }
+.key-record[data-status="error"] { background: var(--chalk); }

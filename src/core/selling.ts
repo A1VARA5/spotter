@@ -337,7 +337,14 @@ export async function sellPayOrder(deps: Deps, run: Run, agentId: string, orderI
   if (typeof agent === "string") return agent;
   const sale = await saleBy(deps.db, agent.household_id, "paypal_order_id", orderId);
   if (!sale) return err("Spotter only takes payments for sales it made for this family.");
-  const raw = await run("pay_order", { id: orderId }, { requestId: `capture-${sale.id}` });
+  let raw: string;
+  try {
+    raw = await run("pay_order", { id: orderId }, { requestId: `capture-${sale.id}` });
+  } catch (e) {
+    // PayPal may have taken it: the same requestId makes a retry the same capture, so the agent is told to retry.
+    console.error(`[spotter] pay_order for sale ${sale.id} got no answer from PayPal:`, e instanceof Error ? e.message : e);
+    return err("PayPal didn't answer, so Spotter can't tell yet if the payment was taken. Call pay_order again for the same order: it is the same request at PayPal, so it can't be taken twice.");
+  }
   const r = readRun(raw);
   const capture = r.ok ? (r.data?.response?.purchase_units?.[0]?.payments?.captures?.[0] as { id?: unknown } | undefined) : undefined;
   if (typeof capture?.id === "string") await deps.db.query("update sales set capture_id = $2 where id = $1", [sale.id, capture.id.slice(0, 64)]);

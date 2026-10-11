@@ -35,11 +35,11 @@ const realApi = async (context: Context): Promise<ToolkitApi> => new PayPalAPI(a
  */
 export async function toolkitRun(method: string, args: Record<string, unknown>, opts: RunOpts = {}, make: (c: Context) => Promise<ToolkitApi> = realApi): Promise<string> {
   if (!SPOTTER_RUNS.has(method)) throw new Error(`Spotter never runs the toolkit's ${method}.`);
-  const client = await make(opts.requestId ? { sandbox: true, request_id: opts.requestId } : { sandbox: true });
   const ms = opts.timeoutMs ?? TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
-    client.run(method, args),
+    // The token fetch is inside the race too, so a hung token request is bounded as well.
+    make(opts.requestId ? { sandbox: true, request_id: opts.requestId } : { sandbox: true }).then((client) => client.run(method, args)),
     new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(`PayPal didn't answer ${method} within ${Math.round(ms / 1000)} seconds.`)), ms))),
   ]).finally(() => clearTimeout(timer));
 }

@@ -138,7 +138,14 @@ async function act(deps: WebhookDeps, evt: PayPalEvent, resource: Record<string,
   const result = (outcome: string): HandleResult => ({ outcome, paymentId: payment.id });
 
   if (evt.event_type === "PAYMENT.AUTHORIZATION.CREATED") {
-    if (payment.paypal_authorization_id && resourceId !== payment.paypal_authorization_id) return result("recorded");
+    if (payment.paypal_authorization_id && resourceId !== payment.paypal_authorization_id) {
+      console.error(`[spotter] paypal ${evt.event_type} for ${payment.id} ignored: authorisation ${resourceId ?? "(none)"} isn't the one Spotter holds`);
+      await db.query("insert into events (payment_id, type, data) values ($1, 'paypal_mismatch', $2)", [
+        payment.id,
+        JSON.stringify({ event: evt.event_type, paypal_event: evt.id, spotter_status: payment.status, reason: "stale authorisation" }),
+      ]);
+      return result("mismatch");
+    }
     const expires = str(resource.expiration_time);
     if (!expires || Number.isNaN(Date.parse(expires))) return result("recorded");
     await db.query("update payments set paypal_auth_expires_at = $2 where id = $1", [payment.id, expires]);

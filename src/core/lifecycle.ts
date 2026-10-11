@@ -290,7 +290,7 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
   try {
     result = await decideAndHold(deps, spender, req, saferFor?.domain, codeFlags, agentKey);
   } catch (e) {
-    return fail(db, id, "check", e);
+    return crashed(deps, id, e);
   }
   if (["needs_approval", "blocked", "protected"].includes(result.status)) {
     const followUp = () => investigateAndAlert(deps, result, spender);
@@ -298,6 +298,23 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
     else await followUp();
   }
   return result;
+}
+
+/**
+ * A crash part way through the check. With no hold at PayPal it ends failed. With a live hold it must never be "failed"
+ * (nothing would ever void it): it stays where it is with the reason, and a hold Spotter was about to pay goes back
+ * to the spotter instead.
+ */
+async function crashed(deps: Deps, id: string, e: unknown): Promise<Payment> {
+  const { db } = deps;
+  const now = await getPayment(db, id).catch(() => null);
+  const live: PaymentStatus[] = ["needs_approval", "authorised", "capturing", "voiding"];
+  if (!now?.paypal_authorization_id || !live.includes(now.status)) return fail(db, id, "check", e);
+  const error = `Spotter hit an error after PayPal made the hold, so it waits for the spotter: ${errText(e)}`.slice(0, 500);
+  console.error(`[spotter] payment ${id} crashed with a live PayPal hold (${now.status}); kept, not failed: ${errText(e)}`);
+  await event(db, id, "crashed_with_hold", { status: now.status, error: errText(e).slice(0, 300) }).catch(() => {});
+  const to = now.status === "authorised" ? "needs_approval" : now.status;
+  return (await move(db, id, now.status, to, { error }).catch(() => null)) ?? now;
 }
 
 const CASE_CAP_MS = 45_000;
@@ -427,6 +444,24 @@ const UNCONFIRMED = "PayPal didn't confirm yet, Spotter is retrying";
 const HOLD_GONE_ISSUES = new Set(["AUTHORIZATION_EXPIRED", "AUTHORIZATION_VOIDED", "AUTHORIZATION_DENIED"]);
 const GONE = new Set(["VOIDED", "EXPIRED", "DENIED"]);
 const TAKEN = new Set(["CAPTURED", "PARTIALLY_CAPTURED"]);
+// PayPal answering a repeated PayPal-Request-Id while the first request is still running: not a yes or a no.
+const IN_PROGRESS_ISSUES = new Set(["PREVIOUS_REQUEST_IN_PROGRESS", "DUPLICATE_REQUEST_ID"]);
+
+/** A clear no from PayPal for this request (a 4xx that isn't rate limiting or "the same request is still running"). */
+const isFirm = (e: unknown) => e instanceof PayPalError && e.status >= 400 && e.status < 500 && e.status !== 429 && e.status !== 409 && !IN_PROGRESS_ISSUES.has(e.issue ?? "");
+
+/** A void PayPal refused or didn't answer. A firm refusal is checked with PayPal at once (it may have been captured or
+ * already released); anything else stays voiding for reconcile. */
+async function voidFailed(deps: Deps, id: string, e: unknown): Promise<Payment> {
+  const left = await unconfirmed(deps.db, id, "voiding", "void", e);
+  if (!isFirm(e) || !deps.paypal.getAuthorization || left.status !== "voiding") return left;
+  try {
+    await finishWithPayPal(deps, left, { voidAgain: false });
+  } catch (err) {
+    console.error(`[spotter] payment ${id}: checking a refused void with PayPal failed:`, errText(err));
+  }
+  return (await getPayment(deps.db, id)) ?? left;
+}
 
 /** Conditional move that also writes columns. Null if the payment wasn't in `from` any more. */
 async function move(db: Db, id: string, from: PaymentStatus, to: PaymentStatus, extra: Record<string, unknown> = {}): Promise<Payment | null> {
@@ -452,8 +487,7 @@ async function unconfirmed(db: Db, id: string, status: PaymentStatus, step: "voi
  */
 async function captureFailed(deps: Deps, p: Payment, e: unknown): Promise<Payment> {
   const { db } = deps;
-  const firm = e instanceof PayPalError && e.status >= 400 && e.status < 500 && e.status !== 429;
-  if (!firm) return unconfirmed(db, p.id, "capturing", "capture", e);
+  if (!isFirm(e)) return unconfirmed(db, p.id, "capturing", "capture", e);
   let status: string | null = null;
   if (deps.paypal.getAuthorization) {
     try {
@@ -519,7 +553,7 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
     await deps.paypal.voidAuthorization(claimed.paypal_authorization_id!, voidKey(id, claimed.paypal_authorization_id!));
   } catch (e) {
     // Never "failed" with a live hold: it stays voiding and reconcile (or a manual retry) asks PayPal and finishes it.
-    return unconfirmed(db, id, "voiding", "void", e);
+    return voidFailed(deps, id, e);
   }
   await event(db, id, "voided");
   const spender = await getSpender(db, claimed.spender_id);
@@ -541,7 +575,7 @@ export async function withdraw(deps: Deps, id: string, by: string): Promise<Paym
   try {
     await deps.paypal.voidAuthorization(claimed.paypal_authorization_id!, voidKey(id, claimed.paypal_authorization_id!));
   } catch (e) {
-    return unconfirmed(db, id, "voiding", "void", e);
+    return voidFailed(deps, id, e);
   }
   await event(db, id, "voided");
   return setStatus(db, id, "voided");
@@ -637,7 +671,7 @@ export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
  * Asks PayPal what really happened to a capture or void it never confirmed, and finishes it idempotently: a hold still
  * there is voided (or captured) again with the same PayPal-Request-Id. True when the payment reached a final status.
  */
-async function finishWithPayPal(deps: Deps, p: Payment): Promise<boolean> {
+async function finishWithPayPal(deps: Deps, p: Payment, opts: { voidAgain?: boolean } = {}): Promise<boolean> {
   const { db, paypal } = deps;
   const auth = p.paypal_authorization_id!;
   let status: string;
@@ -663,7 +697,7 @@ async function finishWithPayPal(deps: Deps, p: Payment): Promise<boolean> {
       await event(db, p.id, "paypal_mismatch", { paypal: status, spotter_status: "voiding", reason: "captured at PayPal while Spotter was letting it go" });
       return true;
     }
-    if (status !== "CREATED") return false;
+    if (status !== "CREATED" || opts.voidAgain === false) return false;
     try {
       await paypal.voidAuthorization(auth, voidKey(p.id, auth));
     } catch (e) {
@@ -682,15 +716,25 @@ async function finishWithPayPal(deps: Deps, p: Payment): Promise<boolean> {
     return !!done;
   }
   if (GONE.has(status)) {
-    const done = await move(db, p.id, "capturing", "voided");
-    if (done) await event(db, p.id, "reconciled", { paypal: status });
-    return !!done;
+    // Approved, but PayPal let the hold go before the capture landed: nothing was paid, and the spotter must hear it.
+    const done = await move(db, p.id, "capturing", "voided", { error: "PayPal let the hold lapse before the payment went through. Nothing was paid." });
+    if (!done) return false;
+    console.error(`[spotter] payment ${p.id} was approved but PayPal says the hold is ${status}; nothing was paid`);
+    await event(db, p.id, "reconciled", { paypal: status, note: "hold lapsed before capture" });
+    await tellDecided(deps, done);
+    return true;
   }
   // PENDING: PayPal is reviewing the authorisation. Leave it, and ask again next run.
   if (status !== "CREATED") return false;
+  // A paused agent's hold is never paid, even one Spotter had already decided to pay before the freeze.
+  if (await isFrozen(db, p.spender_id)) {
+    await event(db, p.id, "frozen_before_capture", { by: "reconcile" });
+    if (!(await transition(db, p.id, "capturing", "needs_approval"))) return false;
+    return (await deny(deps, p.id, PAUSED_BY)).status !== "needs_approval";
+  }
   // Someone already decided to pay this. Finish the capture with the same key (PayPal dedupes a repeat).
   const after = await captureClaimed(deps, p, !!p.decided_by && p.decided_by !== "Spotter");
-  return after.status === "captured" || after.status === "failed";
+  return after.status !== "capturing";
 }
 
 export type RetryResult = { ok: true; payment: Payment } | { ok: false; status: 404 | 409 | 502; error: string };
@@ -703,7 +747,7 @@ export async function retryWithPayPal(deps: Deps, id: string, householdId: strin
   if (!deps.paypal.getAuthorization) return { ok: false, status: 502, error: "Spotter can't ask PayPal right now." };
   const done = await finishWithPayPal(deps, p);
   const now = (await getPayment(deps.db, id))!;
-  return done ? { ok: true, payment: now } : { ok: false, status: 502, error: "PayPal still hasn't confirmed. Spotter keeps trying on its own, so you can leave it." };
+  return done ? { ok: true, payment: now } : { ok: false, status: 502, error: "PayPal still hasn't confirmed. Spotter asks again within a day, or try again later." };
 }
 
 /** Records what PayPal says happened (from a webhook). One conditional UPDATE: it only moves a payment that is

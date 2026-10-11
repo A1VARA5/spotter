@@ -29,7 +29,7 @@ const PLAN: Array<{ kind: LabStep["kind"]; title: string }> = [
   { kind: "order", title: "It orders the earbuds with create_order" },
   { kind: "bait", title: "It does what a hidden line on the page says" },
   { kind: "freeze", title: "Spotter freezes it" },
-  { kind: "void", title: "Spotter lets go of the hold at PayPal" },
+  { kind: "void", title: "PayPal releases the hold" },
   { kind: "confirm", title: "PayPal confirms" },
 ];
 

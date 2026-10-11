@@ -6,6 +6,7 @@ import { createSpender, getSpender } from "@/core/lifecycle";
 import { PRESETS, presetsFor, type PresetKey } from "@/core/presets";
 import { createPairingCode, issueAgentKeys } from "@/core/pairing";
 import { keyCard, switchOff } from "@/core/agent-keys";
+import { readRun } from "@/core/selling";
 import { checkPin, householdFrom, isUnlocked, InvalidPinError, setPin, unlockCookie } from "./auth";
 
 const json = (body: unknown, status = 200, headers?: HeadersInit) => Response.json(body, { status, headers });
@@ -148,16 +149,23 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
       const card = await keyCard(s.db, s.hh.id, spenderId);
       if (!card) return json({ error: "No such agent." }, 404);
       let paypalCustomId: string | null = null;
+      // match: PayPal's record says what Spotter sent. mismatch: PayPal says something else. missing: PayPal has none.
+      // error: PayPal couldn't be read just now. null: no agent order yet.
+      let paypalStatus: "match" | "mismatch" | "missing" | "error" | null = null;
       if (card.order && readOrder) {
         try {
-          const o = JSON.parse(await readOrder(card.order.paypalOrderId)) as { purchase_units?: Array<{ custom_id?: unknown }> };
-          const c = o.purchase_units?.[0]?.custom_id;
+          const r = readRun(await readOrder(card.order.paypalOrderId));
+          if (!r.ok) throw new Error(r.message);
+          const c = (r.data as { purchase_units?: Array<{ custom_id?: unknown }> })?.purchase_units?.[0]?.custom_id;
           paypalCustomId = typeof c === "string" ? c.slice(0, 127) : null;
+          paypalStatus = !paypalCustomId ? "missing" : paypalCustomId === card.order.customId ? "match" : "mismatch";
+          if (paypalStatus !== "match") console.error(`[spotter] key card: PayPal's custom_id for ${card.order.paypalOrderId} is ${paypalStatus} (Spotter sent ${card.order.customId})`);
         } catch (e) {
+          paypalStatus = "error";
           console.error(`[spotter] key card: couldn't read order ${card.order.paypalOrderId} from PayPal:`, e instanceof Error ? e.message : e);
         }
       }
-      return json({ ...card, paypalCustomId });
+      return json({ ...card, paypalCustomId, paypalStatus });
     },
 
     /** "Switch off now": revokes the agent's key and decoy without making a new one. Only ever takes access away. */

@@ -179,6 +179,82 @@ describe("the tripwire race", () => {
   });
 });
 
+describe("review fixes: never a live hold marked failed, never a wrong 'nothing was paid'", () => {
+  it("a database hiccup after the hold is saved keeps the hold in front of the spotter, never 'failed'", async () => {
+    let made = false;
+    create.mockImplementationOnce(async () => {
+      made = true;
+      return { orderId: "O5", authorizationId: "A5" };
+    });
+    const real = db.query.bind(db);
+    let thrown = false;
+    deps = {
+      ...deps,
+      db: {
+        query: (async (sql: string, params?: unknown[]) => {
+          if (made && !thrown && sql.startsWith("select * from spenders where id")) {
+            thrown = true;
+            throw new Error("connection reset");
+          }
+          return real(sql, params);
+        }) as Db["query"],
+      },
+    };
+    const p = await held();
+    expect(p.status).toBe("needs_approval");
+    expect(p.paypal_authorization_id).toBe("A5");
+    expect(p.error).toMatch(/connection reset/);
+  });
+
+  it("a firm void refusal asks PayPal at once: already captured is shown as captured, not 'nothing was paid'", async () => {
+    const p = await held();
+    voidAuth.mockRejectedValueOnce(new PayPalError("already captured", 422, "AUTHORIZATION_ALREADY_CAPTURED"));
+    lookup.mockResolvedValueOnce({ status: "CAPTURED" });
+    const after = await deny(deps, p.id, "Sam");
+    expect(after.status).toBe("captured");
+    expect((await listEvents(db, p.id)).map((e) => e.type)).toContain("paypal_mismatch");
+  });
+
+  it("a manual retry that sends the payment back to the spotter says so (ok), not 'still hasn't confirmed'", async () => {
+    const p = await held();
+    capture.mockRejectedValueOnce(new Error("network"));
+    await approve(deps, p.id, "Sam");
+    capture.mockRejectedValueOnce(new PayPalError("declined", 422, "INSTRUMENT_DECLINED"));
+    const [{ household_id }] = (await db.query<{ household_id: string }>("select household_id from spenders where id = 'agent1'")) as [{ household_id: string }];
+    const r = await retryWithPayPal(deps, p.id, household_id);
+    expect(r).toMatchObject({ ok: true, payment: { status: "needs_approval" } });
+  });
+
+  it("an approved payment whose hold lapsed at PayPal says so plainly", async () => {
+    const p = await held();
+    capture.mockRejectedValueOnce(new Error("network"));
+    await approve(deps, p.id, "Sam");
+    await age(p.id);
+    lookup.mockResolvedValueOnce({ status: "EXPIRED" });
+    await reconcileStuck(deps);
+    const now = await getPayment(db, p.id);
+    expect(now?.status).toBe("voided");
+    expect(now?.error).toMatch(/lapse/i);
+  });
+
+  it("reconcile never finishes the capture of a frozen agent's hold", async () => {
+    capture.mockRejectedValueOnce(new Error("network"));
+    const p = await submitPayment(deps, { spenderId: "agent1", money: gbp(500), payee: { name: "Clay & Kiln", isNew: false }, category: "gifts", method: "paypal_order", context: "Mug" });
+    expect(p.status).toBe("capturing");
+    await db.query("update spenders set frozen_at = now() where id = 'agent1'");
+    await age(p.id);
+    await reconcileStuck(deps);
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect((await getPayment(db, p.id))?.status).toBe("voided");
+  });
+
+  it("PayPal saying the same request is still in progress is not a refusal: it stays capturing", async () => {
+    const p = await held();
+    capture.mockRejectedValueOnce(new PayPalError("in progress", 409, "PREVIOUS_REQUEST_IN_PROGRESS"));
+    expect((await approve(deps, p.id, "Sam")).status).toBe("capturing");
+  });
+});
+
 describe("PayPal's record of which agent key asked", () => {
   it("an agent order carries custom_id with the key and the payment id", async () => {
     const p = await submitPayment(deps, {

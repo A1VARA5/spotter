@@ -100,6 +100,13 @@ describe("the hijack console run", () => {
     expect(check).toHaveBeenCalledTimes(LAB_DAILY_RUNS);
   });
 
+  it("a run cut off after the order (the browser left) still lets go of the hold", async () => {
+    for await (const s of runLab(deps, hh, { read: async () => "{}", run: async () => "{}", confirmWaitMs: 0 })) if (s.kind === "order") break;
+    const left = await db.query("select 1 from payments where status = 'needs_approval'");
+    expect(left).toEqual([]);
+    expect(deps.paypal.voidAuthorization).toHaveBeenCalledTimes(1);
+  });
+
   it("prefers PayPal's own webhook when it has arrived", async () => {
     await db.query("insert into paypal_events (id, event_type, resource_id, payment_id, summary) values ('WH-LAB', 'PAYMENT.AUTHORIZATION.VOIDED', '0VF52814937998046', null, '{}')");
     const steps = await run();

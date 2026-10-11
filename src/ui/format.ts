@@ -37,8 +37,8 @@ export function trackState(status: PaymentStatus): TrackState {
  */
 export function paypalPending(p: { status: string; error: string | null }): { kind: "void" | "capture"; text: string } | null {
   if (!p.error) return null;
-  if (p.status === "voiding") return { kind: "void", text: "PayPal didn't confirm yet, retrying. Nothing was paid, and Spotter keeps asking PayPal to let the hold go." };
-  if (p.status === "capturing") return { kind: "capture", text: "PayPal didn't confirm yet, retrying. Spotter asks PayPal again with the same request, so it can't be paid twice." };
+  if (p.status === "voiding") return { kind: "void", text: "PayPal didn't confirm yet, retrying. Spotter won't pay it, and asks PayPal again to let the hold go within a day. Try PayPal again does it now." };
+  if (p.status === "capturing") return { kind: "capture", text: "PayPal didn't confirm yet, retrying. Spotter asks PayPal again within a day with the same request, so it can't be paid twice. Try PayPal again does it now." };
   return null;
 }
 

@@ -4,7 +4,7 @@
 // purpose and falls for it every time). Each run costs at most one Spotter AI check: no case agent, no price check, no
 // alerts to channels. PayPal calls are real (sandbox): the hold is made and then voided at PayPal.
 import type { Deps, Payment } from "@/core/lifecycle";
-import { createSpender } from "@/core/lifecycle";
+import { createSpender, deny } from "@/core/lifecycle";
 import { issueAgentKeys } from "@/core/pairing";
 import { switchOff } from "@/core/agent-keys";
 import { toolsFor } from "@/core/toolkit-coverage";
@@ -207,7 +207,7 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
     const auth = p?.paypal_authorization_id ?? null;
     yield step(
       "void",
-      p?.status === "voided" ? "Spotter let go of its hold at PayPal" : p?.status === "voiding" ? "Spotter asked PayPal to let go of the hold. PayPal didn't confirm yet, retrying" : `The hold is ${p?.status ?? "missing"}`,
+      p?.status === "voided" ? "PayPal released the hold: Spotter voided the authorisation" : p?.status === "voiding" ? "Spotter asked PayPal to let go of the hold. PayPal didn't confirm yet, retrying" : `The hold is ${p?.status ?? "missing"}`,
       { data: { authorizationId: auth, orderId: p?.paypal_order_id ?? null, status: p?.status ?? null } },
     );
 
@@ -229,11 +229,34 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
         });
       }
     }
-    yield step("done", "Nothing was paid. The agent stays frozen until the spotter checks in.", { data: { paymentId } });
+    const [end] = paymentId ? await db.query<{ status: string }>("select status from payments where id = $1", [paymentId]) : [];
+    const frozen = !!agent?.frozen_at;
+    const released = end?.status === "voided";
+    yield step(
+      "done",
+      released && frozen
+        ? "Nothing was paid. The agent stays frozen until the spotter checks in."
+        : `Nothing was paid${released ? "" : `, but the hold is ${end?.status ?? "unknown"}: Spotter keeps asking PayPal to let it go`}.${frozen ? " The agent stays frozen." : " The agent wasn't frozen."}`,
+      { data: { paymentId, frozen, released } },
+    );
   } catch (e) {
     console.error(`[spotter] agent lab run for ${householdId} failed:`, e instanceof Error ? e.message : e);
     yield step("error", "The run stopped part way", { detail: e instanceof Error ? e.message.slice(0, 300) : String(e) });
   } finally {
+    // Whatever happened (an error, or the browser left mid run), the lab never leaves a hold behind or a key working.
+    await releaseLabHolds(deps, agentId);
     await switchOff(db, householdId, agentId).catch((e) => console.error(`[spotter] agent lab: couldn't switch off the lab key for ${householdId}:`, e instanceof Error ? e.message : e));
+  }
+}
+
+async function releaseLabHolds(deps: Deps, agentId: string): Promise<void> {
+  try {
+    const open = await deps.db.query<{ id: string }>("select id from payments where spender_id = $1 and status = 'needs_approval'", [agentId]);
+    for (const p of open) {
+      const after = await deny(deps, p.id, "Spotter (the lab run ended)");
+      if (after.status !== "voided") console.error(`[spotter] agent lab: hold ${p.id} ended ${after.status}, not voided (reconcile keeps asking PayPal)`);
+    }
+  } catch (e) {
+    console.error(`[spotter] agent lab: couldn't let go of the lab agent's holds for ${agentId}:`, e instanceof Error ? e.message : e);
   }
 }

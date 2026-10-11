@@ -63,6 +63,34 @@ describe("agent keys with a planted decoy", () => {
   });
 });
 
+describe("the canary when something breaks half way", () => {
+  it("doesn't burn the keys until the freeze and the record are saved, so the next decoy use tries again", async () => {
+    const { decoy } = await issueAgentKeys(db, "agent");
+    const real = db.query.bind(db);
+    let failed = false;
+    const flaky = {
+      ...deps,
+      db: {
+        query: (async (sql: string, params?: unknown[]) => {
+          if (!failed && sql.startsWith("insert into tripwires")) {
+            failed = true;
+            throw new Error("connection reset");
+          }
+          return real(sql, params);
+        }) as Db["query"],
+      },
+    } as Deps;
+    const hit = (await authenticate(db, decoy)) as Extract<Awaited<ReturnType<typeof authenticate>>, { kind: "canary" }>;
+    await expect(springCanary(flaky, hit)).rejects.toThrow(/connection reset/);
+    const again = await authenticate(db, decoy);
+    expect(again?.kind).toBe("canary");
+    await springCanary(flaky, again as typeof hit);
+    expect(await authenticate(db, decoy)).toBeNull();
+    expect(await db.query("select 1 from tripwires where tool = 'decoy_key'")).toHaveLength(1);
+    expect(warn).toHaveBeenCalledOnce();
+  });
+});
+
 describe("rate limits on the agent MCP routes", () => {
   it("counts tool calls per key per day, then refuses with a plain message", async () => {
     const { key } = await issueAgentKeys(db, "agent");

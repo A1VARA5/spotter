@@ -145,7 +145,11 @@ describe("connecting people", () => {
       [agent],
     );
     const read = async (id: string) => JSON.stringify({ id, purchase_units: [{ custom_id: "spt-abcd:pay_k1" }] });
-    expect(await (await h.keyCard(req({}), agent, read)).json()).toMatchObject({ order: { paypalOrderId: "8DD59221E7921940H" }, paypalCustomId: "spt-abcd:pay_k1" });
+    expect(await (await h.keyCard(req({}), agent, read)).json()).toMatchObject({ order: { paypalOrderId: "8DD59221E7921940H" }, paypalCustomId: "spt-abcd:pay_k1", paypalStatus: "match" });
+    const other = async (id: string) => JSON.stringify({ id, purchase_units: [{ custom_id: "spt-zzzz:pay_k1" }] });
+    expect((await (await h.keyCard(req({}), agent, other)).json()).paypalStatus).toBe("mismatch");
+    const refused = async () => JSON.stringify({ error: { message: "not found", type: "paypal_error" } });
+    expect((await (await h.keyCard(req({}), agent, refused)).json()).paypalStatus).toBe("error");
     expect((await h.keyOff(req({}), agent)).status).toBe(200);
     expect((await (await h.keyCard(req({}), agent)).json()).status).toBe("switched_off");
     const saved = hh;

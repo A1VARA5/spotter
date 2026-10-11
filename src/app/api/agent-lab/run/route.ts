@@ -17,15 +17,24 @@ export async function POST(request: Request) {
   const enc = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      // After the browser leaves, enqueue throws: that ends the loop, and runLab's finally lets go of the hold.
       try {
         for await (const s of runLab(deps, householdId, { read: toolkitReadOrder, run: (m, a, o) => toolkitRun(m, a, o) })) {
           controller.enqueue(enc.encode(JSON.stringify(s) + "\n"));
         }
       } catch (e) {
-        console.error("[spotter] agent lab stream crashed:", e instanceof Error ? e.message : e);
-        controller.enqueue(enc.encode(JSON.stringify({ kind: "error", title: "The run stopped part way", detail: "Spotter hit an unexpected error. Nothing was paid.", at: new Date().toISOString() }) + "\n"));
+        console.error("[spotter] agent lab stream crashed or the browser left:", e instanceof Error ? e.message : e);
+        try {
+          controller.enqueue(enc.encode(JSON.stringify({ kind: "error", title: "The run stopped part way", detail: "Spotter hit an unexpected error. Nothing was paid.", at: new Date().toISOString() }) + "\n"));
+        } catch {
+          // the browser is gone: nothing left to tell
+        }
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // already closed by a cancelled request
+        }
       }
     },
   });

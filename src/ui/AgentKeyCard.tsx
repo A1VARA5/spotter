@@ -10,7 +10,7 @@ import { plainError, readJson } from "./http";
 import type { KeyCardView } from "@/core/agent-keys";
 import "./agent-keys.css";
 
-type View = KeyCardView & { paypalCustomId: string | null };
+type View = KeyCardView & { paypalCustomId: string | null; paypalStatus: "match" | "mismatch" | "missing" | "error" | null };
 
 const STATUS: Record<View["status"], string> = { live: "Live", frozen: "Frozen", switched_off: "Switched off", none: "No key yet" };
 const JOB: Record<string, string> = { shopping: "Shopping", selling: "Selling" };
@@ -61,7 +61,7 @@ export function AgentKeyCard({ agentId, name, refreshKey = 0 }: { agentId: strin
   }
 
   const now = Date.now();
-  const record = view.order ? (view.paypalCustomId ?? null) : null;
+  const record = view.paypalCustomId;
   return (
     <article className="connect-card key-card" aria-labelledby={`key-${agentId}`}>
       <header className="connect-head">
@@ -94,15 +94,17 @@ export function AgentKeyCard({ agentId, name, refreshKey = 0 }: { agentId: strin
       </dl>
 
       {view.order && (
-        <p className="key-record">
-          {record ? (
+        <p className="key-record" data-status={view.paypalStatus ?? "error"}>
+          {view.paypalStatus === "match" && record ? (
             <>
               PayPal&apos;s own record says order {view.order.paypalOrderId} came from key <b>{record.split(":")[0]?.replace("spt-", "spt_…")}</b>.
             </>
+          ) : view.paypalStatus === "mismatch" ? (
+            <>PayPal&apos;s record for order {view.order.paypalOrderId} names a different key ({record}) than Spotter sent ({view.order.customId}). Check this order in PayPal.</>
+          ) : view.paypalStatus === "missing" ? (
+            <>PayPal has no key on record for order {view.order.paypalOrderId}. Spotter sent {view.order.customId}.</>
           ) : (
-            <>
-              Spotter sent PayPal custom_id {view.order.customId} on order {view.order.paypalOrderId}. PayPal didn&apos;t answer just now, so this is Spotter&apos;s copy.
-            </>
+            <>Spotter sent PayPal custom_id {view.order.customId} on order {view.order.paypalOrderId}. PayPal couldn&apos;t be read just now, so this is Spotter&apos;s copy.</>
           )}
         </p>
       )}

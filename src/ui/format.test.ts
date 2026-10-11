@@ -5,7 +5,7 @@ describe("paypalPending", () => {
   it("says PayPal didn't confirm yet for a void or capture left for retry, and nothing otherwise", () => {
     expect(paypalPending({ status: "voiding", error: "PayPal didn't confirm yet, Spotter is retrying: timeout" })).toEqual({
       kind: "void",
-      text: "PayPal didn't confirm yet, retrying. Nothing was paid, and Spotter keeps asking PayPal to let the hold go.",
+      text: "PayPal didn't confirm yet, retrying. Spotter won't pay it, and asks PayPal again to let the hold go within a day. Try PayPal again does it now.",
     });
     expect(paypalPending({ status: "capturing", error: "PayPal didn't confirm yet, Spotter is retrying: 503" })?.kind).toBe("capture");
     expect(paypalPending({ status: "voiding", error: null })).toBeNull();
