@@ -1,0 +1,28 @@
+/* Try a payment: small additions owned by this page (globals.css belongs to the shell). */
+
+/* Tom's phone before anything happens: an obvious empty chat, not a blank gradient. */
+.wiy-empty.wiy-empty { display: grid; justify-items: center; gap: 8px; padding: 16px 14px; }
+.wiy-empty p { margin: 0; }
+.wiy-lede.wiy-lede-small { font-size: 15px; margin-top: 6px; }
+
+/* Result line: tinted box with a hairline border, no thick coloured left edge. */
+.wiy-result.wiy-result { border: 1px solid var(--line); border-left-width: 1px; }
+.wiy-result.wiy-result[data-tone="safe"] { border-color: rgb(31 122 85 / 0.35); background: var(--go-soft); }
+.wiy-result.wiy-result[data-tone="hold"] { border-color: rgb(242 183 5 / 0.55); background: var(--hold-soft); }
+
+/* "Shows: ..." tags on scenarios: which engine each one puts on screen. Small and factual. */
+.scen-shows { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.scen-show {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--chalk);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.scen-show b { color: var(--ink); font-weight: 700; }

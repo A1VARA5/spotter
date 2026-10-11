@@ -1,0 +1,71 @@
+/* How Spotter checked it: one row per engine. Left, what it is and does; right, the family's own latest case.
+   Hairline rules between rows like Activity, no coloured edges. */
+.ck-lede { margin: 8px 0 24px; max-width: 64ch; }
+.ck-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.ck-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 32px;
+  padding: 20px 22px;
+}
+.ck-row + .ck-row { border-top: 1px solid var(--line); }
+.ck-what { display: grid; gap: 6px; align-content: start; }
+.ck-name { font-size: 17px; font-weight: 700; line-height: 1.3; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.ck-by {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.ck-does { color: var(--ink-2); font-size: 15px; text-wrap: pretty; }
+.ck-live {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--chalk);
+  min-width: 0;
+}
+.ck-live-label { font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.ck-live[data-empty] .ck-live-label { color: var(--ink-2); }
+.ck-live-text { font-size: 15px; color: var(--ink); overflow-wrap: anywhere; text-wrap: pretty; }
+.ck-live[data-empty] .ck-live-text { color: var(--ink-2); }
+.ck-tag {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-2);
+  vertical-align: 1px;
+}
+.ck-shows { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.ck-shows li {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+}
+.ck-links { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 15px; font-weight: 650; }
+.ck-links a { color: var(--protect); min-height: 24px; display: inline-flex; align-items: center; }
+.ck-foot { margin: 18px 0 0; color: var(--ink-2); font-size: 15px; }
+.ck-foot a { color: var(--protect); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .ck-row { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 12px; }
+}

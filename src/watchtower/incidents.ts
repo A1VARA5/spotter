@@ -83,18 +83,56 @@ function incidentPage(r: PaymentRow) {
   };
 }
 
-/** The board with a page for each new incident, the newest one selected. Pure. */
-export function withIncidents(state: AgReportState, rows: PaymentRow[], now: Date, seen: string[]): { state: AgReportState; added: string[] } {
-  const pages = (state as { pages?: unknown }).pages;
-  if (!Array.isArray(pages)) return { state, added: [] };
-  const existing = new Set(pages.map((p) => (p as { id?: string }).id));
+/** Incident tabs open at once. Older ones close, so the tab strip never piles up. */
+const MAX_OPEN = 3;
+
+/** Still worth a tab: money waiting, or stopped or denied in the last day. */
+const stillOpen = (r: PaymentRow | undefined, now: Date) =>
+  Boolean(r) && (r!.outcome === "Waiting" || ((r!.outcome === "Stopped" || r!.outcome === "Denied") && now.getTime() - r!.when.getTime() < DAY));
+
+/**
+ * The board with a page for each new incident. Pure. The family stays on the page they were on (This month on a
+ * fresh board), at most three incident tabs stay open (the newest), and a tab whose payment is over (paid,
+ * cleared by Start fresh, stopped more than a day ago) closes. A tab the family renamed is theirs and stays.
+ * changed says whether the board needs saving.
+ */
+export function withIncidents(
+  state: AgReportState,
+  rows: PaymentRow[],
+  now: Date,
+  seen: string[],
+  /** False when rows were capped: then a missing row isn't proof the payment is gone, so its tab stays. */
+  complete = true,
+): { state: AgReportState; added: string[]; changed: boolean } {
+  const pages = (state as { pages?: unknown }).pages as Array<{ id?: string; name?: string }> | undefined;
+  if (!Array.isArray(pages)) return { state, added: [], changed: false };
+  const existing = new Set(pages.map((p) => p.id));
   const fresh = pickIncidents(rows, now, seen).filter((r) => !existing.has(incidentPageId(r.id)));
-  if (!fresh.length) {
-    const named = nameIncidents(pages, rows);
-    return { state: named === pages ? state : ({ ...state, pages: named } as AgReportState), added: [] };
-  }
-  return {
-    state: { ...state, pages: nameIncidents([...pages, ...fresh.map(incidentPage)], rows), selectedPageId: incidentPageId(fresh[0]!.id) } as AgReportState,
-    added: fresh.map((r) => r.id),
+  const byPage = new Map(rows.map((r) => [incidentPageId(r.id), r]));
+  const ours = (p: { id?: string; name?: string }) => Boolean(p.id?.startsWith("incident-") && p.name?.startsWith("Incident: "));
+
+  const open = (p: { id?: string }) => {
+    const r = byPage.get(p.id!);
+    return r ? stillOpen(r, now) : !complete;
   };
+  let next = [...pages, ...fresh.map(incidentPage)].filter((p) => !ours(p) || open(p));
+  const when = (p: { id?: string }) => byPage.get(p.id!)?.when.getTime() ?? 0;
+  const keep = new Set(
+    next
+      .filter(ours)
+      .sort((a, b) => when(b) - when(a) || a.id!.localeCompare(b.id!))
+      .slice(0, MAX_OPEN)
+      .map((p) => p.id),
+  );
+  next = nameIncidents(
+    next.filter((p) => !ours(p) || keep.has(p.id)),
+    rows,
+  );
+  const selected = (state as { selectedPageId?: string }).selectedPageId;
+  const stillThere = next.some((p) => p.id === selected);
+  // Every new one counts as seen, even one capped out, so it never comes back on a later visit.
+  const added = fresh.map((r) => r.id);
+  const changed = added.length > 0 || !stillThere || next.length !== pages.length || next.some((p, i) => p !== pages[i]);
+  if (!changed) return { state, added: [], changed: false };
+  return { state: { ...state, pages: next, selectedPageId: stillThere ? selected : next[0]?.id } as AgReportState, added, changed };
 }

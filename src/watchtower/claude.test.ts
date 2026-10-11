@@ -121,6 +121,19 @@ describe("Claude reply to AG response", () => {
     expect(r.usage).toEqual({ inputTokens: 165, outputTokens: 20, cachedInputTokens: 60, cacheWriteTokens: 5 });
   });
 
+  it("hands back a sub agent's complete_task summary as plain text (AG shows it raw in the step)", () => {
+    const r = fromClaude(
+      msg([{ type: "tool_use", id: "toolu_1", name: "complete_task", input: { summary: "## This month\n**2 paid** payments, `priceGap` £8.50\n* Kettle: __£3__ over", ok: true } }], "tool_use"),
+    );
+    const args = JSON.parse((r.output[0] as { arguments: string }).arguments);
+    expect(args).toEqual({ summary: "This month\n2 paid payments, priceGap £8.50\n- Kettle: £3 over", ok: true });
+  });
+
+  it("leaves other tools' arguments alone", () => {
+    const r = fromClaude(msg([{ type: "tool_use", id: "t", name: "execute_query", input: { sql: "select '**x**'" } }], "tool_use"));
+    expect((r.output[0] as { arguments: string }).arguments).toBe(`{"sql":"select '**x**'"}`);
+  });
+
   it("reports a cut off reply as incomplete and a refusal as a failure", () => {
     expect(fromClaude(msg([{ type: "text", text: "half" }], "max_tokens"))).toMatchObject({ status: "incomplete", incompleteDetails: { reason: "max_output_tokens" } });
     expect(fromClaude(msg([], "refusal"))).toMatchObject({ status: "failed", error: { code: "refusal" } });

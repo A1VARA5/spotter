@@ -1,5 +1,6 @@
 // The few words that change for a small business. Same screens, same code path; families read as before.
 import type { HouseholdKind } from "@/core/households";
+import type { TrackState } from "./format";
 
 export type Labels = {
   /** Each spender kind as a short tag. */
@@ -33,3 +34,21 @@ export const LABELS: Record<HouseholdKind, Labels> = {
 };
 
 export const labelsFor = (kind: HouseholdKind | undefined): Labels => LABELS[kind ?? "family"];
+
+// ---------- one vocabulary for what happened to a payment ----------
+// Every page says it the same way: the dashboard, Try, Activity, people pages, Watchtower and Gran's view.
+// short: chips, chart categories and Watchtower's outcome column. long: status pills and result lines.
+// explain: the one plain sentence after it. Held money is "on hold at PayPal" and never counts as spent.
+export const OUTCOME_WORDS: Record<TrackState, { short: string; long: string; explain: string }> = {
+  checking: { short: "Checking", long: "Checking", explain: "Spotter is looking at it. No money has moved." },
+  moving: { short: "Paying", long: "Paying", explain: "Approved. PayPal is paying it now." },
+  held: { short: "Waiting", long: "Waiting for you", explain: "PayPal is holding the money until you approve or deny it." },
+  paid: { short: "Paid", long: "Paid", explain: "Within the rules, and nothing looked wrong." },
+  blocked: { short: "Stopped", long: "Stopped", explain: "Spotter stopped it before any money moved." },
+  protected: { short: "Protected", long: "Protected, not sent", explain: "Not sent the unsafe way. Pay with a protected PayPal payment instead." },
+  returned: { short: "Denied", long: "Denied, money released", explain: "You said no, so PayPal released the hold. Nothing was paid." },
+  failed: { short: "Failed", long: "PayPal said no", explain: "PayPal didn't take the payment. Nothing was paid." },
+};
+
+/** Money waiting on a decision, in the same words everywhere. */
+export const ON_HOLD = "on hold at PayPal";

@@ -2,6 +2,7 @@
 import { Iphone, IosActions, IosNotification, LockScreen } from "@/app/landing/Devices";
 import type { SetupStep } from "./Setup";
 import type { HouseholdKind } from "@/core/households";
+import { ON_HOLD } from "@/ui/labels";
 
 type Person = { name: string; kind: string };
 
@@ -10,7 +11,7 @@ export function Preview({ step, spotterName, people, kind = "family" }: { step: 
   const biz = kind === "business";
   const someone = people.find((p) => p.kind !== "agent")?.name ?? people[0]?.name ?? (biz ? "Tom" : "Gran");
   const caption: Record<SetupStep, string> = {
-    name: `This is how ${me === "you" ? "you'll" : `${me} will`} hear about a payment that needs a look.`,
+    name: `This is how ${me === "you" ? "you'll" : `${me} will`} hear about a payment that needs a look. Telegram and Discord alerts can deny it on the spot; approving always needs your PIN on the dashboard.`,
     pin: "Approving needs your PIN, so an AI agent or anyone with your phone can't say yes for you.",
     people: biz ? `When ${someone} pays a new supplier or more than you set, it waits for you.` : `When ${someone} tries something bigger than you set, it waits for you.`,
     connect: biz ? "Once connected, they forward the invoice or the agent pays as usual. Spotter does the rest." : "Once connected, they forward the email or tap pay as usual. Spotter does the rest.",
@@ -43,7 +44,7 @@ export function Preview({ step, spotterName, people, kind = "family" }: { step: 
               <p className="mail-mini-body">
                 {biz
                   ? "Not sent. The invoice from Harbourline Packaging says the bank details changed and asks for a bank transfer. Ring them on a number you already have, then pay through PayPal."
-                  : `Held, not paid. £2.99 to RM Parcel Services is on hold until ${me === "you" ? "your spotter" : me} says yes. Why: the link is not the delivery company's real address.`}
+                  : `Waiting for ${me === "you" ? "your spotter" : me}, not paid. £1.99 to Larkhill Parcels is ${ON_HOLD}. Why: the link is not the delivery company's real address.`}
               </p>
             </div>
           ) : (
@@ -60,7 +61,8 @@ export function Preview({ step, spotterName, people, kind = "family" }: { step: 
                       : "A new number asked her for Friends and Family. The money is on hold."
                 }
               />
-              <IosActions items={[{ label: "Approve" }, { label: "Deny", tone: "danger" }]} />
+              {/* Same as the real alerts: Deny works from the phone, approving needs the PIN on the dashboard. */}
+              <IosActions items={[{ label: "Deny", tone: "danger" }, { label: "Review with PIN" }]} />
             </>
           )}
         </LockScreen>

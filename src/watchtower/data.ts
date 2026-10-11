@@ -5,6 +5,7 @@
 import type { Payment, Spender } from "@/core/lifecycle";
 import type { FlagKind, Severity } from "@/core/grounding";
 import { money, trackState } from "@/ui/format";
+import { OUTCOME_WORDS } from "@/ui/labels";
 import type { WatchView } from "@/core/watch";
 
 export type PaymentRow = {
@@ -121,17 +122,9 @@ const METHOD_LABEL: Record<string, string> = {
   bank_transfer: "Bank transfer",
   other: "Other",
 };
-const OUTCOME: Record<ReturnType<typeof trackState>, string> = {
-  checking: "Checking",
-  moving: "Paying",
-  held: "Waiting",
-  paid: "Paid",
-  blocked: "Stopped",
-  protected: "Protected",
-  returned: "Denied",
-  failed: "Failed",
-};
-export const OUTCOME_ORDER = ["Stopped", "Denied", "Waiting", "Protected", "Paid"];
+// The short words from the app's one vocabulary (src/ui/labels.ts), so Watchtower says what the dashboard says.
+const OUTCOME = Object.fromEntries(Object.entries(OUTCOME_WORDS).map(([k, v]) => [k, v.short])) as Record<ReturnType<typeof trackState>, string>;
+export const OUTCOME_ORDER = [OUTCOME.blocked, OUTCOME.returned, OUTCOME.held, OUTCOME.protected, OUTCOME.paid];
 const VERDICT: Record<string, string> = { likely_scam: "Likely scam", unclear: "Unclear", looks_fine: "Looks fine" };
 
 /** Payments that came from the labelled sample month carry this marker on their id. */

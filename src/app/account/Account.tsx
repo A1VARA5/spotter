@@ -5,6 +5,7 @@ import { readJson } from "@/ui/http";
 import { SignOut } from "@/ui/SignOut";
 import { TelegramLogin } from "./TelegramLogin";
 import { DiscordAlerts } from "./DiscordAlerts";
+import "./account.css";
 
 async function post(url: string, body: unknown) {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -80,11 +81,49 @@ export function Account({
   const [switchTelegram, setSwitchTelegram] = useState(false);
   const digits = (v: string) => v.replace(/\D/g, "").slice(0, 8);
 
+  const nameCard = (
+    <form
+      className="account-card"
+      aria-labelledby="a-name"
+      onSubmit={(e) => {
+        e.preventDefault();
+        nameForm.run(async () => {
+          await post("/api/setup/name", { spotterName: name });
+          router.refresh();
+        }, "Saved.");
+      }}
+    >
+      <h2 id="a-name" className="account-title">
+        Your name
+      </h2>
+      <p className="account-sub">Your people see it when a payment waits for you.</p>
+      <label className="sr-only" htmlFor="acc-name">
+        Your first name
+      </label>
+      <input id="acc-name" className="field" value={name} maxLength={40} autoComplete="given-name" onChange={(e) => setName(e.target.value)} />
+      <div>
+        <button className="btn btn-quiet" disabled={nameForm.busy || !name.trim()}>
+          Save name
+        </button>
+      </div>
+      <Status error={nameForm.error} done={nameForm.done} />
+    </form>
+  );
+
   return (
     <div className="account">
+      {nameCard}
+
+      <h2 className="account-group">Alerts</h2>
+      {demo && (
+        <p className="account-sub account-note">
+          In the demo you don&apos;t need any of these: everything that waits for you shows on your dashboard. Connect your own email, Telegram or Discord only if you
+          want to see a real alert arrive.
+        </p>
+      )}
       <section className="account-card" aria-labelledby="a-alerts">
         <h2 id="a-alerts" className="account-title">
-          Where Spotter tells you things
+          Email alerts
         </h2>
         <p className="account-sub">When someone&apos;s payment is held or stopped, Spotter emails you what happened and a link to decide.</p>
         <p className="account-value">
@@ -107,7 +146,7 @@ export function Account({
         ) : (
           <div>
             <button
-              className="btn btn-primary"
+              className="btn btn-quiet"
               disabled={alertForm.busy || !inbox}
               onClick={() => alertForm.run(async () => setCode((await post("/api/me/pair", { channel: "email" })).code), "")}
             >
@@ -141,33 +180,7 @@ export function Account({
 
       {discordApp && <DiscordAlerts appId={discordApp} connected={discordConnected} />}
 
-      <form
-        className="account-card"
-        aria-labelledby="a-name"
-        onSubmit={(e) => {
-          e.preventDefault();
-          nameForm.run(async () => {
-            await post("/api/setup/name", { spotterName: name });
-            router.refresh();
-          }, "Saved.");
-        }}
-      >
-        <h2 id="a-name" className="account-title">
-          Your name
-        </h2>
-        <p className="account-sub">Your people see it when a payment waits for you.</p>
-        <label className="sr-only" htmlFor="acc-name">
-          Your first name
-        </label>
-        <input id="acc-name" className="field" value={name} maxLength={40} autoComplete="given-name" onChange={(e) => setName(e.target.value)} />
-        <div>
-          <button className="btn btn-quiet" disabled={nameForm.busy || !name.trim()}>
-            Save name
-          </button>
-        </div>
-        <Status error={nameForm.error} done={nameForm.done} />
-      </form>
-
+      {!demo && <h2 className="account-group">Security</h2>}
       {!demo && (
         <form
           className="account-card"

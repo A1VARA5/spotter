@@ -28,6 +28,44 @@ export async function answerRequest(deps: Deps, request: Request, householdId: s
   return json({ reply: r.reply, payment });
 }
 
+/** A payment of this household, or null. */
+async function ownPayment(deps: Deps, householdId: string, paymentId: string): Promise<Payment | null> {
+  const [own] = await deps.db.query("select 1 from payments p join spenders s on s.id = p.spender_id where p.id = $1 and s.household_id = $2", [paymentId, householdId]);
+  return own ? getPayment(deps.db, paymentId) : null;
+}
+
+/**
+ * The spotter answers on the dashboard, with no alert channel needed: either the message says it's from the
+ * spotter (channel "alert"), or it's the Try demo's example ask left behind (answering as Tom). A question that
+ * went to a real person stays theirs. Same rules as the buttons: Not me releases, Yes never pays.
+ */
+export async function answerOnDashboard(deps: Deps, householdId: string, paymentId: string, answer: "not_me" | "it_was_me"): Promise<Response> {
+  const p = await ownPayment(deps, householdId, paymentId);
+  if (!p) return json({ error: "That payment isn't in your family." }, 404);
+  const w = p.was_it_you;
+  if (!w) return json({ error: "Spotter didn't ask anyone about this payment. You can still deny it." }, 409);
+  if (w.channel !== "alert" && w.channel !== "example") return json({ error: `Spotter asked ${w.who}, so only they can answer. You can still deny it.` }, 409);
+  const as: Answerer = w.channel === "example" ? { channel: "example", householdId } : { channel: "link" };
+  const r = await answerWasItYou(deps, { token: tokenFor(w, p.id), answer, as });
+  const payment = r.payment ? publicPayment(r.payment) : undefined;
+  // No code means something broke after the answer was saved (answerWasItYou put the question back): a server error.
+  if (!r.ok) return json({ error: r.reply, reply: r.reply, payment }, r.code ? STATUS[r.code] : 500);
+  return json({ reply: r.reply, payment });
+}
+
+/** The demo's newest example ask still waiting for Tom, so Try picks up where it was left after a reload. */
+export async function openExampleAsk(db: Deps["db"], householdId: string): Promise<{ payment: ReturnType<typeof publicPayment>; token: string } | null> {
+  const [p] = await db.query<Payment>(
+    `select p.* from payments p join spenders s on s.id = p.spender_id
+     where s.household_id = $1 and p.status = 'needs_approval' and p.was_it_you->>'channel' = 'example' and p.was_it_you->>'state' = 'asked'
+       and (p.was_it_you->>'expiresAt')::timestamptz > now()
+     order by p.created_at desc limit 1`,
+    [householdId],
+  );
+  if (!p?.was_it_you) return null;
+  return { payment: publicPayment(p), token: tokenFor(p.was_it_you, p.id) };
+}
+
 /** Only what the phones need: never the PayPal ids or the case file. */
 function publicPayment(p: Payment) {
   return { id: p.id, status: p.status, amount: p.amount, currency: p.currency, payee: p.request.payee.name, was_it_you: p.was_it_you ?? null };
