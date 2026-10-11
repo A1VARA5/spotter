@@ -14,7 +14,7 @@ export default async function LedgerPage() {
   const names = Object.fromEntries((await listSpenders(db, household.id)).map((s) => [s.id, s.name]));
   const payments = await listPayments(db, household.id, 500);
   return (
-    <AppShell db={db} household={household} current="activity" wide>
+    <AppShell db={db} household={household} current="activity" layout="wide">
       <h1 className="page-title">Activity</h1>
       <p className="lede" style={{ margin: "8px 0 20px" }}>
         Every payment Spotter has seen: who asked, what happened, why, what real shops charge, and the PayPal id.

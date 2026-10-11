@@ -33,7 +33,7 @@ export default async function WatchtowerPage() {
   }
 
   return (
-    <AppShell db={db} household={household} current="watchtower" wide>
+    <AppShell db={db} household={household} current="watchtower" layout="wide">
       <div className="wt-head">
         <h1 className="page-title">Watchtower</h1>
         <p className="lede">

@@ -1,5 +1,17 @@
 // The signed in app frame: a sidebar with the household, navigation with live counts and the people, like a
 // real product app. On phones the sidebar becomes a bottom tab bar.
+//
+// One layout system for every signed in page, picked with the `layout` prop (pages never set their own width):
+// - "rail" (default): a fluid primary column (up to 760 px, up to 1160 px from 1600 px wide) and, from 1280 px, a sticky
+//   context rail of 320 to 400 px beside it. Below 1280 px the rail drops under the primary column.
+// - "wide": the full width of the main area, for grids and boards (Activity, Watchtower).
+// - "narrow": one centred column of 720 px, for settings and reading (Account, privacy, terms).
+// Everything sits centred inside a 1600 px box, so no page hugs the sidebar with empty space beside it.
+//
+// For case files: every held card (.held) is a CSS container named "held". From 1600 px the primary column is wide
+// enough for two columns inside a card. Put two children in a `.held-cols` element and they sit side by side
+// whenever the card is at least 820 px wide (one column otherwise), or write your own `@container held (min-width: 820px)`.
+import { Fragment } from "react";
 import Link from "next/link";
 import { Activity, Binoculars, FlaskConical, Inbox, Plus, UserRound } from "lucide-react";
 import type { Db } from "@/db";
@@ -9,10 +21,27 @@ import { BrandMark } from "./components";
 import { SignOut } from "./SignOut";
 import { labelsFor } from "@/ui/labels";
 
-export type Section = "waiting" | "watchtower" | "activity" | "try" | "account" | `person:${string}`;
+export type Section = "waiting" | "watchtower" | "checks" | "activity" | "try" | "account" | `person:${string}`;
+export type Layout = "rail" | "wide" | "narrow";
 
-
-export async function AppShell({ db, household, current, wide = false, children }: { db: Db; household: Household; current: Section; wide?: boolean; children: React.ReactNode }) {
+export async function AppShell({
+  db,
+  household,
+  current,
+  layout = "rail",
+  rail,
+  railLabel = "More on this page",
+  children,
+}: {
+  db: Db;
+  household: Household;
+  current: Section;
+  layout?: Layout;
+  /** The context rail (layout "rail" only): beside the primary column from 1280 px, under it below that. */
+  rail?: React.ReactNode;
+  railLabel?: string;
+  children: React.ReactNode;
+}) {
   const people = await listSpenders(db, household.id);
   const [w] = await db.query<{ n: string }>(
     "select count(*)::text as n from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 and p.status = 'needs_approval'",
@@ -40,11 +69,18 @@ export async function AppShell({ db, household, current, wide = false, children 
         </div>
         <nav className="side-nav" aria-label="Main">
           {nav.map((n) => (
-            <Link key={n.key} href={n.href} className="side-link" aria-current={current === n.key ? "page" : undefined}>
-              <n.icon size={17} strokeWidth={1.8} aria-hidden="true" />
-              <span>{n.label}</span>
-              {"count" in n && n.count > 0 && <span className="side-count num">{n.count}</span>}
-            </Link>
+            <Fragment key={n.key}>
+              <Link href={n.href} className="side-link" aria-current={current === n.key ? "page" : undefined}>
+                <n.icon size={17} strokeWidth={1.8} aria-hidden="true" />
+                <span>{n.label}</span>
+                {"count" in n && n.count > 0 && <span className="side-count num">{n.count}</span>}
+              </Link>
+              {n.key === "watchtower" && (
+                <Link href="/checks" className="side-sublink" aria-current={current === "checks" ? "page" : undefined}>
+                  How Spotter checked it
+                </Link>
+              )}
+            </Fragment>
           ))}
         </nav>
         <div className="side-people">
@@ -70,8 +106,15 @@ export async function AppShell({ db, household, current, wide = false, children 
           <SignOut demo={household.demo} className="side-signout" />
         </div>
       </aside>
-      <main className="app-main" data-wide={wide || undefined}>
-        {children}
+      <main className="app-main">
+        <div className="page-frame" data-layout={layout} data-rail={(layout === "rail" && rail != null) || undefined}>
+          <div className="page-main">{children}</div>
+          {layout === "rail" && rail != null && (
+            <aside className="page-rail" aria-label={railLabel}>
+              {rail}
+            </aside>
+          )}
+        </div>
       </main>
       <nav className="tabbar" aria-label="Main">
         {nav.map((n) => (

@@ -15,7 +15,7 @@ export default async function DemoPage() {
   const { household } = await requirePageSession(db);
   const spenders = (await listSpenders(db, household.id)).map(({ id, name, kind }) => ({ id, name, kind }));
   return (
-    <AppShell db={db} household={household} current="try">
+    <AppShell db={db} household={household} current="try" layout="rail">
       <h1 className="page-title">Try a payment</h1>
       <p className="lede" style={{ margin: "8px 0 24px" }}>
         Each one sends a real request through Spotter: the rules, an AI check that has to quote its evidence, and a real

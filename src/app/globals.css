@@ -560,13 +560,6 @@ p {
   }
 }
 
-@media (min-width: 960px) {
-  .dash {
-    grid-template-columns: 7fr 5fr;
-    align-items: start;
-  }
-}
-
 .stack {
   display: grid;
   gap: 16px;
@@ -1755,14 +1748,6 @@ p {
 .mail-body { font-size: 15px; color: var(--ink); }
 
 /* ---------- getting started and people strip ---------- */
-.start-list { background: var(--paper); border-radius: var(--r-card); box-shadow: var(--raise); padding: 18px 20px; margin: 8px 0 20px; display: grid; gap: 12px; }
-.start-title { font-size: 18px; font-weight: 700; }
-.start-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.start-steps li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; }
-.start-tick { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; }
-.start-steps li[data-done="true"] .start-tick { background: var(--go); border-color: var(--go); color: #fff; }
-.start-steps a { font-weight: 600; }
-.start-done { color: var(--ink-2); text-decoration: line-through; text-decoration-color: rgb(74 88 102 / 0.4); }
 .people-strip { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 24px; }
 .person-chip { display: inline-flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); text-decoration: none; min-height: 44px; align-items: center; }
 .person-chip:hover { border-color: var(--ink-2); }
@@ -1983,7 +1968,6 @@ p {
 .app-main {
   min-width: 0;
   padding: 28px clamp(16px, 4vw, 48px) 96px;
-  max-width: 1080px;
 }
 
 @media (min-width: 900px) {
@@ -2074,7 +2058,6 @@ p {
 .app-main .held,
 .app-main .connect-card,
 .app-main .account-card,
-.app-main .start-list,
 .app-main .scenario,
 .app-main .allowance div {
   background: var(--paper);
@@ -2083,19 +2066,8 @@ p {
   box-shadow: none;
 }
 
-.app-main .start-list {
-  background: #fbfbf8;
-  margin: 0 0 28px;
-  padding: 16px 18px;
-}
 
-.app-main .start-title {
-  font-size: 14.5px;
-}
 
-.app-main .start-steps {
-  font-size: 14.5px;
-}
 
 .app-main .held {
   padding: 18px;
@@ -3366,7 +3338,6 @@ p {
 .app-main .held,
 .app-main .connect-card,
 .app-main .account-card,
-.app-main .start-list,
 .app-main .scenarios,
 .app-main .feed,
 .app-main .allowance,
@@ -3473,47 +3444,45 @@ p {
   }
 
   /* App: each page settles in, then its rows follow. */
-  .app-main > * {
+  .page-main > *,
+  .page-rail {
     animation: page-in 420ms var(--ease-out) both;
   }
 
-  .app-main > :nth-child(2) {
+  .page-main > :nth-child(2),
+  .page-rail {
     animation-delay: 60ms;
   }
 
-  .app-main > :nth-child(3) {
+  .page-main > :nth-child(3) {
     animation-delay: 120ms;
   }
 
-  .app-main > :nth-child(4) {
+  .page-main > :nth-child(4) {
     animation-delay: 180ms;
   }
 
   .app-main .feed-row,
   .app-main .scenario,
-  .app-main .person-row,
-  .start-steps li {
+  .app-main .person-row {
     animation: page-in 380ms var(--ease-out) both;
   }
 
   .app-main .feed-row:nth-child(2),
   .app-main .scenario:nth-child(2),
-  .app-main .person-row:nth-child(2),
-  .start-steps li:nth-child(2) {
+  .app-main .person-row:nth-child(2) {
     animation-delay: 40ms;
   }
 
   .app-main .feed-row:nth-child(3),
   .app-main .scenario:nth-child(3),
-  .app-main .person-row:nth-child(3),
-  .start-steps li:nth-child(3) {
+  .app-main .person-row:nth-child(3) {
     animation-delay: 80ms;
   }
 
   .app-main .feed-row:nth-child(4),
   .app-main .scenario:nth-child(4),
-  .app-main .person-row:nth-child(4),
-  .start-steps li:nth-child(4) {
+  .app-main .person-row:nth-child(4) {
     animation-delay: 120ms;
   }
 
@@ -5345,10 +5314,6 @@ p {
 
 .insp-reply[data-kind="agent"] .insp-reply-from {
   color: var(--hold);
-}
-
-.app-main[data-wide] {
-  max-width: none;
 }
 
 /* ---------- hints ---------- */
@@ -7338,10 +7303,6 @@ h3 {
   .peek[open] { animation: page-in 200ms var(--ease-out) both; }
 }
 @media (max-width: 560px) { .case-seen-grid { grid-template-columns: 1fr; } }
-.feed-case { grid-column: 1 / -1; }
-.feed-case > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); padding: 4px 0; width: max-content; }
-.feed-case > summary:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }
-.feed-case[open] > summary { margin-bottom: 8px; }
 /* A stopped payment and the safer one that replaced it (agent's own fix or the spotter's swap), linked both ways */
 .replaced-link { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--go-soft); font-size: 14px; line-height: 1.45; color: var(--ink); }
 .replaced-link svg { flex: none; margin-top: 2px; color: var(--go); }
@@ -7413,7 +7374,6 @@ h3 {
 .watch-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 14px; }
 .watch-list > li { display: grid; gap: 6px; }
 .watch-for { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
-.feed-watch { grid-column: 1 / -1; margin-top: 6px; }
 
 /* "Was it you?": the ask on held cards and feed rows */
 .wiy-line {
@@ -7698,3 +7658,458 @@ h3 {
 .photo-words-note { margin: 0; font-size: 13.5px; color: var(--stop); }
 .photo-words-check { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; color: var(--ink-2); }
 .photo-words-check[data-alarm="true"] { color: var(--stop); }
+
+/* ==========================================================================
+   One layout system for every signed in page (2026-10-11). Pages pick a type
+   with AppShell's `layout` prop and never set their own width:
+   rail   = fluid primary column (760 px, 1160 px from 1600 px) plus a sticky
+            context rail of 320 to 400 px from 1280 px (under it below that)
+   wide   = the whole main area (Activity, Watchtower)
+   narrow = one centred 720 px column (Account)
+   Everything is centred inside 1600 px.
+   ========================================================================== */
+.page-frame {
+  display: grid;
+  gap: 32px;
+  align-items: start;
+  margin-inline: auto;
+  max-width: 1600px;
+}
+
+.page-main,
+.page-rail {
+  min-width: 0;
+}
+
+.page-frame[data-layout="rail"] {
+  max-width: 760px;
+}
+
+.page-frame[data-layout="narrow"] {
+  max-width: 720px;
+}
+
+.page-frame[data-layout="wide"] {
+  max-width: none;
+}
+
+@media (min-width: 1280px) {
+  .page-frame[data-layout="rail"] {
+    max-width: 1600px;
+    grid-template-columns: minmax(0, 760px);
+    justify-content: center;
+    gap: 40px;
+  }
+
+  .page-frame[data-layout="rail"][data-rail] {
+    grid-template-columns: minmax(0, 760px) clamp(320px, 22vw, 400px);
+  }
+
+  /* The rail stays in view while the primary column scrolls; a long rail scrolls on its own. */
+  .page-rail {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    /* room for focus rings inside the scroll box */
+    padding: 4px;
+    margin: -4px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .page-frame[data-layout="rail"] {
+    grid-template-columns: minmax(0, 1160px);
+  }
+
+  .page-frame[data-layout="rail"][data-rail] {
+    grid-template-columns: minmax(0, 1160px) clamp(320px, 22vw, 400px);
+  }
+}
+
+/* Public reading pages (privacy, terms) are the narrow type too. */
+.shell.legal {
+  max-width: calc(720px + 2 * var(--gutter));
+}
+
+/* "How Spotter checked it": a small link under Watchtower, not a main nav item. */
+.side-sublink {
+  display: block;
+  padding: 3px 8px 6px 38px;
+  font-size: 12.5px;
+  color: #9aa6b1;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.side-sublink:hover,
+.side-sublink[aria-current="page"] {
+  color: #fff;
+}
+
+.side-sublink[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- dashboard: getting started chip ---------- */
+.start-chip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 20px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfbf8;
+  font-size: 14px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.start-chip-count {
+  font-weight: 650;
+}
+
+.start-chip-next {
+  color: var(--ink-2);
+}
+
+.start-chip-next a {
+  color: var(--ink);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.start-chip-hide {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.start-chip-hide:hover {
+  background: rgb(23 33 43 / 0.06);
+  color: var(--ink);
+}
+
+@media (max-width: 520px) {
+  .start-chip {
+    border-radius: 12px;
+  }
+}
+
+/* ---------- dashboard: held cards open one at a time ---------- */
+.app-main .held {
+  container: casefile / inline-size;
+}
+
+.held-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+  align-self: center;
+  transition: background-color 150ms ease;
+}
+
+.held-toggle:hover {
+  background: #f6f7f4;
+}
+
+.held-toggle svg {
+  transition: transform 200ms var(--ease-out);
+}
+
+.held[data-open] .held-toggle svg {
+  transform: rotate(180deg);
+}
+
+.held-body {
+  display: grid;
+  gap: 14px;
+}
+
+.held-body > * {
+  min-width: 0;
+}
+
+.held-body[hidden] {
+  display: none;
+}
+
+.held-sum {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 68ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.held-sum b {
+  color: var(--ink);
+}
+
+.held-sum[data-verdict="likely_scam"] b {
+  color: var(--stop);
+}
+
+/*
+ * Two columns inside a case file, for group B: give `.held-cols` two children (say the findings, then the
+ * evidence panels). They sit side by side when the case file's box is at least 820 px wide, which happens on
+ * held cards from 1600 px and in the wide panel that opens from Everything today. One column otherwise.
+ * Or write your own rules with `@container casefile (min-width: 820px)`.
+ */
+.held-cols {
+  display: grid;
+  gap: 14px;
+}
+
+.held-cols > * {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+@container casefile (min-width: 820px) {
+  .held-cols {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+/* ---------- dashboard rail: Everything today and the tools ---------- */
+.app-main .page-rail > .section-title:first-child {
+  margin-top: 0;
+}
+
+.app-main .dash {
+  gap: 20px;
+}
+
+.dash-rail {
+  display: grid;
+  gap: 28px;
+}
+
+.app-main .dash-rail .section-title {
+  margin: 0 0 10px;
+}
+
+.dash-tools {
+  display: grid;
+  gap: 8px;
+}
+
+.app-main .dash-tools .section-title {
+  margin-bottom: 2px;
+}
+
+.tool-btn {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.tool-btn:hover {
+  background: #fbfbf8;
+  border-color: #c3cbc5;
+}
+
+.tool-icon,
+.tool-go {
+  color: var(--ink-2);
+}
+
+.tool-text {
+  display: grid;
+  gap: 2px;
+}
+
+.tool-title {
+  font-size: 14.5px;
+  font-weight: 650;
+}
+
+.tool-sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.feed-why {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-open {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.feed-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 10px 4px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feed-open-quiet {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.feed-open-quiet:hover {
+  background: #f6f7f4;
+}
+
+/* ---------- panels that open over the page ---------- */
+.sheet {
+  border: 0;
+  padding: 0;
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(88dvh, 960px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.5);
+}
+
+.sheet[data-wide] {
+  width: min(980px, calc(100vw - 32px));
+}
+
+.sheet::backdrop {
+  background: rgb(13 20 28 / 0.55);
+}
+
+.sheet-box {
+  display: grid;
+  gap: 14px;
+  padding: 0 22px 24px;
+  container: casefile / inline-size;
+}
+
+.sheet-box > * {
+  min-width: 0;
+}
+
+.sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 10px;
+  background: var(--paper);
+}
+
+/* No title: the content brings its own heading, so the close button floats over its first line. */
+.sheet-head:not(:has(.sheet-title)) {
+  padding: 12px 0 0;
+  margin-bottom: -48px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.sheet-head:not(:has(.sheet-title)) .sheet-close {
+  pointer-events: auto;
+}
+
+.sheet-title {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.sheet-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sheet-close:hover {
+  background: #f6f7f4;
+}
+
+.sheet-state {
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .sheet,
+  .sheet[data-wide] {
+    width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .sheet-box {
+    padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet[open] {
+    animation: page-in 220ms var(--ease-out) both;
+  }
+}

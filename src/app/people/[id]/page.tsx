@@ -21,8 +21,28 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const { weekly, askAbove, blockedCategories } = spender.allowance;
   const used = await weekSpend(db, spender.id, weekly.currency);
   const recent = (await listPayments(db, household.id, 200)).filter((p) => p.spender_id === spender.id).slice(0, 8);
+  const recentPayments = (
+    <>
+      <h2 className="section-title">Recent payments</h2>
+      {recent.length === 0 ? (
+        <p className="lede">
+          Nothing yet. Their payments show up here as soon as they ask to pay. <a href="/demo">Try one with fake money</a>.
+        </p>
+      ) : (
+        <ul className="people-list">
+          {recent.map((p) => (
+            <li key={p.id} className="person-row">
+              <span className="person-name">{p.request.payee.name}</span>
+              <span className="person-kind num">{money(p.amount, p.currency)}</span>
+              <span className="feed-state" data-state={trackState(p.status)}>{STATE_LABEL[trackState(p.status)]}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
   return (
-    <AppShell db={db} household={household} current={`person:${spender.id}`}>
+    <AppShell db={db} household={household} current={`person:${spender.id}`} layout="rail" rail={recentPayments} railLabel={`${spender.name}'s recent payments`}>
       <p className="person-crumb">{labelsFor(household.kind).kind[spender.kind] ?? spender.kind}</p>
       <h1 className="page-title">{spender.name}</h1>
       <dl className="allowance">
@@ -68,22 +88,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         telegramBot={process.env.TELEGRAM_BOT_USERNAME ?? null}
         discordApp={process.env.DISCORD_BOT_TOKEN ? (process.env.DISCORD_APPLICATION_ID ?? null) : null}
       />
-      <h2 className="section-title">Recent payments</h2>
-      {recent.length === 0 ? (
-        <p className="lede">
-          Nothing yet. Their payments show up here as soon as they ask to pay. <a href="/demo">Try one with fake money</a>.
-        </p>
-      ) : (
-        <ul className="people-list">
-          {recent.map((p) => (
-            <li key={p.id} className="person-row">
-              <span className="person-name">{p.request.payee.name}</span>
-              <span className="person-kind num">{money(p.amount, p.currency)}</span>
-              <span className="feed-state" data-state={trackState(p.status)}>{STATE_LABEL[trackState(p.status)]}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </AppShell>
   );
 }

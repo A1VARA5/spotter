@@ -8,8 +8,7 @@
   .brand,
   .lnav-links a,
   .nav-link,
-  .footer a,
-  .start-steps a {
+  .footer a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
