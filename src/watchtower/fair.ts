@@ -4,7 +4,7 @@
 // That cut two model turns from the first question a judge clicks.
 import type { PaymentRow } from "./data";
 import type { PriceSummary } from "./price";
-import { fairPrice, type PriceItem, type PriceRow } from "./widgetLogic";
+import { fairPrice, poundsShort, type PriceItem, type PriceRow } from "./widgetLogic";
 
 /** How many paid items get a live price check per question: each one is a Channel3 search on the family's cap. */
 export const LIVE_ITEMS = 2;
@@ -33,10 +33,13 @@ const SIGN: Record<PriceItem["verdict"], PriceSign> = { fake: "too_cheap_to_be_r
 function meaningOf(i: PriceItem): string {
   const paid = i.outcome === "Paid";
   const notPaid = i.outcome === "Waiting" ? "Waiting for the spotter: nothing was paid yet." : `${i.outcome}: nothing was paid for this, so it is not a purchase.`;
+  // The going rate is the middle real price, the figure the Fair price tile prints ("around £169"), so the
+  // chat can't quote the cheapest shop instead and disagree with the tile.
+  const going = `Real shops sell it for around ${poundsShort(i.median)}: quote that going rate, the figure the Fair price tile shows.`;
   if (i.verdict === "fake")
     return paid
-      ? "Paid far below what real shops charge. That is a common sign of a fake shop, so it is not a saving and never a good price. Suggest checking the item arrives and is genuine."
-      : `Priced far below what real shops charge, a common sign of a fake shop. ${notPaid}`;
+      ? `Paid far below what real shops charge. ${going} That is a common sign of a fake shop, so it is not a saving and never a good price. Suggest checking the item arrives and is genuine.`
+      : `Priced far below what real shops charge, a common sign of a fake shop. ${going} ${notPaid}`;
   if (!paid) return notPaid;
   if (i.verdict === "over") return "Paid more than the cheapest real shop at the time.";
   if (i.verdict === "under") return "Paid a little less than the cheapest real shop at the time.";
@@ -68,6 +71,8 @@ export type FairBrief = {
     outcome: string;
     priceSign: PriceSign;
     meaning: string;
+    /** What real shops charge (the middle real price): the "around £169" the Fair price tile shows. */
+    goingRate: number;
     cheapestThen: number;
     shopThen: string;
     gapToCheapest: number;
@@ -105,6 +110,7 @@ export function fairBrief(payments: PaymentRow[], now: Date): FairBrief {
       outcome: i.outcome,
       priceSign: SIGN[i.verdict],
       meaning: meaningOf(i),
+      goingRate: i.median,
       cheapestThen: i.cheapest,
       shopThen: i.marketShop,
       gapToCheapest: i.gap,

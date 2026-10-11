@@ -108,4 +108,16 @@ describe("today's real shop prices, worded so a loose match can't pass as the us
     expect(t.cheapestToday).toBeNull();
     expect(t.note).toMatch(/no real shop/i);
   });
+
+  // N7 / m1 (round 4): the Fair price tile said "around £169" for the sample earbuds and the assistant said
+  // "about £159". The going rate is the middle real price, the same figure the tile prints, everywhere.
+  it("hands the assistant the tile's going rate for every item, and words a too cheap price with it", () => {
+    const b = fairBrief([lamp, kettle, earbuds], NOW);
+    const buds = b.items.find((i) => i.item === "Pro wireless earbuds 2")!;
+    expect(buds.goingRate).toBe(169);
+    expect(buds.meaning).toContain("around £169");
+    expect(buds.meaning).not.toContain("£159");
+    expect(b.tooCheap[0]!.goingRate).toBe(169);
+    expect(b.items.find((i) => i.item === "LED desk lamp")!.goingRate).toBe(27);
+  });
 });

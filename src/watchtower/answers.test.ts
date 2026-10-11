@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_COLOURS, answerTotal, dropEmptyAnswers, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
+import { ANSWER_COLOURS, answerLine, answerTotal, dropEmptyAnswers, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
+import { newestAnswer } from "./pages";
 
 type W = { type: string; dataMapping?: Record<string, Array<{ id: string; aggregation?: string }>> };
 const board = (answers: Record<string, W>) =>
@@ -145,5 +146,35 @@ describe("empty answer tiles", () => {
   it("returns the same board when every answer tile is set up", () => {
     const s = board({ "answer-1": { type: "bar-chart-grouped", dataMapping: byShop } });
     expect(dropEmptyAnswers(s)).toEqual({ state: s, removed: [] });
+  });
+});
+
+// N5 (round 4): a question cut off mid run (tab closed, reload, navigated away) left its empty tile under a
+// "Building your chart..." header on every reload. Only a run live in this tab may show the placeholder; an
+// empty newest tile with nothing running says it didn't finish (with Ask again), on every device.
+describe("answers that didn't finish", () => {
+  const empty = { pageId: "page-answers", widgetId: "answer-2", title: "What Leo spent on games", empty: true };
+  const done = { pageId: "page-answers", widgetId: "answer-1", title: "Spending by shop", empty: false };
+
+  it("shows Building only while a run is live in this tab", () => {
+    expect(answerLine(empty, true)).toEqual({ kind: "building", pageId: "page-answers", title: "What Leo spent on games" });
+  });
+
+  it("says an empty tile with no run behind it didn't finish (a reload, another device, a closed tab)", () => {
+    expect(answerLine(empty, false)).toEqual({ kind: "unfinished", pageId: "page-answers", title: "What Leo spent on games" });
+  });
+
+  it("names a finished answer whether or not something else is running, and nothing without an answer", () => {
+    expect(answerLine(done, false)).toEqual({ kind: "answer", pageId: "page-answers", widgetId: "answer-1", title: "Spending by shop" });
+    expect(answerLine(done, true)).toEqual({ kind: "answer", pageId: "page-answers", widgetId: "answer-1", title: "Spending by shop" });
+    expect(answerLine(null, false)).toBeNull();
+  });
+
+  it("a saved board with an interrupted tile opens with it as the newest answer, which nothing is building", () => {
+    const s = board({ "answer-2": { type: "bar-chart-grouped", dataMapping: {} }, "answer-1": { type: "bar-chart-grouped", dataMapping: byShop } });
+    const latest = newestAnswer(s);
+    expect(latest).toMatchObject({ widgetId: "answer-2", empty: true });
+    // nothing runs when the page opens
+    expect(answerLine(latest, false)?.kind).toBe("unfinished");
   });
 });

@@ -101,6 +101,25 @@ export function answerTotal(options: object, money: MoneyFields): { widgetId: st
 
 export { isEmptyAnswer };
 
+type Latest = { pageId: string; widgetId: string; title: string; empty: boolean } | null;
+export type AnswerLine =
+  | { kind: "building"; pageId: string; title: string }
+  | { kind: "unfinished"; pageId: string; title: string }
+  | { kind: "answer"; pageId: string; widgetId: string; title: string }
+  | null;
+
+/**
+ * The line above the Answers page. "Building your chart" only while a run is live in this tab. An empty
+ * newest tile with nothing running was cut off (the tab was closed, reloaded or left mid run, or Stop was
+ * pressed): it says it didn't finish and offers Ask again, which sets the same tile up (placeAnswer reuses
+ * an empty tile with the same title). The next finished run's tidy takes any leftover empty tile off.
+ */
+export function answerLine(latest: Latest, running: boolean): AnswerLine {
+  if (!latest) return null;
+  if (latest.empty) return { kind: running ? "building" : "unfinished", pageId: latest.pageId, title: latest.title };
+  return { kind: "answer", pageId: latest.pageId, widgetId: latest.widgetId, title: latest.title };
+}
+
 /**
  * Takes empty answer tiles off the Answers page (the widget agent failed or did nothing) and moves the
  * tiles below up into the gap. Returns the same board and no ids when there was nothing to take off.
