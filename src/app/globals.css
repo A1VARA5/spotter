@@ -1346,11 +1346,14 @@ p {
 .lfoot-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 26px;
+  gap: 0 26px;
   font-size: 15px;
 }
 
 .lfoot-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px; /* WCAG 2.5.8: at least 24 px, the same 32 px as the header links */
   text-decoration: none;
   color: #b9c3cc;
 }
@@ -2826,6 +2829,21 @@ p {
 
 @media (max-width: 560px) {
   .held .track-end { display: none; }
+  /* Round 6 (m4): Deny fully on the first screen of a 390x844 phone, above the tab bar. The amount and "held by
+     PayPal" are already in the card header and the page lede, so the hold track folds away, and the decision buttons
+     stack one per row so Deny is one line tall instead of matching a two line Approve beside it. The track stays in
+     the accessibility tree (visually hidden), so its label (amount, who to whom, held by PayPal) is still read. */
+  .held-body > .track {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .held .held-actions { grid-template-columns: minmax(0, 1fr); }
+  .app-main section.dash { gap: 12px; } /* beats the 20 px gap set further down this file */
   .people-strip { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 18px; scrollbar-width: none; }
   .person-chip { flex: none; }
 }

@@ -749,7 +749,7 @@ Source: `https://www.ag-grid.com/studio/examples/ai-quickstart/ai-quickstart-exa
  * OpenAI Responses API adapter for AG Studio.
  *
  * This is example code - copy it into your project and adapt as needed.
- * It maps between AG Studio's AI types and the OpenAI Responses API,
+ * It maps between the AG Studio AI types and the OpenAI Responses API,
  * handling encoding (AG → OpenAI), decoding (OpenAI → AG), and SSE streaming.
  */
 import type {

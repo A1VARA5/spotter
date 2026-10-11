@@ -8,6 +8,19 @@
     grid-template-columns: minmax(0, 1fr) clamp(360px, 19vw, 460px);
     gap: 48px;
   }
+  /* Round 6 (m1): with room to spare, the rail's reasons wrap in full instead of stopping at two lines. */
+  .page-frame[data-layout="rail"][data-rail]:has(.dash) .page-rail .feed-why {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+}
+
+/* Very wide screens (2200 px and up): the rail takes more of the spare width, so its rows read as sentences. */
+@media (min-width: 2200px) {
+  .page-frame[data-layout="rail"][data-rail]:has(.dash) {
+    grid-template-columns: minmax(0, 1fr) clamp(460px, 24vw, 640px);
+  }
 }
 
 /* The decision under the facts (or under the card while Spotter is still looking). */

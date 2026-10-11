@@ -27,7 +27,7 @@ Spotter sits between people and their money and reads text written by scammers, 
 - The model has no tools and returns structured output. Each flag must quote the message, and `src/core/grounding.ts` drops any quote it can't find.
 - Evidence can only make the decision stricter. Code's own findings (market price, changed bank details, cut up payments) join the flags without the model.
 - The case agent's findings must name the tool call they came from, its shop names come only from tool results, and the market check reaches it as trusted facts it can't contradict.
-- Watchtower's assistant never sees scam messages, its tools are read only, image and free text widgets are off, and the receipt is built from AG Studio's telemetry rather than the model's words.
+- Watchtower's assistant never sees scam messages, its tools are read only, image and free text widgets are off, and the receipt is built from the AG Studio telemetry rather than the model's words.
 
 ### Tool poisoning
 
@@ -53,7 +53,7 @@ Spotter sits between people and their money and reads text written by scammers, 
 - The link inspector follows redirects by hand, HEAD first, at most 5 hops, and checks every hop's host against localhost, `.local`, `.internal`, private, loopback, carrier and link local ranges. The connection itself goes through a guarded lookup, so a name that resolves differently the second time (DNS rebinding) can't slip between check and connect.
 - The case agent's KERNEL visit only opens http or https links that are in the payment's own message, one per case.
 - "Look at it safely" only opens the page already on the case file, checks its recorded final address, and walks every redirect hop again right before the browser starts.
-- Open risk: KERNEL's browsers run in KERNEL's network. I haven't confirmed that their egress blocks private and cloud metadata ranges (169.254.169.254 and friends). A page could navigate somewhere private with script after it loads. Spotter only ever shows what that browser loads as a picture or text, but it's an open question for KERNEL. Details in [kernel-notes.md](kernel-notes.md).
+- Open risk: KERNEL browsers run in the KERNEL network. I haven't confirmed that their egress blocks private and cloud metadata ranges (169.254.169.254 and friends). A page could navigate somewhere private with script after it loads. Spotter only ever shows what that browser loads as a picture or text, but it's an open question for KERNEL. Details in [kernel-notes.md](kernel-notes.md).
 
 ### Cost abuse
 
