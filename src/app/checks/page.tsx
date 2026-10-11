@@ -27,7 +27,7 @@ export default async function ChecksPage() {
 
   return (
     // "checks" has no main nav item of its own: the sidebar's small "How Spotter checked it" link points here.
-    <AppShell db={db} household={household} current={"checks" as Section}>
+    <AppShell db={db} household={household} current={"checks" as Section} layout="wide">
       <h1 className="page-title">How Spotter checked it</h1>
       <p className="lede ck-lede">
         Each payment goes past the same engines. Here is what each one does, and the latest time it worked for your family.

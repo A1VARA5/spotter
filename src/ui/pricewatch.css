@@ -1,0 +1,227 @@
+/* Price watch (PriceWatch.tsx): the one status badge, and the panel in the dashboard's Price watches dialog. */
+
+.pw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 1px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.pw-badge[data-tone="live"] {
+  border-color: rgb(31 122 85 / 0.3);
+  background: var(--go-soft);
+  color: var(--go-text);
+}
+
+.pw-badge[data-tone="live"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- the panel ---------- */
+.pw {
+  display: grid;
+  gap: 14px;
+  padding: 18px 0 20px;
+  border-top: 1px solid var(--line);
+}
+
+.watch-list > li:first-child .pw {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.pw-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pw-item {
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.pw-head .pw-badge {
+  margin-top: 2px;
+  flex: none;
+}
+
+/* Best now against nearly paid: two columns, the price the biggest thing in each. */
+.pw-compare {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pw-compare > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.pw-compare > div + div {
+  border-left: 1px solid var(--line);
+  background: #f8f9f7;
+}
+
+.pw-compare dt {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.pw-compare dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.pw-price {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.pw[data-state="dropped"] .pw-now .pw-price {
+  color: var(--go-text);
+}
+
+.pw-was .pw-price {
+  color: var(--ink-2);
+}
+
+.pw-where {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.pw-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 15.5px;
+  line-height: 1.45;
+}
+
+.pw-result svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--ink-2);
+}
+
+.pw[data-state="dropped"] .pw-result svg {
+  color: var(--go);
+}
+
+.pw-result:focus {
+  outline: none;
+}
+
+.pw-result:focus-visible {
+  outline: 2px solid var(--protect);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* The chart: recessive grid and axis text, a 2px line, the target dashed. */
+.pw-chart {
+  margin: 0;
+}
+
+.pw-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  overflow: visible;
+}
+
+.pw-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.pw-axis,
+.pw-target-label {
+  font-size: 12.5px;
+  fill: var(--ink-2);
+  font-family: inherit;
+}
+
+.pw-target-label {
+  font-weight: 650;
+  fill: var(--go-text);
+}
+
+.pw-target {
+  stroke: var(--go);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 4;
+}
+
+.pw-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.pw-chart[data-state="dropped"] .pw-line {
+  stroke: var(--go);
+}
+
+.pw-dot {
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+
+.pw-chart[data-state="dropped"] .pw-dot {
+  fill: var(--go);
+}
+
+.pw-hit {
+  fill: transparent;
+}
+
+.pw-chart-empty,
+.pw-source {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.pw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 420px) {
+  .pw-price {
+    font-size: 22px;
+  }
+}

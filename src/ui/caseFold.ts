@@ -46,10 +46,10 @@ type Page = NonNullable<Case["page"]>;
 /** The KERNEL catch to show open first, with the engine's name and what it proves in one line. Null when it caught nothing. */
 export function kernelLead(page: Page | undefined | null): Lead | null {
   if (!page) return null;
-  if (page.seen?.hidden.some((h) => h.instruction)) return { kind: "seen", line: "KERNEL's cloud browser read text on this page that people can't see, written to give your AI agent orders." };
+  if (page.seen?.hidden.some((h) => h.instruction)) return { kind: "seen", line: "The cloud browser (KERNEL) read text on this page that people can't see, written to give your AI agent orders." };
   if (page.faces?.compared && page.faces.differs) return { kind: "faces", line: "KERNEL opened this link as a desktop and as a phone at the same moment, and the page showed them different things." };
-  if (page.trail?.offsite) return { kind: "trail", line: `KERNEL's cloud browser saw where the money goes: ${page.trail.line ?? "card details leave this shop's own site."}` };
-  if (page.tools?.checked && page.tools.tools.some((t) => t.poisoned)) return { kind: "tools", line: "KERNEL's cloud browser found a tool on this page written to steer your AI agent." };
+  if (page.trail?.offsite) return { kind: "trail", line: `The cloud browser (KERNEL) saw where the money goes: ${page.trail.line ?? "card details leave this shop's own site."}` };
+  if (page.tools?.checked && page.tools.tools.some((t) => t.poisoned)) return { kind: "tools", line: "The cloud browser (KERNEL) found a tool on this page written to steer your AI agent." };
   return null;
 }
 

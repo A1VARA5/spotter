@@ -54,8 +54,8 @@ describe("which KERNEL catch is open as the first piece of evidence", () => {
     expect(kernelLead(page({ faces, trail } as never))?.kind).toBe("faces");
     const t = kernelLead(page({ trail } as never));
     expect(t?.kind).toBe("trail");
-    // The KERNEL name and what it proves, in one line.
-    expect(t?.line).toMatch(/^KERNEL/);
+    // The engine and what it proves, in one line: "The cloud browser (KERNEL) ...", never a possessive "KERNEL's".
+    expect(t?.line).toMatch(/^The cloud browser \(KERNEL\) /);
     expect(kernelLead(page({ trail: { ...trail, offsite: false } } as never))).toBeNull();
   });
 });

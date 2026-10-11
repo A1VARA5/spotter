@@ -1,5 +1,7 @@
 /* How Spotter checked it: one row per engine. Left, what it is and does; right, the family's own latest case.
    Hairline rules between rows like Activity, no coloured edges. */
+/* Wide layout, capped: the engines and the toolkit table use big screens without lines getting too long to read. */
+.page-frame[data-layout="wide"]:has(.ck-list) { max-width: 1800px; }
 .ck-lede { margin: 8px 0 24px; max-width: 64ch; }
 .ck-list {
   list-style: none;
@@ -26,7 +28,7 @@
   text-transform: uppercase;
   color: var(--ink-2);
 }
-.ck-does { color: var(--ink-2); font-size: 15px; text-wrap: pretty; }
+.ck-does { color: var(--ink-2); font-size: 15px; text-wrap: pretty; max-width: 72ch; }
 .ck-live {
   display: grid;
   gap: 6px;

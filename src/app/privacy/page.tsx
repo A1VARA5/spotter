@@ -29,7 +29,7 @@ export default function Privacy() {
         </li>
         <li>
           <strong>Channel3</strong> (real shop prices): the product name for price checks and price watches. A photo you check is sent to Channel3 to find the things
-          in it; Spotter never stores the photo, only Channel3&apos;s answer. For spot the difference, the shop page&apos;s screenshot is sent to find the same product.
+          in it; Spotter never stores the photo, only the answer from Channel3. For spot the difference, the shop page&apos;s screenshot is sent to find the same product.
         </li>
         <li>
           <strong>Telegram and Discord</strong>, only if you connect them: alerts (who, how much, to whom, and why) go through them, and messages you forward to the bot

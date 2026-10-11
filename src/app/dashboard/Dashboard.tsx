@@ -428,15 +428,11 @@ export function DashboardRail() {
               />
             }
           >
-            <p className="feed-meta">Spotter watches real shops (Channel3) and tells you when a price comes down. It never buys anything.</p>
+            <p className="feed-meta">Spotter checks real shop prices with Channel3 and tells you when one comes down. It never buys anything.</p>
             <ul className="watch-list">
               {listed.map((w) => (
                 <li key={w.id}>
-                  <p className="watch-for">
-                    {w.who ?? "Someone"} nearly paid {money(w.nearlyPaid, w.currency)} for {w.item}
-                    {w.createdBy === "agent" ? " (the agent asked Spotter to watch it)" : ""}
-                  </p>
-                  <PriceWatch watch={w} onChanged={refresh} updates={watchUpdates} />
+                  <PriceWatch watch={w} onChanged={refresh} updates={watchUpdates} variant="panel" />
                 </li>
               ))}
             </ul>

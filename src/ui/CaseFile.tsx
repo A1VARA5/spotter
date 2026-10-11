@@ -475,7 +475,7 @@ function TwoFaces({ page, compact = false }: { page: CasePageT; compact?: boolea
     <section className="faces" data-differs={differs ? "true" : undefined} aria-labelledby={titleId}>
       <PanelHead id={titleId} title="Two faces" engine="Two KERNEL browsers, same moment">
         <p>
-          Some scam pages show security scanners a harmless page and only show phones the card form. Spotter opens the link twice at the same moment in KERNEL&apos;s cloud browsers, once as a desktop
+          Some scam pages show security scanners a harmless page and only show phones the card form. Spotter opens the link twice at the same moment in two cloud browsers (KERNEL), once as a desktop
           and once as a phone, and compares what each was shown.
         </p>
         <p>It can&apos;t see what a page shows to one person only, at another time.</p>
@@ -548,7 +548,7 @@ function MoneyTrailPanel({ trail }: { trail: NonNullable<CasePageT["trail"]> }) 
   const titleId = useId();
   return (
     <section className="trail" data-offsite={trail.offsite ? "true" : undefined} aria-labelledby={titleId}>
-      <PanelHead id={titleId} title="Where the money goes" engine="KERNEL's log of every page loaded">
+      <PanelHead id={titleId} title="Where the money goes" engine="The cloud browser's log of every page loaded (KERNEL)">
         <p>
           The cloud browser keeps its own log of every page it loaded. Spotter reads it to show where the link really sends people, and reads the card form to see where details typed into it would go.
         </p>
@@ -586,7 +586,7 @@ function ProofCard({ proof, peekScrolls }: { proof: NonNullable<CasePageT["proof
   ];
   return (
     <section className="proof" aria-labelledby={titleId}>
-      <PanelHead id={titleId} title="Proof Spotter never touched it" engine="Counted from KERNEL's own log">
+      <PanelHead id={titleId} title="Proof Spotter never touched it" engine="Counted from the cloud browser's own log (KERNEL)">
         <p>These numbers come from the cloud browser&apos;s own record of the visit, not from Spotter&apos;s word: every click, key and scroll it saw, and every call Spotter made to it.</p>
         <p>A count it didn&apos;t record says Not recorded, never zero. The fingerprints let anyone check later that the screenshot and page text weren&apos;t changed.</p>
       </PanelHead>
@@ -854,7 +854,7 @@ function OpenedPage({
       <figure className="case-seen" id={id} tabIndex={-1} aria-labelledby={titleId}>
         <PanelHead id={titleId} title="What a person sees vs what your agent read" engine="Cloud browser (KERNEL)">
           <p>
-            Spotter opened the shop in KERNEL&apos;s cloud browser and compared the text a person can see with everything an AI agent reads on the page. Text hidden from people but written to give an
+            Spotter opened the shop in a cloud browser (KERNEL) and compared the text a person can see with everything an AI agent reads on the page. Text hidden from people but written to give an
             agent orders is a trick called prompt injection.
           </p>
           <p>It only looks: it never types, clicks or buys.</p>

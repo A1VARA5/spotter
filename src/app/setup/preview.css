@@ -1,0 +1,568 @@
+/* Setup: the named steps on the left and the live preview on the right (Setup.tsx, Preview.tsx). */
+
+/* ---------- left: named steps, intro, what's next ---------- */
+.setup-steps {
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.setup-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setup-step-n {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1.5px solid var(--line);
+  color: var(--ink-2);
+  background: var(--paper);
+}
+
+.setup-steps li[data-done] .setup-step-n {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.setup-steps li[aria-current="step"] {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.setup-steps li[aria-current="step"] .setup-step-n {
+  background: var(--hold);
+  border-color: var(--hold);
+  color: var(--ink);
+}
+
+.setup-intro {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 46ch;
+  margin-bottom: 14px;
+  padding-left: 12px;
+  border-left: 3px solid var(--hold);
+}
+
+.setup-next {
+  color: var(--ink-2);
+  font-size: 14.5px;
+}
+
+.setup-go {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px 16px;
+}
+
+.setup-h2 {
+  font-size: 19px;
+  line-height: 1.3;
+  margin-top: 28px;
+}
+
+.setup-then {
+  margin-top: 20px;
+  color: var(--ink-2);
+  font-size: 15px;
+  max-width: 52ch;
+}
+
+.setup-then b {
+  color: var(--ink);
+}
+
+/* Alert channel choice: three equal segments, the picked one inked. */
+.channel-group {
+  border: 0;
+  padding: 0;
+  margin: 4px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.channel {
+  min-height: 52px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border-radius: var(--r-btn);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15.5px;
+  text-align: center;
+  transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+
+.channel:hover {
+  border-color: var(--ink-2);
+}
+
+.channel[data-checked="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.channel:has(input:focus-visible) {
+  outline: 3px solid var(--protect);
+  outline-offset: 2px;
+}
+
+.channel-on {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--go-text);
+}
+
+/* ---------- right: the live preview ---------- */
+.pv-stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.preview-phone {
+  width: auto;
+  height: auto;
+}
+
+/* The bit of the preview that is your own typing. */
+.pv-live {
+  background: rgb(242 183 5 / 0.35);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.pv-whose {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: rgb(0 0 0 / 0.45);
+}
+
+.pv-alert {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.pv-alert[data-sketch] {
+  opacity: 0.45;
+}
+
+.pinpad-sub {
+  font-size: 15px;
+  opacity: 0.8;
+  margin-top: -8px;
+}
+
+.pinpad-dots i {
+  transition: background-color 120ms var(--ease-out);
+}
+
+/* Who you look out for: a card docked to the phone's left edge, the newest person marked. */
+.pv-family {
+  position: relative;
+  z-index: 2;
+  width: 250px;
+  padding: 14px 14px 10px;
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 18px 40px -12px rgb(0 0 0 / 0.55);
+}
+
+.pv-family-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.pv-family ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.pv-family li {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.pv-family li:first-child {
+  border-top: 0;
+}
+
+.pv-family li[data-new] {
+  margin: 2px -8px 0;
+  padding: 8px;
+  border-radius: 10px;
+  border-top-color: transparent;
+  background: var(--hold-soft);
+}
+
+.pv-av {
+  grid-row: span 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--chalk);
+  border: 1px solid var(--line);
+}
+
+.pv-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pv-kind {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.pv-empty {
+  color: var(--ink-2);
+  grid-template-columns: 1fr !important;
+}
+
+/* Telegram's inline buttons under the alert. */
+.pv-tg-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  max-width: 86%;
+  width: 86%;
+}
+
+.pv-tg-keys span {
+  padding: 9px 6px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(43 82 49 / 0.42);
+  backdrop-filter: blur(6px);
+}
+
+/* A Discord style direct message, dark. */
+.pv-dc {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #313338;
+  color: #dbdee1;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.pv-dc-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid rgb(0 0 0 / 0.3);
+  color: #f2f3f5;
+}
+
+.pv-dc-bar .brand-mark {
+  width: 30px;
+  height: 30px;
+  display: block;
+  border-radius: 50%;
+}
+
+.pv-dc-app,
+.pv-dc-who i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pv-dc-app {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #5865f2;
+  color: #fff;
+}
+
+.pv-dc-msg {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  padding: 18px 14px;
+  margin-top: auto;
+  margin-bottom: 40px;
+}
+
+.pv-dc-av .brand-mark {
+  width: 40px;
+  height: 40px;
+  display: block;
+  border-radius: 50%;
+}
+
+.pv-dc-who {
+  color: #f2f3f5;
+}
+
+.pv-dc-who i {
+  color: #949ba4;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.pv-dc-embed {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border-left: 4px solid var(--hold);
+  background: #2b2d31;
+  display: grid;
+  gap: 4px;
+}
+
+.pv-dc-title {
+  font-weight: 700;
+  color: #f2f3f5;
+}
+
+.pv-dc-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pv-dc-btns span {
+  padding: 7px 14px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #4e5058;
+  color: #fff;
+}
+
+.pv-dc-btns span[data-tone="danger"] {
+  background: #da373c;
+}
+
+/* An email app, open on Spotter's alert. */
+.pv-mail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 20px 40px;
+  font-size: 15.5px;
+  line-height: 1.4;
+}
+
+.pv-mail-bar {
+  color: #0a84ff;
+  font-size: 17px;
+  padding-bottom: 6px;
+}
+
+.pv-mail-head {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.pv-mail-head span:last-child {
+  display: grid;
+  line-height: 1.25;
+}
+
+.pv-mail-head i {
+  font-style: normal;
+  font-size: 13px;
+  color: #8e8e93;
+}
+
+.pv-mail-av .brand-mark {
+  width: 40px;
+  height: 40px;
+  display: block;
+  border-radius: 50%;
+}
+
+.pv-mail-subj {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.pv-mail-chip {
+  width: fit-content;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--hold);
+  color: var(--ink);
+}
+
+.pv-mail-body {
+  color: #333;
+}
+
+.pv-mail-btn {
+  width: fit-content;
+  margin-top: 4px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- placement ---------- */
+@media (min-width: 1000px) {
+  /* The dark half runs the full height of the page, however long the question side gets. */
+  .setup-split {
+    background: linear-gradient(to right, var(--paper) 50%, #0d141c 50%);
+  }
+
+  /* People step: the card overlaps the phone's lower left edge, under the alert, like a sheet laid beside it. */
+  .pv-stage[data-step="people"] {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  /* Starts below the alert and its Deny / Review menu, so neither is covered. */
+  .pv-stage[data-step="people"] .pv-family {
+    margin: 330px -72px 0 0;
+  }
+}
+
+/* The phone grows with the panel instead of sitting small in the middle of it. */
+@media (min-width: 1000px) and (min-height: 860px) {
+  .pv-stage {
+    zoom: 1.1;
+  }
+}
+
+@media (min-width: 1800px) and (min-height: 1000px) {
+  .pv-stage {
+    zoom: 1.3;
+  }
+
+  /* The question grows a little too, so the two halves stay in proportion. */
+  .setup-split .setup-shell {
+    zoom: 1.1;
+  }
+}
+
+@media (min-width: 2400px) and (min-height: 1300px) {
+  .pv-stage {
+    zoom: 1.6;
+  }
+
+  .setup-split .setup-shell {
+    zoom: 1.25;
+  }
+}
+
+/* Phones and narrow windows: the preview comes after the question as a window onto the part of the phone that
+   matters (the chat's latest messages, or the top of the lock screen), at a size that can still be read. */
+@media (max-width: 999px) {
+  .setup-preview {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    margin: 8px var(--gutter) 40px;
+    padding: 20px 12px 18px;
+    border-radius: var(--r-card);
+    background: #0d141c;
+  }
+
+  .pv-stage {
+    gap: 16px;
+    max-width: 100%;
+  }
+
+  /* The phone is 616 px tall at this scale (Preview.tsx, scale 0.7); show 400 px of it. */
+  .pv-stage .device {
+    max-height: 400px;
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, #000 82%, transparent);
+  }
+
+  .pv-stage[data-anchor="end"] .device {
+    mask-image: linear-gradient(to top, #000 82%, transparent);
+  }
+
+  .pv-stage[data-anchor="end"] .device-body {
+    top: -216px;
+  }
+
+  .pv-family {
+    position: static;
+    width: min(100%, 300px);
+  }
+
+  .setup-preview .setup-preview-cap {
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pv-family li[data-new] {
+    animation: pv-in 220ms var(--ease-out) both;
+  }
+}
+
+@keyframes pv-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .channel,
+  .pinpad-dots i {
+    transition: none;
+  }
+}
