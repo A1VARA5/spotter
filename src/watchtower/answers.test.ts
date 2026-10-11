@@ -79,13 +79,13 @@ describe("an answer's total", () => {
 
   it("adds up what the answer chart shows, in pounds for money", () => {
     const t = answerTotal(withData("answer-1", [{ p: "BlockWorld", v: 4.99 }, { p: "TuneBox", v: 4.99 }], [{ type: "bar", yKey: "v" }]), money);
-    expect(t).toEqual({ widgetId: "answer-1", text: "£9.98" });
+    expect(t).toMatchObject({ widgetId: "answer-1", text: "£9.98" });
   });
 
   it("adds every series and counts plainly when the chart counts", () => {
     const counts = { categoryKey: [{ id: "payments.who" }], valueKey: [{ id: "payments.id", aggregation: "count" }] };
     const t = answerTotal(withData("answer-2", [{ a: 2, b: 1 }, { a: 3, b: "x" }], [{ type: "bar", yKey: "a" }, { type: "bar", yKey: "b" }], counts), money);
-    expect(t).toEqual({ widgetId: "answer-2", text: "6" });
+    expect(t).toMatchObject({ widgetId: "answer-2", text: "6" });
   });
 
   it("reads a donut's slices", () => {

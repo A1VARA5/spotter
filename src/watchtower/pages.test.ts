@@ -238,7 +238,7 @@ describe("a tile for a typed question (place_widget)", () => {
   it("knows the newest answer: the tile at the top of the Answers page, its title and whether it's still empty", () => {
     expect(newestAnswer(board())).toBeNull();
     const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "Leo on games");
-    expect(newestAnswer(one.state)).toEqual({ pageId: one.pageId, widgetId: one.widgetId, title: "Leo on games", empty: true });
+    expect(newestAnswer(one.state)).toEqual({ pageId: one.pageId, widgetId: one.widgetId, type: "bar-chart-grouped", title: "Leo on games", empty: true });
     (pageOf(one.state, one.pageId).widgets[one.widgetId] as unknown as { dataMapping: unknown }).dataMapping = { valueKey: [{ id: "payments.amount" }] };
     expect(newestAnswer(one.state)?.empty).toBe(false);
   });

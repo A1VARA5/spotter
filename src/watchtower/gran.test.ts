@@ -125,7 +125,7 @@ describe("the month as Gran sees it", () => {
   });
 
   it("is empty but valid with no rows", () => {
-    expect(granMonth([], new Map(), { who: "Margaret", spotter: "Sam", now: NOW })).toEqual({ kept: 0, stopped: [], waiting: [], tricks: [] });
+    expect(granMonth([], new Map(), { who: "Margaret", spotter: "Sam", now: NOW })).toEqual({ kept: 0, keptSample: 0, stopped: [], waiting: [], tricks: [] });
   });
 
   it("hands the agent the month without a single id, with days ago instead of timestamps", () => {
@@ -221,7 +221,7 @@ describe("who decided, and why, in Gran's words", () => {
   it("tells a Not me stop by what happened: someone said they were the relative, and the relative said no", () => {
     const notes = new Map([["tom", note("tom", ["Someone on a new number says they're Tom."])]]);
     const m = granMonth([row({ id: "tom", who: "Gran", outcome: "Denied", amount: 250, wasItYou: "Tom: not me" })], notes, { who: null, spotter: "Sam", now: NOW });
-    expect(m.stopped[0]!.sentence).toBe("Someone said they were Tom. Tom says they didn't send it.");
+    expect(m.stopped[0]!.sentence).toBe("Someone said they were Tom. Tom said they didn't send it.");
     expect(m.stopped[0]!.by).toBe("Nothing was paid");
   });
 
@@ -237,7 +237,7 @@ describe("who decided, and why, in Gran's words", () => {
   it("shows one row for repeats of the same payment (same payee and amount), newest first, with how many times", () => {
     const rows = [
       row({ id: "a", outcome: "Denied", payee: "jamie.k1994@mail.example", amount: 250, when: ago(1), wasItYou: "Tom: not me" }),
-      row({ id: "b", outcome: "Denied", payee: "Jamie.k1994@mail.example ", amount: 250, when: ago(2) }),
+      row({ id: "b", outcome: "Denied", payee: "Jamie.k1994@mail.example ", amount: 250, when: ago(2), wasItYou: "Tom: not me" }),
       row({ id: "c", outcome: "Denied", payee: "Larkhill Parcels", amount: 1.99, when: ago(1.5) }),
       row({ id: "d", outcome: "Waiting", payee: "jamie.k1994@mail.example", amount: 250, when: ago(0.5) }),
     ];
@@ -271,8 +271,8 @@ describe("who decided, and why, in Gran's words", () => {
 
   it("falls back to a calm line that names the relative when there is no reason, in English and Polish", () => {
     const rows = [row({ id: "tom", outcome: "Denied", wasItYou: "Tom: not me" })];
-    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe("Someone said they were Tom. Tom says they didn't send it.");
-    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.sentence).toBe("Ktoś podawał się za osobę: Tom. Tom mówi, że tego nie wysłał(a).");
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe("Someone said they were Tom. Tom said they didn't send it.");
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.sentence).toBe("Ktoś podawał się za osobę: Tom. Tom powiedział(a), że tego nie wysłał(a).");
     expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.by).toBe("Nic nie zostało zapłacone");
   });
 
@@ -293,5 +293,68 @@ describe("who decided, and why, in Gran's words", () => {
   it("uses the rule reason only when nothing else was found", () => {
     const m = granMonth([row({ id: "r", outcome: "Stopped" })], new Map([["r", note("r", ["Over the £30.00 limit."])]]), { who: null, spotter: "Sam", now: NOW });
     expect(m.stopped[0]!.sentence).toBe("Over the £30.00 limit.");
+  });
+});
+
+// R6-N2 and m9: Gran read "Tom says they didn't send it ... They tried 2 times" when one of the two was
+// Sam's Not me, and "£954.97 kept this month" mixed the sample month with her own payments.
+describe("round 6: who said no, and whose money", () => {
+  const jamie = (o: Partial<GranRow> & Pick<GranRow, "id">) => row({ outcome: "Denied", payee: "jamie.k1994@mail.example", amount: 250, ...o });
+
+  it("never merges repeats answered by different people, and names who said no on each, in the past tense", () => {
+    const m = granMonth([jamie({ id: "tom", when: ago(1), wasItYou: "Tom: not me" }), jamie({ id: "sam", when: ago(2), wasItYou: "Sam: not me" })], new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped.map((s) => [s.id, s.times, s.sentence])).toEqual([
+      ["tom", 1, "Someone said they were Tom. Tom said they didn't send it."],
+      ["sam", 1, "Someone said they were Sam. Sam said they didn't send it."],
+    ]);
+    expect(m.kept).toBe(500);
+  });
+
+  it("never folds the spotter's no into the relative's Not me", () => {
+    const m = granMonth([jamie({ id: "tom", when: ago(1), wasItYou: "Tom: not me" }), jamie({ id: "deny", when: ago(2) })], new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped.map((s) => [s.id, s.times, s.by])).toEqual([
+      ["tom", 1, "Nothing was paid"],
+      ["deny", 1, "Sam said no"],
+    ]);
+  });
+
+  it("never merges the spotter's own Not me with the same spotter's plain no", () => {
+    const m = granMonth([jamie({ id: "notme", when: ago(1), wasItYou: "Sam: not me" }), jamie({ id: "deny", when: ago(2) })], new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped.map((s) => [s.id, s.times, s.by])).toEqual([
+      ["notme", 1, "Nothing was paid"],
+      ["deny", 1, "Sam said no"],
+    ]);
+  });
+
+  it("still merges repeats the same person said no to, and the total counts every try", () => {
+    const m = granMonth([jamie({ id: "a", when: ago(1), wasItYou: "Tom: not me" }), jamie({ id: "b", when: ago(2), wasItYou: "Tom: not me" })], new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped.map((s) => [s.id, s.times])).toEqual([["a", 2]]);
+    expect(m.kept).toBe(500);
+    expect(granForAgent(m, NOW).keptThisMonth).toBe("£500.00");
+  });
+
+  it("past tense in Polish too", () => {
+    const m = granMonth([jamie({ id: "tom", wasItYou: "Tom: not me" })], new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" });
+    expect(m.stopped[0]!.sentence).toBe("Ktoś podawał się za osobę: Tom. Tom powiedział(a), że tego nie wysłał(a).");
+  });
+
+  it("keeps the sample month's money apart from Gran's own, on screen and for the assistant", () => {
+    const rows = [
+      jamie({ id: "live", wasItYou: "Tom: not me" }),
+      row({ id: "s1", outcome: "Stopped", payee: "New number (Hi Mum)", amount: 400, sample: "Yes" }),
+      row({ id: "s2", outcome: "Denied", payee: "parcel-redelivery.co", amount: 2.99, sample: "Yes" }),
+    ];
+    const m = granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(m.kept).toBe(250);
+    expect(m.keptSample).toBe(402.99);
+    const told = granForAgent(m, NOW);
+    expect(told.keptThisMonth).toBe("£250.00");
+    expect(told.keptInSampleMonth).toBe("£402.99");
+    // only sample: her own total is nothing, and the sample total is labelled
+    const onlySample = granMonth(rows.slice(1), new Map(), { who: null, spotter: "Sam", now: NOW });
+    expect(onlySample.kept).toBe(0);
+    expect(onlySample.keptSample).toBe(402.99);
+    // no sample at all: nothing for the assistant to mix up
+    expect(granForAgent(granMonth(rows.slice(0, 1), new Map(), { who: null, spotter: "Sam", now: NOW }), NOW)).not.toHaveProperty("keptInSampleMonth");
   });
 });

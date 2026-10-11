@@ -12,6 +12,7 @@ import type { GranSafeDef, GranScamsDef, GranWaitingDef } from "./GranWidgets";
 import type { AiChecksDef } from "./AiChecks";
 import type { AnswerFeed, AnswerSummaryDef } from "./AnswerCard";
 import type { ReceiptBook } from "./ReceiptBar";
+import { noteAnswerLine } from "./chartPolish";
 import { countdown, fairPrice, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -589,15 +590,24 @@ function PriceScale({ item }: { item: PriceItem }) {
   );
 }
 
+/** The headline's overpaying sentence leads; the too cheap to be real sentence (fairHeadline) follows a little quieter. */
+function FairHeadline({ text }: { text: string }) {
+  const [first, ...rest] = text.split(/(?<=\.) /);
+  return (
+    <p className="wt-fair-headline">
+      {first}
+      {rest.length > 0 && <span className="wt-fair-headline-more"> {rest.join(" ")}</span>}
+    </p>
+  );
+}
+
 export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   const { context } = p;
   const { version } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, PRICE_FIELDS, version);
   const now = useTick(60_000);
   const scroll = useScrollBox<HTMLDivElement>();
-  if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price checks. Reload the page.</p>;
-  if (!rows) return null;
-  const f = fairPrice(
+  const f = rows ? fairPrice(
     rows.map((r) => ({
       id: asText(r.id),
       when: asDate(r.when) ?? new Date(0),
@@ -614,7 +624,14 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
       sample: r.sample === "Yes",
     })),
     new Date(now),
-  );
+  ) : null;
+  // On the Answers page the card beside this tile says the same words, from these same (filtered) rows.
+  const said = failed ? "The price checks didn't load. Reload the page." : f ? (f.checked ? f.headline : "No price checks this month yet") : null;
+  useEffect(() => {
+    if (said) noteAnswerLine(p.widgetId, said);
+  }, [p.widgetId, said]);
+  if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price checks. Reload the page.</p>;
+  if (!f) return null;
   if (!f.checked) {
     return (
       <div className="wt-fair wt-fair-empty">
@@ -627,7 +644,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   return (
     <div className="wt-fair" role="region" aria-label="Fair price" {...scroll}>
       <p className="wt-fair-label">Fair price</p>
-      <p className="wt-fair-headline">{f.headline}</p>
+      <FairHeadline text={f.headline} />
       {f.warning && <p className="wt-fair-caught">{f.warning}</p>}
       {f.caught && <p className="wt-fair-caught">{f.caught}</p>}
       <ul className="wt-fair-list">

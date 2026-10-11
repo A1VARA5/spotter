@@ -13,7 +13,8 @@ export type AnswerSummaryDef = { type: "answer-summary"; dataMapping: Record<str
 
 export type Starter = { label: string; prompt: string };
 /** What Studio knows about the newest answer, for the card. */
-export type AnswerSnap = { title: string; empty: boolean; running: boolean; total?: string; starters: Starter[]; canAsk: boolean; asking: boolean };
+/** line: the one line answer (src/watchtower/answers.ts cardLine), on every finished answer. */
+export type AnswerSnap = { title: string; empty: boolean; running: boolean; total?: string; line?: string; starters: Starter[]; canAsk: boolean; asking: boolean };
 export type AnswerFeed = { get(): AnswerSnap; subscribe(fn: () => void): () => void; ask(s: Starter): void };
 
 const NONE: AnswerSnap = { title: "", empty: true, running: false, starters: [], canAsk: false, asking: false };
@@ -39,6 +40,17 @@ export function createAnswerFeed(ask: (s: Starter) => void): AnswerFeed & { set(
   };
 }
 
+/** The first sentence leads; a second one (the fair price headline's too cheap part) follows smaller. */
+function AnswerLine({ text }: { text: string }) {
+  const [first, ...rest] = text.split(/(?<=\.) /);
+  return (
+    <p className="wt-ans-line">
+      {first}
+      {rest.length > 0 && <span className="wt-ans-line-more"> {rest.join(" ")}</span>}
+    </p>
+  );
+}
+
 export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
   const ctx = p.context as WatchContext | undefined;
   const feed = ctx?.answers;
@@ -58,10 +70,15 @@ export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
       <h2 id="wt-ans-q" className="wt-ans-q">
         {a.title || "Your question"}
       </h2>
-      {!a.empty && a.total && (
-        <p className="wt-ans-total">
-          <span className="wt-ans-sum">{a.total}</span> in total
-        </p>
+      {!a.empty && (a.total || a.line) && (
+        <div className="wt-ans-answer">
+          {a.total && (
+            <p className="wt-ans-total">
+              <span className="wt-ans-sum">{a.total}</span> in total
+            </p>
+          )}
+          {a.line && <AnswerLine text={a.line} />}
+        </div>
       )}
       {receipt && (
         <dl className="wt-ans-facts">

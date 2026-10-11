@@ -113,7 +113,7 @@ describe("fair price", () => {
     const f = fairPrice([pr({ id: "a", amount: 38, marketCheapest: 30, priceGap: 8 }), pr({ id: "b", amount: 30, marketCheapest: 20, priceGap: 10 }), pr({ id: "c" })], NOW);
     expect(f.overpaid).toBe(18);
     expect(f.checked).toBe(3);
-    expect(f.headline).toBe("Your agent paid £18 more than the cheapest real shop this month");
+    expect(f.headline).toBe("Your agent paid £18 more than the cheapest real shops on 2 items this month");
     expect(f.items.map((i) => i.id)).toEqual(["b", "a", "c"]);
     expect(f.items[0]!.verdict).toBe("over");
   });
@@ -127,7 +127,7 @@ describe("fair price", () => {
   });
 
   it("says when every paid price was fair, and names one person who isn't an agent", () => {
-    expect(fairPrice([pr({ who: "Gran", kind: "Person" })], NOW).headline).toBe("Gran paid fair prices this month: never more than the cheapest real shop");
+    expect(fairPrice([pr({ who: "Gran", kind: "Person" })], NOW).headline).toBe("Gran paid fair prices this month: never more than 50p over the cheapest real shop");
   });
 
   it("speaks for everyone when several people paid, and ignores rows with no price check or older than 30 days", () => {
@@ -136,7 +136,7 @@ describe("fair price", () => {
       NOW,
     );
     expect(f.checked).toBe(2);
-    expect(f.headline).toBe("Everyone together paid £3.50 more than the cheapest real shop this month");
+    expect(f.headline).toBe("Everyone together paid £3.50 more than the cheapest real shops on 2 items this month");
   });
 
   it("never counts a paid price far below real shops as a saving: it's a fake shop sign, called out on its own", () => {

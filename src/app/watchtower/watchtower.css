@@ -189,6 +189,7 @@
 .wt-fair-empty { align-content: center; }
 .wt-fair-label { font-size: 13px; font-weight: 650; color: var(--ink-2); }
 .wt-fair-headline { font-size: 18px; line-height: 1.3; font-weight: 650; color: var(--ink); text-wrap: pretty; }
+.wt-fair-headline-more { display: block; margin-top: 4px; font-size: 15px; font-weight: 550; }
 .wt-fair-caught { font-size: 14px; font-weight: 600; color: var(--ink); padding: 6px 10px; border-left: 3px solid var(--stop); background: var(--stop-soft); border-radius: 0 8px 8px 0; text-wrap: pretty; }
 .wt-fair-list { list-style: none; margin: 0; padding: 0; display: grid; }
 .wt-fair-item { padding: 8px 0; border-top: 1px solid var(--line); display: grid; gap: 6px; }
@@ -258,12 +259,16 @@
   .wt-frame > div.wt-studio:last-child { flex: none; min-height: 560px; }
 }
 
-/* The card beside the newest answer (AnswerCard.tsx): the question, its total, who built it, the receipt,
-   and what to ask next pinned to the bottom, so a tall card on a big screen still reads top to bottom. */
-.wt-ans { height: 100%; overflow: auto; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; gap: 14px; color: var(--ink); font-variant-numeric: lining-nums proportional-nums; }
+/* The card beside the newest answer (AnswerCard.tsx): the question, its one line answer (and total), who built
+   it, the receipt and what to ask next. The answer panel takes the card's spare height, so a tall card on a big
+   screen has the answer in its middle, not a gap; the type grows with the card (container query). */
+.wt-ans { container-type: size; height: 100%; overflow: auto; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; gap: 14px; color: var(--ink); font-variant-numeric: lining-nums proportional-nums; }
 .wt-ans-kicker { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }
 .wt-ans-q { margin: -8px 0 0; font-size: 22px; line-height: 1.25; font-weight: 700; text-wrap: balance; overflow-wrap: anywhere; }
+.wt-ans-answer { flex: 1 0 auto; max-height: 340px; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 16px 18px; border-radius: 12px; background: var(--chalk); border: 1px solid var(--line); }
 .wt-ans-total { margin: 0; font-size: 15px; color: var(--ink-2); }
+.wt-ans-line { margin: 0; font-size: 19px; line-height: 1.35; font-weight: 600; color: var(--ink); text-wrap: pretty; overflow-wrap: anywhere; }
+.wt-ans-line-more { display: block; margin-top: 8px; font-size: 0.75em; font-weight: 550; }
 .wt-ans-sum { display: block; font-size: 40px; line-height: 1.1; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 .wt-ans-facts { margin: 0; display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 .wt-ans-facts > div { display: grid; gap: 2px; }
@@ -272,7 +277,7 @@
 .wt-ans-money { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; }
 .wt-ans-money::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--go); }
 .wt-ans-money[data-flagged]::before { background: var(--stop); }
-.wt-ans-next { margin-top: auto; display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.wt-ans-next { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 .wt-ans-next-h { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }
 .wt-ans-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .wt-ans-btn { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--chalk); font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--ink); text-wrap: pretty; transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out); }
@@ -282,4 +287,19 @@
 .wt-ans-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
 .wt-ans-plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink); }
 .wt-ans-hint { margin: 0; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+/* A short card (a laptop around 1440 px): a compact answer panel and no Built by row, so Ask next fits. */
+@container (max-height: 560px) {
+  .wt-ans-answer { flex-grow: 0; padding: 10px 14px; gap: 4px; }
+  .wt-ans-sum { font-size: 30px; }
+  .wt-ans-line { font-size: 17px; }
+  .wt-ans-facts > div:first-child { display: none; }
+  .wt-ans-list > li:nth-child(n + 3) { display: none; }
+}
+@container (min-height: 640px) and (min-width: 300px) {
+  .wt-ans-answer { padding: 22px 24px; }
+  .wt-ans-q { font-size: 26px; }
+  .wt-ans-line { font-size: 23px; }
+  .wt-ans-sum { font-size: 52px; }
+  .wt-ans-btn { min-height: 48px; font-size: 15px; }
+}
 @media (prefers-reduced-motion: reduce) { .wt-ans-btn { transition: none; } }

@@ -263,7 +263,7 @@ export function placeAnswer(
 }
 
 /** The newest answer: the answer tile at the top left of the Answers page, for the line above it. */
-export function newestAnswer(s: AgReportState): { pageId: string; widgetId: string; title: string; empty: boolean } | null {
+export function newestAnswer(s: AgReportState): { pageId: string; widgetId: string; type: string; title: string; empty: boolean } | null {
   type Pg = Page & { widgets?: Record<string, AnswerWidget>; widgetLayout?: Record<string, Box> };
   const page = (pagesIn(s) as Pg[]).find((p) => p.name === ANSWERS_PAGE);
   if (!page) return null;
@@ -271,7 +271,7 @@ export function newestAnswer(s: AgReportState): { pageId: string; widgetId: stri
   const w = top ? page.widgets?.[top] : undefined;
   if (!top || !w) return null;
   const title = typeof w.format?.title?.text === "string" ? w.format.title.text : "";
-  return { pageId: page.id, widgetId: top, title, empty: isEmptyAnswer(w) };
+  return { pageId: page.id, widgetId: top, type: w.type ?? "", title, empty: isEmptyAnswer(w) };
 }
 
 export const PHONE_BAR_SPAN = 20;

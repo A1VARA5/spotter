@@ -141,6 +141,47 @@ function verdictOf(amount: number, cheapest: number, median: number): PriceVerdi
   return "fair";
 }
 
+export type FairCounts = {
+  /** Who paid the items that weren't too cheap ("Your agent", "Gran", "Everyone together"). */
+  label: string;
+  /** Pounds over the cheapest real shop, summed over the overCount items only. */
+  overpaid: number;
+  overCount: number;
+  /** Paid items that weren't too cheap to be real (over, fair or a little under). */
+  fairPaid: number;
+  /** Prices far below the going rate, paid and not paid (stopped, denied or waiting). */
+  fakePaid: number;
+  fakeUnpaid: number;
+};
+
+/**
+ * The Fair price tile's headline, true for everything under it. Overpaying (paid items that cost more than
+ * the cheapest real shop) and prices too cheap to be real (a fake shop sign) are two separate sentences with
+ * their own counts: a too cheap price is never added into what was overpaid, and never sits under "fair prices".
+ */
+export function fairHeadline(c: FairCounts): string {
+  const shops = c.overCount === 1 ? "shop" : "shops";
+  const paidPart =
+    c.overCount > 0
+      ? `${c.label} paid ${poundsShort(c.overpaid)} more than the cheapest real ${shops} on ${plural(c.overCount, "item")} this month`
+      : c.fairPaid > 0
+        ? c.fakePaid + c.fakeUnpaid > 0
+          ? `${c.label} paid within 50p of the cheapest real shop on everything else this month`
+          : `${c.label} paid fair prices this month: never more than 50p over the cheapest real shop`
+        : null;
+  const fakes = c.fakePaid + c.fakeUnpaid;
+  const was = fakes === 1 ? "price was" : "prices were";
+  const cheapPart = !fakes
+    ? null
+    : c.fakePaid && c.fakeUnpaid
+      ? `${fakes} ${was} too cheap to be real: ${c.fakePaid} paid, ${c.fakeUnpaid} not paid`
+      : c.fakePaid
+        ? `${fakes} paid ${was} too cheap to be real: check ${fakes === 1 ? "it arrives" : "they arrive"}`
+        : `${fakes} ${was} too cheap to be real, and nothing was paid for ${fakes === 1 ? "it" : "them"}`;
+  const parts = [paidPart, cheapPart].filter(Boolean);
+  return parts.length ? parts.join(". ") : "Nothing paid this month had a price check yet";
+}
+
 /**
  * What the family paid against the cheapest real retailer this month (last 30 days), from the price
  * checks Spotter stored when each payment was made. Only paid payments count towards overpaid or saved;
@@ -158,7 +199,9 @@ export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): Fa
   // Far below the going rate is what fake shops charge: never a saving, and never "fair".
   const paidFake = paidAll.filter((i) => i.verdict === "fake").sort((a, b) => b.median - b.amount - (a.median - a.amount));
   const paid = paidAll.filter((i) => i.verdict !== "fake");
-  const overpaid = round(paid.reduce((t, i) => t + Math.max(i.gap, 0), 0));
+  // Overpaid adds up only the items the tile marks "Paid more", so the sum and the item count agree.
+  const over = paid.filter((i) => i.verdict === "over");
+  const overpaid = round(over.reduce((t, i) => t + Math.max(i.gap, 0), 0));
   const saved = round(paid.reduce((t, i) => t + Math.max(-i.gap, 0), 0));
 
   const fairIds = new Set(paid.map((i) => i.id));
@@ -170,15 +213,14 @@ export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): Fa
   const warning = fake0
     ? `${whoOf(fake0)} paid ${poundsShort(fake0.amount)} for "${fake0.marketItem || fake0.payee}" that real shops sell for around ${poundsShort(fake0.median)}: far too cheap, a common sign of a fake shop`
     : null;
-  const headline = !paid.length
-    ? paidFake.length
-      ? "Check what was paid for: a price looked too good to be real"
-      : "Nothing paid this month had a price check yet"
-    : overpaid >= NOTICEABLE
-      ? `${label} paid ${poundsShort(overpaid)} more than the cheapest real shop this month`
-      : paidFake.length
-        ? "Nothing overpaid this month, but one price looked too good to be real"
-        : `${label} paid fair prices this month: never more than the cheapest real shop`;
+  const headline = fairHeadline({
+    label,
+    overpaid,
+    overCount: over.length,
+    fairPaid: paid.length,
+    fakePaid: paidFake.length,
+    fakeUnpaid: items.filter((i) => i.verdict === "fake" && STOPPED_IN.has(i.outcome)).length,
+  });
 
   const stopped = items.filter((i) => STOPPED_IN.has(i.outcome)).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
   const fake = stopped.find((i) => i.verdict === "fake");

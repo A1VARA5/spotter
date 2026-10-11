@@ -15,8 +15,8 @@ import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
 import { ANSWER_TOP, READY_TILES, addPage, answerRows, arrangeAnswersIn, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
-import { answerLine, dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
-import { answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
+import { answerLine, cardLine, dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
+import { answerLineFor, answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
 import { notable, type NotableHarness } from "@/watchtower/notes";
 import { SPOTTER_ID, buildGranRoster, buildRoster, paypalStatus } from "@/watchtower/agents";
 import { granBoard, granForAgent, granLabels, granMonth, granThemeParams } from "@/watchtower/gran";
@@ -396,6 +396,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   const [, setTotalsSeen] = useState(0);
   useEffect(() => onAnswerTotals(() => setTotalsSeen((n) => n + 1)), []);
   const latestTotal = latest && !latest.empty ? answerTotalFor(latest.widgetId) : undefined;
+  // The card's one line answer: the line the tile published from the rows it shows (filters applied).
+  const latestLine = latest && !latest.empty ? cardLine({ type: latest.type, line: answerLineFor(latest.widgetId) }) : undefined;
 
   const apiRef = useRef<AgStudioApi | null>(null);
   const onApiReady = useCallback((e: { api: AgStudioApi }) => {
@@ -602,8 +604,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   const [answerFeed] = useState(() => createAnswerFeed((st) => askNext.current(st)));
   const starters = useMemo(() => promptStarters(sources.people, kind), [sources.people, kind]);
   useEffect(() => {
-    answerFeed.set({ title: latest?.title ?? "", empty: latest?.empty ?? true, running, total: latestTotal, starters, canAsk: !phone, asking });
-  }, [answerFeed, latest, running, latestTotal, starters, phone, asking]);
+    answerFeed.set({ title: latest?.title ?? "", empty: latest?.empty ?? true, running, total: latestTotal, line: latestLine, starters, canAsk: !phone, asking });
+  }, [answerFeed, latest, running, latestTotal, latestLine, starters, phone, asking]);
 
   // A new context per language: Studio reads it once, and a language change remounts Studio anyway.
   const context = useMemo<WatchContext>(() => ({ store, lookInto: (a) => lookIntoRef.current(a), gran: labels, receipts: book, granLang, answers: answerFeed }), [store, labels, book, granLang, answerFeed]);

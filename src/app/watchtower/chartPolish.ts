@@ -9,25 +9,45 @@ import { answerTotal, polishChart, type MoneyFields } from "@/watchtower/answers
 
 let money: MoneyFields | null = null;
 let installed = false;
-// What each answer chart adds up to, from the rows it was last drawn with ("£9.98"), for the Answers line.
-const totals = new Map<string, string>();
+// What each answer tile says, from the rows it last showed: a chart's total ("£9.98") and line, or the line
+// a ready made tile published (the Fair price headline, its filters applied), for the answer card.
+const totals = new Map<string, { text?: string; line: string | null }>();
 const listeners = new Set<() => void>();
+const changed = () => queueMicrotask(() => listeners.forEach((l) => l()));
 
 export function answerTotalFor(widgetId: string): string | undefined {
-  return totals.get(widgetId);
+  return totals.get(widgetId)?.text;
+}
+/** The tile's one line answer ("Biggest: TuneBox, £6.00 of £9.99", or the Fair price headline). */
+export function answerLineFor(widgetId: string): string | null {
+  return totals.get(widgetId)?.line ?? null;
 }
 export function onAnswerTotals(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
+/** A ready made answer tile (fair-price) publishes its own headline, so the card says what the tile says. */
+export function noteAnswerLine(widgetId: string, line: string) {
+  if (!widgetId.startsWith("answer-")) return;
+  const seen = totals.get(widgetId);
+  if (seen && seen.text === undefined && seen.line === line) return;
+  totals.set(widgetId, { line });
+  changed();
+}
 const noteTotal = (options: object) => {
   if (!money) return;
   const t = answerTotal(options, money);
-  if (!t || totals.get(t.widgetId) === t.text) return;
-  totals.set(t.widgetId, t.text);
-  queueMicrotask(() => listeners.forEach((l) => l()));
+  if (!t) {
+    // An answer chart drawn with no rows (a new filter or mapping) drops its old total and line.
+    const id = (options as { context?: { params?: { widgetId?: unknown } } }).context?.params?.widgetId;
+    if (typeof id === "string" && id.startsWith("answer-") && totals.delete(id)) changed();
+    return;
+  }
+  const seen = totals.get(t.widgetId);
+  if (seen && seen.text === t.text && seen.line === t.line) return;
+  totals.set(t.widgetId, { text: t.text, line: t.line });
+  changed();
 };
-
 /** The board's currency fields; set before Studio draws, and again when the data changes. */
 export function setChartMoney(next: MoneyFields) {
   money = next;

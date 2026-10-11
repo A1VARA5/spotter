@@ -73,11 +73,12 @@ function notMeWho(words: string | undefined): string | null {
 /** currency is missing on rows that came through the board's data (pounds there for now). */
 export type GranRow = Pick<PaymentRow, "id" | "when" | "who" | "payee" | "amount" | "outcome" | "topSign" | "sample"> & { currency?: string; wasItYou?: string };
 /** example: the demo's example, checked before the visit. times: how often the same payee asked for the same amount this month. */
-export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean; example: boolean; times: number };
+export type GranStop = { id: string; when: Date; payee: string; amount: number; currency: string; by: string; sentence: string; sample: boolean; example: boolean; times: number; saidNo: string };
 /** ends: when PayPal lets the hold go on its own; asleep: someone chose "ask again tomorrow". */
 export type GranWait = { id: string; when: Date; payee: string; amount: number; currency: string; status: string; ends?: string; asleep: boolean; sample: boolean };
 export type GranTrick = { sign: string; plain: string; count: number };
-export type GranMonth = { kept: number; stopped: GranStop[]; waiting: GranWait[]; tricks: GranTrick[] };
+/** kept: the person's own stopped money. keptSample: the made up sample month's, never added to it. */
+export type GranMonth = { kept: number; keptSample: number; stopped: GranStop[]; waiting: GranWait[]; tricks: GranTrick[] };
 
 const MONTH = 30 * 24 * 3600_000;
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -114,13 +115,17 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
         sample: r.sample === "Yes",
         example,
         times: 1,
+        // Who said no: the relative who answered Not me, else the spotter, else Spotter itself.
+        saidNo: notMe ? `notme:${notMe}` : denied ? `denied:${o.spotter}` : "stopped",
       };
     });
-  // The same payee asking for the same amount again (a scammer retrying, or the demo run twice) is one row.
+  // The same payee asking for the same amount again (a scammer retrying, or the demo run twice) is one row,
+  // but only when the same person said no: the row names who said no, and that must be true for every try
+  // it stands for, so Sam's Not me is never told as Tom's.
   const shown: GranStop[] = [];
   const byAsk = new Map<string, GranStop>();
   for (const s of stopped) {
-    const key = `${s.sample}\u0000${clean(s.payee).toLowerCase()}\u0000${s.amount}\u0000${s.currency}`;
+    const key = [s.sample, clean(s.payee).toLowerCase(), s.amount, s.currency, s.saidNo].join("\u0000");
     const first = byAsk.get(key);
     if (first) {
       first.times++;
@@ -156,7 +161,8 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
     for (const sign of new Set(signsOf(r))) if (TRICK_KEY[sign]) counts.set(sign, (counts.get(sign) ?? 0) + 1);
   }
   const tricks = [...counts].map(([sign, count]) => ({ sign, plain: gt(lang, TRICK_KEY[sign]!), count })).sort((a, b) => b.count - a.count || a.sign.localeCompare(b.sign));
-  return { kept: round(stopped.reduce((t, s) => t + s.amount, 0)), stopped: shown, waiting, tricks };
+  const sum = (list: GranStop[]) => round(list.reduce((t, s) => t + s.amount, 0));
+  return { kept: sum(stopped.filter((s) => !s.sample)), keptSample: sum(stopped.filter((s) => s.sample)), stopped: shown, waiting, tricks };
 }
 
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -180,8 +186,11 @@ function keptByCurrency(stopped: GranStop[]): string {
 
 /** What the simple view's agent reads (the my_month tool): the month in words and each payment's own money, no ids at all. */
 export function granForAgent(m: GranMonth, now: Date, lang: GranLang = "en") {
+  const sample = m.stopped.filter((s) => s.sample);
   return {
-    keptThisMonth: keptByCurrency(m.stopped),
+    // Their own money only; the made up sample month's total is told apart, and only when there is one.
+    keptThisMonth: keptByCurrency(m.stopped.filter((s) => !s.sample)),
+    ...(sample.length ? { keptInSampleMonth: keptByCurrency(sample) } : {}),
     stopped: m.stopped.map((s) => ({ payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample, ...(s.example ? { example: true } : {}), ...(s.times > 1 ? { times: s.times } : {}) })),
     waiting: m.waiting.map((w) => ({ payee: w.payee, amount: cash(w.amount, w.currency), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
     tricks: m.tricks.map((t) => ({ trick: t.plain, times: t.count })),

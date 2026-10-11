@@ -18,6 +18,8 @@ import { helperName, type Receipt } from "./receipt";
 export const ANSWER_COLOURS = ["#6F8BD8", "#4A5866", "#7DB89F", "#E8C35A", "#B7C0C9", "#17212B"];
 const INK = "#17212B";
 const OUTCOME_FIELDS = new Set(["payments.outcome", "payments.outcomeText"]);
+const SLIM_UNDER = 8;
+const SLIM_PER_BAR = 0.12;
 
 /** A field in a data mapping: saved boards say `id`, the hydrated fields Studio hands a chart say `fieldId`. */
 type Ref = { id?: string; fieldId?: string; aggregation?: string };
@@ -70,9 +72,16 @@ export function polishChart<T extends object>(options: T, money: MoneyFields): T
   }
   // Answers show their numbers at the end of each bar: inside it, or just past it when the bar is too short.
   // Ink reads on the first answer colour and on the page. Studio formats series labels with the field's format (£).
+  // One or a few bars would each fill their whole band (one bar for one shop was a block across the board),
+  // so a single series answer with under 8 bars draws them slim: 12% of the band per bar, more as bars add up.
   if (params.widgetId.startsWith("answer-") && Array.isArray(o.series)) {
-    next.series = (o.series as Array<Record<string, unknown>>).map((s) =>
-      s?.type === "bar" ? { ...s, label: { ...(s.label as object | undefined), enabled: true, color: INK, placement: ["inside-end", "outside-end"] } } : s,
+    const series = o.series as Array<Record<string, unknown>>;
+    const rows = Array.isArray(o.data) ? o.data.length : 0;
+    const slim = series.length === 1 && rows > 0 && rows < SLIM_UNDER ? Math.round(SLIM_PER_BAR * rows * 100) / 100 : undefined;
+    next.series = series.map((s) =>
+      s?.type === "bar"
+        ? { ...s, label: { ...(s.label as object | undefined), enabled: true, color: INK, placement: ["inside-end", "outside-end"] }, ...(slim ? { widthRatio: slim } : {}) }
+        : s,
     );
   }
   const sumsMoney = refs(m, "valueKey").some((r) => money.fields.has(fieldOf(r)) && !isCount(r));
@@ -86,18 +95,43 @@ export function polishChart<T extends object>(options: T, money: MoneyFields): T
  * What an answer chart adds up to, from the very rows it draws, for the line above the Answers page
  * ("£9.98"). Money in the board's currency, counts as whole numbers. Null for other charts or no rows.
  */
-export function answerTotal(options: object, money: MoneyFields): { widgetId: string; text: string } | null {
+export function answerTotal(options: object, money: MoneyFields): { widgetId: string; text: string; line: string | null } | null {
   const o = options as ChartOptions & { data?: unknown; series?: unknown };
   const params = o.context?.params;
   if (!params || typeof params.widgetId !== "string" || !params.widgetId.startsWith("answer-")) return null;
   const rows = Array.isArray(o.data) ? (o.data as Array<Record<string, unknown>>) : [];
-  const keys = (Array.isArray(o.series) ? (o.series as Array<Record<string, unknown>>) : []).map((s) => s?.yKey ?? s?.angleKey).filter((k): k is string => typeof k === "string");
+  const series = Array.isArray(o.series) ? (o.series as Array<Record<string, unknown>>) : [];
+  const keys = series.map((s) => s?.yKey ?? s?.angleKey).filter((k): k is string => typeof k === "string");
   if (!rows.length || !keys.length) return null;
-  let total = 0;
-  for (const row of rows) for (const k of keys) if (typeof row[k] === "number" && Number.isFinite(row[k])) total += row[k] as number;
+  const rowSum = (row: Record<string, unknown>) => keys.reduce((t, k) => t + (typeof row[k] === "number" && Number.isFinite(row[k]) ? (row[k] as number) : 0), 0);
+  const total = rows.reduce((t, row) => t + rowSum(row), 0);
   const isMoney = refs(params.dataMapping, "valueKey").some((r) => money.fields.has(fieldOf(r)) && !isCount(r));
-  const text = isMoney ? `${money.symbol}${total.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : Math.round(total).toLocaleString("en-GB");
-  return { widgetId: params.widgetId, text };
+  const fmt = (n: number) => (isMoney ? `${money.symbol}${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : Math.round(n).toLocaleString("en-GB"));
+  const text = fmt(total);
+  // The one line answer for the card: what the only bar is, or the biggest bar and its share. Only from a
+  // plain text or number label: anything else (a date object, a missing key) gets no line rather than a guess.
+  const labelKey = [series[0]?.xKey, series[0]?.calloutLabelKey, series[0]?.sectorLabelKey, series[0]?.legendItemKey].find((k): k is string => typeof k === "string");
+  const labelOf = (row: Record<string, unknown>) => {
+    const v = labelKey ? row[labelKey] : undefined;
+    return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 60) : typeof v === "number" ? String(v) : "";
+  };
+  const top = rows.reduce((best, row) => (rowSum(row) > rowSum(best) ? row : best), rows[0]!);
+  const name = labelOf(top);
+  const negative = rows.some((row) => rowSum(row) < 0);
+  const line = !name || negative ? null : rows.length === 1 ? `All of it: ${name}` : `Biggest: ${name}, ${fmt(rowSum(top))} of ${text}`;
+  return { widgetId: params.widgetId, text, line };
+}
+
+/**
+ * The answer card's one line, for every kind of answer: the line the tile itself published from the rows it
+ * shows (a chart's biggest bar, the Fair price tile's headline, filters and all), or where the answer is.
+ * A table never takes a line: a reused tile can change type under the same id. Never blank.
+ */
+export function cardLine(a: { type: string; line?: string | null }): string {
+  if (a.type === "grid" || a.type === "pivot-grid") return "Every row is in the table beside this card.";
+  if (a.line) return a.line;
+  if (a.type === "fair-price") return "The Fair price tile beside this card has the answer.";
+  return "The chart beside this card shows the answer.";
 }
 
 export { isEmptyAnswer };

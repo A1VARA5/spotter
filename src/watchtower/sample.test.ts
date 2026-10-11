@@ -62,7 +62,7 @@ describe("sample month", () => {
       payments.map((r) => ({ ...r, sample: r.sample === "Yes" })),
       NOW,
     );
-    expect(f.headline).toBe("Your agent paid £8.50 more than the cheapest real shop this month");
+    expect(f.headline).toBe("Your agent paid £8.50 more than the cheapest real shops on 2 items this month. 1 price was too cheap to be real, and nothing was paid for it");
     expect(f.caught).toBe('Spotter caught a £24.99 "Pro wireless earbuds 2" that real shops sell for around £169');
   });
 

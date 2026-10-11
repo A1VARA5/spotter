@@ -58,11 +58,25 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
       </h2>
       {month.stopped.length ? (
         <>
-          <p className="gran-statement">
-            {gt(lang, "keptBefore")}
-            <span className="gran-money">{gbp.format(month.kept)}</span>
-            {gt(lang, "keptAfter")}
-          </p>
+          {/* Her own money and the made up sample month's are never one number. */}
+          {month.kept > 0 || !month.keptSample ? (
+            <p className="gran-statement">
+              {gt(lang, "keptBefore")}
+              <span className="gran-money">{gbp.format(month.kept)}</span>
+              {gt(lang, "keptAfter")}
+            </p>
+          ) : (
+            <p className="gran-statement">
+              {gt(lang, "keptBeforeSample")}
+              <span className="gran-money">{gbp.format(month.keptSample)}</span>
+              {gt(lang, "keptAfterSample")} <Sample on lang={lang} />
+            </p>
+          )}
+          {month.kept > 0 && month.keptSample > 0 && (
+            <p className="gran-sample-sum">
+              {gt(lang, "keptPlusSample", { amount: gbp.format(month.keptSample) })} <Sample on lang={lang} />
+            </p>
+          )}
           <ul className="gran-list">
             {month.stopped.map((s) => (
               <li key={s.id} className="gran-item">
