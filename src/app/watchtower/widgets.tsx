@@ -7,7 +7,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AgBaseRegistry, AgBaseWidgetDefinition, AgWidgetApi, AgWidgetDataFormat, AgWidgetField, AgWidgetFieldReference, AgWidgetParams } from "ag-studio";
 import type { CaseNote, WatchAlert } from "@/watchtower/data";
 import type { GranLabels } from "@/watchtower/gran";
+import type { GranLang } from "@/watchtower/granLang";
 import type { GranSafeDef, GranScamsDef, GranWaitingDef } from "./GranWidgets";
+import type { AiChecksDef } from "./AiChecks";
+import type { ReceiptBook } from "./ReceiptBar";
 import { countdown, fairPrice, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -35,6 +38,7 @@ export interface SpotterRegistry extends AgBaseRegistry {
     | AgBaseWidgetDefinition<"gran-waiting", GranWaitingDef>
     | AgBaseWidgetDefinition<"gran-scams", GranScamsDef>
     | AgBaseWidgetDefinition<"price-watches", PriceWatchesDef>
+    | AgBaseWidgetDefinition<"ai-checks", AiChecksDef>
   )[];
 }
 
@@ -51,7 +55,7 @@ export type WatchSnapshot = {
 };
 export type WatchStore = { get(): WatchSnapshot; subscribe(fn: () => void): () => void };
 /** Studio's `context` is read once, so it carries a store the page updates rather than the values. */
-export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void>; gran?: GranLabels };
+export type WatchContext = { store: WatchStore; lookInto(alert: WatchAlert): Promise<void>; gran?: GranLabels; granLang?: GranLang; receipts?: ReceiptBook };
 
 /**
  * Widgets scroll inside their tile when the text is longer than the tile. A scrolling box has to be

@@ -11,6 +11,7 @@ import type { HouseholdKind } from "@/core/households";
 import type { WatchSnapshot, WatchStore } from "./widgets";
 import "./watchtower.css";
 import "./gran.css";
+import "./receipt.css";
 
 const Studio = dynamic(() => import("./Studio"), { ssr: false, loading: () => <Loading /> });
 

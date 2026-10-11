@@ -110,3 +110,8 @@
 .gran-sleep[aria-disabled] { cursor: progress; opacity: 0.6; }
 .gran-sleep:focus-visible { outline: 3px solid transparent; background: var(--g-focus); color: var(--g-ink); box-shadow: 0 -2px var(--g-focus), 0 4px var(--g-ink); }
 @media (prefers-reduced-motion: reduce) { .gran-sleep { transition: none; } .gran-sleep:active { transform: none; } }
+
+/* Gran's language: the same pill switch as the view switch, the English name beside the native one. */
+.wt-lang .wt-view-btn { font-weight: 650; }
+.wt-lang-en { font-weight: 500; opacity: 0.8; }
+.gran-receipt-missing { color: var(--g-ink2, #384552); }

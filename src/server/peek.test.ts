@@ -35,7 +35,9 @@ function fakeKernel(over: Partial<{ create: () => Promise<{ session_id: string }
 }
 
 const pub = async () => true;
-const opts = (kernel: PeekKernel, extra: Record<string, unknown> = {}) => ({ kernel, isPublicHost: pub, ...extra });
+// No network: the redirect walk is a fake that says the link goes nowhere else.
+const resolve = async (url: string) => ({ finalUrl: url, hops: [], error: null });
+const opts = (kernel: PeekKernel, extra: Record<string, unknown> = {}) => ({ kernel, isPublicHost: pub, resolve, ...extra });
 
 async function addPayment(householdId: string, spenderId: string, context: string) {
   const deps: Deps = {
@@ -240,9 +242,44 @@ describe("sweeping and caps after failures", () => {
     expect((await startPeek(db, hh, paymentId, "desktop", opts(k))).status).toBe(200);
   });
 
-  it("failed starts don't use up the family's looks", async () => {
+  it("starts that failed after asking KERNEL still count (a timed out browser can be billed); ones refused before don't", async () => {
     const k = fakeKernel({ create: async () => Promise.reject(new Error("boom")) });
-    for (let i = 0; i < PEEK.perHouseholdDaily + 1; i++) expect((await startPeek(db, hh, paymentId, "desktop", opts(k))).status).toBe(502);
+    for (let i = 0; i < PEEK.perHouseholdDaily; i++) expect((await startPeek(db, hh, paymentId, "desktop", opts(k))).status).toBe(502);
+    expect((await startPeek(db, hh, paymentId, "desktop", opts(k))).status).toBe(429);
+    expect(k.browsers.create).toHaveBeenCalledTimes(PEEK.perHouseholdDaily);
+    await db.query("delete from peeks");
+    const refused = { ...opts(k), resolve: async () => ({ finalUrl: "http://10.0.0.1/", hops: ["http://10.0.0.1/"], error: "host not resolvable" }) };
+    for (let i = 0; i < PEEK.perHouseholdDaily + 1; i++) expect((await startPeek(db, hh, paymentId, "desktop", refused)).status).toBe(400);
+    expect((await startPeek(db, hh, paymentId, "desktop", opts(fakeKernel()))).status).toBe(200);
+  });
+
+  it("re-walks the link's redirects and refuses when any hop is private, before asking KERNEL", async () => {
+    const k = fakeKernel();
+    const isPublicHost = async (h: string) => h !== "169.254.169.254";
+    const walk = vi.fn(async (_url: string, isPublic: (h: string) => Promise<boolean>) =>
+      (await isPublic("169.254.169.254")) ? { finalUrl: "http://169.254.169.254/", hops: [], error: null } : { finalUrl: "http://169.254.169.254/", hops: ["http://169.254.169.254/"], error: "host not resolvable" },
+    );
+    const res = await startPeek(db, hh, paymentId, "desktop", { kernel: k, isPublicHost, resolve: walk });
+    expect(res.status).toBe(400);
+    expect(walk).toHaveBeenCalledWith(SHOP, isPublicHost);
+    expect(k.browsers.create).not.toHaveBeenCalled();
+  });
+
+  it("opens the browser at the checked end of the redirects", async () => {
+    const k = fakeKernel();
+    const res = await startPeek(db, hh, paymentId, "desktop", { ...opts(k), resolve: async () => ({ finalUrl: "https://gadgetbarn.example/landing", hops: ["https://gadgetbarn.example/landing"], error: null }) });
+    expect(res.status).toBe(200);
+    expect(k.browsers.create).toHaveBeenCalledWith(expect.objectContaining({ start_url: "https://gadgetbarn.example/landing" }));
+  });
+
+  it("refuses when the case file's recorded final address isn't a public web address", async () => {
+    for (const finalUrl of ["http://169.254.169.254/latest/meta-data/", "file:///etc/passwd"]) {
+      const c = { status: "done", verdict: "likely_scam", headline: "h", findings: [], ask: [], calls: [], dropped: 0, model: "m", ms: 1, page: { url: SHOP, finalUrl, title: "t", asks: { card: false, login: false, giftCard: false } } };
+      await db.query("update payments set case_file = $2 where id = $1", [paymentId, JSON.stringify(c)]);
+      const k = fakeKernel();
+      expect((await startPeek(db, hh, paymentId, "desktop", { ...opts(k), isPublicHost: async (h: string) => !h.startsWith("169.254.") })).status, finalUrl).toBe(400);
+      expect(k.browsers.create).not.toHaveBeenCalled();
+    }
   });
 
   it("never writes a KERNEL session id into the logs", async () => {

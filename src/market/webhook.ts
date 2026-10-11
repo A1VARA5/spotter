@@ -1,6 +1,6 @@
 // Channel3's price.changed webhook (configured in Channel3's dashboard, delivered by Svix; payload in
-// docs/channel3/webhooks_event-catalog.md). With CHANNEL3_WEBHOOK_SECRET set (the endpoint's whsec_ signing secret),
-// only correctly signed deliveries are accepted. Signed or not, the delivery is only a hint: just its product id is
+// docs/channel3/webhooks_event-catalog.md). Only deliveries signed with CHANNEL3_WEBHOOK_SECRET (the endpoint's
+// whsec_ signing secret) are accepted; without it every delivery is refused. Even signed, the delivery is only a hint: just its product id is
 // used, and Spotter re-reads the real offers from Channel3 before anyone is told anything. Its price and link never are.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
@@ -27,13 +27,20 @@ export function verifySvix(raw: string, h: SvixHeaders, secret: string, nowS = M
 
 const header = (r: Request, name: string) => r.headers.get(`svix-${name}`) ?? r.headers.get(`webhook-${name}`);
 
+let warnedUnset = false;
+
 export async function handleChannel3Webhook(request: Request, secret: string | undefined, hint: (productId: string) => Promise<number>): Promise<Response> {
+  // No secret fails closed, like the daily cron without CRON_SECRET. The daily job still finds drops without it.
+  if (!secret) {
+    if (!warnedUnset) console.error("[spotter] CHANNEL3_WEBHOOK_SECRET is not set, so Channel3 webhook deliveries are refused");
+    warnedUnset = true;
+    return Response.json({ error: "Not configured." }, { status: 503 });
+  }
   const raw = await request.text();
-  if (secret && !verifySvix(raw, { id: header(request, "id"), timestamp: header(request, "timestamp"), signature: header(request, "signature") }, secret)) {
+  if (!verifySvix(raw, { id: header(request, "id"), timestamp: header(request, "timestamp"), signature: header(request, "signature") }, secret)) {
     console.error("[spotter] Channel3 webhook with a missing or wrong signature, ignored");
     return Response.json({ error: "Bad signature." }, { status: 401 });
   }
-  if (!secret) console.warn("[spotter] Channel3 webhook accepted unsigned (set CHANNEL3_WEBHOOK_SECRET); used as a hint only");
   let event: { type?: unknown; canonical_product_id?: unknown };
   try {
     event = JSON.parse(raw);

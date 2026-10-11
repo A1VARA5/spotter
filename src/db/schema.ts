@@ -248,7 +248,7 @@ create unique index if not exists price_watches_one_active_idx on price_watches 
 alter table payments add column if not exists was_it_you jsonb;
 create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
 -- Sleep on it block (src/core/sleep.ts): a held payment can wait a day and be asked about again at 9am household time.
--- The PayPal hold stays; the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
+-- The PayPal hold stays, and the daily cron reauthorizes it once after the 3 day honor period (reauth_tried_at claims it).
 alter table households add column if not exists time_zone text not null default 'Europe/London';
 alter table payments add column if not exists ask_again_at timestamptz;
 alter table payments add column if not exists sleeps int not null default 0;
@@ -282,6 +282,28 @@ create table if not exists image_search_cache (
   products jsonb not null,
   fetched_at timestamptz not null default now()
 );
+-- AI receipt block, one table: what Watchtower's assistant did in each run, folded from AG Studio's harness
+-- telemetry in the page (src/watchtower/receipt.ts): tool names, counts, times, money actions, board changes.
+-- Never the question, the prompt, tool arguments or results. The newest 50 per family are kept.
+create table if not exists watchtower_receipts (
+  household_id text not null references households(id) on delete cascade,
+  run_id text not null,
+  data jsonb not null,
+  flagged boolean not null default false,
+  created_at timestamptz not null default now(),
+  primary key (household_id, run_id)
+);
+create index if not exists watchtower_receipts_recent_idx on watchtower_receipts (household_id, created_at desc);
+-- Security review 2026-10-11 block. F2: when a peek asked KERNEL for a browser, so a failed start still counts
+-- towards the daily caps. F3: each Channel3 product search a price watch or an agent's find_products makes
+-- (1 credit each), so they have a daily cap per family and overall, like price_checks.
+alter table peeks add column if not exists create_called_at timestamptz;
+create table if not exists channel3_searches (
+  household_id text not null references households(id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists channel3_searches_household_idx on channel3_searches (household_id, at);
+create index if not exists channel3_searches_at_idx on channel3_searches (at);
 
 -- Photo price check block (src/market/photo.ts): each find products in image call (up to 7 Channel3 credits) counted
 -- per family per day, and Channel3's answer cached by a hash of the picture and the condition. The photo is never stored.
