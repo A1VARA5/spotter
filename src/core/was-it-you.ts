@@ -5,6 +5,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Db } from "@/db";
 import { formatMoney } from "./types";
+import { messageSays } from "./userText";
 import { claimFromText, matchClaim, type Claim, type Target } from "./claim";
 import { deny, getPayment, getSpender, type Deps, type Payment, type Spender } from "./lifecycle";
 
@@ -337,7 +338,7 @@ export function wasItYouLine(w: WasItYou | null | undefined): string | null {
 /** The question, in plain words: the line itself, then the words the message used. Each channel formats these. */
 export function askLines(p: Payment, payer: Pick<Spender, "name">, w: WasItYou): [string, string] {
   const fresh = /\bnew (?:number|phone)\b/i.test(p.request.context ?? "") ? " from a new number" : "";
-  return [`Did you message ${payer.name}${fresh} asking for ${amountOf(p)}?`, `The message says "${w.claim.quote}".`];
+  return [`Did you message ${payer.name}${fresh} asking for ${amountOf(p)}?`, messageSays(w.claim.quote)];
 }
 
 /** Telegram and Discord button ids: "wiy:n:<token>" or "wiy:y:<token>". */

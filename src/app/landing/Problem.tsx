@@ -181,7 +181,7 @@ export function Problem() {
               mode={mode}
               amount="£250"
               from="Gran"
-              to="jamie.k1994@inbox.example"
+              to="jamie.k1994@mail.example"
               without="Gran pays. It looks like any other payment, and it can't be pulled back."
               withSpotter="She forwards it to Spotter instead. The £250 waits at PayPal until Sam says yes."
             />

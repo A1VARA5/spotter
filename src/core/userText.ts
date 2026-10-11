@@ -29,3 +29,10 @@ export function withoutIds(text: string): string {
     .replace(/\s+([.,;])/g, "$1")
     .trim();
 }
+
+/** 'The message says "it's Tom".' Only the quote's own closing full stops are dropped, so the line never ends '.".';
+ * a question or exclamation mark stays, since the words are shown as a quote. */
+export function messageSays(quote: string): string {
+  const q = quote.trim();
+  return `The message says "${q.replace(/\.+$/, "") || q}".`;
+}

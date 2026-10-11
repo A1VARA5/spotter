@@ -71,7 +71,7 @@ export default async function HowPage() {
             </div>
           </div>
           <div className="how-track">
-            <HoldTrack state="held" from="Gran" to="jamie.k1994@inbox.example" amount={25000} currency="GBP" />
+            <HoldTrack state="held" from="Gran" to="jamie.k1994@mail.example" amount={25000} currency="GBP" />
           </div>
         </div>
       </section>

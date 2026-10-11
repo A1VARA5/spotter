@@ -10,6 +10,7 @@ import { Iphone, SmsScreen } from "@/app/landing/Devices";
 import { BrandMark } from "@/ui/components";
 import { plainError, readJson } from "@/ui/http";
 import type { WasItYou } from "@/core/was-it-you";
+import { messageSays } from "@/core/userText";
 import "./demo.css";
 
 type Phase = "idle" | "starting" | "asked" | "answering" | "not_me" | "it_was_me";
@@ -205,7 +206,7 @@ export function WasItYouDemo({ spotter, resume }: { spotter: string; resume?: { 
                     <span>
                       <b>Did you message Gran from a new number asking for £250?</b>
                     </span>
-                    <span>The message says &quot;{payment?.was_it_you?.claim.quote ?? "it's Tom"}&quot;. PayPal is holding Gran&apos;s money while we check.</span>
+                    <span>{messageSays(payment?.was_it_you?.claim.quote ?? "it's Tom")} PayPal is holding Gran&apos;s money while we check.</span>
                     <i>09:12</i>
                   </div>
                 )}

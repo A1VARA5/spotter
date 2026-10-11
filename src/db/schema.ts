@@ -440,4 +440,27 @@ create table if not exists lab_runs (
   at timestamptz not null default now()
 );
 create index if not exists lab_runs_household_idx on lab_runs (household_id, at desc);
+-- The shared live price watch every demo family sees (src/core/shared-watch.ts): one row per key, made on first use.
+-- product_id is the Channel3 canonical product id that price tracking is subscribed to (tracking_since says when it
+-- started). history holds only the points Channel3 returned, shops the genuine UK offers its product listing showed at the
+-- last check. tried_at caches refreshes (once an hour from the panel)
+-- and unreachable_at says the last try got no answer, so the panel shows the stored history with its date.
+create table if not exists shared_watches (
+  key text primary key,
+  product_id text not null,
+  item text not null,
+  currency text not null check (currency in ('GBP', 'USD')),
+  title text,
+  tracking_since timestamptz,
+  history jsonb,
+  shops jsonb,
+  price_status text,
+  last_checked_at timestamptz,
+  tried_at timestamptz,
+  unreachable_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table shared_watches add column if not exists shops jsonb;
+alter table shared_watches add column if not exists shops_checked_at timestamptz;
+alter table shared_watches add column if not exists last_error text;
 `;

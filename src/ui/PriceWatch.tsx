@@ -68,43 +68,57 @@ function Spark({ w }: { w: WatchView }) {
  * the same thing in one sentence for screen readers.
  */
 function PriceChart({ w }: { w: WatchView }) {
-  const pts = w.history?.points ?? [];
-  if (pts.length < 2) return <p className="pw-chart-empty">The price line fills in as Spotter checks each day.</p>;
+  return <HistoryChart points={w.history?.points ?? []} currency={w.currency} target={w.target} state={w.status} />;
+}
+
+/** The chart itself, also used by the shared live watch (SharedWatch.tsx), which has no target. */
+export function HistoryChart({ points: pts, currency, target, state, empty = "The price line fills in as Spotter checks each day." }: {
+  points: Array<{ at: string; price: number }>;
+  currency: WatchView["currency"];
+  target?: number;
+  state?: string;
+  empty?: string;
+}) {
+  if (pts.length < 2) return <p className="pw-chart-empty">{empty}</p>;
   const prices = pts.map((p) => p.price);
-  const lo = Math.min(...prices, w.target);
-  const hi = Math.max(...prices, w.target);
+  const lo = Math.min(...prices, ...(target === undefined ? [] : [target]));
+  const hi = Math.max(...prices, ...(target === undefined ? [] : [target]));
   const span = hi - lo || 1;
   const W = 360;
   const H = 128;
   const L = 44; // room for the price labels
-  const R = 72; // room for the target label
+  const R = target === undefined ? 12 : 72; // room for the target label
   const T = 10;
   const B = 24; // room for the dates
   const x = (i: number) => L + (i / (pts.length - 1)) * (W - L - R);
   const y = (v: number) => T + (1 - (v - lo) / span) * (H - T - B);
   const first = pts[0]!;
   const last = pts.at(-1)!;
-  const label = `Price went from ${money(first.price, w.currency)} on ${day(first.at)} to ${money(last.price, w.currency)} on ${day(last.at)}. Target ${money(w.target, w.currency)}.`;
+  const label = `Price went from ${money(first.price, currency)} on ${day(first.at)} to ${money(last.price, currency)} on ${day(last.at)}.${target === undefined ? "" : ` Target ${money(target, currency)}.`}`;
   return (
-    <figure className="pw-chart" data-state={w.status}>
+    <figure className="pw-chart" data-state={state}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} preserveAspectRatio="xMidYMid meet">
         <line className="pw-grid" x1={L} x2={W - R} y1={y(hi)} y2={y(hi)} />
         <line className="pw-grid" x1={L} x2={W - R} y1={y(lo)} y2={y(lo)} />
         <text className="pw-axis" x={L - 8} y={y(hi)} dy="0.35em" textAnchor="end">
-          {short(hi, w.currency)}
+          {short(hi, currency)}
         </text>
         <text className="pw-axis" x={L - 8} y={y(lo)} dy="0.35em" textAnchor="end">
-          {short(lo, w.currency)}
+          {short(lo, currency)}
         </text>
-        <line className="pw-target" x1={L} x2={W - R} y1={y(w.target)} y2={y(w.target)} />
-        <text className="pw-target-label" x={W - R + 6} y={y(w.target)} dy="0.35em">
-          Target {short(w.target, w.currency)}
-        </text>
+        {target !== undefined && (
+          <>
+            <line className="pw-target" x1={L} x2={W - R} y1={y(target)} y2={y(target)} />
+            <text className="pw-target-label" x={W - R + 6} y={y(target)} dy="0.35em">
+              Target {short(target, currency)}
+            </text>
+          </>
+        )}
         <polyline className="pw-line" points={pts.map((p, i) => `${x(i)},${y(p.price)}`).join(" ")} />
         {pts.map((p, i) => (
           <g key={p.at + i}>
             <circle className="pw-hit" cx={x(i)} cy={y(p.price)} r="10">
-              <title>{`${money(p.price, w.currency)} on ${day(p.at)}`}</title>
+              <title>{`${money(p.price, currency)} on ${day(p.at)}`}</title>
             </circle>
             {i === pts.length - 1 && <circle className="pw-dot" cx={x(i)} cy={y(p.price)} r="4" />}
           </g>

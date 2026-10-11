@@ -18,6 +18,14 @@ const base: Case = {
 };
 const html = (c: Case, peekScrolls?: number | null) => renderToStaticMarkup(createElement(CaseFile, { c, currency: "GBP", peekScrolls }));
 
+describe("an example case file says it is an example once", () => {
+  it("keeps the label in the verdict line and drops it from the headline", () => {
+    const out = html({ ...base, example: true, headline: "Example, checked earlier: this looks like the Hi Mum scam." });
+    expect(out.match(/Example, checked earlier/g)).toHaveLength(1);
+    expect(out).toContain("This looks like the Hi Mum scam.");
+  });
+});
+
 describe("internal ids never reach the page", () => {
   it("shows a saved finding that still lists offer ids as shop names and prices", () => {
     const out = html({

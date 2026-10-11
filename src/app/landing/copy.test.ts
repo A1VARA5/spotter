@@ -14,6 +14,8 @@ import { GRAN, TOM, AGENT, RECEIPT, GRAN_VIEW, SHOP, FACES, SAMPLE_BOARD } from 
 import { sampleMonth } from "@/watchtower/sample";
 import { toSources } from "@/watchtower/data";
 import { DEMO_SPENDERS } from "@/server/seed";
+import { WAS_IT_YOU_EXAMPLE } from "@/server/example-hold";
+import { STORY_FLAGS } from "./Walkthrough";
 
 describe("the landing's sample numbers match the live board's sample month", () => {
   it("adds up the same money kept, per outcome and for Gran", () => {
@@ -62,6 +64,16 @@ describe("Was it you? scene", () => {
   });
 });
 
+describe("the scroll story is the hero's text, all the way through", () => {
+  it("quotes only words that are in Gran's text, from the same message the demo's Was it you? payment uses", () => {
+    for (const f of STORY_FLAGS) expect(GRAN.text).toContain(f.quote);
+    expect(WAS_IT_YOU_EXAMPLE.context).toContain(GRAN.text);
+    expect(WAS_IT_YOU_EXAMPLE.context).toContain(GRAN.from);
+    expect(WAS_IT_YOU_EXAMPLE.payee).toBe(GRAN.payee);
+    expect(WAS_IT_YOU_EXAMPLE.amount).toBe(25000);
+  });
+});
+
 describe("agent scene", () => {
   it("quotes the demo shop's poisoned tool and its hidden line", () => {
     expect(TOOL_POISON).toContain(AGENT.poison);
@@ -82,7 +94,7 @@ describe("two faces and where the money goes", () => {
   it("are what the code says for a page that only shows phones a card form", () => {
     const page = "https://parcel-redelivery.example/pay";
     const snap = (card: boolean, text: string) => ({ finalUrl: page, title: "Redelivery", text, visibleChars: text.length, asks: { card, bank: false, login: false, giftCard: false } });
-    const r = compareFaces(snap(false, "Nothing to see here"), snap(true, "Confirm your card. Card number, expiry, CVV. Pay £2.99"), "uk_mobile");
+    const r = compareFaces(snap(false, "Nothing to see here"), snap(true, "Confirm your card. Card number, expiry, CVV. Pay £1.99"), "uk_mobile");
     expect(r.compared && r.differs).toBe(true);
     expect(r.verdict).toBe(FACES.verdict);
     const desk = moneyTrail({ startUrl: page, finalUrl: page, forms: [], scriptTargets: [], items: null });

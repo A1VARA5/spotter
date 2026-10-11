@@ -14,6 +14,18 @@
 .held-decide { display: grid; gap: 8px; }
 .held-decide .held-actions { max-width: 880px; }
 
+/* Wide held cards (1920 px screens and up): the card is its own container, so the hold track shows the whole payee
+   when there is room, and Deny / Approve / Ask again become one row of buttons sized to their words instead of two
+   half-card slabs. Narrow cards keep the two column grid that thumbs need. */
+.held { container: held / inline-size; }
+@container held (min-width: 600px) {
+  .held .track-end { max-width: 30cqw; }
+}
+@container held (min-width: 900px) {
+  .held .held-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .held .held-actions > .btn { flex: 0 0 auto; min-width: 168px; padding-inline: 28px; }
+}
+
 /* Deny, then the real one: the link inside the notice. */
 .dash-notice-real { display: inline-flex; align-items: center; gap: 5px; color: var(--go); font-weight: 650; }
 .dash-notice-real svg { flex: none; }

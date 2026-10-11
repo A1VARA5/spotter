@@ -107,15 +107,28 @@ export function decidedReason(p: DecidedInput): string | null {
   const top = topReason(p);
   // Decided with no reason at all: how it ended, in the past tense, never "Within the rules." next to a denial.
   if (s && !top && s !== "failed") return outcomeLine(p);
-  if (!s || !top || s === "paused" || s === "failed") return top;
+  if (!s || !top || s === "paused" || s === "failed") return top && oneStop(top);
   const verb = s === "stopped" ? "Stopped" : s === "not_sent" ? "Not sent" : "Held";
   const clause = pastClause(top);
-  // The AI's own sentence keeps its words after a short label: "Held: Someone on a new number says ...".
-  const why = clause ? `${verb} because ${clause}.` : `${verb}: ${top}`;
+  // The AI's own sentence keeps its words after a short label: "Stopped: It hides text from people ...". A Not me
+  // says why it was held in its own words instead, since the person the message named has already answered.
+  const w = p.was_it_you;
+  const why = clause ? oneStop(`${verb} because ${clause}.`) : s === "not_me" && w ? notMeWhy(w) : `${verb}: ${oneStop(top)}`;
   // Endings where money moved after the hold say so, so "Held because" never sits alone next to a payment.
   if (s === "paid") return `${why} Paid after ${p.decided_by} approved.`;
   if (s === "paying") return `${why} ${p.decided_by && p.decided_by !== "Spotter" ? `${p.decided_by} approved it` : "It was approved"} and PayPal is paying it.`;
   if (s === "paid_anyway") return `${why} PayPal took it anyway.`;
   if (s === "paid_by_rules") return `${why} Paid within the rules.`;
   return why;
+}
+
+/** "Held because the message said it was from Tom, and Tom said it wasn't." ("you" when the spotter was the one named). */
+function notMeWhy(w: NonNullable<DecidedInput["was_it_you"]>): string {
+  const who = w.channel === "alert" ? "you" : w.who;
+  return `Held because the message said it was from ${who}, and ${who} said it wasn't.`;
+}
+
+/** One full stop at the end, never two: 'new number.".' and 'today..' (an AI sentence, a quote) lose the extra one. */
+export function oneStop(line: string): string {
+  return line.replace(/\.(["”']?)\.+$/, ".$1");
 }
