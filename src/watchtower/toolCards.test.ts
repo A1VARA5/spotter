@@ -121,6 +121,11 @@ describe("what a card says", () => {
     expect(c.access).toBe("board");
     expect(c.pill).toBe("Board change");
   });
+  it("place widget: says when it brought back the tile for the same question rather than adding one", () => {
+    expect(describeCall("place_widget", {}, done({ widgetType: "bar-chart-grouped", reused: false })).lines[0]).toMatch(/placed one empty tile/i);
+    expect(describeCall("place_widget", {}, done({ widgetType: "bar-chart-grouped", reused: true })).lines[0]).toMatch(/brought back the tile for this question/i);
+    expect(describeCall("place_widget", {}, done({ widgetType: "fair-price", reused: false })).lines[0]).toMatch(/fair price tile/i);
+  });
   it("counts links written in different ways", () => {
     expect(linkCount(["see https://a.example/x and www.b.example", "c.co.uk/pay", "no link here, e.g. this."])).toBe(3);
   });

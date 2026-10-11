@@ -86,7 +86,10 @@ describe("Watchtower's agent roster", () => {
     const route = s.split("\n").find((l) => l.startsWith('- "Did we pay fair prices?"'))!;
     expect(route).toMatch(/fair_prices/);
     expect(route).not.toMatch(/ask data/i);
-    expect(route).toMatch(/view_page/);
+    // the answer comes in chat first: no board look or page agent hop before it
+    expect(route).not.toMatch(/view_page|have page/);
+    expect(route).toMatch(/only when they ask/i);
+    expect(route).toMatch(/place_widget with widgetType fair-price/);
     // a loose name match must never be passed off as the usual price
     expect(s).toMatch(/never call it the usual price/i);
   });
@@ -99,6 +102,9 @@ describe("Watchtower's agent roster", () => {
     expect(route).toMatch(/widget/);
     expect(route).toMatch(/same turn|side by side|together/i);
     expect(route).toMatch(/spend|how much/i);
+    // the same question asked again reuses its tile rather than building another
+    expect(route).toMatch(/title/);
+    expect(route).toMatch(/reused/);
   });
 
   it("never lets a price far below real shops pass as a good price, and never calls an unpaid payment paid", () => {

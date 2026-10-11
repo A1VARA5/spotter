@@ -174,6 +174,60 @@ describe("a tile for a typed question (place_widget)", () => {
     expect(page.widgetLayout[one.widgetId]!.yTrack).toBe(ANSWER_SPAN);
   });
 
+  it("titles the new tile with the question's title", () => {
+    const r = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "What Leo spent on games");
+    expect(pageOf(r.state, r.pageId).widgets[r.widgetId]).toEqual({ type: "bar-chart-grouped", format: { title: { enabled: true, text: "What Leo spent on games" } } });
+    expect(r.reused).toBe(false);
+  });
+
+  it("reuses the tile for the same question instead of adding a second, and moves it to the top", () => {
+    const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "What Leo spent on games");
+    // the widget agent set it up
+    (pageOf(one.state, one.pageId).widgets[one.widgetId] as unknown as { dataMapping: unknown }).dataMapping = { valueKey: [{ id: "payments.amount" }] };
+    const other = placeAnswer(one.state, {}, "donut-chart", allowed, "Where the money went");
+    const again = placeAnswer(other.state, {}, "bar-chart-grouped", allowed, "  what leo spent on GAMES ");
+    expect(again.widgetId).toBe(one.widgetId);
+    expect(again.reused).toBe(true);
+    const page = pageOf(again.state, again.pageId);
+    expect(Object.keys(page.widgets)).toHaveLength(2);
+    expect(page.widgetLayout[one.widgetId]!.yTrack).toBe(0);
+    expect(page.widgetLayout[other.widgetId]!.yTrack).toBe(ANSWER_SPAN);
+  });
+
+  it("never calls a tile reused while it is still empty (so the widget agent still sets it up)", () => {
+    const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "Leo on games");
+    const again = placeAnswer(one.state, {}, "bar-chart-grouped", allowed, "Leo on games");
+    expect(again.widgetId).toBe(one.widgetId);
+    expect(again.reused).toBe(false);
+  });
+
+  it("says plainly when the catalogue couldn't be read, rather than blaming the type", () => {
+    expect(() => placeAnswer(board(), {}, "bar-chart-grouped", new Set())).toThrow(/catalogue isn't available/i);
+  });
+
+  it("replaces the tile in place when the same question now wants a different chart", () => {
+    const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "Leo on games");
+    const again = placeAnswer(one.state, {}, "donut-chart", allowed, "Leo on games");
+    expect(again.widgetId).toBe(one.widgetId);
+    expect(again.reused).toBe(false);
+    expect(pageOf(again.state, again.pageId).widgets[one.widgetId]).toEqual({ type: "donut-chart", format: { title: { enabled: true, text: "Leo on games" } } });
+  });
+
+  it("finds the same question by the title the widget agent set, too", () => {
+    const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed);
+    const page = pageOf(one.state, one.pageId);
+    (page.widgets[one.widgetId] as unknown as { format: unknown }).format = { title: { enabled: true, text: "Leo on games" } };
+    expect(placeAnswer(one.state, {}, "bar-chart-grouped", allowed, "Leo on games").widgetId).toBe(one.widgetId);
+  });
+
+  it("keeps one tile per kind for Spotter's own tiles (like fair price), whatever the title", () => {
+    const fair = new Set([...allowed, "fair-price"]);
+    const one = placeAnswer(board(), {}, "fair-price", fair, "Fair prices");
+    const again = placeAnswer(one.state, {}, "fair-price", fair, "Did we pay fair prices?");
+    expect(again.widgetId).toBe(one.widgetId);
+    expect(again.reused).toBe(true);
+  });
+
   it("refuses a widget type that isn't in the allowed catalogue (no image or free text tiles)", () => {
     expect(() => placeAnswer(board(), {}, "image", allowed)).toThrow(/can't place/i);
   });

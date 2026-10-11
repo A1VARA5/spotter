@@ -159,6 +159,13 @@ function month(d: Record<string, unknown>) {
   return { pill: `${s} stopped, ${w} waiting`, lines: [`This month: ${s} stopped, ${w} waiting, ${plural(t, "kind")} of trick.`, "Names and reasons are left out here."] };
 }
 
+// Only Spotter's own facts about the call (its type is checked against the catalogue), never the title.
+function placed(d: Record<string, unknown>): string {
+  if (d.widgetType === "fair-price") return "Put the fair price tile on the Answers page. The receipt can undo it.";
+  if (d.reused === true) return "Brought back the tile for this question to the top of the Answers page, instead of adding another. The receipt can undo it.";
+  return "Placed one empty tile on the Answers page for the widget agent to build. The receipt can undo it.";
+}
+
 /** The card for one call. `args` are never shown: the model wrote them, maybe after reading a scammer's words. */
 export function describeCall(name: string, _args: Record<string, unknown>, call: { status: CallStatus; result?: Result }): Card {
   const tool = (CARD_TOOLS as readonly string[]).includes(name) ? (name as (typeof CARD_TOOLS)[number]) : null;
@@ -182,7 +189,7 @@ export function describeCall(name: string, _args: Record<string, unknown>, call:
     : tool === "fair_prices" ? fair(d)
     : tool === "my_month" ? month(d)
     : tool === "add_page" ? { pill: "Board change", lines: ["Added one empty page to the board. The receipt can undo it."] }
-    : tool === "place_widget" ? { pill: "Board change", lines: ["Placed one empty tile on the Answers page for the widget agent to build. The receipt can undo it."] }
+    : tool === "place_widget" ? { pill: "Board change", lines: [placed(d)] }
     : { lines: ["Spotter doesn't know this tool."] };
   return { ...card, ...body };
 }

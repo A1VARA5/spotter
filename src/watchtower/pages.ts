@@ -140,24 +140,60 @@ export const ANSWERS_PAGE = "Answers";
 /** Rows an answer tile gets: room for a chart with its labels. */
 export const ANSWER_SPAN = 14;
 
+/** Spotter's own tiles a question can place: complete the moment they're placed, no widget agent needed. */
+export const READY_TILES: ReadonlySet<string> = new Set(["fair-price"]);
+
+type AnswerWidget = { type?: string; format?: { title?: { text?: unknown } }; dataMapping?: Record<string, unknown> };
+
+/** A placed answer tile that was never set up (no field mapped). Spotter's ready made tiles never count. */
+export function isEmptyAnswer(w: { type?: string; dataMapping?: Record<string, unknown> }): boolean {
+  if (READY_TILES.has(w.type ?? "")) return false;
+  return !Object.values(w.dataMapping ?? {}).some((v) => Array.isArray(v) && v.length > 0);
+}
+const sameTitle = (a: unknown, b: string) => typeof a === "string" && a.replace(/\s+/g, " ").trim().toLowerCase() === b;
+
 /**
- * An empty tile of an allowed type for a typed question (the place_widget tool): newest at the top of the
- * Answers page, full width, older answers pushed down. AG Studio's widget agent then configures it. Throws on
+ * A tile of an allowed type for a typed question (the place_widget tool): newest at the top of the Answers
+ * page, full width, older answers pushed down. AG Studio's widget agent then configures it. The same question
+ * asked again (same title, or the same ready made tile) gets its old tile back at the top rather than a
+ * second one: `reused` when it already shows that chart, or swapped to the new chart type in place. Throws on
  * a type outside the allowed catalogue, so no image or free text tile can be placed this way.
  */
-export function placeAnswer(s: AgReportState, names: Record<string, string>, type: string, allowed: ReadonlySet<string>): { state: AgReportState; pageId: string; widgetId: string } {
+export function placeAnswer(
+  s: AgReportState,
+  names: Record<string, string>,
+  type: string,
+  allowed: ReadonlySet<string>,
+  title?: string,
+): { state: AgReportState; pageId: string; widgetId: string; reused: boolean } {
+  if (allowed.size === 0) throw new Error("The widget catalogue isn't available right now, so no tile can be placed. Answer in chat instead.");
   if (!allowed.has(type)) throw new Error(`Spotter can't place a "${String(type).slice(0, 40)}" tile. Pick a chart or table type from the catalogue.`);
   const { state, pageId } = addPage(withNames(s, names), ANSWERS_PAGE);
-  type Pg = Page & { widgets?: Record<string, unknown>; widgetLayout?: Record<string, Box> };
+  type Pg = Page & { widgets?: Record<string, AnswerWidget>; widgetLayout?: Record<string, Box> };
   const pages = pagesIn(state) as Pg[];
   const page = pages.find((p) => p.id === pageId)!;
   const widgets = page.widgets ?? {};
-  let n = Object.keys(widgets).length + 1;
-  while (`answer-${n}` in widgets) n++;
-  const widgetId = `answer-${n}`;
-  const moved = Object.fromEntries(Object.entries(page.widgetLayout ?? {}).map(([id, b]) => [id, { ...b, yTrack: b.yTrack + ANSWER_SPAN }]));
-  const next: Pg = { ...page, widgets: { ...widgets, [widgetId]: { type } }, widgetLayout: { [widgetId]: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: ANSWER_SPAN }, ...moved } };
-  return { state: { ...state, pages: pages.map((p) => (p.id === pageId ? next : p)) } as unknown as AgReportState, pageId, widgetId };
+  const name = title?.replace(INVISIBLE, "").replace(/\s+/g, " ").trim().slice(0, 80) ?? "";
+  const key = name.toLowerCase();
+  const old = Object.entries(widgets).find(([id, w]) => id.startsWith("answer-") && (READY_TILES.has(type) ? w.type === type : !!key && sameTitle(w.format?.title?.text, key)))?.[0];
+  let widgetId = old;
+  if (!widgetId) {
+    let n = Object.keys(widgets).length + 1;
+    while (`answer-${n}` in widgets) n++;
+    widgetId = `answer-${n}`;
+  }
+  // An old tile still empty (its build failed or is still going) is set up again, never passed off as done.
+  const reused = !!old && widgets[old]!.type === type && !isEmptyAnswer(widgets[old]!);
+  const layout = { ...(page.widgetLayout ?? {}) };
+  const was = old ? layout[old] : undefined;
+  delete layout[widgetId];
+  // Tiles above the old spot (or all of them, for a new tile) move down by one answer; tiles below it only
+  // by however much taller the answer is than the tile it was.
+  const below = was ? ANSWER_SPAN - was.ySpan : 0;
+  const moved = Object.fromEntries(Object.entries(layout).map(([id, b]) => [id, { ...b, yTrack: b.yTrack + (!was || b.yTrack < was.yTrack ? ANSWER_SPAN : below) }]));
+  const tile = reused ? widgets[widgetId]! : { type, ...(name ? { format: { title: { enabled: true, text: name } } } : {}) };
+  const next: Pg = { ...page, widgets: { ...widgets, [widgetId]: tile }, widgetLayout: { [widgetId]: { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: ANSWER_SPAN }, ...moved } };
+  return { state: { ...state, pages: pages.map((p) => (p.id === pageId ? next : p)) } as unknown as AgReportState, pageId, widgetId, reused };
 }
 
 export const PHONE_BAR_SPAN = 20;

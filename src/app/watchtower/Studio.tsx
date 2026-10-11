@@ -14,7 +14,10 @@ import { promptStarters, startingBoard } from "@/watchtower/initial";
 import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
-import { addPage, fitWide, namesOf, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
+import { READY_TILES, addPage, fitWide, namesOf, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
+import { dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
+import { installChartPolish, setChartMoney } from "./chartPolish";
+import { notable, type NotableHarness } from "@/watchtower/notes";
 import { SPOTTER_ID, buildGranRoster, buildRoster, paypalStatus } from "@/watchtower/agents";
 import { granBoard, granForAgent, granLabels, granMonth, granThemeParams } from "@/watchtower/gran";
 import { GranSafeWidget, GranScamsWidget, GranWaitingWidget } from "./GranWidgets";
@@ -125,6 +128,8 @@ const ALERT_ASK: Record<WatchAlert["kind"], string> = {
   waiting: "has a payment waiting for my approval",
   new_sign: "hit a kind of scam sign Spotter hadn't seen in our family for a month",
 };
+const EMPTY_TILE_NOTE = "I couldn't build the chart for this one, so I took the empty tile off the Answers page. Ask again and I'll have another go.";
+const EMPTY_TILES_NOTE = "I couldn't build the charts for this one, so I took the empty tiles off the Answers page. Ask again and I'll have another go.";
 const BUSINESS_CONTEXT = `This account is a small business, not a family: the people are staff and AI buying agents, most payees are suppliers, and the spotter is the owner who approves. Say "approver", "staff" and "suppliers", and write for a busy owner instead of a parent.`;
 
 function lookIntoPrompt(a: WatchAlert): string {
@@ -141,7 +146,7 @@ function lookIntoPrompt(a: WatchAlert): string {
  * are noted (synchronously, before any tool runs) so the run's changes can be counted and undone. If that
  * snapshot is missing, the board count is marked unknown rather than shown as 0.
  */
-function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[]): Recorder {
+function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[], beforeEnd?: (threadId: string) => void): Recorder {
   const starts = new Map<string, RunStartSnapshot | null>();
   const recorder = createRecorder({
     onStart: (run) => {
@@ -156,6 +161,15 @@ function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[]):
     onFinish: (receipt) => {
       const start = starts.get(receipt.runId);
       starts.delete(receipt.runId);
+      // Tidying up after the run (when nothing else is running) counts as part of the run, so its undo covers it.
+      // A stopped run is left alone: someone pressed Stop, or the board is being remounted under it.
+      if (beforeEnd && starts.size === 0 && receipt.status !== "cancelled") {
+        try {
+          beforeEnd(receipt.threadId);
+        } catch (e) {
+          console.error("[watchtower] couldn't tidy the board after the assistant's run:", e);
+        }
+      }
       let changes = null;
       try {
         changes = start ? captureEnd(api, start) : null;
@@ -344,6 +358,10 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
     [sources, hasPaypal],
   );
 
+  // Money fields come from the data definition, so axes show the same currency as the tooltips.
+  // Set during render, before Studio (a child) draws its charts.
+  installChartPolish();
+  setChartMoney(moneyFieldsOf(data.sources));
   // Phones get the board to read, not to build: AG's edit panels need room the screen doesn't have.
   const [phone] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const theme = useMemo(() => themeFor(new Set(sources.payments.map((r) => r.outcome)), phone), [sources, phone]);
@@ -365,8 +383,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
 
   const apiRef = useRef<AgStudioApi | null>(null);
   const onApiReady = useCallback((e: { api: AgStudioApi }) => {
-    apiRef.current = e.api;
-  }, []);
+    apiRef.current = e.api;  }, []);
   const harness = useRef<FocusableHarness | null>(null);
   const harnessWaiters = useRef<Array<(h: FocusableHarness) => void>>([]);
 
@@ -804,7 +821,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       // placeable by accident). If the catalogue can't be read, nothing is placeable and the tool says why.
       const answerTypes = (): Set<string> => {
         try {
-          return new Set(api.getAiContext().catalogue().map((e) => e.type).filter((t) => /-chart(-[a-z-]+)?$|^grid$|^pivot-grid$/.test(t)));
+          return new Set(api.getAiContext().catalogue().map((e) => e.type).filter((t) => /-chart(-[a-z-]+)?$|^grid$|^pivot-grid$/.test(t) || READY_TILES.has(t)));
         } catch (e) {
           console.warn("[watchtower] couldn't read the widget catalogue for place_widget:", e);
           return new Set();
@@ -813,14 +830,22 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       const placeTool = api.defineAiTool({
         name: "place_widget",
         description:
-          "Place one empty chart or table tile at the top of the Answers page and show that page, so the family sees their answer appear. Returns the widgetId, widgetType and pageId to hand to the widget agent, which configures it. Use a chart type like bar-chart-grouped, column-chart-grouped, donut-chart, line-chart, or grid for a table.",
-        params: (s: Shape) => s.object({ widgetType: s.string({ description: "A chart or table type from the widget catalogue, like bar-chart-grouped" }) }),
-        execute: timed(async (args: { widgetType: string }, ctx: ToolCtx) => {
+          "Place one empty chart or table tile, titled for the question, at the top of the Answers page and show that page, so the family sees their answer appear. Returns the widgetId, widgetType and pageId to hand to the widget agent, which configures it. Use a chart type like bar-chart-grouped, column-chart-grouped, donut-chart, line-chart, or grid for a table; fair-price is ready made and needs no widget agent. The same title again brings back that question's tile instead of adding another.",
+        params: (s: Shape) =>
+          s.object({
+            widgetType: s.string({ description: "A chart or table type from the widget catalogue, like bar-chart-grouped, or fair-price" }),
+            title: s.string({ description: 'A short title for the question, like "What Leo spent on games". Same question, same title.' }),
+          }),
+        execute: timed(async (args: { widgetType: string; title?: string }, ctx: ToolCtx) => {
           try {
             const type = String(args.widgetType ?? "").trim();
-            const { state, pageId, widgetId } = placeAnswer(api.getState(), names.current, type, answerTypes());
+            const title = typeof args.title === "string" ? args.title : undefined;
+            const { state, pageId, widgetId, reused } = placeAnswer(api.getState(), names.current, type, answerTypes(), title);
             api.setState(state);
-            return ctx.success(`Placed an empty ${type} tile. Now delegate to widget with widgetType ${type}, widgetId ${widgetId} and pageId ${pageId}.`, { widgetType: type, widgetId, pageId });
+            const out = { widgetType: type, widgetId, pageId, reused };
+            if (READY_TILES.has(type)) return ctx.success(`The ${type} tile is at the top of the Answers page and fills itself in. No widget agent needed.`, out);
+            if (reused) return ctx.success(`reused: this question's ${type} tile is back at the top of the Answers page and its numbers are live. Don't delegate to widget; only ask data for the total.`, out);
+            return ctx.success(`Placed an empty ${type} tile. Now delegate to widget with widgetType ${type}, widgetId ${widgetId} and pageId ${pageId}.`, out);
           } catch (e) {
             console.warn("[watchtower] place_widget failed:", e);
             return ctx.error(e instanceof Error ? e.message : "Couldn't place that tile.");
@@ -828,7 +853,17 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         }),
       } as never) as AgAiTool;
 
-      const recorder = receiptRecorder(api, book, recorders.current);
+      // A tile the widget agent never set up (it failed, or did nothing) comes off the Answers page when the
+      // run ends, and the chat says so in plain words, rather than an empty box staying until Undo.
+      let noted: NotableHarness | null = null;
+      const tidy = (threadId: string) => {
+        const { state, removed } = dropEmptyAnswers(api.getState());
+        if (!removed.length) return;
+        api.setState(state);
+        console.warn("[watchtower] took off answer tiles that were never set up:", removed);
+        noted?.addNote(threadId, removed.length === 1 ? EMPTY_TILE_NOTE : EMPTY_TILES_NOTE);
+      };
+      const recorder = receiptRecorder(api, book, recorders.current, tidy);
 
       const inner = createAiHarness(api, ({ builtIn }) => {
         // Our own "spotter" agent leads (its own tools.delegateTo reaches "brief" and Studio's built ins),
@@ -847,7 +882,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           promptStarters: promptStarters(sources.people, kind),
         };
       });
-      const h = focusable(inner);
+      noted = notable(inner);
+      const h = focusable(noted);
       harness.current = h;
       for (const w of harnessWaiters.current.splice(0)) w(h);
       return h;
