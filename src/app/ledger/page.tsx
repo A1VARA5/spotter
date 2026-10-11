@@ -11,8 +11,8 @@ export const metadata = { title: "Ledger | Spotter" };
 export default async function LedgerPage() {
   const { db } = await getDeps();
   const { household, unlocked } = await requirePageSession(db);
-  const names = Object.fromEntries((await listSpenders(db, household.id)).map((s) => [s.id, s.name]));
-  const payments = await listPayments(db, household.id, 500);
+  const names = Object.fromEntries((await listSpenders(db, household.id, { lab: true })).map((s) => [s.id, s.name]));
+  const payments = await listPayments(db, household.id, 500, { lab: true });
   return (
     <AppShell db={db} household={household} current="activity" layout="wide">
       <h1 className="page-title">Activity</h1>

@@ -41,12 +41,18 @@ describe("one vocabulary", () => {
 });
 
 describe("approveWarning", () => {
-  it("follows the case verdict, so a card saying worth a closer look never confirms with likely a scam", () => {
+  it("follows the case verdict exactly, so the confirm never says more (or less) than the card", () => {
     expect(approveWarning("likely_scam", false)).toMatch(/likely a scam/);
-    expect(approveWarning("unclear", true)).not.toMatch(/scam/);
-    expect(approveWarning("unclear", true)).toMatch(/serious warning/);
-    expect(approveWarning(undefined, true)).toMatch(/serious warning/);
-    expect(approveWarning("unclear", false)).toBeNull();
+    // The card says "Worth a closer look": the confirm says the same, never "serious warning signs" or "scam".
+    expect(approveWarning("unclear", true)).toMatch(/worth a closer look/);
+    expect(approveWarning("unclear", true)).not.toMatch(/scam|serious/);
+    expect(approveWarning("unclear", false)).toMatch(/worth a closer look/);
+    expect(approveWarning("looks_fine", true)).toBeNull();
     expect(approveWarning("looks_fine", false)).toBeNull();
+  });
+
+  it("with no case file verdict, serious signs from the check still get a warning", () => {
+    expect(approveWarning(undefined, true)).toMatch(/serious warning/);
+    expect(approveWarning(undefined, false)).toBeNull();
   });
 });

@@ -79,7 +79,7 @@ export function makeHandlers(getDeps: () => Promise<Deps>) {
       }
     }),
 
-    list: (householdId: string) => guarded("list", async () => json({ payments: await listPayments((await getDeps()).db, householdId) })),
+    list: (householdId: string) => guarded("list", async () => json({ payments: await listPayments((await getDeps()).db, householdId, 50, { lab: true }) })),
 
     approve: (householdId: string, id: string, by: string) => guarded("approve", async () => settle(await getDeps(), householdId, id, by, approve)),
 

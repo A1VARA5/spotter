@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHousehold } from "@/core/households";
 import { pgliteDb, type Db } from "@/db";
-import { createSpender, type Deps } from "./lifecycle";
+import { createSpender, listPayments, type Deps } from "./lifecycle";
+import { tripOutcome } from "./tripped";
+import { topReason } from "./reasons";
 import { authenticate, issueAgentKeys, issueAgentToken, verifyAgentToken } from "./pairing";
 import { keyCard, keyLabel, logCall, overLimit, springCanary, switchOff } from "./agent-keys";
 
@@ -60,6 +62,22 @@ describe("agent keys with a planted decoy", () => {
     const trips = await db.query<{ tool: string }>("select tool from tripwires where spender_id = 'agent'");
     expect(trips.map((t) => t.tool)).toEqual(["decoy_key"]);
     expect(await keyCard(db, hh, "agent")).toMatchObject({ status: "frozen", keyLive: false });
+  });
+
+  it("the hold it lets go reads as stopped by the decoy key, never as a person's deny", async () => {
+    vi.stubEnv("SESSION_SECRET", "decoy-test-secret-".repeat(3));
+    await db.query("insert into payments (id, spender_id, request, status, amount, currency, paypal_authorization_id) values ('pay_held', 'agent', $1, 'needs_approval', 1999, 'USD', 'AUTH1')", [
+      JSON.stringify({ payee: { name: "GadgetBarn" }, amount: { amount: 1999, currency: "USD" }, category: "electronics" }),
+    ]);
+    const { decoy } = await issueAgentKeys(db, "agent");
+    const hit = await authenticate(db, decoy);
+    if (hit?.kind !== "canary") throw new Error("expected a canary hit");
+    await springCanary(deps, hit);
+    const [p] = await listPayments(db, hh);
+    expect(p!.status).toBe("voided");
+    expect(tripOutcome(p!)!.long).toBe("Stopped by a decoy key");
+    expect(topReason(p!)).toMatch(/decoy key/);
+    vi.unstubAllEnvs();
   });
 });
 

@@ -1,11 +1,16 @@
-import { TopBar } from "@/ui/components";
+import { PublicFooter, PublicHeader } from "@/ui/PublicChrome";
+import { isSignedIn } from "@/server/page-session";
 
 export const metadata = { title: "Privacy | Spotter" };
+// Reads the session so the shared header says Dashboard to someone signed in.
+export const dynamic = "force-dynamic";
 
-export default function Privacy() {
+export default async function Privacy() {
+  const signedIn = await isSignedIn();
   return (
+    <>
+    <PublicHeader band signedIn={signedIn} current="privacy" />
     <main className="shell legal">
-      <TopBar />
       <h1 className="page-title">Privacy</h1>
       <p className="lede">Spotter is a hackathon project running on the PayPal sandbox. No real money moves. Here is exactly what it keeps, and what goes where.</p>
       <h2 className="section-title">What Spotter stores</h2>
@@ -47,5 +52,7 @@ export default function Privacy() {
         project page asking for it, and it is removed within a week. Comments there are public, so leave personal details out.
       </p>
     </main>
+    <PublicFooter band />
+    </>
   );
 }

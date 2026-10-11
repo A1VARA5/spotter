@@ -6,9 +6,10 @@
 import type { Decision } from "./decide";
 import { CHANGED_BANK_ADVICE, SCAM_ADVICE } from "./decide";
 import type { Flag, FlagKind, Severity } from "./grounding";
+import { tripReason, type TripInput } from "./tripped";
 
 type ProofFinding = { kind?: "prompt_injection" | "cloaking" | "money_offsite"; severity?: "high"; toolName?: string };
-export type ReasonInput = { decision: Decision | null | undefined; case_file?: { findings: ProofFinding[] } | null };
+export type ReasonInput = { decision: Decision | null | undefined; case_file?: { findings: ProofFinding[] } | null } & Partial<TripInput>;
 
 /** The case file's code made proof, in a few plain words. */
 const PROOF = {
@@ -56,6 +57,9 @@ export function rankedReasons(p: ReasonInput): string[] {
   // A high hidden orders sign from the check already says what the page proof says: the proof line isn't repeated.
   const injectionSaid = flags.some((f) => f.kind === "prompt_injection" && f.severity === "high" && reasons.some((x) => x.r === f.why));
   const extra = proof.filter((x) => !(injectionSaid && (x.r === PROOF.page || x.r === PROOF.tool)));
+  // A tripwire that froze the agent and let the hold go outranks everything, even the rule that held it.
+  const trip = p.status ? tripReason({ status: p.status, decided_by: p.decided_by, tripwire: p.tripwire }) : null;
+  if (trip) extra.unshift({ r: trip, rank: -1, i: -200 });
   return [...extra, ...reasons].sort((a, b) => a.rank - b.rank || a.i - b.i).map((x) => x.r);
 }
 

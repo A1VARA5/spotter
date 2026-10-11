@@ -135,6 +135,27 @@ describe("buildPhoto", () => {
     expect(r.verdict).toBeNull();
   });
 
+  it("lists the same kind of thing once, counted, with every box it was found in", () => {
+    const s = scene();
+    // Live (11 Oct 2026): the two curtains of one window came back as two "Patterned curtain" rows.
+    s.things = [s.things[0]!, { ...s.things[0]!, thing: "Overear  Headphones ", bbox: [300, 117, 420, 253] }];
+    const r = buildPhoto(s, "buy", "GBP", null);
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0]).toMatchObject({ n: 1, thing: "Over ear headphones", count: 2, bbox: [86, 117, 217, 253], more: [[300, 117, 420, 253]] });
+    // Both are still in the photo, so both count towards what real shops charge.
+    expect(r.total).toBe("Real shops: about £438 for these.");
+  });
+
+  it("never merges a priced thing with an unpriced one of the same name", () => {
+    const s = scene();
+    s.things = [{ ...s.things[1]!, thing: "overear headphones" }, s.things[0]!];
+    const r = buildPhoto(s, "buy", "GBP", null);
+    expect(r.items.map((i) => [i.n, i.found, i.count])).toEqual([
+      [1, false, undefined],
+      [2, true, undefined],
+    ]);
+  });
+
   it("prices used offers when selling, and catches a lowball offer", () => {
     const used = (id: string, t: string, offers: Array<[string, number]>) => prod(id, t, "Sony", offers.map(([d, p]) => [d, p, "used"] as [string, number, Cond]), ["headphones"]);
     const s: Scene = {

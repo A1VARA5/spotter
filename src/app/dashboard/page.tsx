@@ -10,7 +10,7 @@ import { START_COOKIE, StartChip } from "./StartChip";
 import { safeTz } from "@/core/holdtime";
 import { listWarnings } from "@/core/switchedoff";
 import { Warnings } from "@/ui/Warnings";
-import { AgentHolds } from "@/ui/AgentHolds";
+import { AgentHolds, LabLine } from "@/ui/AgentHolds";
 import { holdsFor } from "@/server/agent-holds";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +24,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   await sweepStale(db);
   await reconcileStuck(deps);
   const spenders = await listSpenders(db, household.id);
-  const names = Object.fromEntries(spenders.map((s) => [s.id, s.name]));
-  const payments = await listPayments(db, household.id);
+  // Names for every payment, the agent lab's test agent included (its rows say who they were); the people strip leaves it out.
+  const names = Object.fromEntries((await listSpenders(db, household.id, { lab: true })).map((s) => [s.id, s.name]));
+  const payments = await listPayments(db, household.id, 50, { lab: true });
   const warnings = await listWarnings(db, household.id);
   const agentHolds = await holdsFor(db, household.id);
   const [tokens] = await db.query<{ n: string }>(
@@ -77,6 +78,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </p>
         )}
         <DashboardMain />
+        <LabLine lab={agentHolds.lab} />
       </AppShell>
     </DashboardState>
   );

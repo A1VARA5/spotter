@@ -14,6 +14,7 @@ import type { Case } from "@/agents/case";
 import { startWasItYou, type WasItYou } from "./was-it-you";
 import { CAPTURED_WHILE_RELEASING, LAPSED_HOLD, LATE_BY, LATE_HOLD, PAUSED_BY } from "./decidedBy";
 import { sendWarning } from "./switchedoff";
+import { labSpenderId, NOT_LAB_SQL, type PaymentTrip } from "./tripped";
 
 export type Deps = {
   db: Db;
@@ -79,6 +80,8 @@ export type Payment = {
   was_it_you?: WasItYou | null;
   /** Scrolls the spotter made looking at the page safely (listPayments only), for the proof card. Null when never looked. */
   peek_scrolls?: number | null;
+  /** The tripwire that froze the agent and let this hold go (listPayments only). Null for everything else. */
+  tripwire?: PaymentTrip | null;
   status: PaymentStatus;
   amount: string | number;
   currency: string;
@@ -171,12 +174,31 @@ export async function getPayment(db: Db, id: string, householdId?: string): Prom
   return rows[0] ?? null;
 }
 
-export async function listPayments(db: Db, householdId: string, limit = 50): Promise<Payment[]> {
-  return db.query<Payment>(
-    `select p.*, (select sum(k.scrolls)::int from peeks k where k.payment_id = p.id and k.session_sealed is not null) as peek_scrolls
-     from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 order by p.created_at desc limit $2`,
-    [householdId, limit],
+/**
+ * The family's payments, newest first. The agent lab's test agent stays out unless `lab` is asked for: only the pages
+ * that list every payment by name (the dashboard rail, Activity) show it, so Watchtower, people pages and counts never
+ * mix the demo talking to itself into the family's real money. A hold a tripwire let go carries that tripwire.
+ */
+export async function listPayments(db: Db, householdId: string, limit = 50, opts: { lab?: boolean } = {}): Promise<Payment[]> {
+  const rows = await db.query<Payment>(
+    `select p.*, (select sum(k.scrolls)::int from peeks k where k.payment_id = p.id and k.session_sealed is not null) as peek_scrolls,
+       case when p.decided_by = $3 then (
+         select json_build_object('id', t.id, 'tool', t.tool, 'at', t.at, 'cause', t.cause) from tripwires t
+         where t.spender_id = p.spender_id
+           -- the moment Spotter let it go (its "denied" event), not updated_at, which later writes move on. A few
+           -- seconds of slack: the agent is frozen just before its tripwire row is written.
+           and t.at <= coalesce((select min(e.at) from events e where e.payment_id = p.id and e.type = 'denied'), p.updated_at) + interval '5 seconds'
+         order by t.at desc limit 1
+       ) end as tripwire
+     from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 ${opts.lab ? "" : `and ${NOT_LAB_SQL}`}
+     order by p.created_at desc limit $2`,
+    [householdId, limit, PAUSED_BY],
   );
+  // The screens say "Stopped: agent paused" without a record, but a missing link is a bug worth seeing in the logs.
+  for (const p of rows) {
+    if (p.decided_by === PAUSED_BY && !p.tripwire) console.warn(`[spotter] payment ${p.id} was let go by a paused agent, but no tripwire record matched it`);
+  }
+  return rows;
 }
 
 export async function listEvents(db: Db, paymentId: string) {
@@ -414,7 +436,7 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
 
   if (decision.outcome === "block") {
     // Only strong scam signs go to the network; an over budget block says nothing about the payee.
-    if (ai.flags.some((f) => f.severity === "high")) await report(db, id, spender.household_id, req.payee.name, "blocked");
+    if (ai.flags.some((f) => f.severity === "high") && spender.id !== labSpenderId(spender.household_id)) await report(db, id, spender.household_id, req.payee.name, "blocked");
     return setStatus(db, id, "blocked", { decision, ai });
   }
   if (decision.outcome === "protect") return setStatus(db, id, "protected", { decision, ai });
@@ -614,7 +636,8 @@ export async function deny(deps: Deps, id: string, by: string): Promise<Payment>
   }
   await event(db, id, "voided");
   const spender = await getSpender(db, claimed.spender_id);
-  if (spender) await report(db, id, spender.household_id, claimed.request.payee.name, "denied");
+  // The agent lab's test agent is the demo talking to itself: other families never hear about it.
+  if (spender && spender.id !== labSpenderId(spender.household_id)) await report(db, id, spender.household_id, claimed.request.payee.name, "denied");
   const done = await setStatus(db, id, "voided");
   await tellDecided(deps, done);
   return done;

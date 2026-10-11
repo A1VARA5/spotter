@@ -1,11 +1,16 @@
-import { TopBar } from "@/ui/components";
+import { PublicFooter, PublicHeader } from "@/ui/PublicChrome";
+import { isSignedIn } from "@/server/page-session";
 
 export const metadata = { title: "Terms | Spotter" };
+// Reads the session so the shared header says Dashboard to someone signed in.
+export const dynamic = "force-dynamic";
 
-export default function Terms() {
+export default async function Terms() {
+  const signedIn = await isSignedIn();
   return (
+    <>
+    <PublicHeader band signedIn={signedIn} current="terms" />
     <main className="shell legal">
-      <TopBar />
       <h1 className="page-title">Terms</h1>
       <p className="lede">Spotter is a hackathon project for the PayPal AI Hackathon. Please read this before you use it.</p>
       <ul>
@@ -16,5 +21,7 @@ export default function Terms() {
         <li>It is provided as is, without any warranty. The code is open source under the MIT licence.</li>
       </ul>
     </main>
+    <PublicFooter band />
+    </>
   );
 }

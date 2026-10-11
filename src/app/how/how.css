@@ -86,3 +86,8 @@
   max-width: 70ch;
   text-wrap: pretty;
 }
+
+/* The shared footer closes the dark ending, as on the landing. */
+.how-final {
+  padding-bottom: 0;
+}

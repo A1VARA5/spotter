@@ -25,6 +25,8 @@ import { AI_DOWN_LINE, AI_UNFINISHED_LINE, BACKUP_LINE } from "@/core/aiwords";
 import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
 import { topReason } from "@/core/reasons";
 import { outcomeLine, settledCase } from "@/core/settled";
+import { tripOutcome } from "@/core/tripped";
+import { TripFound } from "@/ui/TripFound";
 import "./allclear.css";
 import "./wide.css";
 import { BUSINESS_SCENARIOS, SCENARIOS, type Scenario } from "@/ui/scenarios";
@@ -1037,7 +1039,10 @@ function FeedRow({
   watchUpdates?: WatchUpdates;
   onWatchChanged: () => void;
 }) {
-  const s = trackState(p.status);
+  // A hold a tripwire let go reads as stopped by it, never as a person's deny (src/core/tripped.ts).
+  const trip = tripOutcome(p);
+  const s = trip ? trip.state : trackState(p.status);
+  const label = trip ? trip.long : STATE_LABEL[s];
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
   // The strongest sign, not whichever reason came first; a paid payment only has one if Spotter held it.
   const firstReason = p.decision?.outcome === "allow" ? null : topReason(p);
@@ -1056,27 +1061,28 @@ function FeedRow({
       </span>
       <span className="feed-state" data-state={s}>
         {Icon && <Icon size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 4 }} />}
-        {STATE_LABEL[s]}
+        {label}
       </span>
       <WasItYouLine w={p.was_it_you} status={p.status} now={now} />
       <PayPalRetry p={p} onDone={onWatchChanged} />
-      {(p.case_file || canWatch) && (
+      {(p.case_file || canWatch || trip) && (
         <div className="feed-open">
           <Sheet
             wide={!!p.case_file}
             title={`${who} to ${p.request.payee.name}, ${money(p.amount, p.currency)}`}
-            triggerClass={serious ? "feed-open-btn" : "feed-open-btn feed-open-quiet"}
+            triggerClass={serious || trip ? "feed-open-btn" : "feed-open-btn feed-open-quiet"}
             trigger={
               <>
-                {p.case_file ? "What Spotter found" : "Watch the price"}
+                {p.case_file || trip ? "What Spotter found" : "Watch the price"}
                 <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
               </>
             }
           >
             <p className="feed-state sheet-state" data-state={s}>
-              {STATE_LABEL[s]}
+              {label}
             </p>
-            {outcomeLine(p) && <p className="sheet-outcome">{outcomeLine(p)}</p>}
+            {!trip && outcomeLine(p) && <p className="sheet-outcome">{outcomeLine(p)}</p>}
+            <TripFound p={p} />
             <ReplacedLink p={p} all={all} who={who} />
             <EvidenceLinks p={p} />
             {p.case_file && (

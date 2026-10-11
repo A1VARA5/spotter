@@ -1307,6 +1307,59 @@ p {
   margin-left: 16px;
 }
 
+/* ---------- the public header and footer (src/ui/PublicChrome.tsx), the same on every public page ---------- */
+.pub-band {
+  background: #0d141c;
+  color: #eef2f5;
+}
+
+.lfoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 32px;
+  margin-top: clamp(96px, 14vh, 160px);
+  padding: 28px 0 36px;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.lfoot[data-band] {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.pub-band-top + main {
+  padding-top: clamp(32px, 6vh, 56px);
+}
+
+.pub-band-foot {
+  margin-top: clamp(48px, 8vh, 96px);
+}
+
+.lfoot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  font-size: 15px;
+}
+
+.lfoot-links a {
+  text-decoration: none;
+  color: #b9c3cc;
+}
+
+.lfoot-links a:hover,
+.lnav-links a[aria-current="page"] {
+  color: #fff;
+}
+
+.lfoot-fine {
+  flex-basis: 100%;
+  font-size: 14px;
+  color: #8d99a5;
+}
+
 /* ---------- demo ---------- */
 .scenarios {
   display: grid;
@@ -3720,6 +3773,11 @@ p {
     transform: rotate(360deg);
   }
 }
+
+/* A start button that is working (src/ui/DemoStart.tsx): a small ring beside the words, and no second click. */
+.btn[data-busy] { cursor: progress; gap: 10px; }
+.btn-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin 800ms linear infinite; }
+@media (prefers-reduced-motion: reduce) { .btn-spin { animation-duration: 2400ms; } }
 
 /* The Spotter panel that attaches to the phone while it checks */
 .spot-card {

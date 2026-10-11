@@ -102,3 +102,15 @@
 .ah-seller .btn { width: fit-content; }
 .ah-job { display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { .tkc-switch-btn, .tkc-stat, .tkc-chev { transition: none; } }
+
+/* The agent lab's test agent: one quiet line under the real payments, never a card above them. */
+.ah-lab { margin: 20px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--line); background: var(--paper); min-width: 0; }
+.ah-lab-tag { flex: none; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--ink-2); text-transform: uppercase; }
+.ah-lab-text { flex: 1 1 32ch; margin: 0; min-width: 0; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.ah-lab-text code { font-size: 13.5px; }
+.ah-lab-link { flex: none; font-size: 14.5px; font-weight: 600; color: var(--ink); text-underline-offset: 3px; min-height: 24px; display: inline-flex; align-items: center; }
+.trip-found { display: grid; gap: 14px; margin-top: 12px; min-width: 0; }
+.trip-found-lead { margin: 0; font-size: 16px; line-height: 1.5; }
+.trip-found-lab { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.trip-found-lab a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
+.ah-lab-link:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; border-radius: 4px; }

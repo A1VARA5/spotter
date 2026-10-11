@@ -182,7 +182,7 @@ function HoldClock({ live }: { live: boolean }) {
   const h = Math.floor((left % 86400) / 3600);
   const m = Math.floor((left % 3600) / 60);
   return (
-    <span className="wk-clock num" role="timer" aria-label={`PayPal's hold expires in ${d} days ${h} hours`}>
+    <span className="wk-clock num" role="timer" aria-label={`The PayPal hold expires in ${d} days ${h} hours`}>
       {d}d {pad(h)}h {pad(m)}m {pad(left % 60)}s
     </span>
   );
@@ -217,7 +217,7 @@ function HeldArt({ live }: { live: boolean }) {
         </div>
       </dl>
       <div className="wk-pp-clock">
-        <p>PayPal&apos;s hold expires in</p>
+        <p>The PayPal hold expires in</p>
         <HoldClock live={live} />
         <span className="wk-pp-bar" aria-hidden="true">
           <i />

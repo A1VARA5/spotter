@@ -10,7 +10,8 @@
 }
 
 /* A wrapped outcome ("Denied, money released") reads as one label, not two lines a row height apart. */
-.ledger-state {
+.ledger-state,
+.ledger-who {
   line-height: 1.4 !important;
   padding-top: 12px !important;
   padding-bottom: 12px !important;
