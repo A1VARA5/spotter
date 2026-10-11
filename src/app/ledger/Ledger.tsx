@@ -300,9 +300,8 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
 
           {!channel3OnCard && <MarketNote market={p.market} currency={p.currency} />}
 
-          {tripped ? (
-            <TripFound p={p} lead={false} />
-          ) : c ? (
+          {tripped && <TripFound p={p} lead={false} />}
+          {c ? (
             <section aria-labelledby="ledger-case">
               <h3 id="ledger-case" className="ledger-drawer-label">
                 Case file
@@ -317,7 +316,7 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
                 real={s === "paid" ? null : realOne(p.case_file, p.market)}
               />
             </section>
-          ) : (
+          ) : tripped ? null : (
             <p className="ledger-drawer-why">
               {EVIDENCE_FOR.has(p.status)
                 ? "Spotter couldn't finish a case file for this payment. The reasons above still stand."

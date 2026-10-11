@@ -146,6 +146,16 @@ describe("buildPhoto", () => {
     expect(r.total).toBe("Real shops: about £438 for these.");
   });
 
+  it("never merges a priced thing with an unpriced one of the same name", () => {
+    const s = scene();
+    s.things = [{ ...s.things[1]!, thing: "overear headphones" }, s.things[0]!];
+    const r = buildPhoto(s, "buy", "GBP", null);
+    expect(r.items.map((i) => [i.n, i.found, i.count])).toEqual([
+      [1, false, undefined],
+      [2, true, undefined],
+    ]);
+  });
+
   it("prices used offers when selling, and catches a lowball offer", () => {
     const used = (id: string, t: string, offers: Array<[string, number]>) => prod(id, t, "Sony", offers.map(([d, p]) => [d, p, "used"] as [string, number, Cond]), ["headphones"]);
     const s: Scene = {

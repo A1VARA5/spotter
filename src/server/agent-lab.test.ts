@@ -170,6 +170,15 @@ describe("a lab run stays in the lab", () => {
     expect(topReason(p!)).toMatch(/^Reached for create_refund/);
   });
 
+  it("keeps the tripwire that let the hold go, even when a later one springs and the row is touched again", async () => {
+    await run();
+    await db.query("insert into tripwires (id, household_id, spender_id, tool, args, cause, voided, at) values ('trip_later', $1, $2, 'decoy_key', '{}', null, 0, now() + interval '1 minute')", [hh, labSpenderId(hh)]);
+    // A reconcile or a late error write bumps updated_at after the later tripwire.
+    await db.query("update payments set updated_at = now() + interval '2 minutes'");
+    const [p] = await listPayments(db, hh, 50, { lab: true });
+    expect(p!.tripwire).toMatchObject({ tool: "create_refund" });
+  });
+
   it("Watchtower doesn't warn that the same payee is going after two people when one is the test agent", async () => {
     await realAgentStoppedAtGadgetBarn();
     await run();

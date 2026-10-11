@@ -180,16 +180,25 @@ export async function getPayment(db: Db, id: string, householdId?: string): Prom
  * mix the demo talking to itself into the family's real money. A hold a tripwire let go carries that tripwire.
  */
 export async function listPayments(db: Db, householdId: string, limit = 50, opts: { lab?: boolean } = {}): Promise<Payment[]> {
-  return db.query<Payment>(
+  const rows = await db.query<Payment>(
     `select p.*, (select sum(k.scrolls)::int from peeks k where k.payment_id = p.id and k.session_sealed is not null) as peek_scrolls,
        case when p.decided_by = $3 then (
          select json_build_object('id', t.id, 'tool', t.tool, 'at', t.at, 'cause', t.cause) from tripwires t
-         where t.spender_id = p.spender_id and t.at <= p.updated_at order by t.at desc limit 1
+         where t.spender_id = p.spender_id
+           -- the moment Spotter let it go (its "denied" event), not updated_at, which later writes move on. A few
+           -- seconds of slack: the agent is frozen just before its tripwire row is written.
+           and t.at <= coalesce((select min(e.at) from events e where e.payment_id = p.id and e.type = 'denied'), p.updated_at) + interval '5 seconds'
+         order by t.at desc limit 1
        ) end as tripwire
      from payments p join spenders s on s.id = p.spender_id where s.household_id = $1 ${opts.lab ? "" : `and ${NOT_LAB_SQL}`}
      order by p.created_at desc limit $2`,
     [householdId, limit, PAUSED_BY],
   );
+  // The screens say "Stopped: agent paused" without a record, but a missing link is a bug worth seeing in the logs.
+  for (const p of rows) {
+    if (p.decided_by === PAUSED_BY && !p.tripwire) console.warn(`[spotter] payment ${p.id} was let go by a paused agent, but no tripwire record matched it`);
+  }
+  return rows;
 }
 
 export async function listEvents(db: Db, paymentId: string) {

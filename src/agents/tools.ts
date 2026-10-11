@@ -6,6 +6,7 @@ import type { Payment } from "@/core/lifecycle";
 import { genuineOffers, marketSummary, type Offer } from "@/core/market";
 import { networkCount } from "@/core/network";
 import { normName } from "@/core/rules";
+import { NOT_LAB_SQL } from "@/core/tripped";
 import { formatMoney, type Currency } from "@/core/types";
 import { offersFor, type Product } from "@/market/channel3";
 import { extractUrls, inspectWithBudget, levenshtein, type LinkReport } from "./links";
@@ -125,7 +126,7 @@ const payeeHistory = tool({
       name: string;
     }>(
       `select p.request, p.status, p.amount, p.currency, p.created_at, s.name from payments p join spenders s on s.id = p.spender_id
-       where s.household_id = $1 and p.id <> $2 order by p.created_at desc limit 200`,
+       where s.household_id = $1 and p.id <> $2 and ${NOT_LAB_SQL} order by p.created_at desc limit 200`,
       [ctx.householdId, ctx.payment.id],
     );
     const want = normName(payee);

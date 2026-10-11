@@ -12,6 +12,12 @@ export function DemoStart({ label, className = "btn btn-hold" }: { label: string
     window.addEventListener("pageshow", reset);
     return () => window.removeEventListener("pageshow", reset);
   }, []);
+  // A stopped or hung request leaves the page where it is: after 20 seconds the button can be pressed again.
+  useEffect(() => {
+    if (!busy) return;
+    const t = setTimeout(() => setBusy(false), 20_000);
+    return () => clearTimeout(t);
+  }, [busy]);
   return (
     <form
       action="/api/demo/start"

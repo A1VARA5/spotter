@@ -22,13 +22,13 @@ export function TripFound({ p, lead = true }: { p: Pick<Payment, "status" | "dec
             It reached for the PayPal tool <code>{t.tool}</code>. Its job never needs it, so Spotter never ran it and the call never reached PayPal.
           </p>
         ) : (
-          <p className="ah-block-sub">It reached for a PayPal tool its job never needs. Spotter never ran it.</p>
+          <p className="ah-block-sub">Spotter had paused this agent, but its record of what set that off wasn&apos;t found. Check the agent&apos;s card on the dashboard.</p>
         )}
       </div>
       {kind === "tripwire" && (
         <div className="ah-block">
           <p className="ah-block-title">What could have caused it</p>
-          {t?.cause ? (
+          {t?.cause?.quote ? (
             <>
               <p className="ah-block-sub">
                 {CAUSE_LABEL[t.cause.kind] ?? "A line it read"}
@@ -37,7 +37,7 @@ export function TripFound({ p, lead = true }: { p: Pick<Payment, "status" | "dec
               <blockquote className="ah-quote">{t.cause.quote}</blockquote>
             </>
           ) : (
-            <p className="ah-block-sub">Spotter didn&apos;t see a page with hidden orders for this agent in the day before. Ask whoever set it up what it was doing.</p>
+            <p className="ah-block-sub">Spotter has no record of a line that could have caused it. Ask whoever set the agent up what it was doing.</p>
           )}
         </div>
       )}

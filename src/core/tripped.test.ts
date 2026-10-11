@@ -24,8 +24,10 @@ describe("a hold a tripwire let go", () => {
   it("is only a tripwire stop when Spotter paused the agent", () => {
     expect(tripOf({ ...base, tripwire: bait })).toBe("tripwire");
     expect(tripOf({ ...base, tripwire: decoy })).toBe("decoy");
-    // Paused with no record found still never reads as a person's deny.
-    expect(tripOf({ ...base, tripwire: null })).toBe("tripwire");
+    // Paused with no record found still never reads as a person's deny, and doesn't guess which wire it was.
+    expect(tripOf({ ...base, tripwire: null })).toBe("paused");
+    expect(tripOutcome({ ...base, tripwire: null })!.long).toBe("Stopped: agent paused");
+    expect(tripReason({ ...base, tripwire: null })).not.toMatch(/tool|decoy|hidden/);
     expect(tripOf({ ...base, decided_by: "Sam", tripwire: bait })).toBeNull();
     expect(tripOf({ ...base, status: "needs_approval", tripwire: bait })).toBeNull();
   });
@@ -58,6 +60,11 @@ describe("a hold a tripwire let go", () => {
     expect(tripReason({ ...base, tripwire: { ...bait, cause: null } })).toMatch(/^Reached for create_refund/);
     expect(tripReason({ ...base, tripwire: decoy })).toMatch(/decoy key/);
     expect(tripReason({ ...base, decided_by: "Sam", tripwire: bait })).toBeNull();
+  });
+
+  it("an old cause with no quote never breaks the row", () => {
+    const odd = { ...bait, cause: { kind: "hidden_text", payee: "GadgetBarn" } as unknown as typeof bait.cause };
+    expect(tripReason({ ...base, tripwire: odd })).toMatch(/^Reached for create_refund.*steering/);
   });
 
   it("the tripwire is the strongest reason, above the zero limit", () => {

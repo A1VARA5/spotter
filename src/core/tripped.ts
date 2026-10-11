@@ -10,15 +10,20 @@ export type PaymentTrip = { id: string; tool: string; at: string; cause: Tripwir
 
 export type TripInput = { status: string; decided_by?: string | null; tripwire?: PaymentTrip | null };
 
-/** "tripwire" (a bait tool), "decoy" (the planted key was used), or null when a person or a rule decided it. */
-export function tripOf(p: TripInput): "tripwire" | "decoy" | null {
+/**
+ * "tripwire" (a bait tool), "decoy" (the planted key was used), "paused" (Spotter paused the agent but the record
+ * of why wasn't found, so nothing is guessed), or null when a person or a rule decided it.
+ */
+export function tripOf(p: TripInput): "tripwire" | "decoy" | "paused" | null {
   if (p.decided_by !== PAUSED_BY || (p.status !== "voided" && p.status !== "voiding")) return null;
-  return p.tripwire?.tool === "decoy_key" ? "decoy" : "tripwire";
+  if (!p.tripwire) return "paused";
+  return p.tripwire.tool === "decoy_key" ? "decoy" : "tripwire";
 }
 
 const OUTCOME = {
   tripwire: { long: "Stopped by a tripwire", explain: "The agent reached for a tool it never needs, so Spotter froze it and PayPal released the hold." },
   decoy: { long: "Stopped by a decoy key", explain: "Someone used the decoy key planted in the agent's settings, so Spotter froze it and PayPal released the hold." },
+  paused: { long: "Stopped: agent paused", explain: "Spotter had paused this agent, so PayPal released the hold." },
 } as const;
 
 /** The outcome pill and its sentence. Shown in the Stopped colour; null when this wasn't a tripwire stop. */
@@ -47,13 +52,14 @@ export function tripReason(p: TripInput): string | null {
   if (!kind) return null;
   if (kind === "decoy") return "Someone used the decoy key planted in its settings. Nothing legitimate ever sends it.";
   const t = p.tripwire;
-  if (!t) return "A tripwire paused the agent, so Spotter let the hold go.";
+  if (kind === "paused" || !t) return "Spotter had paused this agent, so it let the hold go.";
   const said = `Reached for ${t.tool}, a tool its job never needs`;
   const c = t.cause;
-  if (!c?.quote.trim()) return `${said}. Someone may be steering it.`;
-  const q = c.quote.trim();
+  // Older rows may carry a cause without a quote: say what is known, never break the row.
+  const q = typeof c?.quote === "string" ? c.quote.trim() : "";
+  if (!c || !q) return `${said}. Someone may be steering it.`;
   const quote = q.length > QUOTE_MAX ? `${q.slice(0, QUOTE_MAX - 1)}…` : q;
-  return `${said}, ${AFTER[c.kind](c.payee)}: "${quote}"`;
+  return `${said}, ${(AFTER[c.kind] ?? AFTER.flagged_line)(c.payee)}: "${quote}"`;
 }
 
 // ---------- the agent lab's test agent ----------

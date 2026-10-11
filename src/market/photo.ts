@@ -296,15 +296,18 @@ const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
 /** The numbered items and the one total line, from a scene. Pure, so the cached scene can be re-read with a new amount. */
 export function buildPhoto(scene: Scene, mode: PhotoMode, currency: Currency, quoted: number | null): PhotoResult {
   // The same kind of thing twice (the two curtains of one window) is one row, counted, with every box it was found in.
-  const groups = new Map<string, SceneThing[]>();
-  for (const t of scene.things) {
-    const key = label(t.thing).toLowerCase();
-    groups.set(key, [...(groups.get(key) ?? []), t]);
-  }
-  const items = [...groups.values()].map((g, i) => {
-    const item = priceThing(g[0]!, i + 1, mode, currency);
+  // Each thing is priced on its own first; only things with the same name AND the same result (both priced, or both
+  // not found) share a row, so a match is never dropped or lent to one that wasn't found. "Something" never merges.
+  const groups = new Map<string, PhotoItem[]>();
+  scene.things.forEach((t, i) => {
+    const item = priceThing(t, 0, mode, currency);
+    const key = item.thing === "Something" ? `#${i}` : `${item.thing.toLowerCase()}|${item.found}`;
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  });
+  const items: PhotoItem[] = [...groups.values()].map((g, i) => {
+    const item = { ...g[0]!, n: i + 1 };
     if (g.length < 2) return item;
-    const more = g.slice(1).flatMap((t) => (t.bbox ? [t.bbox] : []));
+    const more = g.slice(1).flatMap((x) => (x.bbox ? [x.bbox] : []));
     return { ...item, count: g.length, ...(more.length ? { more } : {}) };
   });
   const count = (i: PhotoItem) => i.count ?? 1;
