@@ -8,11 +8,11 @@ import { after } from "next/server";
 import { buildCase } from "@/agents/case";
 import { visitInCloud } from "@/agents/kernel";
 import { sendHtml } from "@/telegram/api";
-import { makeTelegramConfirmed, makeTelegramDecided, makeTelegramNotify } from "@/telegram/notify";
+import { makeTelegramAsk, makeTelegramConfirmed, makeTelegramDecided, makeTelegramNote, makeTelegramNotify } from "@/telegram/notify";
 import { sendDm } from "@/discord/api";
-import { makeDiscordConfirmed, makeDiscordDecided, makeDiscordNotify } from "@/discord/notify";
+import { makeDiscordAsk, makeDiscordConfirmed, makeDiscordDecided, makeDiscordNote, makeDiscordNotify } from "@/discord/notify";
 import type { Payment, Spender } from "@/core/lifecycle";
-import { makeNotify } from "@/email/alerts";
+import { makeEmailAsk, makeEmailNote, makeNotify } from "@/email/alerts";
 
 let ready: Promise<Deps> | null = null;
 
@@ -29,6 +29,21 @@ function allOf(alerts: Array<Alert | null>): Alert | undefined {
   };
 }
 
+type Note = (p: Payment, s: Spender, text: string) => Promise<boolean>;
+/** True when at least one channel delivered the note. Failures are named in one error only when none delivered. */
+function allOfNotes(notes: Array<Note | null>): Note | undefined {
+  const live = notes.filter((n): n is Note => n !== null);
+  if (!live.length) return undefined;
+  return async (p, s, text) => {
+    const results = await Promise.allSettled(live.map((n) => n(p, s, text)));
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    for (const f of failed) console.error("[spotter] spotter note channel failed:", f.reason instanceof Error ? f.reason.message : f.reason);
+    if (results.some((r) => r.status === "fulfilled" && r.value)) return true;
+    if (failed.length) throw new Error(failed.map((f) => (f.reason instanceof Error ? f.reason.message : String(f.reason))).join("; "));
+    return false;
+  };
+}
+
 export function getDeps(): Promise<Deps> {
   ready ??= (async () => {
     const db = await getDb();
@@ -41,6 +56,22 @@ export function getDeps(): Promise<Deps> {
         process.env.AGENTBOXD_API_KEY ? makeNotify(db, site) : null,
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramNotify(db, site, sendHtml) : null,
         process.env.DISCORD_BOT_TOKEN ? makeDiscordNotify(db, site, sendDm) : null,
+      ]),
+      // "Was it you?": one question, on the channel the asked person linked. A channel that isn't set up here
+      // throws, so the ask is marked as not delivered and the spotter's alert says to ring them instead.
+      ask: async (p, payer, w, to) => {
+        const by = {
+          telegram: process.env.TELEGRAM_BOT_TOKEN ? makeTelegramAsk(sendHtml) : null,
+          discord: process.env.DISCORD_BOT_TOKEN ? makeDiscordAsk(sendDm) : null,
+          email: process.env.AGENTBOXD_API_KEY ? makeEmailAsk(site) : null,
+        }[w.channel as "telegram" | "discord" | "email"];
+        if (!by) throw new Error(`${w.channel ?? "no"} channel isn't set up on this server`);
+        await by(p, payer, w, to);
+      },
+      note: allOfNotes([
+        process.env.AGENTBOXD_API_KEY ? makeEmailNote(db, site) : null,
+        process.env.TELEGRAM_BOT_TOKEN ? makeTelegramNote(db, sendHtml) : null,
+        process.env.DISCORD_BOT_TOKEN ? makeDiscordNote(db, sendDm) : null,
       ]),
       decided: allOf([
         process.env.TELEGRAM_BOT_TOKEN ? makeTelegramDecided(sendHtml) : null,

@@ -194,4 +194,8 @@ create table if not exists safer_options (
   used_by text
 );
 create index if not exists safer_options_payment_idx on safer_options (payment_id, created_at desc);
+-- Was it you? block, one column: when a held payment's message claims to come from someone in the family,
+-- Spotter asks that real person. The ask, who it went to and their answer (never a secret: tokens are HMACs).
+alter table payments add column if not exists was_it_you jsonb;
+create index if not exists payments_was_it_you_idx on payments ((was_it_you->>'id')) where was_it_you is not null;
 `;

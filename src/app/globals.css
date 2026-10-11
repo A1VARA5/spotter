@@ -7329,3 +7329,147 @@ h3 {
 .held-confirm-warn { font-size: 15px; color: var(--stop); font-weight: 600; }
 .held-confirm .pin-input { max-width: 200px; }
 .held-wait { font-size: 14px; color: var(--ink-2); }
+
+/* "Was it you?": the ask on held cards and feed rows */
+.wiy-line {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--chalk);
+  border-left: 4px solid var(--hold);
+  font-size: 15px;
+  line-height: 1.45;
+  max-width: 66ch;
+}
+.wiy-line[data-tone="safe"] { border-left-color: var(--go); background: var(--go-soft); }
+.wiy-line[data-tone="claimed"] { border-left-color: var(--protect); background: var(--protect-soft); }
+.wiy-line[data-tone="ring"] { border-left-color: var(--ink-2); }
+.wiy-line-icon { margin-top: 2px; color: var(--ink); }
+.wiy-line-quote { color: var(--ink-2); }
+.feed-row .wiy-line { grid-column: 1 / -1; margin-top: 6px; }
+
+/* "Was it you?" side by side demo on the Try page: Gran's phone, the hold between them, Tom's phone */
+.wiy-demo {
+  margin: 8px 0 40px;
+  padding: clamp(18px, 3vw, 32px);
+  border-radius: var(--r-card);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--raise);
+}
+.wiy-head .section-title { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.01em; }
+.wiy-lede { color: var(--ink-2); font-size: 17px; max-width: 56ch; }
+.wiy-stage {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 160px) auto;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 26px 0 8px;
+}
+.wiy-phone { margin: 0; display: grid; justify-items: center; gap: 12px; }
+.wiy-phone figcaption { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.wiy-tag {
+  font-size: 12px;
+  font-weight: 650;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chalk);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.wiy-gran { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.wiy-card {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 44px;
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px 20px;
+  border-radius: 26px;
+  background: #fff;
+  border: 2px solid var(--hold);
+  box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.35);
+}
+.wiy-card[data-tone="safe"] { border-color: var(--go); background: #f1faf5; }
+.wiy-card-from { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #3c3c43; }
+.wiy-card-from .brand-mark { width: 26px; height: 26px; border-radius: 7px; }
+.wiy-card-big { display: flex; align-items: center; gap: 10px; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
+.wiy-card[data-tone="safe"] .wiy-card-big { color: var(--go); }
+.wiy-card-small { font-size: 18px; line-height: 1.35; color: #1c1c1e; }
+.wiy-tom-chat { padding-bottom: 46px; align-content: end; }
+.wiy-empty {
+  justify-self: center;
+  align-self: center;
+  max-width: 80%;
+  text-align: center;
+  font-size: 15px;
+  color: #3e5a3e;
+  background: rgb(255 255 255 / 0.6);
+  padding: 8px 12px;
+  border-radius: 14px;
+}
+.wiy-kb { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-width: 92%; }
+.wiy-kb-btn {
+  min-height: 72px;
+  border: 0;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.82);
+  color: #1d5f9e;
+  font: 600 19px/1.2 var(--font-ios), -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.1);
+}
+.wiy-kb-btn[data-tone="no"] { color: #b3261e; }
+.wiy-kb-btn:hover { background: #fff; }
+.wiy-kb-btn:focus-visible { outline: 5px solid var(--protect); outline-offset: 3px; }
+.wiy-kb-btn[aria-disabled="true"] { opacity: 0.55; cursor: progress; }
+.wiy-track { position: relative; display: grid; place-items: center; height: 40px; }
+.wiy-track-line { position: absolute; left: 0; right: 0; top: 50%; border-top: 2px dashed var(--line); }
+.wiy-track-pill {
+  position: relative;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--hold);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  line-height: 1.25;
+}
+.wiy-stage[data-phase="not_me"] .wiy-track-pill { background: var(--go); color: #fff; }
+.wiy-foot { display: grid; gap: 12px; justify-items: start; }
+.wiy-result {
+  font-size: 16px;
+  font-weight: 600;
+  max-width: 66ch;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--chalk);
+  border-left: 4px solid var(--line);
+}
+.wiy-result[data-tone="safe"] { border-left-color: var(--go); }
+.wiy-result[data-tone="hold"] { border-left-color: var(--hold); }
+.wiy-result:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.wiy-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.wiy-page .held-actions { margin-top: 18px; }
+.wiy-page .wiy-answer { margin-top: 8px; }
+@media (max-width: 620px) {
+  .wiy-demo { padding: 18px 14px; }
+  .wiy-stage { grid-template-columns: auto auto; gap: 10px; }
+  .wiy-track { grid-column: 1 / -1; order: -1; height: 32px; }
+  .wiy-phone figcaption { font-size: 14px; flex-direction: column; gap: 4px; white-space: nowrap; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wiy-card { animation: wiy-drop 320ms var(--ease-out) both; }
+  .wiy-ask, .wiy-kb { animation: wiy-rise 260ms var(--ease-out) both; }
+  .wiy-kb { animation-delay: 120ms; }
+  .wiy-track-pill { transition: background-color 240ms var(--ease-out), color 240ms var(--ease-out); }
+}
+@keyframes wiy-drop { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
+@keyframes wiy-rise { from { opacity: 0; transform: translateY(10px); } }

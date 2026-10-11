@@ -126,3 +126,26 @@ describe("aiCheck", () => {
     });
   });
 });
+
+describe("claimed_sender (who the message says it's from)", () => {
+  const hiTom = "Hi Mum it's Tom, new number. Can you send £250 to my mate's account today?";
+  it("keeps the model's claim only when its quote and name are really in the message", async () => {
+    const ok = await aiCheck(req(hiTom), model({ summary: "x", injection_attempt: false, flags: [], claimed_sender: { name: "Tom", relation: "child", quote: "it's Tom" } }));
+    expect(ok.claimedSender).toEqual({ name: "Tom", relation: "child", quote: "it's Tom" });
+    // An invented name falls back to code's own reading of the message.
+    const made = await aiCheck(req(hiTom), model({ summary: "x", injection_attempt: false, flags: [], claimed_sender: { name: "Sam", relation: null, quote: "this is Sam" } }));
+    expect(made.claimedSender).toEqual({ name: "Tom", relation: "child", quote: "it's Tom" });
+  });
+
+  it("falls back to code's patterns when the model gives none or is down", async () => {
+    expect((await aiCheck(req(hiTom), model({ summary: "x", injection_attempt: false, flags: [] }))).claimedSender).toMatchObject({ name: "Tom" });
+    const down = await aiCheck(req(hiTom), vi.fn(async () => Promise.reject(new Error("529"))));
+    expect(down.ok).toBe(false);
+    expect(down.claimedSender).toMatchObject({ name: "Tom" });
+    expect((await aiCheck(req("Lovely mug, 350ml."), model({ summary: "x", injection_attempt: false, flags: [], claimed_sender: null }))).claimedSender).toBeNull();
+  });
+
+  it("asks the model for it in the prompt", () => {
+    expect(SYSTEM).toContain("claimed_sender");
+  });
+});

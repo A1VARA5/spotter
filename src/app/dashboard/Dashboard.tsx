@@ -9,6 +9,7 @@ import { plainError, readJson } from "@/ui/http";
 import { contradictsPrice, priceVerdict } from "@/core/market";
 import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
+import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 
 
 export function Dashboard({ initial, names, unlocked, demo = false }: { initial: Payment[]; names: Record<string, string>; unlocked: boolean; demo?: boolean }) {
@@ -58,6 +59,19 @@ export function Dashboard({ initial, names, unlocked, demo = false }: { initial:
         (all > 1 ? ` ${all} waiting in all.` : ""),
     );
   }, [payments, names]);
+
+  // "Was it you?" answers arrive by polling too: say them out loud once (never on first load).
+  const answers = useRef(new Map(initial.map((p) => [p.id, p.was_it_you?.state])));
+  useEffect(() => {
+    for (const p of payments) {
+      const w = p.was_it_you;
+      const before = answers.current.get(p.id);
+      answers.current.set(p.id, w?.state);
+      if (!w || before === w.state || (w.state !== "not_me" && w.state !== "it_was_me")) continue;
+      const s = wiyStatus(w, p.status);
+      setHeard(`${s.state}. ${s.detail}`);
+    }
+  }, [payments]);
 
   return (
     <div className="dash">
@@ -307,6 +321,8 @@ function HeldCard({
 
       <ReplacedLink p={p} all={all} who={who} />
 
+      <WasItYouLine w={p.was_it_you} status={p.status} />
+
       {p.case_file ? (
         <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} busy={busy === "swap"} onSwap={busy ? undefined : () => act("swap")} />
       ) : (
@@ -424,6 +440,7 @@ function FeedRow({ p, all, who }: { p: Payment; all: Payment[]; who: string }) {
         {STATE_LABEL[s]}
       </span>
       <ReplacedLink p={p} all={all} who={who} />
+      <WasItYouLine w={p.was_it_you} status={p.status} />
       {p.case_file && (
         // Stopped payments have a case file too; one that caught hidden orders for an AI agent starts open.
         <details className="feed-case" open={p.case_file.findings.some((f) => f.kind === "prompt_injection")}>

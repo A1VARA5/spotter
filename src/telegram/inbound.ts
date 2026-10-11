@@ -8,6 +8,7 @@ import { findCode, redeemPairingCode } from "@/core/pairing";
 import type { Extracted } from "@/ai/extract";
 import { outcomeText } from "@/email/inbound";
 import { scanMessage } from "@/ai/scan";
+import { answerWasItYou, parseButton } from "@/core/was-it-you";
 
 type TgEntity = { type: string; offset: number; length: number; url?: string };
 export type TgMessage = {
@@ -38,7 +39,7 @@ export type TgCtx = {
   answer?: (callbackId: string, text: string) => Promise<void>;
 };
 
-export type TgOutcome = "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked" | "failed" | "denied" | "refused";
+export type TgOutcome = "ignored" | "duplicate" | "help" | "paired" | "unpaired" | "limited" | "unsupported" | "no_payment" | "scam_signs" | "checked" | "failed" | "denied" | "refused" | "not_me" | "it_was_me";
 
 const PER_CHAT_PER_DAY = 12;
 
@@ -173,8 +174,25 @@ export async function handleTelegramUpdate(ctx: TgCtx, u: TgUpdate): Promise<TgO
 async function handleButton(ctx: TgCtx, q: NonNullable<TgUpdate["callback_query"]>): Promise<TgOutcome> {
   const { db } = ctx.deps;
   const answer = (t: string) => ctx.answer?.(q.id, t) ?? Promise.resolve();
-  const id = /^deny:(pay_[a-z0-9]+)$/.exec(q.data ?? "")?.[1];
   const chat = String(q.message?.chat.id ?? q.from.id);
+  // "Was it you?": bound to this chat (it must be the asked person's own) and to a signed single use token.
+  const wiy = parseButton(q.data);
+  if (wiy) {
+    try {
+      const r = await answerWasItYou(ctx.deps, { token: wiy.token, answer: wiy.answer, as: { channel: "telegram", id: chat } });
+      await answer(r.ok ? (wiy.answer === "not_me" ? "Thanks. Answer saved." : "Noted. Nothing is paid.") : "Nothing changed.");
+      await ctx.send(chat, esc(r.reply));
+      return r.ok ? wiy.answer : "refused";
+    } catch (e) {
+      console.error("[spotter] telegram was it you? answer failed:", e instanceof Error ? e.message : e);
+      await answer("Spotter couldn't save that.").catch(() => {});
+      await ctx
+        .send(chat, "Spotter couldn't save your answer just now. Nothing was paid. Press the button again in a moment.")
+        .catch((err) => console.error("[spotter] telegram error reply failed:", err instanceof Error ? err.message : err));
+      return "failed";
+    }
+  }
+  const id = /^deny:(pay_[a-z0-9]+)$/.exec(q.data ?? "")?.[1];
   if (!id) {
     await answer("That button has expired.");
     return "refused";
