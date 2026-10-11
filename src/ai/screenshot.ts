@@ -4,6 +4,7 @@
 // exactly as if they had been pasted. The picture is sent once and never stored.
 import { z } from "zod";
 import { CHECK_MODEL, TIMEOUT_MS } from "./check";
+import { withClaude } from "./client";
 import { sanitizeContext } from "./sanitize";
 
 export const ReadSchema = z.object({
@@ -59,24 +60,24 @@ export async function readScreenshot(bytes: Buffer, type: ImageType, call: Visio
 }
 
 async function defaultVision({ system, image, prompt }: Parameters<VisionCall>[0]): Promise<unknown> {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-  const client = new Anthropic({ timeout: TIMEOUT_MS, maxRetries: 1 });
-  const res = await client.messages.parse({
-    model: CHECK_MODEL,
-    max_tokens: 3000,
-    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    output_config: { effort: "low", format: zodOutputFormat(ReadSchema) },
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
-          { type: "text", text: prompt },
-        ],
-      },
-    ],
-  });
+  const res = await withClaude("screenshot", { timeout: TIMEOUT_MS, maxRetries: 1 }, (client) =>
+    client.messages.parse({
+      model: CHECK_MODEL,
+      max_tokens: 3000,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      output_config: { effort: "low", format: zodOutputFormat(ReadSchema) },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+    }),
+  );
   if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error(`model gave no usable output (${res.stop_reason})`);
   return res.parsed_output;
 }

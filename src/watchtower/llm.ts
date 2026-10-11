@@ -1,8 +1,9 @@
 // One turn of Watchtower's AI chat: Studio's agents POST an AgLlmRequest, Claude answers on the server
 // (the key never reaches the browser), and Studio runs any tools it asked for in the page.
 // Each turn counts against a daily cap per family and overall, so a busy demo can't run up the bill.
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import type { AgLlmRequest } from "ag-studio";
+import { withClaude } from "@/ai/client";
 import type { Db } from "@/db";
 import { fromClaude, toClaude, type ClaudeTurn } from "./claude";
 
@@ -14,18 +15,20 @@ export type CallModel = (turn: ClaudeTurn, signal?: AbortSignal) => Promise<Anth
 
 export const defaultCallModel: CallModel = async (turn, signal) => {
   // One try inside the route's 60 s limit, so a slow turn ends in our catch (logged) rather than a platform 504.
-  const client = new Anthropic({ maxRetries: 0, timeout: 50_000 });
+  // A key that can't be used fails fast, so trying the backup key still fits inside the route's limit.
   const tools = turn.tools.map((t, i) => (i === turn.tools.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t));
-  return client.messages.create(
-    {
-      model: WATCHTOWER_MODEL,
-      max_tokens: 8000,
-      system: [{ type: "text", text: turn.system || "You help a family read their payments dashboard.", cache_control: { type: "ephemeral" } }],
-      messages: turn.messages,
-      ...(tools.length ? { tools, tool_choice: turn.tool_choice } : {}),
-      output_config: turn.output_config,
-    },
-    { signal },
+  return withClaude("watchtower", { maxRetries: 0, timeout: 50_000 }, (client) =>
+    client.messages.create(
+      {
+        model: WATCHTOWER_MODEL,
+        max_tokens: 8000,
+        system: [{ type: "text", text: turn.system || "You help a family read their payments dashboard.", cache_control: { type: "ephemeral" } }],
+        messages: turn.messages,
+        ...(tools.length ? { tools, tool_choice: turn.tool_choice } : {}),
+        output_config: turn.output_config,
+      },
+      { signal },
+    ),
   );
 };
 

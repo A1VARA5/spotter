@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Currency, PaymentMethod } from "@/core/types";
 import { sanitizeContext } from "./sanitize";
 import { CHECK_MODEL, TIMEOUT_MS, type ModelCall } from "./check";
+import { withClaude } from "./client";
 
 const METHODS = ["paypal_order", "friends_and_family", "gift_card", "crypto", "bank_transfer", "other"] as const;
 
@@ -71,16 +72,16 @@ export async function extractPayment(text: string, callModel: ModelCall = defaul
 }
 
 async function defaultModel({ system, user }: { system: string; user: string }): Promise<unknown> {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-  const client = new Anthropic({ timeout: TIMEOUT_MS, maxRetries: 1 });
-  const res = await client.messages.parse({
-    model: CHECK_MODEL,
-    max_tokens: 1000,
-    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    output_config: { effort: "low", format: zodOutputFormat(ExtractSchema) },
-    messages: [{ role: "user", content: user }],
-  });
+  const res = await withClaude("extract", { timeout: TIMEOUT_MS, maxRetries: 1 }, (client) =>
+    client.messages.parse({
+      model: CHECK_MODEL,
+      max_tokens: 1000,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      output_config: { effort: "low", format: zodOutputFormat(ExtractSchema) },
+      messages: [{ role: "user", content: user }],
+    }),
+  );
   if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error(`model gave no usable output (${res.stop_reason})`);
   return res.parsed_output;
 }

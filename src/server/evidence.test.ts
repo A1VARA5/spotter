@@ -216,6 +216,16 @@ describe("evidence pack: what it says", () => {
     expect(t).toContain("spt-abcd:pay_x");
   });
 
+  it("says honestly when the backup AI model wrote the scam check, and says nothing extra for Claude", async () => {
+    expect(await (await get("txt")).text()).not.toContain("backup AI model");
+    (deps.check as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: true, flags: [], dropped: 0, hidden: [], summary: "A normal message.", injectionAttempt: false, aiEngine: "openai_backup" });
+    const backed = (await submitPayment(deps, { spenderId: "gran", money: gbp(25000), payee: { name: "Mug Shop", isNew: true }, category: "gifts", method: "paypal_order", context: "Mug" })).id;
+    for (const body of [await (await evidenceResponse(db, hh, backed, null)).text(), await (await evidenceResponse(db, hh, backed, "txt")).text()]) {
+      expect(body).toContain("Checked by the backup AI model, because Claude was unavailable.");
+      expect(body).toContain("Spotter checked the message for scam signs (checked by the backup AI model");
+    }
+  });
+
   it("a denied payment's pack says the spotter said no and PayPal released the money", async () => {
     await deny(deps, paymentId, "Sam");
     const t = await (await get("txt")).text();

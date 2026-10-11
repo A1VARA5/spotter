@@ -2,7 +2,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "@/core/households";
 import { createSpender, submitPayment, type Deps, type Payment } from "@/core/lifecycle";
-import { buildCase, caseBrief, type CaseModel, type ModelTurn } from "./case";
+import { AI_DOWN_LINE, buildCase, caseBrief, type CaseModel, type ModelTurn } from "./case";
+import { ClaudeKeysUnusable } from "@/ai/client";
 import type { CaseCtx } from "./tools";
 
 const gbp = (amount: number) => ({ amount, currency: "GBP" as const });
@@ -426,23 +427,53 @@ describe("buildCase", () => {
     expect((await buildCase(ctx(), { model: invented })).swap).toBeUndefined();
   });
 
-  it("an outage before any tool ran fails honestly", async () => {
-    const c = await buildCase(ctx(), { model: async () => Promise.reject(new Error("overloaded")) });
-    expect(c.status).toBe("failed");
+  // A link check with no network: the message's link is a new domain.
+  const inspect = vi.fn(async (url: string) => ({ url, host: new URL(url).host, ageDays: 3, official: false, brand: null, flags: [{ severity: "high", detail: "Registered 3 days ago." }] }) as never);
+
+  it("an outage before any tool ran fails honestly, and the checks made by code still run", async () => {
+    const c = await buildCase(ctx({ inspect }), { model: async () => Promise.reject(new Error("overloaded")) });
+    expect(c.status).toBe("partial");
     expect(c.verdict).toBe("unclear");
     expect(c.error).toContain("overloaded");
+    expect(c.aiDown).toBeUndefined();
+    expect(c.calls.map((x) => x.tool).sort()).toEqual(["check_links", "find_genuine_offer", "network_reports", "payee_history", "paypal_hold"]);
+    // PayPal can't be asked in this test, so the hold check ran but found nothing to show.
+    expect(c.findings.map((f) => f.tool).sort()).toEqual(["check_links", "find_genuine_offer", "network_reports", "payee_history"]);
   });
 
-  it("an outage after tools ran keeps what the tools found", async () => {
+  it("an outage after tools ran keeps what the tools found and doesn't run them twice", async () => {
     let n = 0;
     const model: CaseModel = async () => {
       if (n++ === 0) return turn(use("t1", "payee_history", { payee: "BargainPods" }));
       throw new Error("overloaded");
     };
-    const c = await buildCase(ctx(), { model });
+    const c = await buildCase(ctx({ inspect }), { model });
     expect(c.status).toBe("partial");
     expect(c.findings[0]).toMatchObject({ tool: "payee_history", source: "t1" });
     expect(c.findings[0]!.text).toMatch(/never paid/);
+    expect(c.calls.filter((x) => x.tool === "payee_history")).toHaveLength(1);
+  });
+
+  it("when no AI can answer, says the AI check is down, and still runs the KERNEL visit and the Channel3 prices", async () => {
+    const visit = vi.fn(async (url: string) => ({ ok: true as const, url, finalUrl: "https://bargainpods.shop/pay", title: "Pay now", asks: { card: true, login: false, giftCard: false } }));
+    const down = new ClaudeKeysUnusable("case", "400 credit balance too low");
+    const c = await buildCase(ctx({ inspect, visit }), { model: async () => Promise.reject(down) });
+    expect(c.aiDown).toBe(true);
+    expect(c.headline).toContain("The AI check is down right now, so Spotter held this for you");
+    expect(c.headline).toContain("Nothing is paid.");
+    expect(visit).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/bargainpods\.shop\/?$/));
+    expect(c.page).toMatchObject({ finalUrl: "https://bargainpods.shop/pay" });
+    const tools = c.findings.map((f) => f.tool);
+    expect(tools).toContain("open_link");
+    expect(tools).toContain("find_genuine_offer");
+  });
+
+  it("when no AI can answer and no check could run either, the card says only that the AI check is down", async () => {
+    const c = await buildCase(ctx({ db: { query: async () => Promise.reject(new Error("db down")) } as never, search: async () => null, inspect: async () => Promise.reject(new Error("no network")) }), {
+      model: async () => Promise.reject(new ClaudeKeysUnusable("case", "401 key rejected")),
+    });
+    expect(c.status).toBe("failed");
+    expect(c.headline).toBe(AI_DOWN_LINE);
   });
 
   it("stops at the time budget", async () => {

@@ -227,7 +227,17 @@ export function CaseFile({
           <div className="cf-facts">
             {settled && facts.length > 0 && <p className="cf-sub">What Spotter saw</p>}
             <FindingList items={facts} id={ids.findings} label={settled ? "What Spotter saw" : "What each check found"} />
-            {c.status !== "done" && <p className="case-note">{c.status === "partial" ? "Some checks didn't finish, so this is only part of the picture." : "Spotter couldn't look into this one."}</p>}
+            {c.status !== "done" && (
+              <p className="case-note">
+                {c.aiDown
+                  ? c.status === "partial"
+                    ? "Only Spotter's own checks ran (no AI read this one), so this is only part of the picture."
+                    : "No AI could read this one and Spotter's own checks couldn't run either, so decide from what you know."
+                  : c.status === "partial"
+                    ? "Some checks didn't finish, so this is only part of the picture."
+                    : "Spotter couldn't look into this one."}
+              </p>
+            )}
           </div>
           {(real || aside) && (
             <div className="cf-aside">

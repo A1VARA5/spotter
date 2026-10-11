@@ -11,6 +11,7 @@ import { networkCount } from "@/core/network";
 import { formatMoney, type Currency } from "@/core/types";
 import { safeTz, whenText } from "@/core/holdtime";
 import { SIGN_LABEL } from "@/watchtower/data";
+import { BACKUP_LINE } from "@/core/aiwords";
 import { peekActivity } from "./peek";
 
 const EVIDENCE_STATUSES = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
@@ -61,6 +62,8 @@ type Pack = {
   reasons: string[];
   signs: Array<{ label: string; severity: string; quote: string; why: string }>;
   summary: string | null;
+  /** Which AI wrote the scam check, said plainly when it wasn't Claude. */
+  checkedBy: string | null;
   price: string | null;
   verdict: string | null;
   headline: string | null;
@@ -121,7 +124,11 @@ function eventWords(type: string, data: Record<string, unknown>, tz: string): st
     case "example_created":
       return "Example hold made for the demo family (the checks were written earlier)";
     case "checked":
-      return data.ok === false ? "Spotter's scam check couldn't finish, so Spotter played safe" : "Spotter checked the message for scam signs";
+      return data.ok === false
+        ? "Spotter's scam check couldn't finish, so Spotter played safe"
+        : data.engine === "openai_backup"
+          ? "Spotter checked the message for scam signs (checked by the backup AI model, because Claude was unavailable)"
+          : "Spotter checked the message for scam signs";
     case "decided":
       return (
         { ask: "Spotter held it and asked the spotter", block: "Spotter stopped it", protect: "Spotter didn't send it (no buyer protection)", allow: "Spotter let it through" }[str(data.outcome, 20)] ??
@@ -269,6 +276,7 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
     reasons: (p.decision?.reasons ?? []).map((x) => str(x, 400)),
     signs: (p.decision?.flags ?? p.ai?.flags ?? []).map((f) => ({ label: SIGN_LABEL[f.kind] ?? "Something odd", severity: str(f.severity, 10), quote: say(f.quote, 300), why: say(f.why, 300) })),
     summary: p.ai?.summary ? str(p.ai.summary, 600) : null,
+    checkedBy: p.ai?.ok && p.ai.aiEngine === "openai_backup" ? BACKUP_LINE : null,
     price,
     verdict: c ? (VERDICT[c.verdict] ?? null) : null,
     headline: c ? say(c.headline, 300) : null,
@@ -324,6 +332,7 @@ ${p.verdict ? `<p><b>${esc(p.verdict)}.</b> ${esc(p.headline ?? "")}</p>` : ""}
 <h3>Why Spotter held or stopped it</h3>${list(p.reasons.map(esc))}
 <h3>Warning signs, quoted from the message</h3>${list(p.signs.map((s) => `<b>${esc(s.label)}</b> (${esc(s.severity)}): ${s.quote ? `<q>${esc(s.quote)}</q> ` : ""}${esc(s.why)}`))}
 ${p.summary ? `<h3>The scam check said</h3><p>${esc(p.summary)}</p>` : ""}
+${p.checkedBy ? `<p class="note">${esc(p.checkedBy)}</p>` : ""}
 ${p.price ? `<h3>Price check</h3><p>${esc(p.price)}</p>` : ""}
 <h3>What each check found</h3>${list(p.findings.map((f) => `<b>${esc(f.label)}</b>: ${esc(f.text)}${f.quote ? ` <q>${esc(f.quote)}</q>` : ""}`))}
 <h3>Other families</h3><p>${esc(p.network)}</p>
@@ -366,6 +375,7 @@ function text(p: Pack): string {
   out.push("", "Why Spotter held or stopped it:", ...(p.reasons.length ? p.reasons.map((x) => `- ${x}`) : ["- None."]));
   out.push("", "Warning signs, quoted from the message:", ...(p.signs.length ? p.signs.map((s) => `- ${s.label} (${s.severity}): ${s.quote ? `"${s.quote}" ` : ""}${s.why}`) : ["- None."]));
   if (p.summary) out.push("", `The scam check said: ${p.summary}`);
+  if (p.checkedBy) out.push(p.checkedBy);
   if (p.price) out.push("", `Price check: ${p.price}`);
   out.push("", "What each check found:", ...(p.findings.length ? p.findings.map((f) => `- ${f.label}: ${f.text}${f.quote ? ` "${f.quote}"` : ""}`) : ["- None."]));
   out.push("", `Other families: ${p.network}`);

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { aiCheck, SYSTEM, type ModelCall } from "./check";
+import Anthropic from "@anthropic-ai/sdk";
+import { aiCheck, defaultModel, SYSTEM, type ModelCall } from "./check";
+import { ClaudeKeysUnusable } from "./client";
 import type { PaymentRequest } from "@/core/types";
 
 const tag = (s: string) => [...s].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join("");
@@ -147,5 +149,72 @@ describe("claimed_sender (who the message says it's from)", () => {
 
   it("asks the model for it in the prompt", () => {
     expect(SYSTEM).toContain("claimed_sender");
+  });
+});
+
+describe("the backup AI model (only when no Anthropic key can answer)", () => {
+  const ctx = "Gran it's Tom, I lost my phone. Send £400 by Friends and Family now, don't tell Mum.";
+  const backupOut = {
+    summary: "Someone posing as a grandchild wants money fast.",
+    injection_attempt: false,
+    flags: [
+      { kind: "friends_and_family", severity: "high", quote: "Send £400 by Friends and Family now", why: "No buyer protection." },
+      { kind: "impersonation", severity: "high", quote: "this is your bank calling", why: "Made up quote." },
+    ],
+    claimed_sender: null,
+  };
+  const keysOut = new ClaudeKeysUnusable("check", "400 credit balance too low");
+  const apiError = (status: number, type: string, message: string) => Anthropic.APIError.generate(status, { type: "error", error: { type, message } }, undefined, new Headers());
+  const engines =
+    (claude: ModelCall, backup: ModelCall, hasBackup = true) =>
+    (input: { system: string; user: string }) =>
+      defaultModel(input, { claude, backup, hasBackup: () => hasBackup });
+  const fails = (e: unknown): ModelCall => vi.fn(async () => Promise.reject(e));
+
+  it("answers with the backup when both Anthropic keys are out, sends it the same fenced prompt, and still drops made up quotes", async () => {
+    const backup = vi.fn(async () => backupOut as never);
+    const r = await aiCheck(req(ctx), engines(fails(keysOut), backup));
+    expect(r.ok).toBe(true);
+    expect(r.aiEngine).toBe("openai_backup");
+    expect(r.flags.map((f) => f.kind)).toEqual(["friends_and_family"]);
+    expect(r.dropped).toBe(1);
+    const [{ system, user }] = backup.mock.calls[0] as unknown as [{ system: string; user: string }];
+    expect(system).toBe(SYSTEM);
+    expect(user).toContain(`<context>\n${ctx}\n</context>`);
+  });
+
+  it("asks the backup when Anthropic is down or unreachable", async () => {
+    const backup = vi.fn(async () => backupOut as never);
+    expect((await aiCheck(req(ctx), engines(fails(apiError(500, "api_error", "x")), backup))).aiEngine).toBe("openai_backup");
+    expect((await aiCheck(req(ctx), engines(fails(new Anthropic.APIConnectionTimeoutError()), backup))).aiEngine).toBe("openai_backup");
+  });
+
+  it("marks Claude's own answers as Claude's and leaves the backup alone", async () => {
+    const backup = vi.fn();
+    const r = await aiCheck(req(ctx), engines(vi.fn(async () => backupOut as never), backup));
+    expect(r.aiEngine).toBe("claude");
+    expect(backup).not.toHaveBeenCalled();
+  });
+
+  it("never sends a request Claude rejected (bad schema, too long) or refused to the backup", async () => {
+    const backup = vi.fn();
+    expect((await aiCheck(req(ctx), engines(fails(apiError(400, "invalid_request_error", "prompt is too long")), backup))).ok).toBe(false);
+    expect((await aiCheck(req(ctx), engines(fails(new Error("model gave no usable output (refusal)")), backup))).ok).toBe(false);
+    expect(backup).not.toHaveBeenCalled();
+  });
+
+  it("fails honestly (held for a person) when the backup isn't set up or fails too", async () => {
+    const none = await aiCheck(req(ctx), engines(fails(keysOut), vi.fn(), false));
+    expect(none.ok).toBe(false);
+    expect(none.aiEngine).toBeUndefined();
+    const both = await aiCheck(req(ctx), engines(fails(keysOut), fails(new Error("backup model error 401 invalid_api_key"))));
+    expect(both.ok).toBe(false);
+    expect(both.error).toContain("no Anthropic key could be used");
+    expect(both.error).toContain("backup AI model failed too (backup model error 401 invalid_api_key)");
+  });
+
+  it("puts the backup's answer through the schema too", async () => {
+    const r = await aiCheck(req(ctx), engines(fails(keysOut), vi.fn(async () => ({ summary: 3 }) as never)));
+    expect(r.ok).toBe(false);
   });
 });

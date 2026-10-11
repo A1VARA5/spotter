@@ -5,6 +5,7 @@ import type { Payment } from "@/core/lifecycle";
 import { money, trackState } from "@/ui/format";
 import { OUTCOME_WORDS } from "@/ui/labels";
 import { peekableHost } from "@/ui/peekable";
+import { BACKUP_LINE } from "@/core/aiwords";
 
 export type CheckPayment = Pick<
   Payment,
@@ -79,9 +80,10 @@ export function engines(payments: CheckPayment[], names: Record<string, string>,
       does: "Reads the message or shop page as untrusted text and has to quote every warning sign word for word. Code throws out any warning it can't find in the message.",
       example: ai
         ? {
-            text: aiFlags.length
-              ? `${what(ai)}: ${aiFlags.length} warning sign${aiFlags.length === 1 ? "" : "s"}, quoted from the message: "${cut(aiFlags[0]!.quote, 70)}"`
-              : `${what(ai)}: nothing in the message looked wrong.`,
+            text:
+              (aiFlags.length
+                ? `${what(ai)}: ${aiFlags.length} warning sign${aiFlags.length === 1 ? "" : "s"}, quoted from the message: "${cut(aiFlags[0]!.quote, 70)}"`
+                : `${what(ai)}: nothing in the message looked wrong.`) + (ai.ai?.aiEngine === "openai_backup" ? ` ${BACKUP_LINE}` : ""),
             href: caseLink(ai),
             label: "Open the case",
             example: isExample(ai),

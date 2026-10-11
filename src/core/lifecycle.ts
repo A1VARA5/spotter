@@ -374,7 +374,7 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
   const found = [...(market?.flag ? [market.flag] : []), ...codeFlags];
   const ai: AiCheckResult = found.length ? { ...aiRaw, flags: [...found, ...aiRaw.flags] } : aiRaw;
   if (market) await setStatus(db, id, "checking", { market });
-  await event(db, id, "checked", { ok: ai.ok, flags: ai.flags.length, dropped: ai.dropped, ...(ai.error ? { error: ai.error } : {}) });
+  await event(db, id, "checked", { ok: ai.ok, flags: ai.flags.length, dropped: ai.dropped, ...(ai.aiEngine ? { engine: ai.aiEngine } : {}), ...(ai.error ? { error: ai.error } : {}) });
   if (!ai.ok) console.error(`[spotter] AI check failed for ${id}: ${ai.error ?? "unknown"}`);
 
   const decision = decide(rules, ai, { amount: req.money.amount, askAbove: allowance.askAbove.amount });

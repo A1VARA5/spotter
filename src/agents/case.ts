@@ -5,6 +5,8 @@
 // model fails or runs out of time, what the tools found is still shown.
 import { z } from "zod";
 import { sanitizeContext } from "@/ai/sanitize";
+import { claudeUnavailable, withClaude } from "@/ai/client";
+import { AI_DOWN_LINE } from "@/core/aiwords";
 import type { Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { contradictsPrice, marketFacts, marketSummary, priceVerdict } from "@/core/market";
@@ -70,6 +72,8 @@ export type Case = {
   spot?: SpotTheDifference;
   /** Written earlier for the demo family's example hold, not checked live. The page labels it. */
   example?: boolean;
+  /** No AI could answer (no usable key, Anthropic down): only code's own checks ran. */
+  aiDown?: boolean;
 };
 
 export const CASE_SYSTEM = `You are Spotter's case worker. A payment by someone in a family (an older relative, a kid, or an AI shopping agent) was held or stopped by Spotter. Their spotter, the family member who looks out for them, will read your case and decide. Look into it with your tools, then call file_case once.
@@ -114,24 +118,60 @@ export function caseBrief(p: Payment, who?: { name: string; kind: string }): str
     .join("\n\n");
 }
 
-function fallback(calls: CaseCall[], started: number, error?: string): Case {
+export { AI_DOWN_LINE };
+
+function fallback(calls: CaseCall[], started: number, error?: string, aiDown = false): Case {
   console.error(`[spotter] case agent fell back after ${calls.length} tool calls: ${error ?? "unknown"}`);
   const findings = calls.filter((c) => c.ok).map((c) => ({ text: c.summary.slice(0, 320), tool: c.tool, source: c.id }));
   const done = findings.length > 0;
   return {
     status: done ? "partial" : "failed",
     verdict: "unclear",
-    headline: done
-      ? "Spotter checked a few things but couldn't finish the case. Here's what it found."
-      : "Spotter couldn't look into this one, so it's waiting for you as it is.",
+    headline: aiDown
+      ? done
+        ? "The AI check is down right now, so Spotter held this for you and ran its own checks. Nothing is paid."
+        : AI_DOWN_LINE
+      : done
+        ? "Spotter checked a few things but couldn't finish the case. Here's what it found."
+        : "Spotter couldn't look into this one, so it's waiting for you as it is.",
     findings,
     ask: [],
     calls,
     dropped: 0,
     ...(error ? { error } : {}),
+    ...(aiDown ? { aiDown: true } : {}),
     model: CASE_MODEL,
     ms: Date.now() - started,
   };
+}
+
+/**
+ * When the model can't run, the checks that don't need it still do (each at most once per case): family history,
+ * the Spotter network, the links, a KERNEL visit to the first link, Channel3's real prices and the PayPal hold.
+ * Arguments come from the payment itself, not from a model.
+ */
+async function codeChecks(ctx: CaseCtx, calls: CaseCall[], deadline: number): Promise<void> {
+  const r = ctx.payment.request;
+  const ran = new Set(calls.map((c) => c.tool));
+  const urls = extractUrls(r.context);
+  const payee = r.payee.name.slice(0, 200);
+  const item = r.item?.trim().slice(0, 120);
+  const plan: Array<[string, unknown]> = [];
+  if (payee && !ran.has("payee_history")) plan.push(["payee_history", { payee }]);
+  if (payee && !ran.has("network_reports")) plan.push(["network_reports", { identifier: payee }]);
+  if (urls.length && !ran.has("check_links")) plan.push(["check_links", { urls: urls.slice(0, 10) }]);
+  if (urls.length && ctx.visit && !ran.has("open_link") && !ran.has("inspect_shop")) plan.push(["open_link", { url: urls[0] }]);
+  if (item && item.length >= 2 && !ran.has("find_genuine_offer")) plan.push(["find_genuine_offer", { item }]);
+  if (ctx.payment.paypal_authorization_id && !ran.has("paypal_hold")) plan.push(["paypal_hold", {}]);
+  await Promise.all(
+    plan.map(async ([tool, args]) => {
+      const call: CaseCall = { id: `code_${tool}`, tool, args, ok: false, summary: "" };
+      calls.push(call);
+      const out = await within(deadline - Date.now(), runTool(tool, args, ctx), { ok: false, summary: `${tool} ran out of time.` });
+      call.ok = out.ok;
+      call.summary = out.summary;
+    }),
+  );
 }
 
 /** Runs work with a time limit; the timer is always cleared. */
@@ -337,7 +377,10 @@ async function runCase(ctx: CaseCtx, opts: CaseOpts): Promise<Case> {
     try {
       res = await model({ system: CASE_SYSTEM, messages, tools, signal: AbortSignal.timeout(left) });
     } catch (e) {
-      return fallback(calls, started, e instanceof Error ? e.message : String(e));
+      const aiDown = claudeUnavailable(e);
+      // The model is out, but the checks made by code can still run in the time left.
+      if (deadline - Date.now() > 0) await codeChecks(ctx, calls, deadline);
+      return fallback(calls, started, e instanceof Error ? e.message : String(e), aiDown);
     }
     messages.push({ role: "assistant", content: res.content });
     const uses = res.content.filter((b): b is ToolUseBlock => b.type === "tool_use");
@@ -440,19 +483,19 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
 }
 
 async function defaultModel({ system, messages, tools, signal }: Parameters<CaseModel>[0]): Promise<ModelTurn> {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic({ maxRetries: 1 });
   const cached = tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t));
-  const res = await client.messages.create(
-    {
-      model: CASE_MODEL,
-      max_tokens: 3000,
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      tools: cached as never,
-      messages: messages as never,
-      output_config: { effort: "low" },
-    } as never,
-    { signal },
+  const res = await withClaude("case", { maxRetries: 1 }, (client) =>
+    client.messages.create(
+      {
+        model: CASE_MODEL,
+        max_tokens: 3000,
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+        tools: cached as never,
+        messages: messages as never,
+        output_config: { effort: "low" },
+      } as never,
+      { signal },
+    ),
   );
   const r = res as unknown as ModelTurn;
   return { content: r.content, stop_reason: r.stop_reason };

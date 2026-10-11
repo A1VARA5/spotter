@@ -20,6 +20,7 @@ import { Peek } from "@/ui/Peek";
 import { peekableHost } from "@/ui/peekable";
 import { weekSummary } from "@/ui/week";
 import { approveWarning } from "@/ui/labels";
+import { AI_DOWN_LINE, BACKUP_LINE } from "@/core/aiwords";
 import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
 import "./allclear.css";
 import "./wide.css";
@@ -655,6 +656,8 @@ function HeldCard({
   const pending = !p.case_file && (tick ?? now) - new Date(p.created_at).getTime() < CASE_WAIT_MS;
   // When Spotter thinks it's a scam, saying no is the main action and saying yes takes a deliberate step.
   const scamLike = p.case_file?.verdict === "likely_scam" || flags.some((f) => f.severity === "high");
+  // Without a finished check, Deny comes first too (Approve keeps its normal look unless it looks like a scam).
+  const denyFirst = scamLike || !checkComplete(p);
   const warning = approveWarning(p.case_file?.verdict, flags.some((f) => f.severity === "high"));
   const bodyId = `body-${p.id}`;
   // A genuine listing from Channel3 (the case's own offer, else the market check's cheapest real shop).
@@ -778,6 +781,15 @@ function HeldCard({
             {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)} anyway`}
           </button>
         </>
+      ) : denyFirst ? (
+        <>
+          <button className="btn btn-deny" aria-disabled={busy !== null || undefined} onClick={() => act("deny")}>
+            {busy === "deny" ? "Releasing" : "Deny"}
+          </button>
+          <button ref={approveRef} className="btn btn-approve" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
+            {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)}`}
+          </button>
+        </>
       ) : (
         <>
           <button ref={approveRef} className="btn btn-approve" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
@@ -827,6 +839,8 @@ function HeldCard({
           <strong>Scam check:</strong> {p.ai.summary}
         </p>
       )}
+      {!c && aiDown(p) && <p className="held-summary">{AI_DOWN_LINE}</p>}
+      {p.ai?.ok && p.ai.aiEngine === "openai_backup" && <p className="held-summary">{BACKUP_LINE}</p>}
 
       {reasons.length > 0 && (
         <ul className="reasons" aria-label={c ? "Spotter's rules" : "Why it was held"}>
@@ -955,6 +969,18 @@ export function withoutHoldFinding(c: Case): Case {
   return c.findings.some((f) => f.tool === "paypal_hold") ? { ...c, findings: c.findings.filter((f) => f.tool !== "paypal_hold") } : c;
 }
 
+/**
+ * True when the AI looked at this payment and its case file was written: the message check ran and the case agent
+ * finished (fully or in part) with the model. Until then Deny leads on the card, so nobody approves on a guess.
+ */
+export function checkComplete(p: Pick<Payment, "ai" | "case_file">): boolean {
+  const c = p.case_file;
+  return p.ai?.ok === true && !!c && c.status !== "failed" && !c.aiDown;
+}
+
+/** True when the message check couldn't run at all (no AI could answer), so the card says so plainly. */
+export const aiDown = (p: Pick<Payment, "ai">): boolean => !!p.ai && !p.ai.ok;
+
 const VERDICT_LINE = { likely_scam: "Likely a scam", unclear: "Worth a closer look", looks_fine: "Looks genuine" } as const;
 
 /** A closed held card in one line: Spotter's verdict and its headline, or that it is still looking. */
@@ -967,6 +993,7 @@ function HeldSummary({ p, pending }: { p: Payment; pending: boolean }) {
       </p>
     );
   }
+  if (aiDown(p)) return <p className="held-sum">{AI_DOWN_LINE}</p>;
   const reason = p.decision?.reasons[0];
   return <p className="held-sum">{pending ? "Spotter is still looking into it." : (reason ?? "Open the case file to see why it was held.")}</p>;
 }

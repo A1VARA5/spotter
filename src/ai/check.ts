@@ -6,6 +6,8 @@ import { groundFlags, type Flag } from "@/core/grounding";
 import type { PaymentRequest } from "@/core/types";
 import { sanitizeContext, type Hidden } from "./sanitize";
 import { claimFromText, groundClaim, RELATIONS, type Claim } from "@/core/claim";
+import { claudeUnavailable, withClaude } from "./client";
+import { backupConfigured, backupParse } from "./backup";
 
 export const CHECK_MODEL = "claude-opus-5-5";
 export const TIMEOUT_MS = 20_000;
@@ -28,6 +30,14 @@ const ParseSchema = CheckSchema.extend({ claimed_sender: ClaimSchema.nullable().
 export type CheckOutput = z.infer<typeof CheckSchema>;
 
 export type ModelCall = (input: { system: string; user: string }) => Promise<unknown>;
+
+/** Which AI wrote the check: Claude, or the backup model when no Anthropic key could answer. */
+export type AiEngine = "claude" | "openai_backup";
+const ANSWER = Symbol("model answer");
+type ModelAnswer = { [ANSWER]: true; engine: AiEngine; output: unknown };
+/** A ModelCall result that says which engine answered. A plain result counts as Claude's. */
+export const answeredBy = (engine: AiEngine, output: unknown): ModelAnswer => ({ [ANSWER]: true, engine, output });
+const isAnswer = (v: unknown): v is ModelAnswer => !!v && typeof v === "object" && ANSWER in v;
 
 export const SYSTEM = `You are Spotter's payment checker. Someone (a person or an AI agent) is about to pay. You get the payment details and the context they saw (a shop page, a cart, a message they received).
 
@@ -61,6 +71,8 @@ export type AiCheckResult = {
   error?: string;
   /** Who the message claims to be from, grounded in the message (see core/claim.ts). Absent on older rows. */
   claimedSender?: Claim | null;
+  /** Which AI answered, when the check ran. Absent on older rows (those were all Claude). */
+  aiEngine?: AiEngine;
 };
 
 export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaultModel): Promise<AiCheckResult> {
@@ -94,8 +106,12 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
   ].join("\n\n");
 
   let parsed: z.infer<typeof ParseSchema>;
+  let engine: AiEngine;
   try {
-    parsed = ParseSchema.parse(await callModel({ system: SYSTEM, user }));
+    const raw = await callModel({ system: SYSTEM, user });
+    const answer = isAnswer(raw) ? raw : answeredBy("claude", raw);
+    engine = answer.engine;
+    parsed = ParseSchema.parse(answer.output);
   } catch (e) {
     return {
       ok: false,
@@ -123,20 +139,46 @@ export async function aiCheck(req: PaymentRequest, callModel: ModelCall = defaul
     injectionAttempt: parsed.injection_attempt,
     // The model's claim only counts if its words are really in the message; otherwise code's own patterns.
     claimedSender: groundClaim(parsed.claimed_sender, clean.text) ?? claimFromText(clean.text),
+    aiEngine: engine,
   };
 }
 
-async function defaultModel({ system, user }: { system: string; user: string }): Promise<unknown> {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+/**
+ * Claude first (primary key, then the backup key, see ./client.ts). Only when Claude itself is unavailable (no key
+ * could answer, Anthropic down or unreachable) does the backup AI model get the same prompt and schema. A request
+ * Claude rejected or refused is not sent to the backup.
+ */
+export async function defaultModel(
+  { system, user }: { system: string; user: string },
+  call: { claude: ModelCall; backup: ModelCall; hasBackup: () => boolean } = { claude: claudeModel, backup: backupModel, hasBackup: () => backupConfigured() },
+): Promise<unknown> {
+  try {
+    return answeredBy("claude", await call.claude({ system, user }));
+  } catch (e) {
+    if (!claudeUnavailable(e) || !call.hasBackup()) throw e;
+    const why = e instanceof Error ? e.message : String(e);
+    console.warn(`[spotter] AI check: Claude is unavailable (${why}), asking the backup AI model`);
+    try {
+      return answeredBy("openai_backup", await call.backup({ system, user }));
+    } catch (b) {
+      throw new Error(`Claude is unavailable (${why}) and the backup AI model failed too (${b instanceof Error ? b.message : String(b)})`, { cause: b });
+    }
+  }
+}
+
+async function claudeModel({ system, user }: { system: string; user: string }): Promise<unknown> {
   const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-  const client = new Anthropic({ timeout: TIMEOUT_MS, maxRetries: 1 });
-  const res = await client.messages.parse({
-    model: CHECK_MODEL,
-    max_tokens: 4000,
-    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    output_config: { effort: "low", format: zodOutputFormat(CheckSchema) },
-    messages: [{ role: "user", content: user }],
-  });
+  const res = await withClaude("check", { timeout: TIMEOUT_MS, maxRetries: 1 }, (client) =>
+    client.messages.parse({
+      model: CHECK_MODEL,
+      max_tokens: 4000,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      output_config: { effort: "low", format: zodOutputFormat(CheckSchema) },
+      messages: [{ role: "user", content: user }],
+    }),
+  );
   if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error(`model gave no usable output (${res.stop_reason})`);
   return res.parsed_output;
 }
+
+const backupModel: ModelCall = ({ system, user }) => backupParse({ system, user, schema: CheckSchema, name: "spotter_check", maxOutputTokens: 4000 });

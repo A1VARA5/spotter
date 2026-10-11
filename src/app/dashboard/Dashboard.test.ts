@@ -1,7 +1,29 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { feedEmpty, firstToOpen, withoutHoldFinding } from "./Dashboard";
+import { aiDown, checkComplete, feedEmpty, firstToOpen, withoutHoldFinding } from "./Dashboard";
 import type { Case } from "@/agents/case";
+
+describe("checkComplete (Deny leads until the AI has looked)", () => {
+  const ok = { ok: true } as Payment["ai"];
+  const failed = { ok: false, error: "no Anthropic key could be used" } as Payment["ai"];
+  const done = { status: "done" } as Case;
+  it("is complete only when the message check ran and the case file was written with the model", () => {
+    expect(checkComplete({ ai: ok, case_file: done })).toBe(true);
+    expect(checkComplete({ ai: ok, case_file: { status: "partial" } as Case })).toBe(true);
+  });
+  it("is not complete while the case is still being built, when the case failed, or when no AI could answer", () => {
+    expect(checkComplete({ ai: ok, case_file: null })).toBe(false);
+    expect(checkComplete({ ai: ok, case_file: { status: "failed" } as Case })).toBe(false);
+    expect(checkComplete({ ai: ok, case_file: { status: "partial", aiDown: true } as Case })).toBe(false);
+    expect(checkComplete({ ai: failed, case_file: done })).toBe(false);
+    expect(checkComplete({ ai: null, case_file: done })).toBe(false);
+  });
+  it("says the AI check is down only when it ran and failed", () => {
+    expect(aiDown({ ai: failed })).toBe(true);
+    expect(aiDown({ ai: ok })).toBe(false);
+    expect(aiDown({ ai: null })).toBe(false);
+  });
+});
 
 describe("withoutHoldFinding (one expiry date per held card)", () => {
   it("drops the PayPal hold finding, which repeats the hold clock's date, and keeps the rest", () => {
