@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AgAiChatSession, AgAiHarness } from "ag-studio";
 import { GRAN_ID } from "@/watchtower/agents";
 import type { Receipt } from "@/watchtower/receipt";
+import { gt, type GranLang } from "@/watchtower/granLang";
 import { useBook, type ReceiptBook } from "./ReceiptBar";
 
 type Phase = { kind: "idle" } | { kind: "asking"; question: string } | { kind: "answered"; question: string; answer: string; threadId: string } | { kind: "failed"; question: string; why: string };
@@ -22,32 +23,32 @@ function lastAnswer(s: AgAiChatSession): string {
 /** Markdown the model may still use, taken out so the answer reads as plain sentences. */
 const plain = (t: string) => t.replace(/\*\*|__|`/g, "").replace(/^#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "");
 
-const TIMES = ["", "once", "twice"];
-
 /** Under the answer: what Spotter did to get it, from AG Studio's own record of the run, in Gran's words. */
-function GranReceipt({ r, spotter }: { r: Receipt; spotter: string }) {
+function GranReceipt({ r, spotter, lang }: { r: Receipt; spotter: string; lang: GranLang }) {
   const looks = r.tools.find((t) => t.name === "my_month")?.calls ?? 0;
   const other = r.tools.filter((t) => t.name !== "my_month").reduce((n, t) => n + t.calls, 0);
   const s = Math.max(1, Math.round(r.ms / 1000));
+  const looked = looks === 0 ? gt(lang, "lookedNone") : looks === 1 ? gt(lang, "lookedOnce") : looks === 2 ? gt(lang, "lookedTwice") : gt(lang, "lookedTimes", { n: looks });
   return (
     <div className="gran-receipt" data-flagged={r.flagged || undefined}>
-      <p className="gran-receipt-h">How Spotter got this answer</p>
+      <p className="gran-receipt-h">{gt(lang, "receiptTitle")}</p>
       <p>
-        {looks ? `It looked at your month ${TIMES[looks] ?? `${looks} times`}` : "It didn't need to look at your payments"}
-        {other ? ` and did ${other} other ${other === 1 ? "thing" : "things"}` : ""}. It took {s} {s === 1 ? "second" : "seconds"}.
+        {looked}
+        {other === 1 ? gt(lang, "otherThing") : other > 1 ? gt(lang, "otherThings", { n: other }) : ""}
+        {s === 1 ? gt(lang, "tookOne") : gt(lang, "took", { s })}
       </p>
-      <p className="gran-receipt-money">{r.flagged ? `Spotter used something it doesn't know. Please tell ${spotter}.` : "It can't move money, and it didn't."}</p>
+      <p className="gran-receipt-money">{r.flagged ? gt(lang, "receiptFlagged", { spotter }) : gt(lang, "receiptMoney")}</p>
     </div>
   );
 }
 
-export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgAiHarness | null; spotter: string; onBusy: (busy: boolean) => void; book?: ReceiptBook }) {
+export function GranAsk({ harness, spotter, onBusy, book, lang = "en" }: { harness: () => AgAiHarness | null; spotter: string; onBusy: (busy: boolean) => void; book?: ReceiptBook; lang?: GranLang }) {
   const { entries } = useBook(book);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [text, setText] = useState("");
   const session = useRef<AgAiChatSession | null>(null);
   const answerRef = useRef<HTMLDivElement>(null);
-  const starters = ["Did Spotter stop anything for me?", `What is waiting for ${spotter}?`, "Someone is asking me for money. What do I do?"];
+  const starters = [gt(lang, "starterStopped"), gt(lang, "starterWaiting", { spotter }), gt(lang, "starterAsking")];
 
   useEffect(() => () => session.current?.close(), []);
 
@@ -56,7 +57,7 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
     if (!question || phase.kind === "asking") return;
     const h = harness();
     if (!h) {
-      setPhase({ kind: "failed", question, why: "The board is still loading. Try again in a moment." });
+      setPhase({ kind: "failed", question, why: gt(lang, "stillLoading") });
       return;
     }
     setPhase({ kind: "asking", question });
@@ -103,7 +104,7 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
         setPhase({
           kind: "failed",
           question,
-          why: capped ? `Spotter has answered all it can for today. Try again tomorrow, or ring ${spotter}.` : `Spotter couldn't answer just now. Try again in a minute, or ring ${spotter}.`,
+          why: gt(lang, capped ? "capped" : "askFailed", { spotter }),
         });
       } else {
         setPhase({ kind: "answered", question, answer, threadId: s.threadId });
@@ -111,7 +112,7 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
       }
     } catch (e) {
       console.warn("[watchtower] simple view question wasn't sent:", e);
-      setPhase({ kind: "failed", question, why: `Spotter couldn't answer just now. Try again in a minute, or ring ${spotter}.` });
+      setPhase({ kind: "failed", question, why: gt(lang, "askFailed", { spotter }) });
     } finally {
       onBusy(false);
     }
@@ -126,10 +127,10 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
   return (
     <aside className="gran-ask" aria-labelledby="gran-ask-h">
       <h2 id="gran-ask-h" className="gran-h">
-        Ask Spotter
+        {gt(lang, "askTitle")}
       </h2>
-      <p className="gran-ask-lede">Ask in your own words. Spotter answers from your own payments.</p>
-      <ul className="gran-starters" aria-label="Questions you can ask">
+      <p className="gran-ask-lede">{gt(lang, "askLede")}</p>
+      <ul className="gran-starters" aria-label={gt(lang, "startersLabel")}>
         {starters.map((q) => (
           <li key={q}>
             <button type="button" className="gran-starter" onClick={() => void ask(q)} disabled={busy}>
@@ -146,7 +147,7 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
         }}
       >
         <label htmlFor="gran-question" className="gran-label">
-          Your question
+          {gt(lang, "questionLabel")}
         </label>
         <textarea
           id="gran-question"
@@ -163,14 +164,14 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
           }}
         />
         <button type="submit" className="gran-ask-btn" disabled={busy} aria-disabled={busy || !text.trim() ? true : undefined}>
-          {busy ? "Asking…" : "Ask"}
+          {busy ? gt(lang, "asking") : gt(lang, "ask")}
         </button>
       </form>
       <div className="gran-answer" role="status" aria-live="polite">
-        {phase.kind === "asking" && <p className="gran-thinking">Spotter is looking at your payments…</p>}
+        {phase.kind === "asking" && <p className="gran-thinking">{gt(lang, "thinking")}</p>}
         {(phase.kind === "answered" || phase.kind === "failed") && (
           <div ref={answerRef} tabIndex={-1} className="gran-answer-box" data-failed={phase.kind === "failed" || undefined}>
-            <p className="gran-asked">You asked: {phase.question}</p>
+            <p className="gran-asked">{gt(lang, "youAsked", { q: phase.question })}</p>
             {(phase.kind === "answered" ? phase.answer : phase.why).split(/\n{2,}/).map((para, i) => (
               <p key={i} className="gran-answer-text">
                 {para}
@@ -178,7 +179,8 @@ export function GranAsk({ harness, spotter, onBusy, book }: { harness: () => AgA
             ))}
             {phase.kind === "answered" && (() => {
               const r = entries.find((e) => e.receipt.threadId === phase.threadId)?.receipt;
-              return r ? <GranReceipt r={r} spotter={spotter} /> : null;
+              // No receipt for a finished answer is itself worth saying: it's the proof that's missing.
+              return r ? <GranReceipt r={r} spotter={spotter} lang={lang} /> : <p className="gran-receipt gran-receipt-missing">{gt(lang, "receiptMissing", { spotter })}</p>;
             })()}
           </div>
         )}

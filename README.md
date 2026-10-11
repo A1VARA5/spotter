@@ -90,6 +90,10 @@ lead (AG Studio, kept)   all on Claude via our swapped in adapter
 
 The fair price widget shows what the shopping agent paid against the cheapest real shop this month, using the Channel3 check Spotter stored when each payment was made. On the demo family it says the agent paid £8.50 more than it had to, and that Spotter caught a £24.99 pair of earbuds that real shops sell for about £169.
 
+Every answer comes with a receipt. The assistant reads words scammers wrote, so I don't take its word for what it did. AG Studio's telemetry records each tool call, and Watchtower turns that into a receipt under the board: which tools ran, how long they took, money actions (0, because none of its tools can move money, and any tool that isn't on Spotter's list turns that line red and flags the run) and board changes. One button undoes exactly what the assistant changed, using Studio's own undo history. Each tool call in the chat shows a small card with counts only, never a payee's name or a message, and Gran gets the same receipt in plain words under her answers.
+
+Gran's view can also switch to Polish. AG Studio has no Lithuanian locale, so I picked Polish, the most spoken main language in England and Wales after English. AG's own words come from its official locale package, and everything Spotter says to Gran is translated by hand in `src/watchtower/granLang.ts`, so "waiting" can never read like "approved". The assistant answers her in Polish too, with the same rules: it never tells her to approve or pay anything, in any language.
+
 ## PayPal's agent tools, with Spotter in the middle
 
 PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, I pinned 1.11.0) that lets an AI agent create orders, capture them, send invoices, refund and so on. It has no spending limit and no approval step. If the agent calls `pay_order`, the money goes.
@@ -149,6 +153,7 @@ Without `DATABASE_URL` it uses PGlite in `.data/`, so there's nothing else to se
 - It can't stop someone paying directly in the PayPal app. For people it's a habit, like ringing a sensible friend. For AI agents it is enforced, because the agent only has Spotter's tools.
 - In the sandbox, Spotter pays with a sandbox card. A live version would have Gran link her own PayPal once so Spotter can pay on her behalf after the check.
 - The AI check can be wrong. When it can't run or isn't sure, the payment waits for a person instead of going through.
+- The Polish translations haven't been checked by a native speaker yet, and AG's own locales say theirs are an illustration only. Payee names and Spotter's longer reasons stay in English, so in Polish each stop is described by the trick it used.
 
 ## Credits
 

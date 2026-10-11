@@ -102,3 +102,8 @@
   .wt-view-btn, .gran-starter, .gran-ask-btn { transition: none; }
   .wt-view-btn:active, .gran-starter:active, .gran-ask-btn:active { transform: none; }
 }
+
+/* Gran's language: the same pill switch as the view switch, the English name beside the native one. */
+.wt-lang .wt-view-btn { font-weight: 650; }
+.wt-lang-en { font-weight: 500; opacity: 0.8; }
+.gran-receipt-missing { color: var(--g-ink2, #384552); }
