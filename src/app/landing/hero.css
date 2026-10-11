@@ -490,78 +490,112 @@
 }
 
 /* ==========================================================================
-   A small drawn stand in for the throwaway browser's screenshot (a card
-   form), used by the walkthrough's case file.
+   A drawn stand in for the throwaway browser's screenshot (a card form in a
+   browser window with its real address), used by the walkthrough's case file.
+   Full width of the panel, so it reads like the screenshot it stands for.
    ========================================================================== */
 .kshot {
-  width: 176px;
-  height: 110px;
+  width: 100%;
+  max-width: 380px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: #fff;
-  font-size: 7px;
-  line-height: 1.25;
+  font-size: 12px;
+  line-height: 1.3;
   color: #26313b;
+  box-shadow: 0 12px 28px -18px rgb(13 20 28 / 0.45);
+}
+
+.kshot-url {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: #eef1f3;
+  border-bottom: 1px solid var(--line);
+  color: #4b5762;
+  font-size: 11.5px;
+  min-width: 0;
+}
+
+.kshot-url > span:last-child {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kshot-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.kshot-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9d0d6;
 }
 
 .kshot-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 16px;
-  padding: 0 7px;
+  gap: 7px;
+  height: 28px;
+  padding: 0 12px;
   background: #1e5a66;
   color: #fff;
   font-weight: 700;
 }
 
 .kshot-logo {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   background: #ffd23f;
 }
 
 .kshot-body {
   display: grid;
-  gap: 4px;
-  padding: 7px 9px;
+  gap: 7px;
+  padding: 12px 14px 14px;
 }
 
 .kshot-h {
-  font-size: 9px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .kshot-sub {
-  color: #6b7782;
+  color: #5d6873;
 }
 
 .kshot-field {
   display: block;
-  height: 13px;
-  padding: 0 4px;
+  padding: 6px 8px;
   border: 1px solid #cfd5da;
-  border-radius: 3px;
-  color: #98a2ab;
-  line-height: 11px;
+  border-radius: 5px;
+  color: #5d6873;
 }
 
 .kshot-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  gap: 7px;
 }
 
 .kshot-btn {
   display: block;
-  height: 14px;
-  border-radius: 3px;
+  padding: 7px;
+  border-radius: 5px;
   background: #1e5a66;
   color: #fff;
   font-weight: 700;
   text-align: center;
-  line-height: 14px;
 }
 

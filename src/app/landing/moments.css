@@ -809,6 +809,29 @@
   max-width: 56ch;
 }
 
+/* The two faces sit side by side in a narrower column here: tighter screens so the forms keep their shape. */
+.ck2 .ck-face-screen {
+  min-height: 0;
+  padding: 8px;
+}
+
+.ck2 .ck-form {
+  gap: 6px;
+  padding: 11px;
+}
+
+.ck2 .ck-form-h {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.ck2 .ck-field {
+  padding: 6px 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* The two market views sit inside the example card, so they drop their own card. */
 .ck2 .ck-spot,
 .ck2 .ck-watch {
@@ -1067,12 +1090,14 @@
   background: #f7f8f6;
 }
 
-.ck-face-blank {
-  display: grid;
-  place-items: center;
-  background: #fff;
+/* What scanners are shown: an ordinary tracking page that asks for nothing. */
+.ck-form-plain .ck-form-btn {
+  background: #e4e9ec;
+  color: #26313b;
+}
+
+.ck-form-note {
   color: #5d6873;
-  font-size: 14px;
 }
 
 .ck-faces-h {

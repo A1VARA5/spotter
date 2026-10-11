@@ -194,15 +194,18 @@ export function NetworkField({
       lctx.fillStyle = DOT;
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
-          const x = ox + i * pitch;
-          const y = oy + j * pitch;
+          // Centred on a device pixel, so a dot anti aliases the same on every side instead of smearing into a square
+          // on 1.25x, 1.5x and 1.75x screens.
+          const x = (Math.round((ox + i * pitch) * dpr) + 0.5) / dpr;
+          const y = (Math.round((oy + j * pitch) * dpr) + 0.5) / dpr;
           const d = Math.hypot(x - f.x, y - f.y) / f.reach;
           const near = Math.max(0, 1 - d);
           const wgt = near * near * (3 - 2 * near); // smoothstep
           // Sparse everywhere, dense near the devices: the edge of the field breaks up instead of ending in a line.
           if (hash(i, j, 1) > 0.1 + 0.9 * wgt) continue;
-          const a = (0.16 + 0.32 * wgt) * k;
-          const rad = 0.8 + 0.4 * wgt;
+          // At least 1 px across a radius: smaller dots render as fuzzy squares. Fainter to keep the same weight.
+          const a = (0.12 + 0.26 * wgt) * k;
+          const rad = 1 + 0.4 * wgt;
           xs[n] = x;
           ys[n] = y;
           rs[n] = rad;
@@ -348,7 +351,12 @@ export function NetworkField({
 
     const draw = () => {
       ctx.globalAlpha = 1;
-      if (px1 > px0) ctx.clearRect(px0 - 2, py0 - 2, px1 - px0 + 4, py1 - py0 + 4);
+      // Whole pixels with a margin: a clear on fractional edges leaves faint, stepped remains of the rings behind.
+      if (px1 > px0) {
+        const x0 = Math.floor(px0 - 3);
+        const y0 = Math.floor(py0 - 3);
+        ctx.clearRect(x0, y0, Math.ceil(px1 + 3) - x0, Math.ceil(py1 + 3) - y0);
+      }
       bx0 = by0 = Infinity;
       bx1 = by1 = -Infinity;
       // The warning travelling out from a stop.

@@ -118,6 +118,14 @@ const CHECK_CASE: Case = {
 function ShopShot() {
   return (
     <div className="kshot" role="img" aria-label="What the link showed: a checkout page asking for card details">
+      <p className="kshot-url">
+        <span className="kshot-dots" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span>pay-secure-checkout.example/card</span>
+      </p>
       <p className="kshot-bar">
         <span className="kshot-logo" aria-hidden="true" />
         Secure checkout

@@ -9,10 +9,10 @@ import { ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { AGENT, FACES } from "./copy";
 
 const KERNEL = "Runs in a KERNEL cloud browser that is thrown away after each visit, so nothing on the page reaches Gran's phone or your laptop.";
-const CHANNEL3 = "Prices come from Channel3's live listings of real shops. Spotter never buys anything.";
+const CHANNEL3 = "Real shop prices from Channel3, live. Spotter never buys anything.";
 
 const VIEWS: ReadonlyArray<{ key: "peek" | "tools" | "faces" | "spot" | "watch"; tab: string; head: string; credit: string }> = [
-  { key: "faces", tab: "Two faces", head: "Some scam pages show scanners a blank page and Gran's phone a card form. Spotter opens it both ways.", credit: KERNEL },
+  { key: "faces", tab: "Two faces", head: "Some scam pages show scanners a harmless page and Gran's phone a card form. Spotter opens it both ways.", credit: KERNEL },
   { key: "peek", tab: "Opens the link", head: "Spotter opens the link so nobody in the family clicks it.", credit: KERNEL },
   { key: "tools", tab: "Agent tools", head: "Shops can now hand AI agents tools. Spotter reads every word of them first.", credit: KERNEL },
   { key: "spot", tab: "Real price", head: "A picture search of real shops shows a £49.99 bargain for what it is: about £149 everywhere else.", credit: CHANNEL3 },
@@ -97,11 +97,16 @@ function FacesView() {
       <p className="ck-faces-h">Two faces: what scanners see and what Gran&apos;s phone sees</p>
       <p className="ck-faces-verdict">{FACES.verdict}</p>
       <div className="ck-face">
-        <div className="ck-face-screen ck-face-blank">
-          <span>Nothing to see here</span>
+        <div className="ck-face-screen">
+          <div className="ck-form ck-form-plain">
+            <p className="ck-form-h">Track a parcel</p>
+            <span className="ck-field">Tracking number</span>
+            <span className="ck-form-btn">Track</span>
+            <p className="ck-form-note">Most parcels arrive in 1 to 3 working days.</p>
+          </div>
         </div>
         <p className="ck-face-cap">
-          <b>Desktop</b>, the way security scanners see it
+          <b>Desktop</b>, the way security scanners see it: a harmless tracking page
         </p>
       </div>
       <div className="ck-face">

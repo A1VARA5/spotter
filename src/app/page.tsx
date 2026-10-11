@@ -162,17 +162,25 @@ export default async function Home() {
           <a href={who ? "/setup?step=name" : "/api/auth/paypal/start"}>{who ? "Set up Spotter for a business" : "Log in with PayPal to set up a business"}</a>
         </p>
       </section>
-      <Final>
+      <Final
+        footer={
+          <footer className="lfoot">
+            <Link href="/" className="brand brand-light" aria-label="Spotter home">
+              <BrandMark />
+              Spotter
+            </Link>
+            <nav className="lfoot-links" aria-label="Footer">
+              <a href="/how">How it works</a>
+              <a href="/how#faq">FAQ</a>
+              <a href="/privacy">Privacy</a>
+              <a href="/terms">Terms</a>
+            </nav>
+            <p className="lfoot-fine">Built for the PayPal AI Hackathon. Sandbox only: no real money moves.</p>
+          </footer>
+        }
+      >
         <StartButtons onDark who={who} label="Try it on fake money" />
       </Final>
-
-      <footer className="shell footer">
-        <p>Built for the PayPal AI Hackathon. Sandbox only.</p>
-        <p>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-        </p>
-      </footer>
     </main>
   );
 }
