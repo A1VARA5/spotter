@@ -6,16 +6,20 @@ import { CircleAlert, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } fr
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
+import { Hint } from "./Hint";
 import { Peek } from "./Peek";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
   network_reports: { label: "Spotter network", Icon: CircleAlert },
   check_links: { label: "Links", Icon: Link2 },
-  find_genuine_offer: { label: "Real shops", Icon: ShoppingBag },
-  paypal_hold: { label: "PayPal", Icon: Hand },
-  open_link: { label: "Opened safely", Icon: Globe },
-  inspect_shop: { label: "Shop page", Icon: ScanEye },
+  find_genuine_offer: {
+    label: "Real shop prices (Channel3)",
+    Icon: ShoppingBag,
+  },
+  paypal_hold: { label: "PayPal hold", Icon: Hand },
+  open_link: { label: "Cloud browser (KERNEL)", Icon: Globe },
+  inspect_shop: { label: "Cloud browser (KERNEL)", Icon: ScanEye },
 };
 
 // KERNEL keeps a recording for about a day; after that the button would only lead to "expired".
@@ -31,7 +35,20 @@ const host = (u: string) => {
   }
 };
 
-const VERDICT = { likely_scam: "Likely a scam", unclear: "Worth a closer look", looks_fine: "Looks genuine" } as const;
+/** Spotter's own made up demo pages (src/app/demo-shop), so a judge isn't left wondering why a scam lives on our site. */
+const demoPage = (u: string) => {
+  try {
+    return new URL(u).pathname.startsWith("/demo-shop/");
+  } catch {
+    return false;
+  }
+};
+
+const VERDICT = {
+  likely_scam: "Likely a scam",
+  unclear: "Worth a closer look",
+  looks_fine: "Looks genuine",
+} as const;
 
 /** Still being built: only for a minute or two after the payment, after that there just isn't one. */
 export function CasePending({ createdAt }: { createdAt: string }) {
@@ -67,71 +84,228 @@ export function CaseFile({
   /** Shown last, inside the case file: the price watch line on the dashboard. */
   footer?: React.ReactNode;
 }) {
+  const base = `cf-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
+  const findings = c.findings.map((f, i) => ({ f, id: `${base}-f${i}` })).filter(({ f }) => !panelShows(f, c.page));
+  const ids = {
+    head: `${base}-head`,
+    findings: `${base}-findings`,
+    kernel: `${base}-kernel`,
+    spot: `${base}-spot`,
+    swap: `${base}-swap`,
+  };
+  const chips = checksThatRan(c, findings, ids, !!(c.swap && onSwap));
+  const hasEvidence = !!(c.page || c.spot);
+  // When a panel holds the strongest proof (hidden orders, two faces), it comes first on one column screens.
+  const leadWithEvidence = c.findings.some((f) => f.severity === "high" && panelShows(f, c.page));
+
   return (
-    <section className="case" data-verdict={c.verdict} aria-label="What Spotter found">
-      <p className="case-verdict">
-        {VERDICT[c.verdict]}
-        {c.example && <span className="case-example"> · Example, checked earlier</span>}
-      </p>
-      <p className="case-headline">{c.headline}</p>
-
-      {c.findings.length > 0 && (
-        <ul className="case-findings">
-          {c.findings.map((f) => {
-            const t = TOOL[f.tool] ?? { label: f.tool, Icon: CircleAlert };
-            return (
-              <li key={f.source + f.text} data-severity={f.severity}>
-                <t.Icon size={17} strokeWidth={2} aria-hidden="true" />
-                <span>
-                  <b>{t.label}</b> {f.text}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {c.page && <OpenedPage page={c.page} paymentId={paymentId} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
-      {c.page?.faces && <TwoFaces page={c.page} />}
-      {c.page?.trail && <MoneyTrailPanel trail={c.page.trail} />}
-      {c.page?.proof && <ProofCard proof={c.page.proof} peekScrolls={peekScrolls} />}
-      {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
-      {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
-      {c.spot && <SpotPanel spot={c.spot} shot={c.page?.screenshot} />}
-
-      {c.status !== "done" && (
-        <p className="case-note">
-          {c.status === "partial" ? "Some checks didn't finish, so this is only part of the picture." : "Spotter couldn't look into this one."}
+    <section className="case cf" data-verdict={c.verdict} aria-label="What Spotter found">
+      <div className="cf-top">
+        <p className="case-verdict">
+          {VERDICT[c.verdict]}
+          {c.example && <span className="case-example"> · Example, checked earlier</span>}
         </p>
-      )}
+        <p className="case-headline" id={ids.head} tabIndex={-1}>
+          {c.headline}
+        </p>
+        {chips.length > 0 && <CheckedBy chips={chips} />}
+      </div>
 
-      {c.ask.length > 0 && (
-        <div className="case-ask">
-          <p className="case-ask-title">Before you decide</p>
-          <ul>
-            {c.ask.map((a) => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="cf-body">
+        <div className="cf-cols" data-lead={leadWithEvidence ? "evidence" : undefined}>
+          <div className="cf-main">
+            {findings.length > 0 && (
+              <ul className="case-findings" id={ids.findings} tabIndex={-1} aria-label="What each check found">
+                {findings.map(({ f, id }) => {
+                  const t = TOOL[f.tool] ?? {
+                    label: "Check",
+                    Icon: CircleAlert,
+                  };
+                  return (
+                    <li key={f.source + f.text} id={id} tabIndex={-1} data-severity={f.severity}>
+                      <t.Icon size={17} strokeWidth={2} aria-hidden="true" />
+                      <span>
+                        <b>{t.label}</b> {plainWords(f.text)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
 
-      {c.swap && onSwap && (
-        <div className="case-swap">
-          <p>
-            <b>{c.swap.title}</b> is {money(c.swap.price, currency)} at {c.swap.domain}.{" "}
-            <a href={c.swap.url} target="_blank" rel="noopener noreferrer nofollow">
-              See it there
-            </a>
-          </p>
-          <button className="btn btn-quiet" disabled={busy} onClick={onSwap}>
-            {busy ? "Swapping" : `Deny this, buy it from ${c.swap.domain}`}
-          </button>
+            {c.status !== "done" && <p className="case-note">{c.status === "partial" ? "Some checks didn't finish, so this is only part of the picture." : "Spotter couldn't look into this one."}</p>}
+
+            {c.ask.length > 0 && (
+              <div className="case-ask">
+                <p className="case-ask-title">Before you decide</p>
+                <ul>
+                  {c.ask.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {c.swap && onSwap && (
+              <div className="case-swap" id={ids.swap} tabIndex={-1}>
+                <p>
+                  <b>{c.swap.title}</b> is {money(c.swap.price, currency)} at {c.swap.domain}.{" "}
+                  <a href={c.swap.url} target="_blank" rel="noopener noreferrer nofollow">
+                    See it there
+                  </a>
+                </p>
+                <button className="btn btn-quiet" disabled={busy} onClick={onSwap}>
+                  {busy ? "Swapping" : `Deny this, buy it from ${c.swap.domain}`}
+                </button>
+              </div>
+            )}
+            {footer}
+          </div>
+
+          {hasEvidence && (
+            <div className="cf-evidence">
+              {c.page && <OpenedPage id={ids.kernel} page={c.page} paymentId={paymentId} fallback={pageShot} inFaces={!!(c.page.faces?.compared && c.page.phone?.screenshot)} />}
+              {c.page?.tools?.checked && c.page.tools.total > 0 && <ShopToolList tools={c.page.tools} />}
+              {c.page?.tools && !c.page.tools.checked && <p className="case-note">Spotter couldn&apos;t list the tools this shop offers AI agents.</p>}
+              {c.page?.faces && <TwoFaces page={c.page} />}
+              {c.page?.trail && <MoneyTrailPanel trail={c.page.trail} />}
+              {c.spot && <SpotPanel id={ids.spot} spot={c.spot} shot={c.page?.screenshot} />}
+              {c.page?.proof && <ProofCard proof={c.page.proof} peekScrolls={peekScrolls} />}
+            </div>
+          )}
         </div>
-      )}
-      {footer}
+      </div>
     </section>
   );
+}
+
+type Chip = { key: string; label: string; target?: string };
+
+/**
+ * True when one of the evidence panels already shows this code made finding (two faces, the money trail, the hidden
+ * line, a poisoned tool), so the list doesn't say it a second time. The finding still goes to alerts and the pack.
+ */
+function panelShows(f: Case["findings"][number], page: Case["page"]): boolean {
+  if (!page || !f.kind) return false;
+  if (f.kind === "cloaking") return !!page.faces;
+  if (f.kind === "money_offsite") return !!page.trail;
+  if (f.toolName) return !!(page.tools?.checked && page.tools.total > 0 && page.tools.tools.some((t) => t.name === f.toolName));
+  return !!(page.seen && page.seen.hidden.some((h) => h.instruction));
+}
+
+/** Only the checks that really ran, each pointing at what it found (a finding or a panel). */
+function checksThatRan(
+  c: Case,
+  shown: Array<{ f: Case["findings"][number]; id: string }>,
+  ids: {
+    head: string;
+    findings: string;
+    kernel: string;
+    spot: string;
+    swap: string;
+  },
+  swapShown: boolean,
+): Chip[] {
+  const ran = (tool: string) => c.calls.some((x) => x.tool === tool && x.ok) || c.findings.some((f) => f.tool === tool);
+  const first = (tool: string) => shown.find(({ f }) => f.tool === tool)?.id;
+  const chips: Chip[] = [];
+  if (c.status !== "failed")
+    chips.push({
+      key: "ai",
+      label: "Spotter's AI check",
+      target: shown.length ? ids.findings : ids.head,
+    });
+  if (c.page)
+    chips.push({
+      key: "kernel",
+      label: "Cloud browser (KERNEL)",
+      target: ids.kernel,
+    });
+  if (ran("find_genuine_offer") || c.spot || swapShown) {
+    chips.push({
+      key: "channel3",
+      label: "Real shop prices (Channel3)",
+      target: first("find_genuine_offer") ?? (c.spot ? ids.spot : swapShown ? ids.swap : undefined),
+    });
+  }
+  if (ran("paypal_hold"))
+    chips.push({
+      key: "paypal",
+      label: "PayPal hold",
+      target: first("paypal_hold"),
+    });
+  if (ran("network_reports"))
+    chips.push({
+      key: "network",
+      label: "Spotter network",
+      target: first("network_reports"),
+    });
+  return chips;
+}
+
+function CheckedBy({ chips }: { chips: Chip[] }) {
+  const jump = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    e.preventDefault();
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
+    el.focus({ preventScroll: true });
+  };
+  return (
+    <nav className="cf-checked" aria-label="Checked by">
+      <span className="cf-checked-label" aria-hidden="true">
+        Checked by
+      </span>
+      <ul>
+        {chips.map((ch) => (
+          <li key={ch.key}>
+            {ch.target ? (
+              <a className="cf-chip" href={`#${ch.target}`} onClick={(e) => jump(e, ch.target!)}>
+                {ch.label}
+              </a>
+            ) : (
+              <span className="cf-chip" data-quiet="true">
+                {ch.label}
+                <span className="sr-only">, nothing to report</span>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** A panel's title, the engine that did the work in plain words, and a (?) that explains it. */
+function PanelHead({ id, title, engine, children }: { id: string; title: string; engine: string; children: React.ReactNode }) {
+  return (
+    <div className="cf-head">
+      <p className="cf-title" id={id}>
+        {title}
+      </p>
+      <p className="cf-engine">{engine}</p>
+      <Hint q={`About this: ${title}`} iconOnly className="cf-hint">
+        {children}
+      </Hint>
+    </div>
+  );
+}
+
+const MONTH = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const RAW_HOLD: Record<string, string> = {
+  CREATED: "holding the money, nothing has moved yet",
+  PENDING: "still being set up",
+  VOIDED: "cancelled, nothing was paid",
+  EXPIRED: "over, nothing was paid",
+  CAPTURED: "paid",
+};
+
+/** Older case files quoted PayPal's raw status and ISO dates; they read in plain words here. */
+function plainWords(text: string): string {
+  return text
+    .replace(/PayPal hold [A-Z0-9]{6,} is (CREATED|PENDING|VOIDED|EXPIRED|CAPTURED)\b/g, (_, s: string) => `The PayPal hold is ${RAW_HOLD[s]}`)
+    .replace(/\b(20\d\d)-(\d\d)-(\d\d)\b/g, (m, y: string, mo: string, d: string) => (MONTH[Number(mo) - 1] ? `${Number(d)} ${MONTH[Number(mo) - 1]} ${y}` : m));
 }
 
 type CasePageT = NonNullable<Case["page"]>;
@@ -150,7 +324,18 @@ const FACE_DIFF: Record<string, string> = {
 function Outline({ box }: { box?: CasePageT["moneyBox"] }) {
   if (!box || box.w <= 0 || box.h <= 0) return null;
   const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
-  return <span className="faces-box" style={{ left: pct(box.x), top: pct(box.y), width: pct(box.w), height: pct(box.h) }} aria-hidden="true" />;
+  return (
+    <span
+      className="faces-box"
+      style={{
+        left: pct(box.x),
+        top: pct(box.y),
+        width: pct(box.w),
+        height: pct(box.h),
+      }}
+      aria-hidden="true"
+    />
+  );
 }
 
 /**
@@ -169,9 +354,13 @@ function TwoFaces({ page }: { page: CasePageT }) {
   const differs = faces.compared && faces.differs;
   return (
     <section className="faces" data-differs={differs ? "true" : undefined} aria-labelledby={titleId}>
-      <p className="faces-title" id={titleId}>
-        Two faces: what scanners see and what Gran&apos;s phone sees
-      </p>
+      <PanelHead id={titleId} title="Two faces" engine="Two KERNEL browsers, same moment">
+        <p>
+          Some scam pages show security scanners a harmless page and only show phones the card form. Spotter opens the link twice at the same moment in KERNEL&apos;s cloud browsers, once as a desktop
+          and once as a phone, and compares what each was shown.
+        </p>
+        <p>It can&apos;t see what a page shows to one person only, at another time.</p>
+      </PanelHead>
       <p className="faces-verdict">{faces.verdict}</p>
       {faces.compared && (
         <div className="faces-grid">
@@ -190,7 +379,7 @@ function TwoFaces({ page }: { page: CasePageT }) {
               <Outline box={page.phone?.moneyBox} />
             </div>
             <figcaption>
-              <b>Gran&apos;s phone</b>, {uk ? `on a UK ${page.phone?.network === "uk_residential" ? "home" : "mobile"} network` : "set to UK English and time (not on a UK network)"}
+              <b>A phone</b>, {uk ? `on a UK ${page.phone?.network === "uk_residential" ? "home" : "mobile"} network` : "set to UK English and time (not on a UK network)"}
             </figcaption>
           </figure>
         </div>
@@ -229,16 +418,23 @@ function TwoFaces({ page }: { page: CasePageT }) {
   );
 }
 
-const STEP = { link: "The link", redirect: "Sent on to", landed: "Landed on" } as const;
+const STEP = {
+  link: "The link",
+  redirect: "Sent on to",
+  landed: "Landed on",
+} as const;
 
 /** Where the page sends people and where its card form would send their details. Read from the page, never sent. */
 function MoneyTrailPanel({ trail }: { trail: NonNullable<CasePageT["trail"]> }) {
   const titleId = useId();
   return (
     <section className="trail" data-offsite={trail.offsite ? "true" : undefined} aria-labelledby={titleId}>
-      <p className="trail-title" id={titleId}>
-        Where the money goes
-      </p>
+      <PanelHead id={titleId} title="Where the money goes" engine="KERNEL's log of every page loaded">
+        <p>
+          The cloud browser keeps its own log of every page it loaded. Spotter reads it to show where the link really sends people, and reads the card form to see where details typed into it would go.
+        </p>
+        <p>Nothing is typed or sent, so it can&apos;t see what happens after someone presses pay.</p>
+      </PanelHead>
       {trail.line ? <p className="trail-line">{trail.line}</p> : <p className="case-tools-sub">The page has no card or bank form.</p>}
       {trail.steps.length > 0 && (
         <ol className="trail-steps">
@@ -250,7 +446,8 @@ function MoneyTrailPanel({ trail }: { trail: NonNullable<CasePageT["trail"]> }) 
         </ol>
       )}
       <p className="spot-source">
-        {trail.stepsFrom === "network log" ? "From the cloud browser's own log of every page it loaded." : "Only where it started and where it ended: the cloud browser's log wasn't available."} Nothing was typed or sent.
+        {trail.stepsFrom === "network log" ? "From the cloud browser's own log of every page it loaded." : "Only where it started and where it ended: the cloud browser's log wasn't available."}{" "}
+        Nothing was typed or sent.
       </p>
     </section>
   );
@@ -270,9 +467,10 @@ function ProofCard({ proof, peekScrolls }: { proof: NonNullable<CasePageT["proof
   ];
   return (
     <section className="proof" aria-labelledby={titleId}>
-      <p className="proof-title" id={titleId}>
-        Proof Spotter never touched it
-      </p>
+      <PanelHead id={titleId} title="Proof Spotter never touched it" engine="Counted from KERNEL's own log">
+        <p>These numbers come from the cloud browser&apos;s own record of the visit, not from Spotter&apos;s word: every click, key and scroll it saw, and every call Spotter made to it.</p>
+        <p>A count it didn&apos;t record says Not recorded, never zero. The fingerprints let anyone check later that the screenshot and page text weren&apos;t changed.</p>
+      </PanelHead>
       <dl className="proof-grid">
         {rows.map(([k, v, unknown]) => (
           <div key={k} data-unknown={unknown ? "true" : undefined}>
@@ -313,15 +511,16 @@ const HTTPS = /^https:\/\/[^\s"<>]+$/;
  * Spot the difference: the shop's screenshot next to the same product at a real shop (found by Channel3's image
  * search and checked to be the same product), one number first, one verdict line, then up to 3 differences.
  */
-function SpotPanel({ spot, shot }: { spot: NonNullable<Case["spot"]>; shot?: string }) {
+function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spot"]>; shot?: string }) {
   const titleId = useId();
   const here = shot && SHOT.test(shot) ? shot : undefined;
   const real = spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
   return (
-    <section className="spot" data-direction={spot.direction} aria-labelledby={titleId}>
-      <p className="spot-title" id={titleId}>
-        Spot the difference
-      </p>
+    <section className="spot" id={id} tabIndex={-1} data-direction={spot.direction} aria-labelledby={titleId}>
+      <PanelHead id={titleId} title="Spot the difference" engine="Real shop prices (Channel3), image search">
+        <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+        <p>A shop that sells it but isn&apos;t listed won&apos;t show up here.</p>
+      </PanelHead>
       <p className="spot-number">{spot.headline}</p>
       <p className="spot-verdict">{spot.verdict}</p>
       <div className="spot-grid">
@@ -377,9 +576,13 @@ function ShopToolList({ tools }: { tools: Extract<NonNullable<NonNullable<Case["
   const titleId = useId();
   return (
     <section className="case-tools" aria-labelledby={titleId}>
-      <p className="case-tools-title" id={titleId}>
-        Tools this shop offers AI agents
-      </p>
+      <PanelHead id={titleId} title="Tools this shop offers AI agents" engine="Read from the page by KERNEL">
+        <p>
+          Shops can offer AI agents tools to call, like add to basket. An agent reads each tool&apos;s words to decide what to do, so a line in there written to steer the agent is a trick called tool
+          poisoning.
+        </p>
+        <p>Spotter only listed the tools in the cloud browser. It never ran one.</p>
+      </PanelHead>
       <p className="case-tools-sub">An AI agent reads these to decide what to do. Spotter only listed them and never ran one.</p>
       <ul>
         {tools.tools.map((t, i) => (
@@ -412,7 +615,21 @@ function ShopToolList({ tools }: { tools: Extract<NonNullable<NonNullable<Case["
  * What Spotter saw when it opened the page in a throwaway cloud browser (KERNEL), so nobody in the family had to.
  * When the page hides text from people that an AI agent reads, the two are shown side by side.
  */
-function OpenedPage({ page, paymentId, fallback, inFaces }: { page: NonNullable<Case["page"]>; paymentId?: string; fallback?: React.ReactNode; /** The screenshot is shown in the two faces panel instead. */ inFaces?: boolean }) {
+function OpenedPage({
+  id,
+  page,
+  paymentId,
+  fallback,
+  inFaces,
+}: {
+  id: string;
+  page: NonNullable<Case["page"]>;
+  paymentId?: string;
+  fallback?: React.ReactNode;
+  /** The screenshot is shown in the two faces panel instead. */
+  inFaces?: boolean;
+}) {
+  const titleId = useId();
   const [watching, setWatching] = useState(false);
   const [replayFailed, setReplayFailed] = useState(false);
   const asks = [page.asks.card && "card details", page.asks.login && "a login", page.asks.giftCard && "a gift card code"].filter(Boolean) as string[];
@@ -421,16 +638,28 @@ function OpenedPage({ page, paymentId, fallback, inFaces }: { page: NonNullable<
   const replayAt = page.replay ? new Date(page.replay.at).getTime() : NaN;
   const canWatch = !!paymentId && Date.now() - replayAt < REPLAY_FOR_MS;
 
-  const view = watching && !replayFailed ? (
-    // Our own route relays KERNEL's video; the browser never gets KERNEL's link.
-    <video className="case-page-video" src={`/api/payments/${encodeURIComponent(paymentId!)}/replay`} poster={shot} controls autoPlay muted playsInline width={320} height={240} onError={() => setReplayFailed(true)}>
-      Your browser can&apos;t play the recording.
-    </video>
-  ) : shot && !inFaces ? (
-    <img src={shot} alt={`What the page showed: ${page.title || host(page.finalUrl)}`} width={320} height={240} />
-  ) : (
-    (fallback ?? null)
-  );
+  const view =
+    watching && !replayFailed ? (
+      // Our own route relays KERNEL's video; the browser never gets KERNEL's link.
+      <video
+        className="case-page-video"
+        src={`/api/payments/${encodeURIComponent(paymentId!)}/replay`}
+        poster={shot}
+        controls
+        autoPlay
+        muted
+        playsInline
+        width={320}
+        height={240}
+        onError={() => setReplayFailed(true)}
+      >
+        Your browser can&apos;t play the recording.
+      </video>
+    ) : shot && !inFaces ? (
+      <img src={shot} alt={`What the page showed: ${page.title || host(page.finalUrl)}`} width={320} height={240} />
+    ) : (
+      (fallback ?? null)
+    );
 
   const watch = replayFailed ? (
     <span className="case-note" role="status">
@@ -469,13 +698,26 @@ function OpenedPage({ page, paymentId, fallback, inFaces }: { page: NonNullable<
       ) : (
         "."
       )}
+      {demoPage(page.finalUrl) && <> This is a made up demo page hosted on Spotter&apos;s own site. Real scam sites are usually only days old.</>}
+    </>
+  );
+  const about = (
+    <>
+      <p>KERNEL runs a throwaway browser on a computer in the cloud. Spotter opens the link there so nobody in the family has to, then deletes it.</p>
+      <p>It only looks: it never types, clicks, logs in or buys.</p>
     </>
   );
 
   if (trap && page.seen) {
     return (
-      <figure className="case-seen" aria-label="What a person sees vs what your agent read">
-        <p className="case-seen-title">What a person sees vs what your agent read</p>
+      <figure className="case-seen" id={id} tabIndex={-1} aria-labelledby={titleId}>
+        <PanelHead id={titleId} title="What a person sees vs what your agent read" engine="Cloud browser (KERNEL)">
+          <p>
+            Spotter opened the shop in KERNEL&apos;s cloud browser and compared the text a person can see with everything an AI agent reads on the page. Text hidden from people but written to give an
+            agent orders is a trick called prompt injection.
+          </p>
+          <p>It only looks: it never types, clicks or buys.</p>
+        </PanelHead>
         <div className="case-seen-grid">
           <div className="case-seen-side">
             <p className="case-seen-label">A person sees</p>
@@ -499,7 +741,10 @@ function OpenedPage({ page, paymentId, fallback, inFaces }: { page: NonNullable<
   }
 
   return (
-    <figure className="case-page">
+    <figure className="case-page" id={id} tabIndex={-1} aria-labelledby={titleId}>
+      <PanelHead id={titleId} title="The page, opened safely" engine="Cloud browser (KERNEL)">
+        {about}
+      </PanelHead>
       {view}
       <figcaption>
         {where}

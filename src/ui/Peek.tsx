@@ -193,7 +193,7 @@ export function Peek({ paymentId, host }: { paymentId: string; host: string }) {
                 {host}
               </h2>
               <p id={`peek-about-${paymentId}`} className="peek-about">
-                Open on a separate computer in the cloud. Only a picture of its screen reaches yours.
+                Cloud browser (KERNEL): open on a separate computer in the cloud. Only a picture of its screen reaches yours.
               </p>
             </div>
             <button type="button" className="btn btn-primary peek-close" onClick={close} autoFocus>

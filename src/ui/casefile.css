@@ -1,0 +1,74 @@
+/* Case file v2: one summary per card, a "Checked by" strip, panel headers that name their engine, and the evidence
+   panels in a second column once the card itself is wide enough (a container query, so it works in any page layout). */
+
+.cf { gap: 14px; }
+.cf-top { display: grid; gap: 10px; min-width: 0; }
+
+/* The verdict headline is the card's one summary. The message check's own summary line under the card says the same
+   thing in other words, so it is hidden whenever a case file is shown (the layout owner can drop it from the markup). */
+.held:has(> .case) > .held-summary { display: none; }
+
+/* Checked by: only the checks that ran, each a link to what it found. */
+.cf-checked { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.cf-checked-label { font-size: 12.5px; font-weight: 650; color: var(--ink-2); }
+.cf-checked ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cf-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  transition: border-color 120ms var(--ease-out), background-color 120ms var(--ease-out);
+}
+a.cf-chip:hover { border-color: color-mix(in srgb, var(--ink) 45%, var(--line)); background: var(--paper); }
+a.cf-chip:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.cf-chip[data-quiet="true"] { color: var(--ink-2); background: transparent; border-style: dashed; }
+@media (prefers-reduced-motion: reduce) { .cf-chip { transition: none; } }
+
+/* Where a chip lands: a quiet ring so the eye finds it after the scroll. */
+.cf [tabindex="-1"]:focus { outline: none; }
+.cf [tabindex="-1"]:focus-visible,
+.cf li[tabindex="-1"]:focus,
+.cf section[tabindex="-1"]:focus,
+.cf figure[tabindex="-1"]:focus,
+.cf .case-swap:focus { outline: 2px solid color-mix(in srgb, var(--protect) 60%, transparent); outline-offset: 4px; border-radius: 10px; }
+
+/* Body: one column, then two once the card is wide (about 1600 px screens with the wide layout). */
+.cf-body { container: casefile / inline-size; min-width: 0; }
+.cf-cols { display: grid; gap: 14px; align-items: start; }
+.cf-main, .cf-evidence { display: grid; gap: 12px; align-content: start; min-width: 0; }
+/* Hidden orders or two faces: the proof panel leads on one column, right after the verdict and the chips. */
+.cf-cols[data-lead="evidence"] > .cf-evidence { order: -1; }
+@container casefile (min-width: 940px) {
+  .cf-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; }
+  .cf-cols > .cf-main { grid-column: 1; grid-row: 1; }
+  .cf-cols > .cf-evidence { grid-column: 2; grid-row: 1; }
+}
+
+/* Panel headers: what it is, which engine did it, and a (?) */
+.cf-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-width: 0; }
+.cf-title { font-size: 15px; font-weight: 650; color: var(--ink); }
+.cf-engine { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.cf-head > .cf-hint { margin: 0 0 0 auto; max-width: none; }
+.cf-hint > summary { justify-content: center; min-width: 28px; min-height: 28px; padding: 0; border-radius: 999px; color: var(--ink-2); }
+.cf-hint > summary:hover { color: var(--ink); background: var(--chalk); }
+.cf-hint > summary:focus-visible { outline: 2px solid var(--protect); outline-offset: 1px; }
+.cf-head > .cf-hint[open] { flex-basis: 100%; margin-left: 0; }
+.cf-hint .hint-body { margin-top: 4px; padding: 10px 12px; font-size: 14px; line-height: 1.5; gap: 6px; }
+
+/* The plain page panel now has a header like the others. */
+.case-page { padding: 14px; border-radius: 12px; background: var(--paper); border: 1px solid #e3e7e3; min-width: 0; }
+
+/* Quotes of hidden text: a tinted box, never a thick coloured left border. */
+.case-seen-hidden blockquote,
+.case-tool blockquote {
+  border: 1px solid color-mix(in srgb, var(--stop) 30%, transparent);
+  border-radius: 8px;
+}
