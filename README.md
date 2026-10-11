@@ -74,7 +74,7 @@ Open the shopping agent's page (People, Shopping agent). In the connect panel pi
 
 ## Technology: how it's built
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,599 tests in 129 files, all passing in CI.
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,609 tests in 129 files, all passing in CI.
 
 Every payment takes the same path:
 
@@ -300,7 +300,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run     # 1,599 tests in 129 files
+npx vitest run     # 1,609 tests in 129 files
 npm run build
 ```
 
