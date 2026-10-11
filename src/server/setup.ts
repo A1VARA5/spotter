@@ -4,7 +4,8 @@ import type { Db } from "@/db";
 import { getHousehold, newId, HOUSEHOLD_KINDS, type HouseholdKind } from "@/core/households";
 import { createSpender, getSpender } from "@/core/lifecycle";
 import { PRESETS, presetsFor, type PresetKey } from "@/core/presets";
-import { createPairingCode, issueAgentToken } from "@/core/pairing";
+import { createPairingCode, issueAgentKeys } from "@/core/pairing";
+import { keyCard, switchOff } from "@/core/agent-keys";
 import { checkPin, householdFrom, isUnlocked, InvalidPinError, setPin, unlockCookie } from "./auth";
 
 const json = (body: unknown, status = 200, headers?: HeadersInit) => Response.json(body, { status, headers });
@@ -133,7 +134,39 @@ export function makeSetupHandlers(getDb: () => Promise<Db>) {
       const spender = await getSpender(s.db, spenderId);
       if (!spender || spender.household_id !== s.hh.id) return json({ error: "No such person." }, 404);
       if (spender.kind !== "agent") return json({ error: "Only AI agents get a token." }, 400);
-      return json({ token: await issueAgentToken(s.db, spenderId) }, 201);
+      const { key, decoy } = await issueAgentKeys(s.db, spenderId);
+      return json({ token: key, decoy }, 201);
+    },
+
+    /**
+     * The key card. readOrder (the toolkit's get_order) lets PayPal itself confirm which key made the newest order: the
+     * custom_id PayPal stored, not just what Spotter remembers sending. Reading is signed in only, no PIN.
+     */
+    async keyCard(request: Request, spenderId: string, readOrder?: (orderId: string) => Promise<string>) {
+      const s = await session(request, "never");
+      if (s instanceof Response) return s;
+      const card = await keyCard(s.db, s.hh.id, spenderId);
+      if (!card) return json({ error: "No such agent." }, 404);
+      let paypalCustomId: string | null = null;
+      if (card.order && readOrder) {
+        try {
+          const o = JSON.parse(await readOrder(card.order.paypalOrderId)) as { purchase_units?: Array<{ custom_id?: unknown }> };
+          const c = o.purchase_units?.[0]?.custom_id;
+          paypalCustomId = typeof c === "string" ? c.slice(0, 127) : null;
+        } catch (e) {
+          console.error(`[spotter] key card: couldn't read order ${card.order.paypalOrderId} from PayPal:`, e instanceof Error ? e.message : e);
+        }
+      }
+      return json({ ...card, paypalCustomId });
+    },
+
+    /** "Switch off now": revokes the agent's key and decoy without making a new one. Only ever takes access away. */
+    async keyOff(request: Request, spenderId: string) {
+      const s = await session(request, "never");
+      if (s instanceof Response) return s;
+      const spender = await getSpender(s.db, spenderId);
+      if (!spender || spender.household_id !== s.hh.id || spender.kind !== "agent") return json({ error: "No such agent." }, 404);
+      return json({ ok: true, switchedOff: await switchOff(s.db, s.hh.id, spenderId) });
     },
 
     /** spenderId null makes a code that pairs the spotter themselves (for alerts). */

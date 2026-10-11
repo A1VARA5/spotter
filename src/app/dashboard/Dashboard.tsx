@@ -739,7 +739,7 @@ function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
         <p className="hold-clock-sleep">
           <Moon size={17} strokeWidth={2} aria-hidden="true" />
           <span>
-            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held.
+            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held until the date below, which is PayPal&apos;s limit, not Spotter&apos;s.
           </span>
         </p>
       )}

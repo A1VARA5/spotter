@@ -48,6 +48,10 @@
 .ah-tail { font-weight: 600; }
 .ah-when { color: var(--ink-2); font-size: 14px; white-space: nowrap; }
 .ah-alarm { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--stop-soft); color: var(--ink); font-weight: 600; font-size: 15.5px; line-height: 1.5; max-width: 72ch; }
+.ah-without { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font-size: 15.5px; line-height: 1.4; }
+.ah-without-label { font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.ah-without s { color: var(--stop); text-decoration-thickness: 2px; }
+.ah-without-sent { font-weight: 700; color: var(--go); }
 .ah-block { display: grid; gap: 4px; }
 .ah-block-title { margin: 0; font-weight: 700; font-size: 14.5px; }
 .ah-block-sub { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.45; max-width: 72ch; }

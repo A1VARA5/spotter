@@ -1,0 +1,81 @@
+/* Agent lab ("Hijack the agent"). Tokens from docs/DESIGN.md: the trace is a vertical hold track, actors carry colour. */
+.lab-head { display: grid; gap: 6px; margin-bottom: 24px; }
+.lab-head .lede { margin: 0; }
+
+.lab { display: grid; gap: 28px; align-items: start; }
+@media (min-width: 1100px) {
+  .lab { grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 48px; }
+  .lab-side { position: sticky; top: 24px; }
+}
+@media (min-width: 1700px) {
+  .lab { grid-template-columns: 400px minmax(0, 980px); }
+}
+
+.lab-side { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.lab-honest { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--hold-soft); border: 1px solid var(--hold); font-size: 15.5px; line-height: 1.5; max-width: 60ch; }
+.lab-run { width: 100%; font-size: 17px; }
+.lab-left { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; max-width: 60ch; }
+.lab-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lab-legend li { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start; font-size: 15px; line-height: 1.45; }
+.lab-legend svg { margin-top: 4px; }
+.lab-links { margin: 0; display: grid; gap: 6px; font-size: 15px; }
+
+/* Actor colours carry meaning: the agent is plain ink, Spotter is the checkpoint (hold yellow), PayPal is the money (go green). */
+[data-actor="agent"] { --actor: var(--ink); --actor-soft: rgb(23 33 43 / 0.08); }
+[data-actor="spotter"] { --actor: #8a6700; --actor-soft: var(--hold-soft); }
+[data-actor="paypal"] { --actor: var(--go); --actor-soft: var(--go-soft); }
+.lab-legend li svg { color: var(--actor); }
+
+.lab-trace { display: grid; gap: 14px; min-width: 0; }
+.lab-status { margin: 0; font-size: 16px; font-weight: 600; outline-offset: 4px; }
+.lab-status[data-state="running"] { color: var(--ink-2); }
+.lab-status[data-state="done"] { color: var(--go); }
+.lab-key { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+
+.lab-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.lab-step { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; padding-bottom: 22px; }
+/* The track: one line down the left joins every step, like the hold track joins spender, Spotter and payee. */
+.lab-step::before { content: ""; position: absolute; left: 17px; top: 36px; bottom: 0; width: 2px; background: var(--line); }
+.lab-step:last-child::before { display: none; }
+.lab-step[data-state="done"]::before { background: var(--actor); opacity: 0.35; }
+.lab-mark { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); border: 2px solid var(--line); color: var(--ink-2); }
+.lab-step[data-state="done"] .lab-mark { border-color: var(--actor); background: var(--actor-soft); color: var(--actor); }
+.lab-step[data-state="todo"] .lab-body, .lab-step[data-state="waiting"] .lab-body { opacity: 0.55; }
+.lab-body { display: grid; gap: 6px; min-width: 0; padding-top: 6px; }
+.lab-who { margin: 0; font-size: 13px; font-weight: 700; color: var(--actor); display: flex; gap: 10px; align-items: baseline; }
+.lab-step:not([data-state="done"]) .lab-who { color: var(--ink-2); }
+.lab-time { font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.lab-title { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 650; overflow-wrap: anywhere; max-width: 64ch; }
+.lab-detail { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.5; max-width: 66ch; }
+
+.lab-big { margin: 0; font-size: 20px; }
+.lab-num { font-size: 31px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.lab-num-stop { color: var(--stop); }
+.lab-quote { margin: 0; padding: 10px 14px; border-left: 3px solid var(--stop); background: var(--stop-soft); border-radius: 0 10px 10px 0; font-size: 15.5px; line-height: 1.5; overflow-wrap: anywhere; max-width: 70ch; }
+.lab-call { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgb(23 33 43 / 0.05); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The one memorable moment: what would have left the account, struck through, next to what did. */
+.lab-without { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
+.lab-without-label { flex-basis: 100%; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.lab-without s { font-size: 25px; font-weight: 700; color: var(--stop); text-decoration-thickness: 3px; letter-spacing: -0.01em; }
+.lab-without-sent { font-size: 25px; font-weight: 700; color: var(--go); letter-spacing: -0.01em; }
+
+.lab-chips { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.lab-chip { display: grid; gap: 1px; padding: 6px 10px; border-radius: 10px; background: var(--actor-soft); min-width: 0; }
+.lab-chip dt { font-size: 12.5px; color: var(--ink-2); }
+.lab-chip dd { margin: 0; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.lab-end { margin: 0; padding: 12px 14px; border-radius: 12px; font-size: 15.5px; line-height: 1.5; }
+.lab-end[data-kind="done"] { background: var(--go-soft); }
+.lab-end[data-kind="error"] { background: var(--stop-soft); }
+
+.lab-public { display: grid; gap: 16px; padding-block: 40px; max-width: calc(720px + 2 * var(--gutter)); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lab-step[data-state="done"] .lab-body { animation: lab-in 220ms var(--ease-out); }
+  .lab-step[data-state="done"] .lab-mark { transition: background-color 200ms var(--ease-out), border-color 200ms var(--ease-out); }
+}
+@keyframes lab-in {
+  from { opacity: 0.4; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}

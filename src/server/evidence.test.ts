@@ -208,6 +208,14 @@ describe("evidence pack: what it says", () => {
     expect(t).toContain("Screenshot: included in the printable version");
   });
 
+  it("names the agent key PayPal's own record ties the order to (custom_id), only when there is one", async () => {
+    expect(await (await get("txt")).text()).not.toContain("custom_id");
+    await db.query("update payments set paypal_custom_id = 'spt-abcd:pay_x' where id = $1", [paymentId]);
+    const t = await (await get("txt")).text();
+    expect(t).toContain("PayPal custom_id (which agent key asked)");
+    expect(t).toContain("spt-abcd:pay_x");
+  });
+
   it("a denied payment's pack says the spotter said no and PayPal released the money", async () => {
     await deny(deps, paymentId, "Sam");
     const t = await (await get("txt")).text();

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { paypalPending } from "./format";
 import { plainError, readJson } from "./http";
+import "./agent-keys.css";
 
 export function PayPalRetry({ p, onDone }: { p: { id: string; status: string; error: string | null }; onDone: () => void }) {
   const pending = paypalPending(p);

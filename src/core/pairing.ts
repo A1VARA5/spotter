@@ -82,29 +82,62 @@ export async function redeemPairingCode(
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
-export async function issueAgentToken(db: Db, spenderId: string): Promise<string> {
+const newToken = () => `spt_${randomBytes(32).toString("base64url")}`;
+
+/**
+ * A real key, shown once, and a decoy planted next to it in the agent's config (a "backup key" it is told never to
+ * use). The decoy never authenticates: any request carrying it means the agent's secrets leaked (core/agent-keys.ts).
+ * Making keys switches off the agent's old key and old decoy. Both are stored only as hashes plus the last 4 characters.
+ */
+export async function issueAgentKeys(db: Db, spenderId: string, opts: { expiresInMinutes?: number } = {}): Promise<{ key: string; decoy: string }> {
   const s = await getSpender(db, spenderId);
   if (!s || s.kind !== "agent") throw new Error("Only AI agents get a token.");
   await db.query("update agent_tokens set revoked_at = now() where spender_id = $1 and revoked_at is null", [spenderId]);
-  const token = `spt_${randomBytes(32).toString("base64url")}`;
-  await db.query("insert into agent_tokens (hash, spender_id) values ($1, $2)", [hashToken(token), spenderId]);
-  return token;
+  const key = newToken();
+  const decoy = newToken();
+  const expires = opts.expiresInMinutes === undefined ? null : new Date(Date.now() + opts.expiresInMinutes * 60_000).toISOString();
+  await db.query("insert into agent_tokens (hash, spender_id, label, canary, expires_at) values ($1, $2, $3, false, $4), ($5, $2, $6, true, $4)", [
+    hashToken(key),
+    spenderId,
+    key.slice(-4),
+    expires,
+    hashToken(decoy),
+    decoy.slice(-4),
+  ]);
+  return { key, decoy };
+}
+
+export async function issueAgentToken(db: Db, spenderId: string): Promise<string> {
+  return (await issueAgentKeys(db, spenderId)).key;
 }
 
 /** True when the agent has a key that still works (making a new one switches it off). */
 export async function hasAgentToken(db: Db, spenderId: string): Promise<boolean> {
-  const rows = await db.query("select 1 from agent_tokens where spender_id = $1 and revoked_at is null limit 1", [spenderId]);
+  const rows = await db.query("select 1 from agent_tokens where spender_id = $1 and revoked_at is null and not canary and (expires_at is null or expires_at > now()) limit 1", [spenderId]);
   return rows.length > 0;
 }
 
-export async function verifyAgentToken(db: Db, bearer: string | undefined): Promise<{ spenderId: string; householdId: string } | null> {
+export type AgentAuth =
+  | { kind: "agent"; spenderId: string; householdId: string; hash: string; label: string | null }
+  | { kind: "canary"; spenderId: string; householdId: string; hash: string };
+
+/** Who a bearer key belongs to: a live agent key, a live decoy (canary), or nobody. */
+export async function authenticate(db: Db, bearer: string | undefined): Promise<AgentAuth | null> {
   if (!bearer || !/^spt_[A-Za-z0-9_-]{20,100}$/.test(bearer)) return null;
   const hash = hashToken(bearer);
-  const rows = await db.query<{ hash: string; spender_id: string; household_id: string }>(
-    "select t.hash, t.spender_id, s.household_id from agent_tokens t join spenders s on s.id = t.spender_id where t.hash = $1 and t.revoked_at is null",
+  const rows = await db.query<{ hash: string; spender_id: string; household_id: string; label: string | null; canary: boolean }>(
+    `select t.hash, t.spender_id, s.household_id, t.label, t.canary from agent_tokens t join spenders s on s.id = t.spender_id
+     where t.hash = $1 and t.revoked_at is null and (t.expires_at is null or t.expires_at > now())`,
     [hash],
   );
   const r = rows[0];
   if (!r || !timingSafeEqual(Buffer.from(r.hash), Buffer.from(hash))) return null;
-  return { spenderId: r.spender_id, householdId: r.household_id };
+  if (r.canary) return { kind: "canary", spenderId: r.spender_id, householdId: r.household_id, hash };
+  return { kind: "agent", spenderId: r.spender_id, householdId: r.household_id, hash, label: r.label };
+}
+
+/** A live, real agent key (never a decoy). */
+export async function verifyAgentToken(db: Db, bearer: string | undefined): Promise<{ spenderId: string; householdId: string } | null> {
+  const a = await authenticate(db, bearer);
+  return a?.kind === "agent" ? { spenderId: a.spenderId, householdId: a.householdId } : null;
 }
