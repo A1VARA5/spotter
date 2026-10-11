@@ -9,13 +9,13 @@ Your kid and your AI shopping agent work the same way. The agent can ask to pay.
 **Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything on the PayPal sandbox with fake money)
 
 [![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-1%2C599%20passing-2ea44f)
-[![MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
-[![Live demo](https://img.shields.io/badge/live%20demo-spotter--pay.vercel.app-0b7285)](https://spotter-pay.vercel.app)
-![PayPal sandbox](https://img.shields.io/badge/PayPal-sandbox-003087)
-![Next.js 16](https://img.shields.io/badge/Next.js-16-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
-![No AI can move money](https://img.shields.io/badge/no%20AI-can%20move%20money-b03a2e)
+![Tests](docs/badges/tests.svg)
+[![MIT](docs/badges/licence.svg)](LICENSE)
+[![Live demo](docs/badges/live-demo.svg)](https://spotter-pay.vercel.app)
+![PayPal sandbox](docs/badges/paypal-sandbox.svg)
+![Next.js 16](docs/badges/nextjs.svg)
+![TypeScript](docs/badges/typescript.svg)
+![No AI can move money](docs/badges/no-ai-money.svg)
 
 ![A held £250 payment on the dashboard: the case file folds open, then Deny, and PayPal releases the money](docs/media/spotter-hold.gif)
 
