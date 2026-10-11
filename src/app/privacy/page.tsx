@@ -43,9 +43,8 @@ export default function Privacy() {
       </ul>
       <h2 className="section-title">How long</h2>
       <p>
-        Demo families are deleted after 48 hours. To delete your household, open an issue on{" "}
-        <a href="https://github.com/A1VARA5/spotter/issues">Spotter&apos;s GitHub page</a> asking for it, and it is removed
-        within a week. Issues there are public, so leave personal details out.
+        Demo families are deleted after 48 hours. To delete your household, leave a comment on Spotter&apos;s Devpost
+        project page asking for it, and it is removed within a week. Comments there are public, so leave personal details out.
       </p>
     </main>
   );
