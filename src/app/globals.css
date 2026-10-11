@@ -7809,10 +7809,6 @@ h3 {
 }
 
 /* ---------- dashboard: held cards open one at a time ---------- */
-.app-main .held {
-  container: casefile / inline-size;
-}
-
 .held-toggle {
   display: inline-flex;
   align-items: center;
@@ -7874,31 +7870,6 @@ h3 {
 
 .held-sum[data-verdict="likely_scam"] b {
   color: var(--stop);
-}
-
-/*
- * Two columns inside a case file, for group B: give `.held-cols` two children (say the findings, then the
- * evidence panels). They sit side by side when the case file's box is at least 820 px wide, which happens on
- * held cards from 1600 px and in the wide panel that opens from Everything today. One column otherwise.
- * Or write your own rules with `@container casefile (min-width: 820px)`.
- */
-.held-cols {
-  display: grid;
-  gap: 14px;
-}
-
-.held-cols > * {
-  min-width: 0;
-  display: grid;
-  gap: 14px;
-  align-content: start;
-}
-
-@container casefile (min-width: 820px) {
-  .held-cols {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 24px;
-  }
 }
 
 /* ---------- dashboard rail: Everything today and the tools ---------- */
@@ -8025,7 +7996,7 @@ h3 {
 }
 
 .sheet[data-wide] {
-  width: min(980px, calc(100vw - 32px));
+  width: min(1060px, calc(100vw - 32px));
 }
 
 .sheet::backdrop {
@@ -8036,7 +8007,6 @@ h3 {
   display: grid;
   gap: 14px;
   padding: 0 22px 24px;
-  container: casefile / inline-size;
 }
 
 .sheet-box > * {

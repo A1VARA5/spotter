@@ -8,9 +8,9 @@
 // - "narrow": one centred column of 720 px, for settings and reading (Account, privacy, terms).
 // Everything sits centred inside a 1600 px box, so no page hugs the sidebar with empty space beside it.
 //
-// For case files: every held card (.held) is a CSS container named "held". From 1600 px the primary column is wide
-// enough for two columns inside a card. Put two children in a `.held-cols` element and they sit side by side
-// whenever the card is at least 820 px wide (one column otherwise), or write your own `@container held (min-width: 820px)`.
+// Case files: from 1600 px the primary column grows to 1160 px so an open held card is wide enough for the case
+// file's own two column container query (.cf-body in src/ui/casefile.css), and the panel that opens from
+// Everything today is 1060 px wide for the same reason.
 import { Fragment } from "react";
 import Link from "next/link";
 import { Activity, Binoculars, FlaskConical, Inbox, Plus, UserRound } from "lucide-react";

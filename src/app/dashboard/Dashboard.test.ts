@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { firstToOpen } from "./Dashboard";
+import { firstToOpen, withoutHoldFinding } from "./Dashboard";
+import type { Case } from "@/agents/case";
+
+describe("withoutHoldFinding (one expiry date per held card)", () => {
+  it("drops the PayPal hold finding, which repeats the hold clock's date, and keeps the rest", () => {
+    const c = { findings: [{ tool: "paypal_hold", text: "ends 9 Nov" }, { tool: "payee_history", text: "never paid" }] } as unknown as Case;
+    expect(withoutHoldFinding(c).findings.map((f) => f.tool)).toEqual(["payee_history"]);
+    expect(c.findings).toHaveLength(2);
+  });
+
+  it("returns the same case when there is nothing to drop", () => {
+    const c = { findings: [{ tool: "open_link", text: "x" }] } as unknown as Case;
+    expect(withoutHoldFinding(c)).toBe(c);
+  });
+});
 import { timeAgo } from "@/ui/format";
 
 const pay = (id: string, extra: Partial<Payment> = {}) => ({ id, case_file: null, ai: null, ...extra }) as unknown as Payment;

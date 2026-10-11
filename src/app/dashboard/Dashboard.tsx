@@ -6,6 +6,7 @@ import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
+import type { Case } from "@/agents/case";
 import { plainError, readJson } from "@/ui/http";
 import { contradictsPrice, priceVerdict } from "@/core/market";
 import { Hint } from "@/ui/Hint";
@@ -590,7 +591,7 @@ function HeldCard({
 
         {p.case_file ? (
           <CaseFile
-            c={p.case_file}
+            c={withoutHoldFinding(p.case_file)}
             currency={p.currency}
             paymentId={p.id}
             peekScrolls={p.peek_scrolls}
@@ -608,8 +609,9 @@ function HeldCard({
         <HoldClock p={p} who={who} tz={tz} />
         <EvidenceLinks p={p} />
 
-        {/* The message check never saw the market listings, so its summary is hidden when it argues with them. */}
-        {p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
+        {/* The case file's verdict is the card's one summary, so the message check's own line only shows without one.
+            It never saw the market listings either, so it is hidden when it argues with them. */}
+        {!p.case_file && p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
           <p className="held-summary">
             <strong>Scam check:</strong> {p.ai.summary}
           </p>
@@ -749,6 +751,14 @@ function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
 }
 
 const ROW_ICON ={ blocked: Ban, protected: ShieldCheck, held: Hand } as const;
+
+/**
+ * On a held card the hold clock under the case file already says when PayPal lets the hold go, so the case file's
+ * PayPal hold finding (the same date again) is left out there.
+ */
+export function withoutHoldFinding(c: Case): Case {
+  return c.findings.some((f) => f.tool === "paypal_hold") ? { ...c, findings: c.findings.filter((f) => f.tool !== "paypal_hold") } : c;
+}
 
 const VERDICT_LINE = { likely_scam: "Likely a scam", unclear: "Worth a closer look", looks_fine: "Looks genuine" } as const;
 
