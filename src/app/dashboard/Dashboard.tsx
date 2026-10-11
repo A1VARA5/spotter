@@ -13,6 +13,7 @@ import { contradictsPrice, priceVerdict } from "@/core/market";
 import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 import { PriceWatch, watchable } from "@/ui/PriceWatch";
+import { SharedWatch } from "@/ui/SharedWatch";
 import type { WatchUpdates, WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 import { PhotoCheck } from "@/ui/PhotoCheck";
@@ -392,12 +393,16 @@ function AllClear() {
 
 /** The rail: Everything today (newest first, each opens its case file), then the tools as compact buttons. */
 export function DashboardRail() {
-  const { payments, names, now, watches, watchUpdates, refresh } = useDash();
+  const { payments, names, now, watches, watchUpdates, refresh, demo } = useDash();
   const rest = payments.filter((p) => p.status !== "needs_approval");
   const watchFor = (id: string) => watches.find((w) => w.paymentId === id);
   // Every price watch, live ones first: one started on a held card shows here straight away, next to the example.
   const listed = [...watches].sort((a, b) => Number(a.example) - Number(b.example));
-  const live = listed.filter((w) => !w.example && w.status === "watching").length;
+  // Demo families also see the shared live watch (Channel3 tracking one real product for all of them), before the example.
+  const own = listed.filter((w) => !w.example);
+  const examples = listed.filter((w) => w.example);
+  const live = own.filter((w) => w.status === "watching").length + (demo ? 1 : 0);
+  const count = listed.length + (demo ? 1 : 0);
   // The latest page KERNEL opened that can be looked at again safely (a link from the payment's own message).
   const peekable = payments.find((p) => peekableHost(p));
 
@@ -439,21 +444,31 @@ export function DashboardRail() {
             <Peek paymentId={peekable.id} host={peekableHost(peekable)!} />
           </div>
         )}
-        {listed.length > 0 && (
+        {count > 0 && (
           <Sheet
             title="Price watches"
             triggerClass="tool-btn"
             trigger={
               <ToolLabel
                 icon={TrendingDown}
-                title={`Price watches (${listed.length})`}
+                title={`Price watches (${count})`}
                 sub={live > 0 ? `${live} live, checked with Channel3. Spotter tells you when a price comes down.` : "Spotter tells you when a price comes down."}
               />
             }
           >
             <p className="feed-meta">Spotter checks real shop prices with Channel3 and tells you when one comes down. It never buys anything.</p>
             <ul className="watch-list">
-              {listed.map((w) => (
+              {own.map((w) => (
+                <li key={w.id}>
+                  <PriceWatch watch={w} onChanged={refresh} updates={watchUpdates} variant="panel" />
+                </li>
+              ))}
+              {demo && (
+                <li>
+                  <SharedWatch />
+                </li>
+              )}
+              {examples.map((w) => (
                 <li key={w.id}>
                   <PriceWatch watch={w} onChanged={refresh} updates={watchUpdates} variant="panel" />
                 </li>
