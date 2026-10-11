@@ -9,9 +9,9 @@
 // - Searches are cached by a hash of the picture and capped per family per day (image_checks, like price_checks).
 import { createHash } from "node:crypto";
 import type { Db } from "@/db";
-import { claimsUsed, likeUsed, likeUsedText, type LikeUsed, type Offer } from "@/core/market";
+import { claimsUsed, genuineOffers, likeUsed, likeUsedText, onePerShop, type LikeUsed, type MarketSummary, type Offer } from "@/core/market";
 import { formatMoney, type Currency } from "@/core/types";
-import { sameProduct, type ImageQuery, type PriceHigh, type Product } from "./channel3";
+import { sameProduct, sellsTo, type ImageQuery, type PriceHigh, type Product } from "./channel3";
 
 export type SpotDifference = { label: "Price" | "Condition" | "Was price" | "Web address" | "Seller"; here: string; real: string };
 
@@ -30,6 +30,11 @@ export type SpotTheDifference = {
   genuine: { title: string; domain: string; price: number; url: string; image?: string; offerId?: string };
   /** Set when the item, sold as new, is priced below every new offer but inside the used range. */
   likeUsed?: LikeUsed;
+  /**
+   * "market": built from the payment's saved going rate (the same numbers as the reasons line and Activity), no image
+   * search. "image": from a Channel3 image search, when the payment had no going rate. Older rows have neither: image.
+   */
+  source?: "market" | "image";
   at: string;
 };
 
@@ -52,6 +57,8 @@ export type SpotInput = {
   /** Why the payment was held or stopped; only shop reasons get a comparison. */
   reason: string | null;
   page: { finalUrl: string; screenshot?: string; productImage?: string; was?: string };
+  /** The payment's saved going rate (marketSummary). When it has a cheapest shop, the panel is built from it. */
+  market?: MarketSummary | null;
 };
 
 const SHOP_REASONS = new Set(["fake shop price", "brand new shop", "hidden instructions"]);
@@ -184,6 +191,9 @@ export async function spotTheDifference(deps: SpotDeps, input: SpotInput): Promi
 async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifference | null> {
   const item = input.item?.trim();
   if (!input.reason || !SHOP_REASONS.has(input.reason) || !item) return null;
+  // One going rate per card: when the payment check already found one, the panel shows that, not a second search.
+  const saved = input.market;
+  if (saved?.cheapest) return fromMarket(input, saved.median, saved.offers, saved.cheapest);
   const pic = pictureOf(input.page);
   if (!pic) {
     if (input.page.productImage) console.error("[spotter] spot the difference: the page's product picture isn't a public https link, so it isn't sent");
@@ -200,14 +210,18 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
     .flatMap((p) =>
       p.offers.map((o) => ({ ...o, domain: o.domain.toLowerCase().replace(/^www\./, ""), productId: p.id, ...(p.image && CDN_IMAGE.test(p.image) ? { image: p.image } : {}) })),
     )
-    .filter((o) => o.currency === input.currency && o.price > 0 && DOMAIN.test(o.domain) && o.domain !== shopHost && o.domain !== payee && BUY_URL.test(o.url));
-  // The going rate and the shop to show come from new listings (and ones whose condition isn't known); used ones
-  // only count for "priced like a used one".
-  const listings = matched.filter((o) => o.condition !== "used");
+    .filter(
+      (o) =>
+        o.currency === input.currency && o.price > 0 && DOMAIN.test(o.domain) && sellsTo(o.domain, input.currency) && o.domain !== shopHost && o.domain !== payee && BUY_URL.test(o.url),
+    );
+  // The going rate and the shop to show come from genuine new listings (and ones whose condition isn't known), one
+  // price per shop, the same rule as the payment check; used ones only count for "priced like a used one".
+  const real = new Set<Offer>(genuineOffers(matched, input.currency));
+  const listings = matched.filter((o) => real.has(o));
   if (!listings.length) return null;
   const lu = claimsUsed(item) ? null : likeUsed(input.amount, input.currency, matched);
 
-  const typical = median(listings.map((o) => o.price));
+  const typical = median(onePerShop(listings).map((o) => o.price));
   const cheapest = listings.reduce((a, b) => (b.price < a.price ? b : a));
   // The safer option the agent was already told about, when it is the same product at one of these retailers.
   const safer = (
@@ -260,10 +274,46 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
     differences: differences.slice(0, 3),
     typical,
     ...(lu ? { likeUsed: lu } : {}),
-    offers: listings.length,
+    offers: shops.size,
     currency: input.currency,
     here: { host: shopHost, price: input.amount, payee: payeeName },
     genuine: { title: plain(pick.title), domain: pick.domain, price: pick.price, url: pick.url, ...(pick.image ? { image: pick.image } : {}), ...(pick.offerId ? { offerId: pick.offerId } : {}) },
+    source: "image",
+    at: new Date().toISOString(),
+  };
+}
+
+/** The panel from the payment's saved going rate: the same middle price, shop count and cheapest shop as the card. */
+function fromMarket(input: SpotInput, typical: number, offers: number, c: Offer): SpotTheDifference {
+  const money = (minor: number) => formatMoney({ amount: minor, currency: input.currency });
+  const domain = c.domain.toLowerCase().replace(/^www\./, "");
+  const shopHost = host(input.page.finalUrl);
+  const ratio = input.amount / typical;
+  const direction = ratio < 0.85 ? "cheaper" : ratio > 1.15 ? "dearer" : "similar";
+  const many = offers > 1;
+  const differences: SpotDifference[] = [];
+  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: many ? `about ${money(typical)}` : money(typical) });
+  if (shopHost && shopHost !== domain) differences.push({ label: "Web address", here: shopHost, real: domain });
+  const payeeName = plain(input.payee, 60);
+  const payee = input.payee.trim().toLowerCase();
+  if (payeeName && payee !== shopHost && payee !== domain) differences.push({ label: "Seller", here: payeeName, real: domain });
+  return {
+    headline: many ? `${money(input.amount)} here, about ${money(typical)} at real shops` : `${money(input.amount)} here, ${money(typical)} at ${domain}`,
+    verdict: direction === "cheaper" ? (ratio < 0.4 ? VERDICT.far : VERDICT.cheaper) : VERDICT[direction],
+    direction,
+    differences: differences.slice(0, 3),
+    typical,
+    offers,
+    currency: input.currency,
+    here: { host: shopHost, price: input.amount, payee: payeeName },
+    genuine: {
+      title: plain(c.title),
+      domain,
+      price: c.price,
+      url: BUY_URL.test(c.url) ? c.url : "",
+      ...(c.image && CDN_IMAGE.test(c.image) ? { image: c.image } : {}),
+    },
+    source: "market",
     at: new Date().toISOString(),
   };
 }

@@ -203,6 +203,28 @@ describe("spotTheDifference", () => {
   });
 });
 
+describe("one going rate per card", () => {
+  const skillet = { finalUrl: "https://spotter-pay.vercel.app/demo-shop/skillet", screenshot: jpeg() };
+  const cheapest = { title: "Cast Iron Skillet Pans", domain: "debenhams.com", price: 1599, currency: "GBP" as const, url: "https://buy.trychannel3.com/deb", image: "https://cdn.trychannel3.com/deb" };
+
+  it("uses the payment's saved going rate when there is one, so the panel says what the reasons line says", async () => {
+    const s = await spotTheDifference(
+      deps,
+      input({ item: "cast iron skillet", amount: 699, payee: "Panmoor Kitchen", page: skillet, market: { median: 2800, offers: 5, cheapest } }),
+    );
+    expect(search).not.toHaveBeenCalled();
+    expect(s).toMatchObject({ source: "market", typical: 2800, offers: 5, headline: "£6.99 here, about £28.00 at real shops" });
+    expect(s!.genuine).toMatchObject({ domain: "debenhams.com", price: 1599, image: "https://cdn.trychannel3.com/deb" });
+    expect(s!.differences[0]).toEqual({ label: "Price", here: "£6.99", real: "about £28.00" });
+  });
+
+  it("from an image search, leaves out other countries' shops, so the headline matches the listing it shows", async () => {
+    search.mockResolvedValueOnce([product("s1", "Cast Iron 18cm Skillet", [["hartsofstur.com", 1495], ["lecreuset.no", 12500], ["lecreuset.com.au", 15500]])]);
+    const s = await spotTheDifference(deps, input({ item: "cast iron skillet", amount: 699, payee: "Panmoor Kitchen", page: skillet }));
+    expect(s).toMatchObject({ source: "image", headline: "£6.99 here, £14.95 at hartsofstur.com", offers: 1 });
+  });
+});
+
 describe("parseWas", () => {
   it("reads a struck through price in the payment's currency only", () => {
     expect(parseWas("£49.99", "GBP")).toBe(4999);

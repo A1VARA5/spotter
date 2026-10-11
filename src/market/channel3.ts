@@ -18,17 +18,39 @@ type C3Product = {
   category?: { slug?: unknown; path?: Array<{ slug?: unknown }> } | null;
 };
 
-/** categories: the product's category slug, then the slugs on its path (Channel3 category model). */
-export type Product = { id: string; title: string; brand?: string; image?: string; offers: Offer[]; categories?: string[] };
+/**
+ * categories: the product's category slug, then the slugs on its path (Channel3 category model). department: the
+ * second level of that path ("kitchen-dining", "electronics" under a broad root), used to drop wrong kind matches.
+ */
+export type Product = { id: string; title: string; brand?: string; image?: string; offers: Offer[]; categories?: string[]; department?: string };
 
 /** Channel3's offer conditions filter: "refurbished" was retired as a filter value (it is rejected). */
 export type Condition = "new" | "used";
 
 const COUNTRY: Record<Currency, string> = { GBP: "GB", USD: "US" };
 
+/** Country endings used by shops everywhere (.co, .io ...), so they say nothing about where a shop sells. */
+const GENERIC_CC = new Set(["co", "io", "ai", "me", "tv", "gg", "ly", "so", "fm", "to", "cc"]);
+const HOME_CC: Record<Currency, string[]> = { GBP: ["uk"], USD: ["us"] };
+
+/**
+ * Could this shop sell to a payer in this currency's country? Channel3 sometimes lists another country's shop with a
+ * converted price (lecreuset.com.au in pounds): a web address ending in another country's code is left out of every
+ * going rate. .com and other non country endings stay.
+ */
+export function sellsTo(domain: string, currency: Currency): boolean {
+  const tld = domain.toLowerCase().replace(/\.$/, "").split(".").pop() ?? "";
+  if (tld.length !== 2 || GENERIC_CC.has(tld)) return true;
+  return HOME_CC[currency].includes(tld);
+}
+
+// The product's own picture on Channel3's image server, the only kind of picture link ever kept.
+const CDN_IMAGE = /^https:\/\/cdn\.trychannel3\.com\/[A-Za-z0-9._~%?=&/-]{1,300}$/;
+
 function toOffers(p: C3Product, currency: Currency): Offer[] {
+  const image = p.images?.[0]?.url;
   return (p.offers ?? [])
-    .filter((o) => o.price && o.price.currency === currency && o.availability !== "OutOfStock")
+    .filter((o) => o.price && o.price.currency === currency && o.availability !== "OutOfStock" && typeof o.domain === "string" && sellsTo(o.domain, currency))
     .map((o) => ({
       title: p.title,
       brand: p.brands?.[0]?.name,
@@ -38,6 +60,7 @@ function toOffers(p: C3Product, currency: Currency): Offer[] {
       url: o.url,
       // Left out when the shop doesn't say (null, or a value this code doesn't know): unknown counts as not used.
       ...(o.condition === "new" || o.condition === "used" ? { condition: o.condition } : {}),
+      ...(image && CDN_IMAGE.test(image) ? { image } : {}),
     }));
 }
 
@@ -49,9 +72,23 @@ function categoriesOf(p: C3Product): string[] | undefined {
   return slugs.length ? [...new Set(slugs)] : undefined;
 }
 
+function departmentOf(p: C3Product): string | undefined {
+  const path = Array.isArray(p.category?.path) ? p.category.path.map((x) => x?.slug).filter((s): s is string => typeof s === "string" && SLUG.test(s)) : [];
+  return path[1] ?? path[0];
+}
+
 function toProduct(p: C3Product, currency: Currency): Product {
   const categories = categoriesOf(p);
-  return { id: p.id, title: p.title, brand: p.brands?.[0]?.name, image: p.images?.[0]?.url, offers: toOffers(p, currency), ...(categories ? { categories } : {}) };
+  const department = departmentOf(p);
+  return {
+    id: p.id,
+    title: p.title,
+    brand: p.brands?.[0]?.name,
+    image: p.images?.[0]?.url,
+    offers: toOffers(p, currency),
+    ...(categories ? { categories } : {}),
+    ...(department ? { department } : {}),
+  };
 }
 
 /**
@@ -221,12 +258,28 @@ export function sameProduct(item: string, title: string): boolean {
 }
 
 /**
+ * When most matching products sit in one department (kitchen, electronics), a match from another one is a different
+ * kind of thing with the same words in its title (earbuds charms at a fashion shop): it is left out. Products Channel3
+ * didn't categorise stay.
+ */
+function sameKind(products: Product[]): Product[] {
+  const known = products.filter((p) => p.department);
+  const count = new Map<string, number>();
+  for (const p of known) count.set(p.department!, (count.get(p.department!) ?? 0) + 1);
+  const [top, n] = [...count].sort((a, b) => b[1] - a[1])[0] ?? [];
+  if (!top || !n || n * 2 <= known.length) return products;
+  return products.filter((p) => !p.department || p.department === top);
+}
+
+/**
  * Offers pooled from every listing of the same product. Empty when nothing matches: no guess is better than a wrong one.
  * A new listing far below the going rate of the others (another product, a part, a fake listing) is left out, so the
  * payment check and the case agent's "real shops" never start from different cheapest prices. Used ones stay.
  */
 export function offersFor(products: Product[], item: string): Offer[] {
-  const all = products.filter((p) => sameProduct(item, p.title)).flatMap((p) => p.offers);
+  const matched = sameKind(products.filter((p) => sameProduct(item, p.title)));
+  // Checked here too, for products cached before toOffers left other countries' shops out.
+  const all = matched.flatMap((p) => p.offers).filter((o) => sellsTo(o.domain, o.currency));
   const real = new Set([...new Set(all.map((o) => o.currency))].flatMap((c) => genuineOffers(all, c)));
   return all.filter((o) => o.condition === "used" || real.has(o));
 }
@@ -234,8 +287,9 @@ export function offersFor(products: Product[], item: string): Offer[] {
 /** Cached lookup used by the payment check. */
 export function makeMarket(db: Db) {
   return async (item: string, currency: Currency): Promise<Offer[] | null> => {
-    // "c3": offers carry their condition (c2) and far below listings are left out (offersFor), so older rows aren't reused.
-    const key = `c3:${currency}:${item.trim().toLowerCase()}`;
+    // "c4": other countries' shops and other departments are left out too (c3: far below listings, c2: condition), so
+    // older rows aren't reused.
+    const key = `c4:${currency}:${item.trim().toLowerCase()}`;
     const hit = await db.query<{ offers: Offer[] }>(
       `select offers from market_cache where key = $1 and fetched_at > now() - interval '${CACHE_DAYS} days'`,
       [key],

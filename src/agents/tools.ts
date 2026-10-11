@@ -368,7 +368,7 @@ const findGenuineOffer = tool({
     const item = own || args.item;
     const found = await genuineListings(item, own, ctx);
     if (!found) return { ok: false, summary: "Product search is unavailable right now." };
-    const offers = found
+    const offers = found.offers
       .sort((a, b) => a.price - b.price)
       .filter((o, i, all) => all.findIndex((x) => x.domain === o.domain) === i)
       .slice(0, 3);
@@ -380,7 +380,9 @@ const findGenuineOffer = tool({
     });
     return {
       ok: true,
-      summary: listed.map((o) => `${o.offer_id}: ${o.title} for ${o.price_text} at ${o.domain}`).join("\n"),
+      summary:
+        listed.map((o) => `${o.offer_id}: ${o.title} for ${o.price_text} at ${o.domain}`).join("\n") +
+        (found.source === "saved" ? "\n(The cheapest shop from the earlier price check on this payment; the full list couldn't be read again.)" : ""),
       data: { offers: listed },
     };
   },
@@ -391,19 +393,21 @@ const findGenuineOffer = tool({
  * own market lookup for the payment's item (cached, the same listings its price note came from), then the cheapest
  * shop saved on the payment, and only then a fresh search. Genuine new offers only, as on the card.
  */
-async function genuineListings(item: string, own: string | undefined, ctx: CaseCtx): Promise<Offer[] | null> {
+async function genuineListings(item: string, own: string | undefined, ctx: CaseCtx): Promise<{ offers: Offer[]; source: "market" | "saved" | "search" } | null> {
   const currency = ctx.payment.request.money.currency;
   if (own && ctx.market) {
     const listed = await ctx.market(own, currency).catch((e: unknown) => {
       console.error("[spotter] case agent couldn't reuse the market check, falling back:", e instanceof Error ? e.message : e);
       return null;
     });
-    if (listed) return genuineOffers(listed, currency);
+    // An empty answer (nothing cached, or nothing genuine left) falls through rather than saying "no listings".
+    const genuine = listed ? genuineOffers(listed, currency) : [];
+    if (genuine.length) return { offers: genuine, source: "market" };
   }
   const saved = own ? marketSummary(ctx.payment.market)?.cheapest : null;
-  if (saved && saved.currency === currency) return [saved];
+  if (saved && saved.currency === currency) return { offers: [saved], source: "saved" };
   const products = ctx.search ? await ctx.search(item, currency, 8) : null;
-  return products ? offersFor(products, item).filter((o) => o.condition !== "used") : null;
+  return products ? { offers: offersFor(products, item).filter((o) => o.condition !== "used"), source: "search" } : null;
 }
 
 /** PayPal's authorisation statuses, in the words the spotter reads. */

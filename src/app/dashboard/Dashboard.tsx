@@ -16,6 +16,7 @@ import type { WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 import { PhotoCheck } from "@/ui/PhotoCheck";
 import { weekSummary } from "@/ui/week";
+import { approveWarning } from "@/ui/labels";
 import "./allclear.css";
 import { BUSINESS_SCENARIOS, SCENARIOS, type Scenario } from "@/ui/scenarios";
 
@@ -596,6 +597,7 @@ function HeldCard({
   const pending = !p.case_file && (tick ?? now) - new Date(p.created_at).getTime() < CASE_WAIT_MS;
   // When Spotter thinks it's a scam, saying no is the main action and saying yes takes a deliberate step.
   const scamLike = p.case_file?.verdict === "likely_scam" || flags.some((f) => f.severity === "high");
+  const warning = approveWarning(p.case_file?.verdict, flags.some((f) => f.severity === "high"));
   const bodyId = `body-${p.id}`;
 
   useEffect(() => {
@@ -743,7 +745,7 @@ function HeldCard({
           <p className="held-confirm-title">
             Pay {money(p.amount, p.currency)} to {p.request.payee.name}?
           </p>
-          {scamLike && <p className="held-confirm-warn">Spotter thinks this is likely a scam. Once PayPal pays, it can&apos;t be pulled back.</p>}
+          {warning && <p className="held-confirm-warn">{warning}</p>}
           <label className="field-label" htmlFor={`pin-${p.id}`}>
             Your PIN{demo ? " (the demo family's PIN is 2468)" : ""}
           </label>

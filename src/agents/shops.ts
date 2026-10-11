@@ -20,7 +20,8 @@ export const RETAILERS: readonly Retailer[] = [
   r("Tesco", /\btesco\b/i, "tesco"),
   r("Sainsbury's", /\bsainsbury'?s?\b/i, "sainsburys"),
   r("Asda", /\basda\b/i, "asda"),
-  r("Boots", /\bBoots\b/, "boots"),
+  // Ordinary words as well as shops: sourced only by their web address (or the capitalised name).
+  r("Boots", /\bBoots\b/, "boots.com"),
   r("Superdrug", /\bsuperdrug\b/i, "superdrug"),
   r("Halfords", /\bhalfords\b/i, "halfords"),
   r("Screwfix", /\bscrewfix\b/i, "screwfix"),
@@ -31,7 +32,7 @@ export const RETAILERS: readonly Retailer[] = [
   r("Marks & Spencer", /\bmarks\s*(&|and)\s*spencer\b|\bM&S\b/i, "marksandspencer"),
   r("Selfridges", /\bselfridges\b/i, "selfridges"),
   r("Harrods", /\bharrods\b/i, "harrods"),
-  r("Lakeland", /\blakeland\b/i, "lakeland"),
+  r("Lakeland", /\bLakeland\b/, "lakeland.co.uk"),
   r("Robert Dyas", /\brobert\s*dyas\b/i, "robertdyas"),
   r("Smyths", /\bsmyths\b/i, "smyths"),
   r("Ebuyer", /\bebuyer\b/i, "ebuyer"),
@@ -55,13 +56,17 @@ export const RETAILERS: readonly Retailer[] = [
   r("Vinted", /\bvinted\b/i, "vinted"),
 ];
 
-const squash = (s: string) => s.toLowerCase().replace(/[\s'&-]+/g, "");
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Safety advice about paying ("never pay with Amazon gift cards") names a brand, not a shop to buy from.
+const GIFT_CARDS = /\bgift[\s-]?cards?\b/i;
 
 /**
  * The well known retailers a sentence names that none of the sourced text mentions. Sourced text is what this case's
- * tools returned (listing domains, link hosts, summaries) plus the payment's own payee and item.
+ * tools returned (listing domains, link hosts, summaries) plus the payment's own payee and item. A retailer counts as
+ * sourced only when that text names it as a whole word (its name, or its web address), never inside another word.
  */
 export function unsourcedShops(text: string, sourced: readonly string[]): string[] {
-  const corpus = sourced.map(squash).join(" ");
-  return RETAILERS.filter((x) => x.re.test(text) && !corpus.includes(squash(x.stem)) && !corpus.includes(squash(x.name))).map((x) => x.name);
+  if (GIFT_CARDS.test(text)) return [];
+  const corpus = sourced.join("\n");
+  return RETAILERS.filter((x) => x.re.test(text) && !x.re.test(corpus) && !new RegExp(`(^|[^a-z0-9-])${esc(x.stem)}(?![a-z0-9-])`, "i").test(corpus)).map((x) => x.name);
 }

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { sanitizeContext } from "@/ai/sanitize";
 import type { Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
-import { contradictsPrice, marketFacts, priceVerdict } from "@/core/market";
+import { contradictsPrice, marketFacts, marketSummary, priceVerdict } from "@/core/market";
 import { runTool, toolDefinitions, type CaseCtx, type CasePage, type ToolOutput } from "./tools";
 import { extractUrls } from "./links";
 import { unsourcedShops } from "./shops";
@@ -163,6 +163,8 @@ export async function buildCase(ctx: CaseCtx, opts: CaseOpts = {}): Promise<Case
         currency: p.request.money.currency,
         payee: p.request.payee.name,
         reason,
+        // The going rate the card already shows, so spot the difference can't give a second, different one.
+        market: marketSummary(p.market),
         page: { finalUrl: ctx.page.finalUrl, screenshot: ctx.page.screenshot, productImage: ctx.page.productImage, was: ctx.page.was },
       })
       .catch((e) => {
@@ -377,6 +379,17 @@ const PRICE_HEADLINE = {
   like_used: "This is priced like a used one, below what real shops charge for a new one.",
 } as const;
 
+/**
+ * A headline in place of one that named a shop nobody checked: the price fact when it leads the case, otherwise the
+ * verdict's own words, so it can never read calmer (or more alarming) than the verdict above it.
+ */
+function plainHeadline(verdict: Case["verdict"], price: ReturnType<typeof priceVerdict>): string {
+  if (price && price !== "normal") return PRICE_HEADLINE[price];
+  if (verdict === "likely_scam") return "This looks like a scam, so the money stays on hold until you decide.";
+  if (verdict === "looks_fine") return price === "normal" ? PRICE_HEADLINE.normal : "Nothing worrying turned up, but it still waits for your yes.";
+  return "Spotter held this payment so you can check it before any money moves.";
+}
+
 function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number): Case {
   const parsed = FileCase.safeParse(input);
   if (!parsed.success) return fallback(calls, started, "the case didn't match the format");
@@ -389,7 +402,11 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
   // Shop names only from what this case's tools returned (plus the payee and item themselves), never from memory.
   const r = ctx.payment.request;
   const known = [r.payee.name, r.item ?? "", ...ok.map((x) => x.summary), ...[...ctx.offers.values()].map((o) => o.domain)];
-  const namesUnchecked = (text: string) => unsourcedShops(text, known).length > 0;
+  const namesUnchecked = (text: string) => {
+    const names = unsourcedShops(text, known);
+    if (names.length) console.warn(`[spotter] case for ${ctx.payment.id}: dropped a line naming ${names.join(", ")}, which no tool returned`);
+    return names.length > 0;
+  };
   const sourced = c.findings.flatMap((f) => {
     const call = resolve(f.source);
     return call && !contradictsPrice(f.text, price) && !namesUnchecked(f.text) ? [{ text: f.text, source: call.id, tool: call.tool }] : [];
@@ -400,7 +417,7 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
     price && contradictsPrice(c.headline, price)
       ? PRICE_HEADLINE[price]
       : namesUnchecked(c.headline)
-        ? (price ? PRICE_HEADLINE[price] : "Spotter held this payment so you can check it before any money moves.")
+        ? plainHeadline(c.verdict, price)
         : c.headline;
   const ask = c.ask.filter((a) => !namesUnchecked(a));
   const offer = c.swap_offer_id ? ctx.offers.get(c.swap_offer_id) : undefined;

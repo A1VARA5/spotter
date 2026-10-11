@@ -14,4 +14,13 @@ describe("unsourcedShops", () => {
     expect(unsourcedShops("Check this is really Argos.", ["Argos"])).toEqual([]);
     expect(unsourcedShops("This is very cheap and the boots look fake, so ask Gran.", [])).toEqual([]);
   });
+
+  it("only counts a shop as sourced when a tool result names it as a word, not inside another word", () => {
+    expect(unsourcedShops("Compare it at Boots first.", ["walking boots"])).toEqual(["Boots"]);
+    expect(unsourcedShops("Compare it at Argos first.", ["argosy-books.example"])).toEqual(["Argos"]);
+  });
+
+  it("leaves safety advice about gift cards alone", () => {
+    expect(unsourcedShops("Never pay anyone with Amazon or Apple gift cards.", [])).toEqual([]);
+  });
 });

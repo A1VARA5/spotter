@@ -8,7 +8,17 @@ import { formatMoney, type Currency } from "./types";
  * Channel3 turns "refurbished" into null, so null can hide a refurbished listing: it counts on the new side, which
  * only ever makes "new ones cost at least" lower, never a claim that isn't true.
  */
-export type Offer = { title: string; brand?: string; domain: string; price: number; currency: Currency; url: string; condition?: "new" | "used" | null };
+export type Offer = {
+  title: string;
+  brand?: string;
+  domain: string;
+  price: number;
+  currency: Currency;
+  url: string;
+  condition?: "new" | "used" | null;
+  /** The product's picture on Channel3's image server, when it has one. */
+  image?: string;
+};
 /** A "new" item priced below every new offer but inside what used ones sell for, in minor units. */
 export type LikeUsed = { newFrom: number; usedLow: number; usedHigh: number };
 export type MarketResult = { flag: Flag | null; median?: number; offers: number; cheapest?: Offer; likeUsed?: LikeUsed };
@@ -115,8 +125,22 @@ export function priceCheck(amount: number, currency: Currency, offers: Offer[], 
 export function genuineOffers(offers: Offer[], currency: Currency): Offer[] {
   const same = offers.filter((o) => !isUsed(o) && o.currency === currency && o.price > 0);
   if (same.length < 2) return same;
-  const going = median(same.map((o) => o.price));
+  const going = median(onePerShop(same).map((o) => o.price));
   return same.filter((o) => o.price >= going * TOO_CHEAP);
+}
+
+/**
+ * One price per shop (its cheapest listing), so one shop listing the same pan three times can't drag the going rate
+ * towards its own price, and "across N retailers" counts shops, not listings.
+ */
+export function onePerShop(offers: Offer[]): Offer[] {
+  const best = new Map<string, Offer>();
+  for (const o of offers) {
+    const k = o.domain.toLowerCase().replace(/^www\./, "");
+    const had = best.get(k);
+    if (!had || o.price < had.price) best.set(k, o);
+  }
+  return [...best.values()];
 }
 
 export type MarketSummary = { median: number; offers: number; cheapest: Offer | null };
@@ -175,7 +199,7 @@ export function priceWatchFits(p: WatchFitInput): boolean {
 }
 
 function goingRate(amount: number, currency: Currency, offers: Offer[]): MarketResult {
-  const same = offers.filter((o) => o.currency === currency && o.price > 0);
+  const same = onePerShop(offers.filter((o) => o.currency === currency && o.price > 0));
   if (same.length < 2) return { flag: null, offers: same.length };
   const m = median(same.map((o) => o.price));
   // The cheapest real shop: never a listing far below the going rate (another product or a fake one).

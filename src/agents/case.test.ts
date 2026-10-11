@@ -604,4 +604,14 @@ describe("shop names come from tool results only", () => {
     // The headline named a shop nobody checked, so it is replaced with a plain one.
     expect(c.headline).not.toMatch(/Argos/);
   });
+
+  it("a replaced headline follows the verdict", async () => {
+    const model = scripted(
+      turn(use("t1", "payee_history", { payee: "BargainPods" })),
+      turn(use("f", "file_case", { verdict: "likely_scam", headline: "Buy it from Argos instead, this shop is fake.", findings: [{ text: "Gran has never paid BargainPods.", source: "t1" }], ask: [] })),
+    );
+    const c = await buildCase(ctx(), { model });
+    expect(c.headline).toMatch(/scam/i);
+    expect(c.headline).not.toMatch(/Argos/);
+  });
 });

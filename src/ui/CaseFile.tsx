@@ -56,7 +56,12 @@ const VERDICT = {
  */
 function useClientNow(): number | null {
   const [now, setNow] = useState<number | null>(null);
-  useEffect(() => setNow(Date.now()), []);
+  useEffect(() => {
+    setNow(Date.now());
+    // Ticks slowly, so a page left open stops offering a recording once it has expired.
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   return now;
 }
 
@@ -285,7 +290,6 @@ function CheckedBy({ chips }: { chips: Chip[] }) {
             ) : (
               <span className="cf-chip" data-quiet="true">
                 {ch.label}
-                <span className="sr-only">, nothing to report</span>
               </span>
             )}
           </li>
@@ -532,11 +536,18 @@ const HTTPS = /^https:\/\/[^\s"<>]+$/;
 function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spot"]>; shot?: string }) {
   const titleId = useId();
   const here = shot && SHOT.test(shot) ? shot : undefined;
-  const real = spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  // A picture that fails to load (blocked, gone) falls back to the listing's own words, never an empty box.
+  const [imageFailed, setImageFailed] = useState(false);
+  const real = !imageFailed && spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  const fromMarket = spot.source === "market";
   return (
     <section className="spot" id={id} tabIndex={-1} data-direction={spot.direction} aria-labelledby={titleId}>
-      <PanelHead id={titleId} title="Spot the difference" engine="Real shop prices (Channel3), image search">
-        <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+      <PanelHead id={titleId} title="Spot the difference" engine={fromMarket ? "Real shop prices (Channel3)" : "Real shop prices (Channel3), image search"}>
+        {fromMarket ? (
+          <p>The same real shop listings as Spotter&apos;s price check on this payment, so every price on this card agrees. Shops in other countries are left out.</p>
+        ) : (
+          <p>Spotter searched real shops with a picture of this page and kept a match only when it is the same product. Prices and shop names come from those shops&apos; own listings.</p>
+        )}
         <p>A shop that sells it but isn&apos;t listed won&apos;t show up here.</p>
       </PanelHead>
       <p className="spot-number">{spot.headline}</p>
@@ -549,7 +560,15 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
           </figcaption>
         </figure>
         <figure className="spot-side spot-real">
-          {real ? <img src={real} alt={spot.genuine.title} width={320} height={240} loading="lazy" referrerPolicy="no-referrer" /> : <div className="spot-blank" aria-hidden="true" />}
+          {real ? (
+            <img src={real} alt={spot.genuine.title} width={320} height={240} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} />
+          ) : (
+            <div className="spot-listing" aria-hidden="true">
+              <span className="spot-listing-title">{spot.genuine.title}</span>
+              <span className="spot-listing-price">{money(spot.genuine.price, spot.currency)}</span>
+              <span className="spot-listing-shop">{spot.genuine.domain}</span>
+            </div>
+          )}
           <figcaption>
             <b>{spot.genuine.title}</b> {money(spot.genuine.price, spot.currency)} at {spot.genuine.domain}
             {HTTPS.test(spot.genuine.url) && (
@@ -580,7 +599,11 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
           ))}
         </ol>
       )}
-      <p className="spot-source">Found by searching real shops with a picture of this page. Prices and shop names come from those shops&apos; listings.</p>
+      <p className="spot-source">
+        {fromMarket
+          ? `The same ${spot.offers} real shop${spot.offers === 1 ? "" : "s"} as the price check on this payment. Prices and shop names come from those shops' listings.`
+          : "Found by searching real shops with a picture of this page. Prices and shop names come from those shops' listings."}
+      </p>
     </section>
   );
 }

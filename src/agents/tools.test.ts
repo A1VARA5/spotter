@@ -144,6 +144,14 @@ describe("find_genuine_offer", () => {
     expect(c.offers.get(offers[0]!.offer_id)?.url).toBe("https://currys.co.uk/a");
   });
 
+  it("an empty market answer still falls back to the stored cheapest shop, and says it is from the earlier check", async () => {
+    const now = await pay("gran", "BargainPods", 2499);
+    const p = withItem(now, { item: "Apple AirPods Pro 2", flag: null, median: 18900, offers: 3, cheapest: offer("currys.co.uk", 17900) });
+    const out = await runTool("find_genuine_offer", { item: "Apple AirPods Pro 2" }, ctx(p, { market: async () => [] }));
+    expect((out.data as { offers: Array<{ domain: string }> }).offers.map((o) => o.domain)).toEqual(["currys.co.uk"]);
+    expect(out.summary).toMatch(/earlier price check/);
+  });
+
   it("says when the search is down instead of guessing", async () => {
     const now = await pay("gran", "BargainPods", 2499);
     const out = await runTool("find_genuine_offer", { item: "AirPods" }, ctx(now, { search: async () => null }));
