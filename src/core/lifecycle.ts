@@ -7,11 +7,13 @@ import { PayPalError, type captureAuthorization, type createAuthorizeOrder, type
 import { checkRules, normName } from "./rules";
 import { decide, type Decision } from "./decide";
 import type { Flag } from "./grounding";
-import type { Allowance, Currency, Money, PaymentMethod, PaymentRequest } from "./types";
+import { formatMoney, type Allowance, type Currency, type Money, type PaymentMethod, type PaymentRequest } from "./types";
 import { priceCheck, type MarketResult, type Offer } from "./market";
 import { fileReport } from "./network";
 import type { Case } from "@/agents/case";
 import { startWasItYou, type WasItYou } from "./was-it-you";
+import { CAPTURED_WHILE_RELEASING, LAPSED_HOLD, LATE_BY, LATE_HOLD, PAUSED_BY } from "./decidedBy";
+import { sendWarning } from "./switchedoff";
 
 export type Deps = {
   db: Db;
@@ -27,7 +29,9 @@ export type Deps = {
   /** Tells the spotter PayPal confirmed a held payment was paid or released (from a PayPal webhook). Optional. */
   confirmed?: (payment: Payment, spender: Spender) => Promise<void>;
   /** Tells a household's spotter that someone switched a protection off (core/switchedoff.ts). Optional. */
-  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked" | "agent_hijacked" | "refund_held" | "subscription_held"; text: string }) => Promise<void>;
+  warn?: (householdId: string, w: { kind: "paypal_disconnected" | "channel_moved" | "chat_blocked" | "agent_hijacked" | "refund_held" | "subscription_held" | "hold_unconfirmed"; text: string }) => Promise<void>;
+  /** How long to wait before asking PayPal again about a hold whose answer never arrived (default 15 s). Tests use 0. */
+  authoriseRetryMs?: number;
   /** Asks the real person a message claims to be from ("Was it you?") on their own linked channel. Optional. */
   ask?: (payment: Payment, payer: Spender, ask: WasItYou, to: Spender) => Promise<void>;
   /** A short plain note to the spotter (e.g. "Tom says it wasn't him"). Failures are logged, never fatal. Optional. */
@@ -308,7 +312,22 @@ export async function submitPayment(deps: Deps, input: PaymentInput): Promise<Pa
     if (deps.defer) deps.defer(followUp);
     else await followUp();
   }
+  // PayPal didn't answer the hold. Its memory of a PayPal-Request-Id may only last hours, so it is asked again a few
+  // seconds later in the background, not only when someone opens the dashboard or the daily job runs.
+  if (result.status === "authorising" && deps.defer) deps.defer(() => retryAuthorise(deps, id));
   return result;
+}
+
+const AUTHORISE_RETRY_MS = 15_000;
+
+async function retryAuthorise(deps: Deps, id: string): Promise<void> {
+  try {
+    await new Promise((r) => setTimeout(r, deps.authoriseRetryMs ?? AUTHORISE_RETRY_MS));
+    const p = await getPayment(deps.db, id);
+    if (p?.status === "authorising") await recoverHold(deps, p);
+  } catch (e) {
+    console.error(`[spotter] payment ${id}: asking PayPal again about the hold failed (reconcile asks again later):`, errText(e));
+  }
 }
 
 /**
@@ -443,7 +462,7 @@ async function decideAndHold(deps: Deps, spender: Spender, req: PaymentRequest, 
   return decision.outcome === "allow" ? capture(deps, held.id, "authorised", "Spotter") : held;
 }
 
-export const PAUSED_BY = "Spotter (the agent was paused)";
+export { PAUSED_BY, LATE_BY, LATE_HOLD } from "./decidedBy";
 
 const holdOpts = (source: "card" | "replay", customId?: string | null) => (customId ? { source, customId } : { source });
 
@@ -715,9 +734,6 @@ export async function reconcileStuck(deps: Deps, minutes = 5): Promise<number> {
   return settled;
 }
 
-export const LATE_HOLD = "PayPal's answer came too late, so Spotter let the hold go. Nothing was paid.";
-/** decided_by on a hold Spotter let go because PayPal answered late: nobody decided it, so nobody is told they did. */
-export const LATE_BY = "Spotter (PayPal answered late)";
 const REPLAY_NO_HOLD = "PayPal has no hold on record for this payment. If one was made, PayPal lets it go when it expires. Nothing was paid.";
 
 /**
@@ -731,9 +747,10 @@ async function recoverHold(deps: Deps, p: Payment): Promise<boolean> {
   try {
     hold = await paypal.createAuthorizeOrder(p.request, holdOpts("replay", p.paypal_custom_id));
   } catch (e) {
-    // A replay sends no card, so no error from it (not even a 4xx) proves there is no hold: ask again next run.
+    // A replay sends no card, so no error from it (not even a 4xx) proves there is no hold: ask again next run, up to
+    // a limit. PayPal may forget the request id within hours, after which asking can't tell us anything.
     await unconfirmed(db, p.id, "authorising", "authorise", e);
-    return false;
+    return giveUpIfStale(deps, p);
   }
   if (!hold.authorizationId) {
     // The replay's own order is unrelated to this payment, so it isn't saved as the payment's order.
@@ -762,6 +779,42 @@ async function recoverHold(deps: Deps, p: Payment): Promise<boolean> {
   return true;
 }
 
+const GIVE_UP_HOURS = 6;
+const GIVE_UP_TRIES = 72;
+export const HOLD_UNCONFIRMED =
+  "PayPal never confirmed whether it made a hold for this payment, so after 6 hours Spotter stopped asking. Spotter paid nothing. If PayPal did make a hold, it lets it go on its own; check your PayPal activity if a pending amount shows.";
+
+/**
+ * An authorising row PayPal still hasn't answered about after 6 hours or 12 tries ends failed with an honest line, and
+ * the spotter is told once (only the run that moves it says so). True when it ended.
+ */
+async function giveUpIfStale(deps: Deps, p: Payment): Promise<boolean> {
+  const { db } = deps;
+  const [row] = await db.query<{ old: boolean; tries: string }>(
+    `select created_at < now() - make_interval(hours => $2) as old,
+            (select count(*) from events where payment_id = $1 and type = 'authorise_unconfirmed')::text as tries
+     from payments where id = $1`,
+    [p.id, GIVE_UP_HOURS],
+  );
+  if (!row || (!row.old && Number(row.tries) < GIVE_UP_TRIES)) return false;
+  const ended = await move(db, p.id, "authorising", "failed", { error: HOLD_UNCONFIRMED });
+  if (!ended) return false;
+  console.error(`[spotter] payment ${p.id}: PayPal never confirmed the hold after ${row.tries} tries; ended failed`);
+  await event(db, p.id, "failed", { step: "authorise", error: "PayPal never confirmed the hold; Spotter stopped asking" }).catch((e) => console.error(`[spotter] payment ${p.id}: couldn't record the give up event:`, errText(e)));
+  const spender = await getSpender(db, p.spender_id).catch((e) => {
+    console.error(`[spotter] payment ${p.id}: looking up who to tell that PayPal never confirmed the hold failed:`, errText(e));
+    return null;
+  });
+  if (spender) {
+    const amount = formatMoney({ amount: Number(p.amount), currency: p.currency as Currency });
+    await sendWarning(deps, spender.household_id, {
+      kind: "hold_unconfirmed",
+      text: `${spender.name}'s ${amount} payment to ${p.request.payee.name} never got an answer from PayPal. ${HOLD_UNCONFIRMED}`,
+    });
+  } else console.error(`[spotter] payment ${p.id}: no spender found, so nobody was told PayPal never confirmed the hold`);
+  return true;
+}
+
 /**
  * Asks PayPal what really happened to a capture or void it never confirmed, and finishes it idempotently: a hold still
  * there is voided (or captured) again with the same PayPal-Request-Id. True when the payment reached a final status.
@@ -787,7 +840,7 @@ async function finishWithPayPal(deps: Deps, p: Payment, opts: { voidAgain?: bool
     }
     if (TAKEN.has(status)) {
       // The spotter said no but PayPal took the money (an earlier capture won the race). Never hidden.
-      const done = await move(db, p.id, "voiding", "captured", { error: "PayPal says this hold was captured, although it was being let go. Check it in PayPal." });
+      const done = await move(db, p.id, "voiding", "captured", { error: CAPTURED_WHILE_RELEASING });
       if (!done) return false;
       console.error(`[spotter] payment ${p.id} was being voided but PayPal says ${status}`);
       await event(db, p.id, "paypal_mismatch", { paypal: status, spotter_status: "voiding", reason: "captured at PayPal while Spotter was letting it go" });
@@ -813,7 +866,7 @@ async function finishWithPayPal(deps: Deps, p: Payment, opts: { voidAgain?: bool
   }
   if (GONE.has(status)) {
     // Approved, but PayPal let the hold go before the capture landed: nothing was paid, and the spotter must hear it.
-    const done = await move(db, p.id, "capturing", "voided", { error: "PayPal let the hold lapse before the payment went through. Nothing was paid." });
+    const done = await move(db, p.id, "capturing", "voided", { error: LAPSED_HOLD });
     if (!done) return false;
     console.error(`[spotter] payment ${p.id} was approved but PayPal says the hold is ${status}; nothing was paid`);
     await event(db, p.id, "reconciled", { paypal: status, note: "hold lapsed before capture" });

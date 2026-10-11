@@ -439,6 +439,19 @@ describe("buildCase", () => {
     expect(c.calls.map((x) => x.tool).sort()).toEqual(["check_links", "find_genuine_offer", "network_reports", "payee_history", "paypal_hold"]);
     // PayPal can't be asked in this test, so the hold check ran but found nothing to show.
     expect(c.findings.map((f) => f.tool).sort()).toEqual(["check_links", "find_genuine_offer", "network_reports", "payee_history"]);
+    // The tool's own list cites offer ids for the model; a person reads shop names and prices only.
+    const prices = c.findings.find((f) => f.tool === "find_genuine_offer")!.text;
+    expect(prices).not.toMatch(/offer_/);
+    expect(prices).toMatch(/ at [a-z0-9.-]+\.[a-z]{2,}/);
+  });
+
+  it("never shows the model's offer ids in a finding it wrote", async () => {
+    const model = scripted(
+      turn(use("t1", "find_genuine_offer", { item: "Apple AirPods Pro 2" })),
+      turn(use("f", "file_case", { verdict: "unclear", headline: "Real shops sell it for less.", findings: [{ text: "offer_1 is the cheapest real listing.", source: "t1" }], ask: [] })),
+    );
+    const c = await buildCase(ctx(), { model });
+    expect(c.findings[0]!.text).toBe("the listing is the cheapest real listing.");
   });
 
   it("an outage after tools ran keeps what the tools found and doesn't run them twice", async () => {

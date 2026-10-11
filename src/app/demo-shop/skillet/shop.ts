@@ -10,7 +10,7 @@ export const SKILLET_PATH = "/demo-shop/skillet";
 export const SKILLET_IMAGE = "/demo-shop/skillet.jpg";
 
 /** The item and price the demo payment uses: the words are the ones real shop listings use for this pan. */
-export const SKILLET = { item: "cast iron skillet", price: "£6.99", was: "£39.99", shop: "Panmoor Kitchen" } as const;
+export const SKILLET = { item: "cast iron skillet", price: "£4.99", was: "£39.99", shop: "Panmoor Kitchen" } as const;
 
 export const SHOP_HTML = `<!doctype html>
 <html lang="en">

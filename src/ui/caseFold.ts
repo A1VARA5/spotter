@@ -6,6 +6,8 @@
 import type { Case, Finding } from "@/agents/case";
 import type { Flag } from "@/core/grounding";
 import { marketSummary, type MarketResult } from "@/core/market";
+import { rankedReasons } from "@/core/reasons";
+import type { Payment } from "@/core/lifecycle";
 
 const TOOL_RANK: Record<string, number> = {
   network_reports: 0,
@@ -82,13 +84,38 @@ export function realOne(c: Pick<Case, "swap"> | null | undefined, market: (Marke
  * Channel3's prices are one of the three facts, "First time paying" when the family history finding is, and hidden
  * orders when KERNEL's "seen vs read" panel is open. Anything else (the allowance, a rule) always stays.
  */
-export function unsaidReasons(reasons: string[], flags: Flag[], c: Pick<Case, "findings"> | null | undefined, opts: { lead: LeadKind | null }): string[] {
+export function unsaidReasons(reasons: string[], flags: Flag[], c: Pick<Case, "findings" | "page"> | null | undefined, opts: { lead: LeadKind | null }): string[] {
   if (!c) return reasons;
-  const shown = new Set(keyFacts(c.findings).facts.map((f) => f.tool));
+  // The same three facts the card shows: findings an evidence panel already shows aren't among them.
+  const shown = new Set(keyFacts(c.findings.filter((f) => !panelShows(f, c.page))).facts.map((f) => f.tool));
   const said = new Set<string>();
   for (const fl of flags) {
     if (fl.kind === "price" && shown.has("find_genuine_offer")) said.add(fl.why);
     if (fl.kind === "prompt_injection" && opts.lead === "seen") said.add(fl.why);
   }
   return reasons.filter((r) => !said.has(r) && !(shown.has("payee_history") && /^First time paying /.test(r)));
+}
+
+/**
+ * True when one of the evidence panels already shows this code made finding (two faces, the money trail, the hidden
+ * line, a poisoned tool), so the list doesn't say it a second time. The finding still goes to alerts and the pack.
+ */
+export function panelShows(f: Finding, page: Case["page"]): boolean {
+  if (!page || !f.kind) return false;
+  if (f.kind === "cloaking") return !!page.faces;
+  if (f.kind === "money_offsite") return !!page.trail;
+  if (f.toolName) return !!(page.tools?.checked && page.tools.total > 0 && page.tools.tools.some((t) => t.name === f.toolName));
+  return !!(page.seen && page.seen.hidden.some((h) => h.instruction));
+}
+
+/**
+ * The Why list in the Activity drawer: the strongest reason first, always (src/core/reasons.ts), then the other reasons
+ * the case file doesn't already say, strongest first.
+ */
+export function whyLines(p: Pick<Payment, "decision" | "ai" | "case_file">): string[] {
+  const c = p.case_file;
+  const ranked = rankedReasons({ decision: p.decision, case_file: c });
+  if (!ranked.length) return [];
+  const unsaid = new Set(unsaidReasons(p.decision?.reasons ?? [], p.decision?.flags ?? p.ai?.flags ?? [], c, { lead: kernelLead(c?.page)?.kind ?? null }));
+  return ranked.filter((r, i) => i === 0 || unsaid.has(r));
 }

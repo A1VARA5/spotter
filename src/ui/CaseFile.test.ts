@@ -18,6 +18,24 @@ const base: Case = {
 };
 const html = (c: Case, peekScrolls?: number | null) => renderToStaticMarkup(createElement(CaseFile, { c, currency: "GBP", peekScrolls }));
 
+describe("internal ids never reach the page", () => {
+  it("shows a saved finding that still lists offer ids as shop names and prices", () => {
+    const out = html({
+      ...base,
+      page: undefined,
+      findings: [
+        {
+          tool: "find_genuine_offer",
+          source: "code_find_genuine_offer",
+          text: "offer_1: Soundform Dot Wireless Earbuds for £17.99 at belkin.com\noffer_2: Wave Beam In-Ear Wireless Earbuds for £39.95 at debenhams.com",
+        },
+      ],
+    });
+    expect(out).not.toContain("offer_");
+    expect(out).toContain("Soundform Dot Wireless Earbuds for £17.99 at belkin.com; Wave Beam In-Ear Wireless Earbuds for £39.95 at debenhams.com");
+  });
+});
+
 describe("the case file's proof card", () => {
   it("shows zero only for counts KERNEL recorded, and 'Not recorded' for the rest", () => {
     const out = html({ ...base, page: { ...base.page!, proof: { clicks: 0, keys: null, scrolls: 0, downloadsBlocked: null, apiCalls: 6, hashes: { screenshot: "f".repeat(64) }, deleted: true } } }, 3);

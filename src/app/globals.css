@@ -8028,6 +8028,13 @@ h3 {
   text-align: left;
 }
 
+/* How a decided payment ended, in the past tense, above its case file. */
+.sheet-outcome {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 @media (max-width: 640px) {
   .sheet,
   .sheet[data-wide] {

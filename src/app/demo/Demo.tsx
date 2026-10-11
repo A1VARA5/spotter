@@ -9,6 +9,7 @@ import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
 import { plainError, readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
+import { topReason } from "@/core/reasons";
 import "./demo.css";
 
 export type SpenderLite = { id: string; name: string; kind: string };
@@ -232,7 +233,7 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
 /** The outcome in the app's own words (labels.ts): the status, then the reason or the plain sentence for it. */
 function outcomeParts(p: Payment): [string, string] {
   const s = trackState(p.status);
-  const why = s === "failed" ? p.error : s === "held" ? OUTCOME_WORDS.held.explain : p.decision?.reasons[0];
+  const why = s === "failed" ? p.error : s === "held" ? OUTCOME_WORDS.held.explain : topReason(p);
   return [OUTCOME_WORDS[s].long, why ?? OUTCOME_WORDS[s].explain];
 }
 

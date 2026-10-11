@@ -230,7 +230,32 @@ describe("evidence pack: what it says", () => {
     await deny(deps, paymentId, "Sam");
     const t = await (await get("txt")).text();
     expect(t).toMatch(/Sam said no/);
-    expect(t).toMatch(/PayPal released the hold/);
+    expect(t).toMatch(/PayPal released the/);
+  });
+
+  it("after a decision, the case file's PayPal hold line is in the past tense and no offer ids show", async () => {
+    const rows = await db.query<{ case_file: Record<string, unknown> & { findings: unknown[] } }>("select case_file from payments where id = $1", [paymentId]);
+    const c = rows[0]!.case_file;
+    const findings = [
+      ...c.findings,
+      { text: "PayPal is holding the money, so nothing has been paid yet. If nobody approves it by Monday 9 November, the hold ends and nothing is paid.", tool: "paypal_hold", source: "c3" },
+      { text: "offer_1: Soundform Dot Wireless Earbuds for £17.99 at belkin.com\noffer_2: Wave Beam for £39.95 at debenhams.com", tool: "find_genuine_offer", source: "c4" },
+    ];
+    await db.query("update payments set case_file = $2 where id = $1", [paymentId, JSON.stringify({ ...c, findings })]);
+    await deny(deps, paymentId, "Sam");
+    for (const format of ["txt", undefined]) {
+      const t = await (await get(format)).text();
+      expect(t).not.toMatch(/holding the money|nothing has been paid yet|If nobody approves/);
+      expect(t).not.toContain("offer_");
+      expect(t).toContain("PayPal released the hold, so nothing was paid.");
+    }
+  });
+
+  it("a payment still being released says so, not that it is held", async () => {
+    await db.query("update payments set status = 'voiding', decided_by = 'Sam' where id = $1", [paymentId]);
+    const t = await (await get("txt")).text();
+    expect(t).not.toMatch(/PayPal is holding the money until the spotter decides/);
+    expect(t).toMatch(/Being released/);
   });
 });
 

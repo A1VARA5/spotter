@@ -12,6 +12,7 @@ import type { Db } from "@/db";
 import { claimsUsed, genuineOffers, likeUsed, likeUsedText, onePerShop, type LikeUsed, type MarketSummary, type Offer } from "@/core/market";
 import { formatMoney, type Currency } from "@/core/types";
 import { sameProduct, sellsTo, type ImageQuery, type PriceHigh, type Product } from "./channel3";
+import { plausibleOffers } from "./sanity";
 
 export type SpotDifference = { label: "Price" | "Condition" | "Was price" | "Web address" | "Seller"; here: string; real: string };
 
@@ -216,10 +217,12 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
     );
   // The going rate and the shop to show come from genuine new listings (and ones whose condition isn't known), one
   // price per shop, the same rule as the payment check; used ones only count for "priced like a used one".
-  const real = new Set<Offer>(genuineOffers(matched, input.currency));
-  const listings = matched.filter((o) => real.has(o));
+  // Fashion shops, designer brands the item doesn't name and a premium tail never set the going rate (sanity.ts).
+  const plausible = plausibleOffers(matched, item) as Listing[];
+  const real = new Set<Offer>(genuineOffers(plausible, input.currency));
+  const listings = plausible.filter((o) => real.has(o));
   if (!listings.length) return null;
-  const lu = claimsUsed(item) ? null : likeUsed(input.amount, input.currency, matched);
+  const lu = claimsUsed(item) ? null : likeUsed(input.amount, input.currency, plausible);
 
   const typical = median(onePerShop(listings).map((o) => o.price));
   const cheapest = listings.reduce((a, b) => (b.price < a.price ? b : a));
@@ -234,16 +237,13 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   const pick: Listing & { offerId?: string } = reuse ? { ...reuse, offerId: safer.id } : cheapest;
 
   const money = (minor: number) => formatMoney({ amount: minor, currency: input.currency });
-  const ratio = input.amount / typical;
-  const direction = ratio < 0.85 ? "cheaper" : ratio > 1.15 ? "dearer" : "similar";
   const shops = new Set(listings.map((l) => l.domain));
-  const headline =
-    shops.size > 1 ? `${money(input.amount)} here, about ${money(typical)} at real shops` : `${money(input.amount)} here, ${money(typical)} at ${pick.domain}`;
-  const verdict = direction === "cheaper" ? (ratio < 0.4 ? VERDICT.far : VERDICT.cheaper) : VERDICT[direction];
+  // The headline, the price row and the verdict all compare with the one listing the panel shows, so none of them
+  // can put a middle price next to a different listing. typical and offers still say what the going rate came from.
+  const { headline, direction, verdict } = compare(input.amount, pick.price, pick.domain, money);
 
   const differences: SpotDifference[] = [];
-  // The same middle price the verdict uses, so the row can never argue with it.
-  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: shops.size > 1 ? `about ${money(typical)}` : money(typical) });
+  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: money(pick.price) });
   if (lu) differences.push({ label: "Condition", here: `Sold as new for ${money(input.amount)}`, real: likeUsedText(lu, input.currency) });
   const wasHere = parseWas(input.page.was, input.currency);
   if (wasHere && deps.priceHigh) {
@@ -283,23 +283,32 @@ async function build(deps: SpotDeps, input: SpotInput): Promise<SpotTheDifferenc
   };
 }
 
-/** The panel from the payment's saved going rate: the same middle price, shop count and cheapest shop as the card. */
+/** One number, the direction and the verdict line, all against the one listing the panel shows. */
+function compare(amount: number, listed: number, domain: string, money: (minor: number) => string) {
+  const ratio = amount / listed;
+  const direction: SpotTheDifference["direction"] = ratio < 0.85 ? "cheaper" : ratio > 1.15 ? "dearer" : "similar";
+  return {
+    headline: `${money(amount)} here, ${money(listed)} at ${domain}`,
+    direction,
+    verdict: direction === "cheaper" ? (ratio < 0.4 ? VERDICT.far : VERDICT.cheaper) : VERDICT[direction],
+  };
+}
+
+/** The panel from the payment's saved going rate: the same shop count and cheapest shop as the card. */
 function fromMarket(input: SpotInput, typical: number, offers: number, c: Offer): SpotTheDifference {
   const money = (minor: number) => formatMoney({ amount: minor, currency: input.currency });
   const domain = c.domain.toLowerCase().replace(/^www\./, "");
   const shopHost = host(input.page.finalUrl);
-  const ratio = input.amount / typical;
-  const direction = ratio < 0.85 ? "cheaper" : ratio > 1.15 ? "dearer" : "similar";
-  const many = offers > 1;
+  const { headline, direction, verdict } = compare(input.amount, c.price, domain, money);
   const differences: SpotDifference[] = [];
-  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: many ? `about ${money(typical)}` : money(typical) });
+  if (direction !== "similar") differences.push({ label: "Price", here: money(input.amount), real: money(c.price) });
   if (shopHost && shopHost !== domain) differences.push({ label: "Web address", here: shopHost, real: domain });
   const payeeName = plain(input.payee, 60);
   const payee = input.payee.trim().toLowerCase();
   if (payeeName && payee !== shopHost && payee !== domain) differences.push({ label: "Seller", here: payeeName, real: domain });
   return {
-    headline: many ? `${money(input.amount)} here, about ${money(typical)} at real shops` : `${money(input.amount)} here, ${money(typical)} at ${domain}`,
-    verdict: direction === "cheaper" ? (ratio < 0.4 ? VERDICT.far : VERDICT.cheaper) : VERDICT[direction],
+    headline,
+    verdict,
     direction,
     differences: differences.slice(0, 3),
     typical,

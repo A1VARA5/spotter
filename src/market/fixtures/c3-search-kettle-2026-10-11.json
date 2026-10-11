@@ -1,0 +1,1297 @@
+{
+ "products": [
+  {
+   "id": "zKXXBUb",
+   "title": "Open Handle Kettle",
+   "description": "This Russell Hobbs kettle boasts a rapid boil zone that can boil water in just 45 seconds, perfect for busy mornings. Its sleek design, with a brushed stainless steel finish and black accents, adds a touch of modern style to any kitchen. The kettle features a perfect pour spout for precise pouring and a washable filter to ensure clean water every time. The energy-efficient design helps save time and money, making it a practical choice for everyday use. With a 1.7L capacity and a 3-year guarantee, this kettle is a reliable addition to your kitchen.",
+   "brands": [
+    {
+     "id": "9xrt",
+     "name": "Russell Hobbs"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/6acb7cee-6823-4063-8290-ed4d768e0806?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=jPjC",
+     "cleaned_url": "https://cdn.trychannel3.com/8a470840-e652-4e6f-98e1-90a79f5b1f7d?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=jPjC",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Stainless steel kettle with black base and handle on white background."
+    }
+   ],
+   "category": {
+    "slug": "electric-kettles",
+    "title": "Electric Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "kitchen-appliances",
+      "title": "Kitchen Appliances"
+     },
+     {
+      "slug": "electric-kettles",
+      "title": "Electric Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": "adult",
+   "materials": [
+    "Stainless Steel"
+   ],
+   "key_features": [
+    "Rapid boil zone boils water in just 45 seconds",
+    "Sleek design adds style to your kitchen",
+    "Perfect pour spout for precise pouring",
+    "Washable filter ensures clean water every time",
+    "Energy-efficient design saves time and money",
+    "1.7L capacity",
+    "3 Year Guarantee"
+   ],
+   "colors": [
+    {
+     "hex": "#d1d0ce",
+     "percentage": 0.2628
+    },
+    {
+     "hex": "#919190",
+     "percentage": 0.1293
+    },
+    {
+     "hex": "#3d3e40",
+     "percentage": 0.1276
+    },
+    {
+     "hex": "#f0efed",
+     "percentage": 0.123
+    },
+    {
+     "hex": "#1b1c1d",
+     "percentage": 0.1197
+    },
+    {
+     "hex": "#b2b1b0",
+     "percentage": 0.1194
+    },
+    {
+     "hex": "#6c6d6d",
+     "percentage": 0.1182
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/zKXXBUb-jPjC-hVFAd3?o=01KR336DT44Y6MVR4JCGBJHKDE&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "dunelm.com",
+     "price": {
+      "price": 38,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.016,
+     "dimensions": {
+      "length": {
+       "number": 22.8,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 15.8,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 24,
+       "unit": "cm"
+      },
+      "weight": {
+       "number": 0.93,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "pattern": [
+     "Solid"
+    ],
+    "power-source": [
+     "AC-powered"
+    ],
+    "electric-kettle-features": [
+     "Auto shut-off",
+     "Removable filter",
+     "Water level indicator"
+    ],
+    "material": [
+     "Stainless steel"
+    ]
+   },
+   "ratings": {
+    "value": 4.02,
+    "count": 47,
+    "source_count": 1
+   }
+  },
+  {
+   "id": "0k94nh6",
+   "title": "Marino Electric Kettle",
+   "description": "The Salter Marino 1.7L Jug Kettle is a stylish and modern electric kettle designed for any kitchen. With a generous 1.7L capacity and 3kW power, it can boil water quickly for multiple servings. It features a 360° swivel base for easy use, a Strix Technology Controller, Boil Dry Sensor, and Auto Shut-Off functions for safety and longevity. A removable limescale filter helps maintain water purity and improve the taste of hot drinks. The kettle has a blue-grey matte finish with champagne accents and is part of the elegant Marino range, allowing you to coordinate your kitchen countertops.",
+   "brands": [
+    {
+     "id": "v0mW",
+     "name": "Salter"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/3aa3dee2-d8b7-4bf4-958e-27ab65262e8c?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "cleaned_url": "https://cdn.trychannel3.com/51c2e6b8-3e00-4122-8010-ec2d673f1d7e?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Marino electric kettle in dark gray with gold accents, studio shot."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/ea9af23f-7fe5-4f1c-9108-e975e526ce4b?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "cleaned_url": "https://cdn.trychannel3.com/bd41f0a8-44fb-4414-a42d-0c450d07e773?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "Salter Rapid Boil 1.7L Electric Kettle features and description."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/b43c3b38-8249-49db-b302-8c853747ef38?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "cleaned_url": "https://cdn.trychannel3.com/70e6cd78-cbb4-4a6a-a663-5cfae68c6863?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "is_main_image": false,
+     "shot_type": "lifestyle",
+     "alt_text": "Salter kettle on a marble kitchen counter with other appliances."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/bf4e5d37-96bb-4462-8296-e8aecf9c356b?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "cleaned_url": "https://cdn.trychannel3.com/239c725f-ad59-4dd1-a148-e2c472f443c3?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=Eavb",
+     "is_main_image": false,
+     "shot_type": "lifestyle",
+     "alt_text": "Person pouring water from a Salter kettle into glasses."
+    }
+   ],
+   "category": {
+    "slug": "electric-kettles",
+    "title": "Electric Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "kitchen-appliances",
+      "title": "Kitchen Appliances"
+     },
+     {
+      "slug": "electric-kettles",
+      "title": "Electric Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": "adult",
+   "materials": [
+    "Stainless Steel"
+   ],
+   "key_features": [
+    "GENEROUS 1.7 LITRE CAPACITY",
+    "BOIL-DRY SENSOR",
+    "RAPID BOIL",
+    "REMOVABLE LIMESCALE FILTER",
+    "360° swivel base",
+    "Strix Technology Controller",
+    "Auto Shut-Off"
+   ],
+   "colors": [
+    {
+     "hex": "#474f52",
+     "percentage": 0.525
+    },
+    {
+     "hex": "#2d3235",
+     "percentage": 0.2421
+    },
+    {
+     "hex": "#d7d2c8",
+     "percentage": 0.1312
+    },
+    {
+     "hex": "#979490",
+     "percentage": 0.1017
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/0k94nh6-Eavb-hVFAd3?o=01KRCX9KT0AR3P7W9NT5N80BEN&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "salter.com",
+     "price": {
+      "price": 34.99,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.035,
+     "dimensions": {
+      "length": {
+       "number": 24.1,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 15.6,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 22.2,
+       "unit": "cm"
+      },
+      "weight": null
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "electric-kettle-features": [
+     "360-degree swivel base",
+     "Auto shut-off",
+     "Boil-dry protection",
+     "Removable filter",
+     "Water level indicator",
+     "Temperature display"
+    ],
+    "power-source": [
+     "AC-powered"
+    ],
+    "material": [
+     "Stainless steel"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "7rBae9s",
+   "title": "Eclipse 1.7L Kettle",
+   "description": "The Russell Hobbs Eclipse 1.7L Kettle features a sophisticated ombre effect design that blends style with efficiency. It is equipped with rapid boil technology for quick heating and a perfect pour spout to ensure a drip-free experience. Designed for the modern kitchen, it also includes energy-saving features to reduce power consumption.",
+   "brands": [
+    {
+     "id": "9xrt",
+     "name": "Russell Hobbs"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/dc8258a0-6ade-4e71-852e-0e1fdf26610c?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=jPjC",
+     "cleaned_url": null,
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Russell Hobbs Eclipse 1.7L kettle in dark grey and stainless steel."
+    }
+   ],
+   "category": {
+    "slug": "electric-kettles",
+    "title": "Electric Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "kitchen-appliances",
+      "title": "Kitchen Appliances"
+     },
+     {
+      "slug": "electric-kettles",
+      "title": "Electric Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "stainless steel"
+   ],
+   "key_features": [
+    "Unique ombre effect design",
+    "Rapid boil technology",
+    "Perfect pour spout",
+    "Energy-saving features",
+    "1.7L capacity"
+   ],
+   "colors": [
+    {
+     "hex": "#9c9fa3",
+     "percentage": 0.2714
+    },
+    {
+     "hex": "#273340",
+     "percentage": 0.138
+    },
+    {
+     "hex": "#051525",
+     "percentage": 0.1317
+    },
+    {
+     "hex": "#44474c",
+     "percentage": 0.1201
+    },
+    {
+     "hex": "#c6c5c5",
+     "percentage": 0.1167
+    },
+    {
+     "hex": "#6c7279",
+     "percentage": 0.1147
+    },
+    {
+     "hex": "#1b1d21",
+     "percentage": 0.1073
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/7rBae9s-jPjC-hVFAd3?o=01M31XMSY1VGGJRS48JNAZ96GG&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "dunelm.com",
+     "price": {
+      "price": 70,
+      "compare_at_price": 704124,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.016,
+     "dimensions": {
+      "length": {
+       "number": 22.5,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 15.8,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 24.5,
+       "unit": "cm"
+      },
+      "weight": {
+       "number": 1.18,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "electric-kettle-features": [
+     "Water level indicator"
+    ],
+    "material": [
+     "Stainless steel"
+    ],
+    "power-source": [
+     "AC-powered"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "ywyKWY3",
+   "title": "Kettle",
+   "description": "Enrich your home with elegance and style with the Diadema breakfast collection. This powerful Platinum-coloured electric kettle makes any tea or coffee break a pleasure, featuring rapid boiling capability with a 3000W heating element, a soft-opening flip lid, and a 360° cordless swivel base. It includes a removable and washable water filter to ensure purity and a water window to see the level easily.",
+   "brands": [
+    {
+     "id": "3zru",
+     "name": "De Longhi"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/89945f5e-d7e4-40e8-a0ab-92fa4cb4d43f?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "cleaned_url": "https://cdn.trychannel3.com/e08efcba-bca9-409a-9f98-120a45f4afbd?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Silver and black electric kettle with a stainless steel finish and black base."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/3675d239-d7da-4c45-8eee-07998eacbc20?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "in_use",
+     "alt_text": "Hands opening the lid of a stainless steel electric kettle."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/ba3a1441-4314-4099-919d-7bcb7de23a30?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/ba3a1441-4314-4099-919d-7bcb7de23a30?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "is_main_image": false,
+     "shot_type": "on_model",
+     "alt_text": "A person's hand holding the lid of a stainless steel electric kettle."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/5f2fd77d-a4bc-4ab6-850f-985f7b4a3b59?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "detail",
+     "alt_text": "Close-up of the handle and base of a stainless steel electric kettle."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/53c5db50-d9ab-44d0-ad29-3fd76e52c379?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=JQIc",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "lifestyle",
+     "alt_text": "A woman enjoying a drink in a modern kitchen setting with an electric kettle."
+    }
+   ],
+   "category": {
+    "slug": "electric-kettles",
+    "title": "Electric Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "kitchen-appliances",
+      "title": "Kitchen Appliances"
+     },
+     {
+      "slug": "electric-kettles",
+      "title": "Electric Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "Metal"
+   ],
+   "key_features": [
+    "Rapid boiling with 3000W heating element",
+    "Anti-scale removable and washable filter",
+    "360° swivel base for cordless operation",
+    "Water level indicator window",
+    "Soft opening flip lid"
+   ],
+   "colors": [
+    {
+     "hex": "#c6c6c6",
+     "percentage": 0.2569
+    },
+    {
+     "hex": "#eaeaea",
+     "percentage": 0.2536
+    },
+    {
+     "hex": "#848484",
+     "percentage": 0.1395
+    },
+    {
+     "hex": "#a2a2a2",
+     "percentage": 0.122
+    },
+    {
+     "hex": "#222221",
+     "percentage": 0.1213
+    },
+    {
+     "hex": "#666665",
+     "percentage": 0.1067
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/ywyKWY3-JQIc-hVFAd3?o=01KZ6C670ERF2TFZP1EPFGT6R5&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "delonghi.com",
+     "price": {
+      "price": 149.9,
+      "compare_at_price": 149.99,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.052,
+     "dimensions": {
+      "length": null,
+      "width": null,
+      "height": null,
+      "weight": {
+       "number": 1.4,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "electric-kettle-features": [
+     "360-degree swivel base",
+     "Auto shut-off",
+     "Removable filter",
+     "Water level indicator"
+    ],
+    "material": [
+     "Metal"
+    ],
+    "pattern": [
+     "Diamond"
+    ],
+    "power-source": [
+     "AC-powered"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "lNhSBhm",
+   "title": "Smeg Whistling Tea Kettle",
+   "description": "Experience vintage elegance with this Smeg 50's Style Kettle in Slate Grey. This iconic electric kettle boasts a generous 1.7L capacity, perfect for preparing up to 7 cups of your favorite hot beverages. Its powerful 3000W element ensures rapid boiling, while the 'soft opening' lid system, balanced-weight spout, and automatic shut-off at 100°C offer safe and effortless use. The removable, washable stainless steel limescale filter and concealed heating element ensure every pour is pure and delicious. With a convenient 360° swivel base, cord tidy, and anti-slip feet, this kettle combines stylish convenience with modern performance.",
+   "brands": [
+    {
+     "id": "2Jaz",
+     "name": "SMEG"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/92e29054-58d8-4b29-bdba-b503b64bc8ea?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=prTs",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/92e29054-58d8-4b29-bdba-b503b64bc8ea?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=prTs",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Dark grey Smeg kettle with silver trim, shown from the front."
+    }
+   ],
+   "category": {
+    "slug": "electric-kettles",
+    "title": "Electric Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "kitchen-appliances",
+      "title": "Kitchen Appliances"
+     },
+     {
+      "slug": "electric-kettles",
+      "title": "Electric Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "Stainless steel"
+   ],
+   "key_features": [
+    "1.7 L capacity",
+    "3000 W heating element",
+    "360° swivel base",
+    "Automatic shut-off at 100 °C",
+    "Soft-opening lid",
+    "Removable stainless-steel limescale filter",
+    "Cord tidy"
+   ],
+   "colors": [
+    {
+     "hex": "#3c3c43",
+     "percentage": 0.6291
+    },
+    {
+     "hex": "#d1d1d2",
+     "percentage": 0.1333
+    },
+    {
+     "hex": "#57585e",
+     "percentage": 0.1247
+    },
+    {
+     "hex": "#8b8b8e",
+     "percentage": 0.1129
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/lNhSBhm-prTs-hVFAd3?o=01M24AG6039QPXM9NJFSW2D0HQ&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "next.co.uk",
+     "price": {
+      "price": 150,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0,
+     "dimensions": {
+      "length": {
+       "number": 171,
+       "unit": "mm"
+      },
+      "width": {
+       "number": 226,
+       "unit": "mm"
+      },
+      "height": {
+       "number": 248,
+       "unit": "mm"
+      },
+      "weight": null
+     }
+    },
+    {
+     "url": "https://buy.trychannel3.com/lNhSBhm-UO8z-hVFAd3?o=01KRQ9KKQ4D4P8KF6MAY9D8B38&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "shop.smeguk.com",
+     "price": {
+      "price": 159.95,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0,
+     "dimensions": {
+      "length": {
+       "number": 171,
+       "unit": "mm"
+      },
+      "width": {
+       "number": 226,
+       "unit": "mm"
+      },
+      "height": {
+       "number": 248,
+       "unit": "mm"
+      },
+      "weight": {
+       "number": 1.6,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": {
+    "options": [
+     {
+      "name": "Colour",
+      "values": [
+       {
+        "label": "Matte Moonlight",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/92e29054-58d8-4b29-bdba-b503b64bc8ea",
+        "product_id": "lNhSBhm"
+       },
+       {
+        "label": "Navy Blue",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/5565765a-4dbc-4135-8424-92ac0399b11c",
+        "product_id": "FoTqSOE"
+       },
+       {
+        "label": "Matte Storm Blue",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/5b6e389c-f75a-4d86-b08b-4e0e384f906e",
+        "product_id": "t2DmNJh"
+       },
+       {
+        "label": "Matte Emerald Green",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/3fd3908b-0296-48c6-89ea-17530f911962",
+        "product_id": "M8aGT5w"
+       },
+       {
+        "label": "Matte Black",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/0ec45eef-8e3d-4462-8dbe-587a01950a31",
+        "product_id": "qqqdeWl"
+       },
+       {
+        "label": "Matte Champagne",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/d0f8b604-7a2e-4465-8a43-db9120d01edc",
+        "product_id": "UgOMu9d"
+       },
+       {
+        "label": "Pastel Blue",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/695f8a3d-d6b1-4de8-901f-8206ed30c0e7",
+        "product_id": "08orEAu"
+       },
+       {
+        "label": "Matte White",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/73f11d7d-941d-450f-afdb-d4dc25a08f49",
+        "product_id": "xs1rley"
+       },
+       {
+        "label": "Carrara White",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/280d5627-6b45-4bfa-9a56-580b2145e532",
+        "product_id": "cygylzC"
+       },
+       {
+        "label": "Stainless Steel",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/a8e7d934-38b8-42fe-95e9-2d8095399206",
+        "product_id": "XA7OnKp"
+       }
+      ]
+     }
+    ],
+    "selected": [
+     {
+      "name": "Colour",
+      "label": "Matte Moonlight"
+     }
+    ]
+   },
+   "structured_attributes": {
+    "electric-kettle-features": [
+     "360-degree swivel base",
+     "Auto shut-off",
+     "Removable filter",
+     "Water level indicator"
+    ],
+    "material": [
+     "Stainless steel",
+     "Plastic"
+    ],
+    "power-source": [
+     "AC-powered"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "temperature-control": [
+     "Preset temperature"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "vYlA99Q",
+   "title": "Le Creuset Traditional Kettle",
+   "description": "The Le Creuset Traditional Kettle is a classic kitchen essential designed with both style and efficiency. Crafted from enamelled carbon steel, it features a vibrant azure blue finish and a whistling spout to notify you when water has boiled. The kettle is equipped with an ergonomic, heat-resistant handle for safe pouring and a wide base that ensures efficient heating across various heat sources, including induction hobs.",
+   "brands": [
+    {
+     "id": "FXCc",
+     "name": "Le Creuset"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/6d3b1ca6-f505-41f3-a008-0c3189ba40ab?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=5SwX",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/6d3b1ca6-f505-41f3-a008-0c3189ba40ab?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=5SwX",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Blue Le Creuset Tradition kettle on white background."
+    }
+   ],
+   "category": {
+    "slug": "stovetop-kettles",
+    "title": "Stovetop Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "cookware-bakeware",
+      "title": "Cookware & Bakeware"
+     },
+     {
+      "slug": "cookware",
+      "title": "Cookware"
+     },
+     {
+      "slug": "stovetop-kettles",
+      "title": "Stovetop Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "Enamelled Carbon Steel"
+   ],
+   "key_features": [
+    "Whistles when water is ready",
+    "Extra-strong induction suitable bottom for fast heating",
+    "Ergonomic, heat-resistant handle for safe, easy pouring",
+    "Wide base for more efficient heating",
+    "Crafted from enamelled carbon steel"
+   ],
+   "colors": [
+    {
+     "hex": "#659ed2",
+     "percentage": 0.289
+    },
+    {
+     "hex": "#ffffff",
+     "percentage": 0.1729
+    },
+    {
+     "hex": "#1a2239",
+     "percentage": 0.1291
+    },
+    {
+     "hex": "#354f81",
+     "percentage": 0.1239
+    },
+    {
+     "hex": "#4a75ae",
+     "percentage": 0.1226
+    },
+    {
+     "hex": "#273457",
+     "percentage": 0.1142
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/vYlA99Q-5SwX-hVFAd3?o=01M2TKQKGHCCXQJS36XR8W7HP4&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "lecreuset.no",
+     "price": {
+      "price": 135,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.07,
+     "dimensions": {
+      "length": {
+       "number": 27.6,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 20.9,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 25.2,
+       "unit": "cm"
+      },
+      "weight": {
+       "number": 1.63,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": {
+    "options": [
+     {
+      "name": "Colour",
+      "values": [
+       {
+        "label": "Azure",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/6d3b1ca6-f505-41f3-a008-0c3189ba40ab",
+        "product_id": "vYlA99Q"
+       },
+       {
+        "label": "Marseille Blue",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/32798f24-3ceb-42de-8261-36cfa6dda2af",
+        "product_id": "vxnkIIX"
+       },
+       {
+        "label": "Thyme",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/e49dc12c-9570-4c8e-8c8b-ff44ec62242c",
+        "product_id": "CRfYoFL"
+       }
+      ]
+     }
+    ],
+    "selected": [
+     {
+      "name": "Colour",
+      "label": "Azure"
+     }
+    ]
+   },
+   "structured_attributes": {
+    "cookware-bakeware-material": [
+     "Carbon steel"
+    ],
+    "compatible-stove-top-type": [
+     "Ceramic",
+     "Gas",
+     "Induction"
+    ],
+    "cookware-bakeware-features": [
+     "Induction ready",
+     "Lid",
+     "Stay cool handle"
+    ],
+    "cookware-coating-type": [
+     "Enamel"
+    ],
+    "finish": [
+     "Gloss"
+    ],
+    "whistling": [
+     "Whistling"
+    ],
+    "handle-material": [
+     "Plastic"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "cleaning-instructions": [
+     "Hand wash only"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "Ibhp0ht",
+   "title": "Flint Kone Kettle",
+   "description": "The Le Creuset Flint Kone Kettle is a stylish stovetop kettle crafted from enamelled steel in a sophisticated Flint grey color. It features a wide base for efficient heating, a handle locked in an upright position for steady pouring, and a built-in whistle to alert you when the water has reached a boil. It is compatible with all hob types, including induction and cast iron stoves like Aga.",
+   "brands": [
+    {
+     "id": "FXCc",
+     "name": "Le Creuset"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/37ddc48d-f028-4844-b7c2-60c350aab2e9?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=XUA5",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/37ddc48d-f028-4844-b7c2-60c350aab2e9?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=XUA5",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Matte gray Le Creuset Flint Kone kettle with black handle on white background."
+    }
+   ],
+   "category": {
+    "slug": "stovetop-kettles",
+    "title": "Stovetop Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "cookware-bakeware",
+      "title": "Cookware & Bakeware"
+     },
+     {
+      "slug": "cookware",
+      "title": "Cookware"
+     },
+     {
+      "slug": "stovetop-kettles",
+      "title": "Stovetop Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "enamelled steel"
+   ],
+   "key_features": [
+    "Suitable for all hob types including induction",
+    "Whistles when water boils",
+    "Le Creuset 5 year guarantee",
+    "Crafted from enamelled steel",
+    "Wide base for efficient heating",
+    "Handle locked in an upright position for steady pouring"
+   ],
+   "colors": [
+    {
+     "hex": "#7e7a78",
+     "percentage": 0.2864
+    },
+    {
+     "hex": "#ffffff",
+     "percentage": 0.1902
+    },
+    {
+     "hex": "#2e2c2c",
+     "percentage": 0.1302
+    },
+    {
+     "hex": "#171514",
+     "percentage": 0.1236
+    },
+    {
+     "hex": "#4f4d4c",
+     "percentage": 0.1091
+    },
+    {
+     "hex": "#a4a2a1",
+     "percentage": 0.1023
+    },
+    {
+     "hex": "#dfdede",
+     "percentage": 0.0581
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/Ibhp0ht-XUA5-hVFAd3?o=01M2RSYK1A4SSK8HF3XE8FZD9V&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "hartsofstur.com",
+     "price": {
+      "price": 109,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.049,
+     "dimensions": {
+      "length": {
+       "number": 25.6,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 19.9,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 24.3,
+       "unit": "cm"
+      },
+      "weight": {
+       "number": 1.14,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "whistling": [
+     "Whistling"
+    ],
+    "compatible-stove-top-type": [
+     "Induction"
+    ],
+    "finish": [
+     "Matte"
+    ],
+    "cookware-bakeware-features": [
+     "Induction ready"
+    ],
+    "handle-material": [
+     "Plastic"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "cookware-bakeware-material": [
+     "Metal"
+    ],
+    "cookware-coating-type": [
+     "Enamel"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "BrJIO9H",
+   "title": "Traditional Kettle",
+   "description": "A classic, traditional whistling kettle from Le Creuset, crafted from durable enamelled carbon steel. This model features a wide base for efficient heating and is compatible with various heat sources, including induction. It includes an ergonomic, heat-resistant handle for safe pouring and is available in a variety of vibrant colors, including Flint.",
+   "brands": [
+    {
+     "id": "FXCc",
+     "name": "Le Creuset"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/b59cac11-2d59-45e4-bbb1-969749cb9779?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=5SwX",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/b59cac11-2d59-45e4-bbb1-969749cb9779?aid=01M4NZQZ3FHJHC44EE266B4WCV&mid=5SwX",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Grey Le Creuset traditional teapot on white background."
+    }
+   ],
+   "category": {
+    "slug": "stovetop-kettles",
+    "title": "Stovetop Kettles",
+    "path": [
+     {
+      "slug": "home-garden",
+      "title": "Home & Garden"
+     },
+     {
+      "slug": "kitchen-dining",
+      "title": "Kitchen & Dining"
+     },
+     {
+      "slug": "cookware-bakeware",
+      "title": "Cookware & Bakeware"
+     },
+     {
+      "slug": "cookware",
+      "title": "Cookware"
+     },
+     {
+      "slug": "stovetop-kettles",
+      "title": "Stovetop Kettles"
+     }
+    ],
+    "has_children": false
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "Enamelled Carbon Steel"
+   ],
+   "key_features": [
+    "Whistles when water is ready",
+    "Extra-strong induction suitable bottom for fast heating",
+    "Ergonomic, heat-resistant handle for safe, easy pouring",
+    "Wide base for advanced efficiency",
+    "Crafted from high-quality enamelled steel"
+   ],
+   "colors": [
+    {
+     "hex": "#878584",
+     "percentage": 0.2931
+    },
+    {
+     "hex": "#232325",
+     "percentage": 0.2496
+    },
+    {
+     "hex": "#ffffff",
+     "percentage": 0.1778
+    },
+    {
+     "hex": "#414144",
+     "percentage": 0.1299
+    },
+    {
+     "hex": "#636363",
+     "percentage": 0.099
+    },
+    {
+     "hex": "#c7c7c6",
+     "percentage": 0.0506
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/BrJIO9H-5SwX-hVFAd3?o=01M2TK41MMAFX383WX90T1K05Y&aid=01M4NZQZ3FHJHC44EE266B4WCV",
+     "domain": "lecreuset.no",
+     "price": {
+      "price": 135,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.07,
+     "dimensions": {
+      "length": {
+       "number": 27.6,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 20.9,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 25.2,
+       "unit": "cm"
+      },
+      "weight": {
+       "number": 1.63,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "cookware-coating-type": [
+     "Enamel"
+    ],
+    "cookware-bakeware-features": [
+     "Induction ready",
+     "Lid",
+     "Stay cool handle"
+    ],
+    "whistling": [
+     "Whistling"
+    ],
+    "cookware-bakeware-material": [
+     "Carbon steel"
+    ],
+    "finish": [
+     "Matte"
+    ],
+    "compatible-stove-top-type": [
+     "Ceramic",
+     "Gas",
+     "Induction"
+    ],
+    "cleaning-instructions": [
+     "Hand wash only"
+    ],
+    "pattern": [
+     "Solid"
+    ]
+   },
+   "ratings": null
+  }
+ ],
+ "next_page_token": "eyJjYWNoZV9rZXkiOiAic2VhcmNoOmVkM2EzYWRmYzhhYTYzMjciLCAib2Zmc2V0IjogOH0="
+}

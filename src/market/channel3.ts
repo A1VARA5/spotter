@@ -3,6 +3,7 @@
 import type { Db } from "@/db";
 import { genuineOffers, type Offer } from "@/core/market";
 import type { Currency } from "@/core/types";
+import { plausibleOffers } from "./sanity";
 
 const BASE = "https://api.trychannel3.com";
 const TIMEOUT_MS = 8_000;
@@ -279,7 +280,11 @@ function sameKind(products: Product[]): Product[] {
 export function offersFor(products: Product[], item: string): Offer[] {
   const matched = sameKind(products.filter((p) => sameProduct(item, p.title)));
   // Checked here too, for products cached before toOffers left other countries' shops out.
-  const all = matched.flatMap((p) => p.offers).filter((o) => sellsTo(o.domain, o.currency));
+  // Fashion shops, designer brands the item doesn't name, and a premium tail are left out (src/market/sanity.ts).
+  const all = plausibleOffers(
+    matched.flatMap((p) => p.offers).filter((o) => sellsTo(o.domain, o.currency)),
+    item,
+  );
   const real = new Set([...new Set(all.map((o) => o.currency))].flatMap((c) => genuineOffers(all, c)));
   return all.filter((o) => o.condition === "used" || real.has(o));
 }
@@ -287,9 +292,9 @@ export function offersFor(products: Product[], item: string): Offer[] {
 /** Cached lookup used by the payment check. */
 export function makeMarket(db: Db) {
   return async (item: string, currency: Currency): Promise<Offer[] | null> => {
-    // "c4": other countries' shops and other departments are left out too (c3: far below listings, c2: condition), so
-    // older rows aren't reused.
-    const key = `c4:${currency}:${item.trim().toLowerCase()}`;
+    // "c5": fashion shops, designer brands and a premium tail are left out too (c4: other countries and departments,
+    // c3: far below listings, c2: condition), so older rows aren't reused.
+    const key = `c5:${currency}:${item.trim().toLowerCase()}`;
     const hit = await db.query<{ offers: Offer[] }>(
       `select offers from market_cache where key = $1 and fetched_at > now() - interval '${CACHE_DAYS} days'`,
       [key],

@@ -188,6 +188,14 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
       data: { status: ordered.status ?? null, paypalOrderId: ordered.paypal_order_id ?? null, amount: ordered.amount ?? null, paymentId },
     });
 
+    // The lab knows exactly what its agent read, so it is kept on the order: when the tripwire springs, the paused
+    // agent's card can quote the hidden line (src/core/tripwire.ts latestCause). A failed write only loses that quote.
+    if (paymentId && hidden) {
+      await db
+        .query("insert into events (payment_id, type, data) values ($1, 'agent_read', $2)", [paymentId, JSON.stringify({ url: SHOP_URL_PATH, hidden: hidden.slice(0, 400) })])
+        .catch((e) => console.error(`[spotter] agent lab: couldn't record the page the agent read for ${paymentId}:`, e instanceof Error ? e.message : e));
+    }
+
     const baitCall = plan[1];
     if (!baitCall) throw new Error("The page didn't have the refund line, so the agent had nothing to fall for.");
     const baitReply = textOf(await rpc("tools/call", { name: baitCall.name, arguments: baitCall.arguments }));

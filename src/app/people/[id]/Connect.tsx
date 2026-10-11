@@ -80,10 +80,10 @@ const TOOLSETS = {
     sub: "Four tools: find products at real shops (Channel3), request a payment, check a payment, check its allowance. There is no approve tool.",
   },
   toolkit: {
-    label: "PayPal's Agent Toolkit",
+    label: "The PayPal Agent Toolkit",
     path: "/api/toolkit/mcp",
     server: "paypal-via-spotter",
-    sub: "PayPal's own tools, with the same names and arguments. Spotter sits in the middle: orders, refunds and subscriptions wait for you, and a tool a hijacked agent reaches for freezes it.",
+    sub: "The real PayPal tools, with the same names and arguments. Spotter sits in the middle: orders, refunds and subscriptions wait for you, and a tool a hijacked agent reaches for freezes it.",
   },
 } as const;
 
@@ -147,7 +147,7 @@ function AgentCard({ spender }: { spender: SpenderView }) {
       )}
       {tools === "toolkit" && currency !== "USD" && (
         <div className="connect-warn">
-          <p>PayPal&apos;s toolkit makes orders in US dollars, and {spender.name}&apos;s allowance is in pounds, so its orders would be stopped.</p>
+          <p>The PayPal toolkit makes orders in US dollars, and {spender.name}&apos;s allowance is in pounds, so its orders would be stopped.</p>
           <p>This week&apos;s spend is counted per currency, so after the switch the dollar tally starts at nothing and the pounds already spent stay on the pound tally.</p>
           <button className="btn btn-quiet" aria-disabled={cur.busy || undefined} onClick={() => switchTo("USD")}>
             {cur.busy ? "Switching" : "Set this agent's allowance in dollars"}
@@ -232,7 +232,7 @@ function AgentCard({ spender }: { spender: SpenderView }) {
             </p>
           ) : (
             <p className="connect-sub">
-              For example: &quot;Use PayPal to order a $45 desk lamp from BrightHome and pay for it.&quot; The agent calls PayPal&apos;s create_order and pay_order as usual.
+              For example: &quot;Use PayPal to order a $45 desk lamp from BrightHome and pay for it.&quot; The agent calls create_order and pay_order from the PayPal toolkit as usual.
               Spotter checks the order first, and anything over the ask me amount waits on your dashboard; pay_order only reports what Spotter decided.
             </p>
           )}

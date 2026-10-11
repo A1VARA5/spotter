@@ -5,6 +5,7 @@ import type { Payment, Spender } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { send } from "./agentboxd";
 import { askingAgain } from "@/core/sleep";
+import { rankedReasons } from "@/core/reasons";
 import { block, esc, layout, list, markedText, quoteBox, track } from "./template";
 import { askLines, tokenFor, wasItYouLine, type WasItYou } from "@/core/was-it-you";
 
@@ -12,7 +13,8 @@ export function alertEmail(p: Payment, spender: Spender, site: string): { subjec
   const amount = formatMoney({ amount: Number(p.amount), currency: p.currency as "GBP" });
   const to = p.request.payee.name;
   const held = p.status === "needs_approval";
-  const reasons = p.decision?.reasons ?? [];
+  // Strongest sign first, so the preheader and the list lead with it (src/core/reasons.ts).
+  const reasons = rankedReasons(p);
   const link = `${site}/dashboard`;
   const again = askingAgain(p);
   const subject = held

@@ -16,6 +16,7 @@ const HEADINGS: Partial<Record<WarningKind, { heading: string; eyebrow: string }
   agent_hijacked: { heading: "An AI agent was paused", eyebrow: "Agent paused" },
   refund_held: { heading: "A refund is waiting for you", eyebrow: "Refund held" },
   subscription_held: { heading: "A subscription is waiting for you", eyebrow: "Subscription held" },
+  hold_unconfirmed: { heading: "PayPal never answered about a payment", eyebrow: "Not paid" },
 };
 
 export function makeWarn(db: Db, site: string, ch: { telegram?: TgSend; discord?: Dm; email?: Mail }): Warn {

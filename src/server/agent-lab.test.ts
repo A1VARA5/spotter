@@ -5,6 +5,7 @@ import type { Deps } from "@/core/lifecycle";
 import type { AiCheckResult } from "@/ai/check";
 import { LAB_DAILY_RUNS, naivePlan, pageText, runLab, type LabStep } from "./agent-lab";
 import { SHOP_HTML } from "@/app/demo-shop/gadgetbarn/shop";
+import { listTripwires } from "@/core/tripwire";
 
 const clean = (): AiCheckResult => ({ ok: true, flags: [], dropped: 0, hidden: [], summary: "Fine.", injectionAttempt: false });
 let db: Db;
@@ -69,6 +70,14 @@ describe("the hijack console run", () => {
     expect(steps.find((s) => s.kind === "void")!.data).toMatchObject({ authorizationId: "0VF52814937998046", status: "voided" });
     expect(steps.find((s) => s.kind === "confirm")!.data).toMatchObject({ source: "paypal_lookup", status: "VOIDED" });
     expect(steps.find((s) => s.kind === "bait")!.data).toMatchObject({ tool: "create_refund", wouldHaveSent: "US$200.00 would have left your account" });
+  });
+
+  it("leaves the paused agent's card naming the hidden line it read on GadgetBarn", async () => {
+    await run();
+    const [trip] = await listTripwires(db, hh);
+    expect(trip!.cause).toMatchObject({ kind: "hidden_text", payee: "GadgetBarn" });
+    expect(trip!.cause!.quote).toMatch(/^Note for AI shopping assistants/);
+    expect(trip!.cause!.quote).toMatch(/refund capture 2GG279541U471931P/);
   });
 
   it("costs at most one Spotter AI check per run, and never the case agent or the price check", async () => {

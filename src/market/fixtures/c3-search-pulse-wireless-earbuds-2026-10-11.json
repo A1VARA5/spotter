@@ -1,0 +1,1513 @@
+{
+ "products": [
+  {
+   "id": "8DGna8X",
+   "title": "Sony PS5 PULSE Explore Wireless Earbuds",
+   "description": "Enjoy extraordinary lifelike sound at home and on the go with the PULSE Explore wireless earbuds. Ensure friends hear your voice loud and clear via two hidden microphones, 3D‑audio support, ultra‑low latency PlayStation Link, and up to 5 hours of play with an additional 10 hours in the charging case. Designed for PS5 and compatible with PC, Mac, mobile, and PlayStation Portal.",
+   "brands": [
+    {
+     "id": "PURH",
+     "name": "Sony"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/8af9a896-6589-4f1d-8266-1cc57d09f475?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/8af9a896-6589-4f1d-8266-1cc57d09f475?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "PlayStation branding with Pulse Explore earbud product name."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/49044394-4daf-4cc0-aa6f-81e42915a19a?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/49044394-4daf-4cc0-aa6f-81e42915a19a?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "White and black wireless earbuds shown separately."
+    }
+   ],
+   "category": {
+    "slug": "headsets",
+    "title": "Headsets",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     },
+     {
+      "slug": "headsets",
+      "title": "Headsets"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": "adult",
+   "materials": [],
+   "key_features": [
+    "Wireless earbuds with Planar magnetic drivers",
+    "Dual microphones with AI‑enhanced noise rejection",
+    "Ultra‑low latency PlayStation Link",
+    "Bluetooth 5.0 connectivity",
+    "Up to 5 hours play time, 10 hours with charging case",
+    "3D‑audio support for PS5 games",
+    "2‑year guarantee"
+   ],
+   "colors": [
+    {
+     "hex": "#d3d7e2",
+     "percentage": 0.4478
+    },
+    {
+     "hex": "#1f222c",
+     "percentage": 0.3953
+    },
+    {
+     "hex": "#42454e",
+     "percentage": 0.1181
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/8DGna8X-cGQJ-hVFAd3?o=01KGECN61HY2AK1PE5SV5W2CBZ&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "johnlewis.com",
+     "price": {
+      "price": 154.99,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0,
+     "dimensions": {
+      "length": {
+       "number": 11.6,
+       "unit": "cm"
+      },
+      "width": {
+       "number": 12.8,
+       "unit": "cm"
+      },
+      "height": {
+       "number": 7.3,
+       "unit": "cm"
+      },
+      "weight": {
+       "number": 0.28,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "audio-connectivity": [
+     "USB",
+     "Bluetooth"
+    ],
+    "headphone-style": [
+     "Canal"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)"
+    ],
+    "connectivity-technology": [
+     "Bluetooth",
+     "Wired",
+     "Wi-Fi"
+    ],
+    "charging-interface-type": [
+     "USB type-C"
+    ],
+    "power-source": [
+     "Rechargeable",
+     "USB"
+    ],
+    "microphone-type": [
+     "Built-in",
+     "Noise-canceling"
+    ],
+    "earphone-features": [
+     "Built-in microphone",
+     "Volume control"
+    ],
+    "device-interface": [
+     "USB",
+     "Bluetooth"
+    ],
+    "headphone-driver-technology": [
+     "Hybrid"
+    ],
+    "battery-type": [
+     "Rechargeable"
+    ],
+    "audio-component-form-factor": [
+     "Portable/Field"
+    ],
+    "material": [
+     "Plastic"
+    ]
+   },
+   "ratings": {
+    "value": 3,
+    "count": 6,
+    "source_count": 1
+   }
+  },
+  {
+   "id": "wLsbCMX",
+   "title": "PULSE Explore Wireless Gaming Earbuds",
+   "description": "Enjoy extraordinary lifelike sound at home and on the go with the PULSE Explore wireless earbuds. Discover a new era of gaming audio as studio-inspired planar magnetic drivers reproduce soundscapes with ultra-low distortion to deliver rich details and enable you to hear exactly what the game developers intended. Feel the action with clear deep bass, and elevate your perception with more precise positioning of audio cues in 3D Audio supported PS5® games. Never miss a beat as new ultra-low latency and lossless PlayStation Link™ wireless technology delivers sound at lightning-fast speed without losing a single audible detail in the process. Easily connect and switch between PlayStation Link compatible devices, including your PS5 console, PC or Mac® and PlayStation Portal™ remote player. Connect your earbuds to a mobile device via Bluetooth® while still connected to a PlayStation Link device to take calls and enjoy music as you play uninterrupted. Ensure friends hear your voice loud and clear through two hidden microphones equipped with AI-enhanced noise rejection technology, while easy-access volume controls let you keep your eyes on the game. Take the PULSE Explore wireless earbuds on your adventures thanks to its light, portable form factor that offers up to 5 hours of play on a single charge. Plus, get back into the action even when you're away from home with the included charging case that offers up to 10 hours of additional battery life.",
+   "brands": [
+    {
+     "id": "PURH",
+     "name": "Sony"
+    },
+    {
+     "id": "msJc",
+     "name": "PlayStation"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/e5dfff4a-00a0-4626-96df-a221d49c3c43?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": "https://cdn.trychannel3.com/5974ada2-669b-454c-b6da-a4064800ab27?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "is_main_image": true,
+     "shot_type": "lifestyle",
+     "alt_text": "Black and white Sony earbud buds shown side by side."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/d75808e1-979f-4d1a-9a1f-01d98ce66a0e?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": "https://cdn.trychannel3.com/5a5c3e43-25f8-40be-a39e-dda61f9beb03?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "is_main_image": false,
+     "shot_type": "packaging",
+     "alt_text": "Box packaging for Sony Pulse Explore wireless earbuds."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/7ab4fc6d-b299-4df3-a3c8-648575a0c792?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": "https://cdn.trychannel3.com/5ed438b3-d462-48d2-97b3-49a1320fc87e?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "White and black Sony wireless earbuds shown against a plain background."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/4d5ccc7f-0d5b-4db2-bd22-e9cee4f5ba96?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "lifestyle",
+     "alt_text": "Sony Pulse Explore earbuds shown with a PS5 console setup."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/4bd9e4bb-c1c2-4b5f-8783-7fd2c39067f9?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": "https://cdn.trychannel3.com/075c11b5-ad5e-4096-bb28-8fd3e19d79db?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "is_main_image": false,
+     "shot_type": "detail",
+     "alt_text": "Close-up of the earbud driver and blue protective cover."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/a985a992-f374-4874-9f99-fd2bdd4560dc?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "detail",
+     "alt_text": "Close-up showing AI-enhanced noise rejection feature."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/88559cb5-4269-4f37-b1af-efda6cb06c5d?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": "https://cdn.trychannel3.com/9b71da82-cb5c-4d9d-8ab2-d412fa5ad819?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "Black and white Sony wireless earbuds shown with PlayStation Link technology visual."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/6e5058ca-3080-4928-899f-7c1eca2178bc?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "cleaned_url": "https://cdn.trychannel3.com/686e3e89-7e3c-4257-8de4-67d93f4b3cf9?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=WUZn",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "Black and white Sony wireless earbuds shown with Bluetooth connectivity logo."
+    }
+   ],
+   "category": {
+    "slug": "headphones-headsets",
+    "title": "Headphones & Headsets",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": "adult",
+   "materials": [
+    "Plastic",
+    "Rubber"
+   ],
+   "key_features": [
+    "PlayStation branding on ear shields",
+    "Wireless Bluetooth earbuds",
+    "Ergonomic design for comfort",
+    "Compact, portable charging case (not shown)",
+    "Stereo sound suitable for gaming and media",
+    "Lightweight, in-ear fit with soft ear tips",
+    "Planar Magnetic Drivers for ultra-low distortion and rich detail",
+    "PlayStation Link Technology for lossless, ultra-low latency wireless connection",
+    "AI-enhanced Noise Rejection for clear microphone communication",
+    "Dual Device Connectivity (PlayStation Link and Bluetooth simultaneously)"
+   ],
+   "colors": [
+    {
+     "hex": "#d1d6e2",
+     "percentage": 0.5254
+    },
+    {
+     "hex": "#21242f",
+     "percentage": 0.4117
+    },
+    {
+     "hex": "#5f626c",
+     "percentage": 0.0629
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/wLsbCMX-WUZn-hVFAd3?o=01KKT1QG8CVW0S791J3TNH2GZT&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "currys.ie",
+     "price": {
+      "price": 154,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0,
+     "dimensions": null
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "headphone-driver-technology": [
+     "Hybrid",
+     "Planar magnetic"
+    ],
+    "headphone-style": [
+     "Canal",
+     "Earbuds"
+    ],
+    "ingress-protection-ip-rating": [
+     "Not rated"
+    ],
+    "power-source": [
+     "Rechargeable",
+     "USB",
+     "Battery-powered"
+    ],
+    "material": [
+     "Plastic",
+     "Aluminum",
+     "Silicone"
+    ],
+    "battery-type": [
+     "Rechargeable",
+     "Contained-undetachable"
+    ],
+    "charging-interface-type": [
+     "Proprietary connector",
+     "USB type-C"
+    ],
+    "microphone-type": [
+     "Built-in",
+     "Noise-canceling"
+    ],
+    "device-interface": [
+     "Bluetooth",
+     "USB"
+    ],
+    "connectivity-technology": [
+     "Bluetooth",
+     "Wired",
+     "Wireless",
+     "USB"
+    ],
+    "earphone-features": [
+     "Built-in microphone",
+     "Volume control",
+     "AI-powered",
+     "Waterproof",
+     "Noise cancellation"
+    ],
+    "audio-component-form-factor": [
+     "Portable/Field"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)",
+     "Environmental noise cancellation (ENC)",
+     "None"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "battery-size": [
+     "Built-in battery",
+     "≤100Wh"
+    ],
+    "audio-connectivity": [
+     "Bluetooth",
+     "USB"
+    ]
+   },
+   "ratings": {
+    "value": 3.9,
+    "count": 977,
+    "source_count": 2
+   }
+  },
+  {
+   "id": "e2OAe5U",
+   "title": "Wave Beam In-Ear Wireless Earbuds",
+   "description": "The JBL Wave Beam In-Ear Wireless Earbuds are designed for daily entertainment, featuring JBL Deep Bass Sound via 8mm drivers. They offer a secure, comfortable stick-closed ergonomic design that excludes external sounds to enhance bass performance. These earbuds are splash and dust resistant and provide up to 32 total hours of battery life (8 hours in the earbuds and 24 hours in the charging case), with a speed charge capability that provides two additional hours of power in just 10 minutes. Additionally, they feature Smart Ambient technology for situational awareness and crystal-clear hands-free stereo calls.",
+   "brands": [
+    {
+     "id": "4AJV",
+     "name": "JBL"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/a7916c5b-ee19-4bd3-b73d-0d6498fb0016?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/a7916c5b-ee19-4bd3-b73d-0d6498fb0016?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Black wireless earbud case and earbud shown separately."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/f3bf1930-8ed5-4782-bdde-68913b6077a0?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "on_model",
+     "alt_text": "Woman smiling while wearing a black wireless earbud."
+    }
+   ],
+   "category": {
+    "slug": "headphones",
+    "title": "Headphones",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     },
+     {
+      "slug": "headphones",
+      "title": "Headphones"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": null,
+   "materials": [],
+   "key_features": [
+    "Immersive JBL sound",
+    "All-day battery life",
+    "Secure, comfortable fit",
+    "Hands-free calling clarity",
+    "Fast charging capability",
+    "Splash and dust resistant",
+    "Smart Ambient technology",
+    "8mm drivers with JBL Deep Bass Sound"
+   ],
+   "colors": [
+    {
+     "hex": "#2f2f2f",
+     "percentage": 0.513
+    },
+    {
+     "hex": "#181818",
+     "percentage": 0.2364
+    },
+    {
+     "hex": "#545454",
+     "percentage": 0.1399
+    },
+    {
+     "hex": "#747574",
+     "percentage": 0.1107
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/e2OAe5U-j49J-hVFAd3?o=01M42C03JP62GTK7HGYKXK7FVQ&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "debenhams.com",
+     "price": {
+      "price": 39.95,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.07,
+     "dimensions": null
+    },
+    {
+     "url": "https://buy.trychannel3.com/e2OAe5U-wVxX-hVFAd3?o=01M35ZD1THB2HGYM3083VQ3NNQ&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "oasisfashion.com",
+     "price": {
+      "price": 39.95,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.028,
+     "dimensions": null
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "audio-connectivity": [
+     "Bluetooth"
+    ],
+    "driver-technology": [
+     "Dynamic driver"
+    ],
+    "battery-type": [
+     "Contained-undetachable"
+    ],
+    "connectivity-technology": [
+     "Bluetooth",
+     "Wireless"
+    ],
+    "headphone-driver-technology": [
+     "Dynamic"
+    ],
+    "headphone-style": [
+     "Canal"
+    ],
+    "noise-cancellation-technology": [
+     "Passive noise isolation"
+    ],
+    "earphone-features": [
+     "Awareness mode",
+     "Built-in microphone",
+     "High fidelity audio"
+    ],
+    "battery-size": [
+     "Built-in battery"
+    ],
+    "microphone-type": [
+     "Built-in"
+    ],
+    "power-source": [
+     "Rechargeable"
+    ],
+    "pattern": [
+     "Solid"
+    ]
+   },
+   "ratings": {
+    "value": 3.2,
+    "count": 68,
+    "source_count": 1
+   }
+  },
+  {
+   "id": "Y1OL5y8",
+   "title": "Soundform Dot Wireless Earbuds",
+   "description": "SoundForm Dot Wireless Earbuds by Belkin are designed for everyday performance, featuring an ergonomic fit for all-day comfort. They deliver balanced high-fidelity audio with SoundForm Signature Sound and Clear Call Quality technology to reduce background noise. With a total playtime of up to 30 hours (including the charging case), IPX5 sweat and splash resistance, and Bluetooth Multipoint for seamless switching between two devices, these earbuds are built for versatility. Users can also customize their EQ preferences via the SoundForm app and use Hear-Thru mode to stay aware of their surroundings.",
+   "brands": [
+    {
+     "id": "FjLZ",
+     "name": "Belkin"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/97b754e4-4d87-43a1-b65a-d07c50a531a9?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=CXPK",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/97b754e4-4d87-43a1-b65a-d07c50a531a9?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=CXPK",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Black noise-cancelling earbuds and case displayed against a white background."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/05f835a3-49ae-4de4-a268-09d072ac0090?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=CXPK",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/05f835a3-49ae-4de4-a268-09d072ac0090?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=CXPK",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "Black noise-cancelling earbuds shown separately against a white background."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/765d7110-5e23-41e4-b506-4fe1c8cea409?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=CXPK",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/765d7110-5e23-41e4-b506-4fe1c8cea409?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=CXPK",
+     "is_main_image": false,
+     "shot_type": "lifestyle",
+     "alt_text": "A pair of black noise-cancelling earbuds shown side by side."
+    }
+   ],
+   "category": {
+    "slug": "headphones",
+    "title": "Headphones",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     },
+     {
+      "slug": "headphones",
+      "title": "Headphones"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "polyester"
+   ],
+   "key_features": [
+    "Nine hours of nonstop playtime, 21 hours in charging case",
+    "Smaller size buds with ergonomic fit for comfortable use all day",
+    "Clear Call Quality technology reduces background noise",
+    "IPX5 rated sweat and splash resistance",
+    "Tailor EQ preferences with the SoundForm app",
+    "Bluetooth Multipoint allows seamless switching between two devices",
+    "Hear-Thru mode for ambient sound awareness",
+    "SoundForm Signature Sound delivers full, balanced high-fidelity audio"
+   ],
+   "colors": [
+    {
+     "hex": "#2b2b2b",
+     "percentage": 0.6525
+    },
+    {
+     "hex": "#959595",
+     "percentage": 0.1261
+    },
+    {
+     "hex": "#6c6c6c",
+     "percentage": 0.1237
+    },
+    {
+     "hex": "#424242",
+     "percentage": 0.0977
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/Y1OL5y8-CXPK-hVFAd3?o=01M2RT514Q67TKRH6034R2TNS6&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "belkin.com",
+     "price": {
+      "price": 17.99,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.105,
+     "dimensions": {
+      "length": null,
+      "width": null,
+      "height": null,
+      "weight": {
+       "number": 454,
+       "unit": "g"
+      }
+     }
+    }
+   ],
+   "variants": {
+    "options": [
+     {
+      "name": "Color",
+      "values": [
+       {
+        "label": "Black",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/97b754e4-4d87-43a1-b65a-d07c50a531a9",
+        "product_id": "Y1OL5y8"
+       },
+       {
+        "label": "Blue",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/58e5d500-1ab3-4d86-871c-27896f65d167",
+        "product_id": "6A4siyW"
+       },
+       {
+        "label": "Pink",
+        "exists": true,
+        "available": null,
+        "thumbnail_url": "https://cdn.trychannel3.com/4fad523e-88ce-449a-b422-24cf55960958",
+        "product_id": "wsHe9Lk"
+       }
+      ]
+     }
+    ],
+    "selected": [
+     {
+      "name": "Color",
+      "label": "Black"
+     }
+    ]
+   },
+   "structured_attributes": {
+    "connectivity-technology": [
+     "Bluetooth",
+     "Wired"
+    ],
+    "charging-interface-type": [
+     "USB type-C"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)"
+    ],
+    "material": [
+     "Silicone"
+    ],
+    "audio-connectivity": [
+     "USB",
+     "Bluetooth"
+    ],
+    "earphone-features": [
+     "Built-in microphone",
+     "High fidelity audio",
+     "Noise cancellation",
+     "Awareness mode",
+     "Waterproof"
+    ],
+    "headphone-style": [
+     "Canal"
+    ],
+    "ingress-protection-ip-rating": [
+     "IPX5"
+    ],
+    "power-source": [
+     "Rechargeable"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "battery-type": [
+     "Rechargeable"
+    ],
+    "headphone-driver-technology": [
+     "Dynamic"
+    ],
+    "driver-technology": [
+     "Dynamic driver"
+    ],
+    "microphone-type": [
+     "Built-in"
+    ],
+    "device-interface": [
+     "USB"
+    ],
+    "battery-size": [
+     "Built-in battery"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "JUX4JTC",
+   "title": "ATH-CKS30TW+ Wireless Earbuds",
+   "description": "The Audio Technica ATH-CKS30TW+ Wireless Earbuds are designed for an immersive audio experience, featuring active noise-cancellation and super deep bass. These truly wireless headphones include an ultra-low-frequency equalizer to enhance the richness of music and movies. For convenience and safety, they offer hear-through and talk-through functions to let ambient sound in. The earbuds provide up to 6.5 hours of use on a single charge with noise-cancelling active, extending to 20 hours total with the charging case when noise-cancelling is off.",
+   "brands": [
+    {
+     "id": "qNRu",
+     "name": "Audio-Technica"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/41295838-439e-4dbf-badc-9b170bbd4f0a?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=wVxX",
+     "cleaned_url": null,
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Black wireless earbuds in charging case with an audio logo on the earbud."
+    }
+   ],
+   "category": {
+    "slug": "headphones",
+    "title": "Headphones",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     },
+     {
+      "slug": "headphones",
+      "title": "Headphones"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": null,
+   "materials": [],
+   "key_features": [
+    "Immersive noise-cancelling tech",
+    "Chest-thumping deep bass",
+    "Long-lasting battery life",
+    "Hear-through and talk-through modes",
+    "High resolution sound",
+    "Ultra-low-frequency equalizer"
+   ],
+   "colors": [
+    {
+     "hex": "#242528",
+     "percentage": 0.75
+    },
+    {
+     "hex": "#49494c",
+     "percentage": 0.1567
+    },
+    {
+     "hex": "#7b7c7f",
+     "percentage": 0.0933
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/JUX4JTC-wVxX-hVFAd3?o=01M3DDG59MJ6YMYCMQX0MHPB4F&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "oasisfashion.com",
+     "price": {
+      "price": 79.95,
+      "compare_at_price": 99.99,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.028,
+     "dimensions": {
+      "length": null,
+      "width": null,
+      "height": null,
+      "weight": {
+       "number": 0.04,
+       "unit": "kg"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "battery-type": [
+     "Contained-undetachable"
+    ],
+    "charging-interface-type": [
+     "USB type-C"
+    ],
+    "earphone-features": [
+     "Noise cancellation"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)"
+    ],
+    "audio-connectivity": [
+     "USB"
+    ],
+    "connectivity-technology": [
+     "Wireless"
+    ],
+    "headphone-style": [
+     "Canal"
+    ],
+    "power-source": [
+     "Rechargeable"
+    ],
+    "device-interface": [
+     "USB"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "battery-size": [
+     "Built-in battery"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "ycCR8UZ",
+   "title": "Arctis GameBuds",
+   "description": "Premium true wireless gaming earbuds with dual wireless connectivity (2.4 GHz with USB-C dongle and Bluetooth 5.3), active noise cancellation, transparency mode, spatial audio, Qi wireless charging, and up to 40 hours total battery life. Designed for versatile use across gaming consoles, PCs, and mobile devices.",
+   "brands": [
+    {
+     "id": "ZHWp",
+     "name": "Steel Series"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/fd085c56-2770-4d32-ac34-a05365c9ddc9?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/fd085c56-2770-4d32-ac34-a05365c9ddc9?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Black Arctis GameBuds charging case opened showing earbuds"
+    },
+    {
+     "url": "https://cdn.trychannel3.com/4ea0492b-a3bc-4bdb-b606-f5260b040e0a?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": null,
+     "alt_text": "Mobile app interface showing EQ presets for Arctis GameBuds"
+    },
+    {
+     "url": "https://cdn.trychannel3.com/87d8c366-c707-4769-a9c5-cc8bef69141c?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/87d8c366-c707-4769-a9c5-cc8bef69141c?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "is_main_image": false,
+     "shot_type": "on_model",
+     "alt_text": "Man holding an Arctis GameBud in his hand"
+    },
+    {
+     "url": "https://images.ctfassets.net/hmm5mo4qf4mf/7cUeItFfFoam8f59mfIC3i/962f02faaea91bad7b759941796734db/arctis_gamebuds_black_xbox_pdp_img_buy_02.png__1920x1080_crop-fit_optimize_subsampling-2-3687.png?fm=webp&q=90&fit=scale&w=1920",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "on_model",
+     "alt_text": "Man wearing Arctis GameBuds in his ear"
+    },
+    {
+     "url": "https://cdn.trychannel3.com/9093758d-62dc-40aa-afed-72547bb2fd8f?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "merchant_information",
+     "alt_text": "Arctis GameBuds best gaming earbuds promotion"
+    },
+    {
+     "url": "https://cdn.trychannel3.com/78405089-0d26-4e23-8988-34ff6ece03a5?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "merchant_information",
+     "alt_text": "Companion App with 100+ Xbox Audio Presets"
+    },
+    {
+     "url": "https://cdn.trychannel3.com/cf81297e-5bc1-4ebc-8905-bfa5f2332a54?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=gO1q",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "product_information",
+     "alt_text": "Active Noise Cancellation and Transparency Mode feature graphic"
+    }
+   ],
+   "category": {
+    "slug": "headphones-headsets",
+    "title": "Headphones & Headsets",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": "adult",
+   "materials": [],
+   "key_features": [
+    "In-ear wireless gaming earbuds, designed for versatile use across gaming consoles, PCs, and mobile devices.",
+    "Connect wirelessly via 2.4 GHz low-latency wireless (with USB-C dongle) or Bluetooth, offering flexible play styles.",
+    "Fully Bluetooth compatible, these earbuds use the latest Bluetooth version 5.3 for enhanced connectivity and power efficiency."
+   ],
+   "colors": [
+    {
+     "hex": "#2d2d2d",
+     "percentage": 0.3881
+    },
+    {
+     "hex": "#121212",
+     "percentage": 0.2375
+    },
+    {
+     "hex": "#4b4b4b",
+     "percentage": 0.1333
+    },
+    {
+     "hex": "#696969",
+     "percentage": 0.1252
+    },
+    {
+     "hex": "#a5a5a4",
+     "percentage": 0.1159
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/ycCR8UZ-gO1q-hVFAd3?o=01M2GYMJQCTNW3TBJ19G7FZFAP&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "steelseries.com",
+     "price": {
+      "price": 104.99,
+      "compare_at_price": 159.99,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.04,
+     "dimensions": {
+      "length": null,
+      "width": null,
+      "height": null,
+      "weight": {
+       "number": 1200,
+       "unit": "g"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "battery-type": [
+     "Rechargeable",
+     "Contained-detachable"
+    ],
+    "charging-interface-type": [
+     "USB type-C",
+     "Wireless charging"
+    ],
+    "device-interface": [
+     "USB",
+     "Bluetooth",
+     "Micro USB"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "power-source": [
+     "Rechargeable",
+     "Battery-powered",
+     "USB",
+     "Batteries",
+     "AC-powered"
+    ],
+    "material": [
+     "Plastic"
+    ],
+    "connectivity-technology": [
+     "USB",
+     "Bluetooth",
+     "Wired",
+     "Wireless",
+     "Wi-Fi",
+     "Wireless dongle"
+    ],
+    "battery-size": [
+     ">100Wh",
+     "Built-in battery"
+    ],
+    "audio-connectivity": [
+     "USB",
+     "Bluetooth"
+    ],
+    "ingress-protection-ip-rating": [
+     "IP55",
+     "IP65"
+    ],
+    "earphone-features": [
+     "Built-in microphone",
+     "Volume control",
+     "Noise cancellation",
+     "Waterproof"
+    ],
+    "microphone-type": [
+     "Built-in",
+     "Noise-canceling"
+    ],
+    "headphone-style": [
+     "Earbuds",
+     "Canal"
+    ],
+    "audio-component-form-factor": [
+     "Desktop",
+     "Portable/Field"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)",
+     "Passive noise isolation"
+    ]
+   },
+   "ratings": {
+    "value": 4.4,
+    "count": 731,
+    "source_count": 2
+   }
+  },
+  {
+   "id": "g0n88ap",
+   "title": "AirPods Pro 3 Noise Cancelling USB-C Wireless Earbuds",
+   "description": "The Apple AirPods Pro 3 are premium white wireless earbuds designed for immersive listening, travel, and workouts. They feature Active Noise Cancellation to block background noise, Adaptive Audio, Transparency mode, Conversation Awareness, and Voice Isolation for clear communication. Enhanced by the Apple H2 chip and Bluetooth 5.3, they offer Personalised Spatial Audio with dynamic head tracking and Adaptive EQ. These earbuds are IP57-rated for dust, sweat, and water resistance and include a heart rate sensor for fitness tracking. The accompanying MagSafe Charging Case supports USB-C, MagSafe, Apple Watch, and Qi-certified charging, providing up to 24 hours of total battery life (8 hours per charge).",
+   "brands": [
+    {
+     "id": "k8qh",
+     "name": "Apple"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/52038714-ad6a-443e-9968-1962cdd4fa1d?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/52038714-ad6a-443e-9968-1962cdd4fa1d?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "White AirPods Pro 3 earbuds shown from a top-down view."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/975d8ff9-e48a-4a14-859d-edcaa891404c?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/975d8ff9-e48a-4a14-859d-edcaa891404c?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "White AirPod with noise cancellation graphic."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/8f917961-3cc1-4e1c-a534-0a4e62cd48cc?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "in_use",
+     "alt_text": "AirPods Pro 3 charging case with heart rate data display."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/e54dda14-9aaa-4e23-a6e5-70ccac86e6cb?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "product_information",
+     "alt_text": "Smartphone screen showing hearing aid features of AirPods Pro."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/fdca730b-3f6b-4c00-9b57-61efc371edab?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "lifestyle",
+     "alt_text": "White AirPod with live translation demonstration."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/112dc035-0b0b-4cdf-95e7-92100d2b1ef3?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/112dc035-0b0b-4cdf-95e7-92100d2b1ef3?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=j49J",
+     "is_main_image": false,
+     "shot_type": "packaging",
+     "alt_text": "AirPods Pro 3 with charging case and tips."
+    }
+   ],
+   "category": {
+    "slug": "headphones",
+    "title": "Headphones",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     },
+     {
+      "slug": "headphones",
+      "title": "Headphones"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": null,
+   "materials": [
+    "plastic",
+    "silicone"
+   ],
+   "key_features": [
+    "Active Noise Cancellation",
+    "Personalised Spatial Audio technology",
+    "24 hours total battery life",
+    "Heart rate sensor for workouts",
+    "IP57 dust and water resistant",
+    "Adaptive Audio",
+    "Transparency mode",
+    "Conversation Awareness",
+    "Voice Isolation",
+    "Apple H2 headphone chip",
+    "Bluetooth 5.3",
+    "MagSafe Charging Case with USB-C"
+   ],
+   "colors": [
+    {
+     "hex": "#cecfd2",
+     "percentage": 0.6598
+    },
+    {
+     "hex": "#848586",
+     "percentage": 0.1354
+    },
+    {
+     "hex": "#333334",
+     "percentage": 0.1091
+    },
+    {
+     "hex": "#a4a5a7",
+     "percentage": 0.0957
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/g0n88ap-j49J-hVFAd3?o=01M32E4AH5NN9KFZ0DBZK93X16&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "debenhams.com",
+     "price": {
+      "price": 229.99,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0.07,
+     "dimensions": {
+      "length": {
+       "number": 27,
+       "unit": "mm"
+      },
+      "width": {
+       "number": 19.2,
+       "unit": "mm"
+      },
+      "height": {
+       "number": 30.9,
+       "unit": "mm"
+      },
+      "weight": null
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "power-source": [
+     "Rechargeable"
+    ],
+    "device-interface": [
+     "USB"
+    ],
+    "audio-connectivity": [
+     "USB"
+    ],
+    "ingress-protection-ip-rating": [
+     "IP57"
+    ],
+    "charging-interface-type": [
+     "USB type-C",
+     "MagSafe"
+    ],
+    "pattern": [
+     "Solid"
+    ],
+    "battery-type": [
+     "Contained-undetachable"
+    ],
+    "microphone-type": [
+     "Built-in"
+    ],
+    "headphone-style": [
+     "Canal"
+    ],
+    "earphone-features": [
+     "Built-in microphone",
+     "Noise cancellation",
+     "Volume control",
+     "Waterproof"
+    ],
+    "connectivity-technology": [
+     "Bluetooth",
+     "Wireless"
+    ],
+    "battery-size": [
+     "Built-in battery"
+    ],
+    "material": [
+     "Plastic",
+     "Silicone"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)",
+     "Adaptive noise cancellation"
+    ]
+   },
+   "ratings": null
+  },
+  {
+   "id": "p4Oo4H5",
+   "title": "Powerbeats Pro 2 Wireless Earbud Earphones",
+   "description": "These are the Beats By Dr. Dre Powerbeats Pro 2 wireless earbuds in Jet Black, featuring an upgraded acoustic architecture for enhanced comfort and superior sound quality. They come equipped with Personalized Spatial Audio with dynamic head tracking and Adaptive EQ, which continuously optimizes sound based on your ear shape. For focused listening, they offer Active Noise Cancelling (ANC), and for situational awareness, they include a Transparency mode. Athletes will appreciate the built-in Heart Rate Monitoring sensors, which relay real-time workout data to compatible fitness apps. The earbuds provide up to 10 hours of playback per charge, extendable to 45 hours with the compact, wirelessly charging case. They are sweat and water-resistant with an IPX4 rating and powered by the efficient Apple H2 chip, which also enhances call quality with Voice Isolation technology. Control is available via on-ear buttons, tactile volume rockers, or voice commands.",
+   "brands": [
+    {
+     "id": "ainn",
+     "name": "Beats"
+    }
+   ],
+   "images": [
+    {
+     "url": "https://cdn.trychannel3.com/ca1b8c4b-fd11-4c84-87a6-27c2413eaae0?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": "https://cdn.trychannel3.com/cleaned/v1/ca1b8c4b-fd11-4c84-87a6-27c2413eaae0?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "is_main_image": true,
+     "shot_type": "hero",
+     "alt_text": "Purple Powerbeats Pro 2 earbuds and case on white background."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/829eb20c-cc6d-4516-8467-dcd9001f8b09?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "product_information",
+     "alt_text": "Features list of Powerbeats Pro 2 headphones."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/af8beea4-f8ab-46c2-9a4f-799b353213ca?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "on_model",
+     "alt_text": "Woman wearing purple wireless earbuds during workout."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/f4907f6d-f4f3-43c0-9e52-b04850383e37?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "hero",
+     "alt_text": "Close-up of a purple Powerbeats Pro 2 earbud with a green light."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/0435d7d2-e695-4eaa-8f5c-45efe8374ad2?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "detail",
+     "alt_text": "Close-up of an earbud showing sound features."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/3c406f99-ce9e-42bd-ad51-b960a742fd1f?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "product_information",
+     "alt_text": "Text highlighting IPX4 water and sweat resistance rating."
+    },
+    {
+     "url": "https://cdn.trychannel3.com/696ee636-337d-4575-a9ac-3967b823d4e4?aid=01M4NZQWE2F0CZSNKX962R7TCD&mid=cGQJ",
+     "cleaned_url": null,
+     "is_main_image": false,
+     "shot_type": "packaging",
+     "alt_text": "Powerbeats Pro 2 earbuds inside their purple charging case."
+    }
+   ],
+   "category": {
+    "slug": "headphones",
+    "title": "Headphones",
+    "path": [
+     {
+      "slug": "electronics",
+      "title": "Electronics"
+     },
+     {
+      "slug": "audio",
+      "title": "Audio"
+     },
+     {
+      "slug": "audio-components",
+      "title": "Audio Components"
+     },
+     {
+      "slug": "headphones-headsets",
+      "title": "Headphones & Headsets"
+     },
+     {
+      "slug": "headphones",
+      "title": "Headphones"
+     }
+    ],
+    "has_children": true
+   },
+   "gender": null,
+   "age": null,
+   "materials": [],
+   "key_features": [],
+   "colors": [
+    {
+     "hex": "#999ecc",
+     "percentage": 0.257
+    },
+    {
+     "hex": "#fffffe",
+     "percentage": 0.1755
+    },
+    {
+     "hex": "#c0c4ed",
+     "percentage": 0.1312
+    },
+    {
+     "hex": "#777bab",
+     "percentage": 0.1274
+    },
+    {
+     "hex": "#575b8d",
+     "percentage": 0.1263
+    },
+    {
+     "hex": "#2b305e",
+     "percentage": 0.1117
+    },
+    {
+     "hex": "#e8ebfc",
+     "percentage": 0.0709
+    }
+   ],
+   "offers": [
+    {
+     "url": "https://buy.trychannel3.com/p4Oo4H5-cGQJ-hVFAd3?o=01KGBPFE57P8GC15P36MA5FMZ7&aid=01M4NZQWE2F0CZSNKX962R7TCD",
+     "domain": "johnlewis.com",
+     "price": {
+      "price": 249.99,
+      "compare_at_price": null,
+      "currency": "GBP"
+     },
+     "availability": "InStock",
+     "condition": "new",
+     "max_commission_rate": 0,
+     "dimensions": {
+      "length": null,
+      "width": null,
+      "height": null,
+      "weight": {
+       "number": 77.7,
+       "unit": "g"
+      }
+     }
+    }
+   ],
+   "variants": null,
+   "structured_attributes": {
+    "device-interface": [
+     "USB"
+    ],
+    "battery-size": [
+     "Built-in battery"
+    ],
+    "charging-interface-type": [
+     "USB type-C",
+     "Wireless charging"
+    ],
+    "battery-type": [
+     "Rechargeable"
+    ],
+    "headphone-style": [
+     "Canal"
+    ],
+    "earphone-features": [
+     "AI-powered",
+     "Built-in microphone",
+     "Noise cancellation",
+     "Volume control"
+    ],
+    "noise-cancellation-technology": [
+     "Active noise cancellation (ANC)",
+     "Passive noise isolation"
+    ],
+    "material": [
+     "Plastic"
+    ],
+    "connectivity-technology": [
+     "Bluetooth",
+     "Wi-Fi"
+    ],
+    "ingress-protection-ip-rating": [
+     "IPX4"
+    ],
+    "headphone-driver-technology": [
+     "Dynamic"
+    ],
+    "audio-connectivity": [
+     "USB"
+    ],
+    "microphone-type": [
+     "Condenser",
+     "Noise-canceling"
+    ],
+    "power-source": [
+     "Battery-powered",
+     "Rechargeable",
+     "USB"
+    ],
+    "driver-technology": [
+     "Dynamic driver"
+    ]
+   },
+   "ratings": null
+  }
+ ],
+ "next_page_token": "eyJjYWNoZV9rZXkiOiAic2VhcmNoOjIxZWJlZjljZGEzZTRlMWIiLCAib2Zmc2V0IjogOH0="
+}

@@ -23,6 +23,8 @@ import { weekSummary } from "@/ui/week";
 import { approveWarning } from "@/ui/labels";
 import { AI_DOWN_LINE, AI_UNFINISHED_LINE, BACKUP_LINE } from "@/core/aiwords";
 import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
+import { topReason } from "@/core/reasons";
+import { outcomeLine, settledCase } from "@/core/settled";
 import "./allclear.css";
 import "./wide.css";
 import { BUSINESS_SCENARIOS, SCENARIOS, type Scenario } from "@/ui/scenarios";
@@ -379,7 +381,7 @@ function AllClear() {
               </li>
             ))}
           </ul>
-          <p className="allclear-note">Fake money on PayPal&apos;s sandbox. Each one lands here to decide.</p>
+          <p className="allclear-note">Fake money in the PayPal sandbox. Each one lands here to decide.</p>
         </section>
       </div>
     </div>
@@ -958,7 +960,7 @@ function HoldClock({ p, who, tz }: { p: Payment; who: string; tz: string }) {
         <p className="hold-clock-sleep">
           <Moon size={17} strokeWidth={2} aria-hidden="true" />
           <span>
-            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held until the date below, which is PayPal&apos;s limit, not Spotter&apos;s.
+            <b>Sleeping on it.</b> Spotter asks again {whenText(until, tz)}. The money stays held until the date below. PayPal sets that limit, not Spotter.
           </span>
         </p>
       )}
@@ -1014,7 +1016,7 @@ function HeldSummary({ p, pending }: { p: Payment; pending: boolean }) {
   }
   const failed = aiFailedLine(p);
   if (failed) return <p className="held-sum">{failed}</p>;
-  const reason = p.decision?.reasons[0];
+  const reason = topReason(p);
   return <p className="held-sum">{pending ? "Spotter is still looking into it." : (reason ?? "Open the case file to see why it was held.")}</p>;
 }
 
@@ -1037,7 +1039,8 @@ function FeedRow({
 }) {
   const s = trackState(p.status);
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
-  const firstReason = p.decision?.reasons[0];
+  // The strongest sign, not whichever reason came first; a paid payment only has one if Spotter held it.
+  const firstReason = p.decision?.outcome === "allow" ? null : topReason(p);
   const canWatch = watchable(p) || !!watch;
   // A finding like hidden orders or two faces is the reason to look, so its button stands out.
   const serious = !!p.case_file?.findings.some((f) => f.severity === "high");
@@ -1048,7 +1051,7 @@ function FeedRow({
       </span>
       <span className="feed-amount num">{money(p.amount, p.currency)}</span>
       <span className="feed-meta">
-        <span className="feed-why">{s === "failed" && p.error ? p.error : firstReason && s !== "paid" ? firstReason : `For ${p.request.category}.`}</span>
+        <span className="feed-why">{s === "failed" && p.error ? p.error : firstReason ? firstReason : `For ${p.request.category}.`}</span>
         <span className="feed-time">{timeAgo(p.created_at, now)}</span>
       </span>
       <span className="feed-state" data-state={s}>
@@ -1073,17 +1076,18 @@ function FeedRow({
             <p className="feed-state sheet-state" data-state={s}>
               {STATE_LABEL[s]}
             </p>
+            {outcomeLine(p) && <p className="sheet-outcome">{outcomeLine(p)}</p>}
             <ReplacedLink p={p} all={all} who={who} />
             <EvidenceLinks p={p} />
             {p.case_file && (
               <CaseFile
-                c={p.case_file}
+                c={settledCase(p.case_file, p)}
                 currency={p.currency}
                 paymentId={p.id}
                 peekScrolls={p.peek_scrolls}
                 now={now}
                 fold
-                settled
+                settled={p.status !== "needs_approval"}
                 real={s === "paid" ? null : realOne(p.case_file, p.market)}
                 aside={canWatch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onWatchChanged} updates={watchUpdates} /> : null}
               />

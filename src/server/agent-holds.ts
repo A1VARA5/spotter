@@ -77,7 +77,7 @@ export function makeAgentHolds(opts: { deps: () => Promise<Deps>; run: Run; crea
         return (await unfreeze(db, s.householdId, id)) ? json({ ok: true, message: `${agent!.name} can ask for payments again.` }) : json({ error: "That agent isn't paused." }, 409);
       }
       if (kind === "agent" && action === "job") {
-        if (agent!.kind !== "agent") return json({ error: "Only AI agents have a job for PayPal's tools." }, 400);
+        if (agent!.kind !== "agent") return json({ error: "Only AI agents have a job for the PayPal tools." }, 400);
         if (!isJob(body?.job)) return json({ error: "Pick shopping or selling." }, 400);
         await db.query("update spenders set agent_job = $2 where id = $1", [id, body.job]);
         return json({ ok: true, job: body.job });
@@ -90,7 +90,7 @@ export function makeAgentHolds(opts: { deps: () => Promise<Deps>; run: Run; crea
           made = await opts.createSale({ ...EXAMPLE, ref });
         } catch (e) {
           console.error("[spotter] example sale failed:", e instanceof Error ? e.message : e);
-          return json({ error: "PayPal's sandbox didn't make the example sale. Try again in a minute." }, 502);
+          return json({ error: "The PayPal sandbox didn't make the example sale. Try again in a minute." }, 502);
         }
         try {
           await recordSale(db, { householdId: s.householdId, spenderId: id, orderId: made.orderId, captureId: made.captureId, ...EXAMPLE, example: true });

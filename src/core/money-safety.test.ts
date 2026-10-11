@@ -310,6 +310,57 @@ describe("an authorise answer PayPal never delivered", () => {
     expect(create.mock.calls[1]![1]).toEqual({ source: "replay", customId: create.mock.calls[0]![1].customId });
   });
 
+  it("asks PayPal again a few seconds later in the background, not only on the daily run", async () => {
+    const tasks: Array<() => Promise<void>> = [];
+    deps = { ...deps, defer: (t) => void tasks.push(t), authoriseRetryMs: 0 };
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+    const p = await held();
+    expect(p.status).toBe("authorising");
+    create.mockResolvedValueOnce({ orderId: "O9", authorizationId: "A9" });
+    for (const t of tasks) await t();
+    expect(create.mock.calls[2]![1]).toEqual({ source: "replay" });
+    expect(await getPayment(db, p.id)).toMatchObject({ status: "voided", paypal_authorization_id: "A9" });
+  });
+
+  it("stops asking after 6 hours: ends failed with an honest line, and the spotter is told once", async () => {
+    const warn = vi.fn<NonNullable<Deps["warn"]>>(async () => {});
+    deps = { ...deps, warn };
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+    const p = await held();
+    await db.query("update payments set created_at = now() - interval '7 hours', updated_at = now() - interval '10 minutes' where id = $1", [p.id]);
+    create.mockRejectedValueOnce(timeout());
+    await reconcileStuck(deps);
+    const now = await getPayment(db, p.id);
+    expect(now?.status).toBe("failed");
+    expect(now?.error).toMatch(/PayPal never confirmed/);
+    expect(now?.error).toMatch(/Spotter paid nothing/);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]![1]).toMatchObject({ kind: "hold_unconfirmed" });
+    // The next run has nothing left to do and says nothing again.
+    await age(p.id);
+    await reconcileStuck(deps);
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
+  it("also stops after too many tries, whatever the age", async () => {
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+    const p = await held();
+    for (let i = 0; i < 72; i++) await db.query("insert into events (payment_id, type) values ($1, 'authorise_unconfirmed')", [p.id]);
+    await age(p.id);
+    create.mockRejectedValueOnce(timeout());
+    await reconcileStuck(deps);
+    expect((await getPayment(db, p.id))?.status).toBe("failed");
+  });
+
+  it("a hold PayPal finally reports, even after 6 hours, is still let go rather than failed", async () => {
+    create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+    const p = await held();
+    await db.query("update payments set created_at = now() - interval '7 hours', updated_at = now() - interval '10 minutes' where id = $1", [p.id]);
+    create.mockResolvedValueOnce({ orderId: "O9", authorizationId: "A9" });
+    await reconcileStuck(deps);
+    expect((await getPayment(db, p.id))?.status).toBe("voided");
+  });
+
   it("reconcile leaves a fresh authorising row alone (the first request may still be running)", async () => {
     create.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
     const p = await held();

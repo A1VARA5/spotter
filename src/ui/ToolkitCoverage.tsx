@@ -18,8 +18,8 @@ const LABEL: Record<Treatment, string> = {
 
 const MEANING: Record<Treatment, string> = {
   guarded: "Goes through Spotter's checks. Anything that moves money waits for the spotter's PIN.",
-  passthrough: "Runs PayPal's real tool, only on things Spotter made for this family.",
-  bait: "Offered with PayPal's own name, never runs. An agent that calls it is paused and the spotter is told.",
+  passthrough: "Runs the real PayPal tool, only on things Spotter made for this family.",
+  bait: "Offered under its real PayPal name, never runs. An agent that calls it is paused and the spotter is told.",
   hidden: "Not offered to the agent at all.",
 };
 
@@ -65,7 +65,7 @@ export function ToolkitCoverage({ job: initial = "shopping", headingLevel = 2 }:
           PayPal Agent Toolkit: all {COVERAGE.length} tools, and what Spotter does with each
         </H>
         <p className="tkc-lede">
-          PayPal&apos;s toolkit (version {TOOLKIT_VERSION}) is built for the account that gets paid: refunds, invoices, tracking and subscriptions.
+          The PayPal toolkit (version {TOOLKIT_VERSION}) is built for the account that gets paid: refunds, invoices, tracking and subscriptions.
           So what&apos;s safe depends on the agent&apos;s job.
         </p>
         <div className="tkc-switch" role="radiogroup" aria-label="Agent's job">
@@ -88,7 +88,7 @@ export function ToolkitCoverage({ job: initial = "shopping", headingLevel = 2 }:
             <span className="tkc-stat-label">All tools</span>
             <span className="tkc-stat-n">{COVERAGE.length}</span>
           </span>
-          <span className="tkc-stat-text">Every tool in PayPal&apos;s toolkit, by category.</span>
+          <span className="tkc-stat-text">Every tool in the PayPal toolkit, by category.</span>
         </button>
         {ORDER.map((t) => (
           <button key={t} type="button" className="tkc-stat" data-t={t} aria-pressed={only === t} onClick={() => setOnly(only === t ? null : t)}>

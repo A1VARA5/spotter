@@ -35,4 +35,24 @@ describe("brand wording", () => {
     );
     expect(hits).toEqual([]);
   });
+
+  // Watchtower (src/watchtower, src/app/watchtower) has its own owner and is checked there; everywhere else in the
+  // app, AG Studio is never possessive either ("from the AG Studio record", not "AG Studio's record").
+  const WATCHTOWER = [join(ROOT, "watchtower"), join(ROOT, "app", "watchtower")];
+  it("never writes AG Studio's in text people read", () => {
+    const hits = files(ROOT)
+      .filter((f) => !WATCHTOWER.some((w) => f.startsWith(w)))
+      .flatMap((f) =>
+        readable(readFileSync(f, "utf8"))
+          .split("\n")
+          .filter((l) => /AG Studio(&apos;|'|’)s\b/.test(l))
+          .map((l) => `${f.slice(ROOT.length)}: ${l.trim()}`),
+      );
+    expect(hits).toEqual([]);
+  });
+
+  it("catches AG Studio's in every spelling a page can use", () => {
+    for (const l of ["AG Studio's record", "AG Studio&apos;s record", "AG Studio’s record"]) expect(/AG Studio(&apos;|'|’)s\b/.test(l)).toBe(true);
+    expect(/AG Studio(&apos;|'|’)s\b/.test("the AG Studio record")).toBe(false);
+  });
 });

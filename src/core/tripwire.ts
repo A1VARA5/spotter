@@ -89,34 +89,65 @@ function argsText(args: unknown): { text: string; cut: boolean } {
   return text.length > MAX_ARGS ? { text: text.slice(0, MAX_ARGS - 1) + "…", cut: true } : { text, cut: false };
 }
 
-type CauseRow = Pick<Payment, "id" | "request" | "ai" | "case_file" | "created_at">;
+type CauseRow = Pick<Payment, "id" | "request" | "ai" | "case_file" | "created_at"> & { read_hidden: string | null };
+
+/** What one payment's own checks saw: a recorded read of the page, KERNEL's hidden text, a poisoned tool, a flagged line. */
+function causeIn(p: CauseRow): TripwireCause | null {
+  const base = { payee: cap(p.request?.payee?.name ?? "a shop", 120), paymentId: p.id, at: new Date(p.created_at).toISOString() };
+  // The page the agent itself read, recorded where it was read (the agent lab feeds its test agent the GadgetBarn page).
+  if (p.read_hidden?.trim()) return { kind: "hidden_text", quote: cap(p.read_hidden.trim(), MAX_QUOTE), ...base };
+  const hidden = p.case_file?.page?.seen?.hidden?.find((h) => h.instruction && h.text?.trim());
+  if (hidden) return { kind: "hidden_text", quote: cap(hidden.text, MAX_QUOTE), ...base };
+  const tools = p.case_file?.page?.tools;
+  const poisoned = tools && tools.checked ? tools.tools.find((t) => t.poisoned?.quote?.trim()) : undefined;
+  if (poisoned?.poisoned) return { kind: "poisoned_tool", quote: cap(poisoned.poisoned.quote, MAX_QUOTE), toolName: cap(poisoned.name, 80), ...base };
+  // A flag with no quote ("the content tried to give the agent instructions") has no line to show.
+  const flag = p.ai?.flags?.find((f) => f.kind === "prompt_injection" && f.quote?.trim());
+  if (flag) return { kind: "flagged_line", quote: cap(flag.quote, MAX_QUOTE), ...base };
+  return null;
+}
+
+const ROWS = `select p.id, p.request, p.ai, p.case_file, p.created_at,
+  (select e.data->>'hidden' from events e where e.payment_id = p.id and e.type = 'agent_read' order by e.at desc limit 1) as read_hidden
+  from payments p`;
 
 /**
- * The most recent line, on a page this agent's payments were checked against in the last day, written to steer an AI:
- * text hidden from people (KERNEL seen vs read), then a poisoned tool the page offered, then a line the AI check flagged
- * as hidden instructions. Null when there is none. It may not be the cause, so it is shown as "could have caused it".
+ * The most recent line written to steer an AI, from the day before `before` (default now): first on a page this
+ * agent's own payments were checked against (a recorded read of the page, KERNEL's hidden text, a poisoned tool, a
+ * line the AI check flagged), then on the same shop's page as KERNEL saw it for someone else in the family. Never
+ * another family's. Null when there is none. It may not be the cause, so it is shown as "could have caused it".
  */
-export async function latestCause(db: Db, agentId: string): Promise<TripwireCause | null> {
-  const rows = await db.query<CauseRow>(
-    `select id, request, ai, case_file, created_at from payments
-     where spender_id = $1 and created_at > now() - make_interval(hours => $2) order by created_at desc limit 10`,
-    [agentId, CAUSE_HOURS],
+export async function latestCause(db: Db, agentId: string, opts: { before?: Date } = {}): Promise<TripwireCause | null> {
+  const before = (opts.before ?? new Date()).toISOString();
+  const own = await db.query<CauseRow>(
+    `${ROWS} where p.spender_id = $1 and p.created_at <= $3::timestamptz and p.created_at > $3::timestamptz - make_interval(hours => $2)
+     order by p.created_at desc limit 10`,
+    [agentId, CAUSE_HOURS, before],
   );
-  for (const p of rows) {
-    const base = { payee: cap(p.request.payee.name, 120), paymentId: p.id, at: new Date(p.created_at).toISOString() };
-    const hidden = p.case_file?.page?.seen?.hidden?.find((h) => h.instruction);
-    if (hidden) return { kind: "hidden_text", quote: cap(hidden.text, MAX_QUOTE), ...base };
-    const tools = p.case_file?.page?.tools;
-    const poisoned = tools && tools.checked ? tools.tools.find((t) => t.poisoned) : undefined;
-    if (poisoned?.poisoned) return { kind: "poisoned_tool", quote: cap(poisoned.poisoned.quote, MAX_QUOTE), toolName: cap(poisoned.name, 80), ...base };
-    const flag = p.ai?.flags?.find((f) => f.kind === "prompt_injection");
-    if (flag) return { kind: "flagged_line", quote: cap(flag.quote, MAX_QUOTE), ...base };
+  for (const p of own) {
+    const c = causeIn(p);
+    if (c) return c;
+  }
+  // The shops this agent was paying, as KERNEL saw them for anyone else in the same family that day.
+  const payees = [...new Set(own.map((p) => (p.request?.payee?.name ?? "").trim().toLowerCase()).filter(Boolean))];
+  if (!payees.length) return null;
+  const family = await db.query<CauseRow>(
+    `${ROWS} join spenders s on s.id = p.spender_id
+     where s.household_id = (select household_id from spenders where id = $1) and p.spender_id <> $1
+       and lower(trim(p.request->'payee'->>'name')) = any($4::text[]) and p.case_file is not null
+       and p.created_at <= $3::timestamptz and p.created_at > $3::timestamptz - make_interval(hours => $2)
+     order by p.created_at desc limit 10`,
+    [agentId, CAUSE_HOURS, before, payees],
+  );
+  for (const p of family) {
+    const hidden = p.case_file?.page?.seen?.hidden?.find((h) => h.instruction && h.text?.trim());
+    if (hidden) return { kind: "hidden_text", quote: cap(hidden.text, MAX_QUOTE), payee: cap(p.request?.payee?.name ?? "a shop", 120), paymentId: p.id, at: new Date(p.created_at).toISOString() };
   }
   return null;
 }
 
 export const hijackText = (agent: string, tool: string, voided: number) =>
-  `${agent} tried to use PayPal's ${tool} tool, which has nothing to do with its job. Someone may be steering it. ` +
+  `${agent} tried to use the PayPal tool ${tool}, which has nothing to do with its job. Someone may be steering it. ` +
   `Spotter paused it${voided ? ` and let go of ${voided === 1 ? "its held payment" : `its ${voided} held payments`}` : ""}. ` +
   `Nothing was sent to PayPal. Open Spotter to see what it asked for, then unpause it with your PIN when you're happy.`;
 
@@ -176,10 +207,36 @@ export async function listTripwires(db: Db, householdId: string, limit = 20): Pr
      from tripwires t join spenders s on s.id = t.spender_id where t.household_id = $1 order by t.at desc limit $2`,
     [householdId, limit],
   );
-  return rows.map((r) => ({
-    ...r,
-    at: new Date(r.at).toISOString(),
-    unfrozen_at: r.unfrozen_at ? new Date(r.unfrozen_at).toISOString() : null,
-    wouldHaveSent: r.args?.cut ? null : wouldHaveSent(r.tool, r.args?.text ?? "{}"),
-  }));
+  const out: Tripwire[] = [];
+  for (const r of rows) {
+    // KERNEL's look at the shop often finishes after the agent reached for the bait (the case file takes a few
+    // seconds), so a tripwire with no cause looks again, up to the moment it sprang, and keeps what it finds.
+    const cause = r.cause ?? (await causeLater(db, r.id, r.spender_id, new Date(r.at)));
+    out.push({
+      ...r,
+      cause,
+      at: new Date(r.at).toISOString(),
+      unfrozen_at: r.unfrozen_at ? new Date(r.unfrozen_at).toISOString() : null,
+      wouldHaveSent: r.args?.cut ? null : wouldHaveSent(r.tool, r.args?.text ?? "{}"),
+    });
+  }
+  return out;
+}
+
+/** The cause of a tripwire that had none when it sprang, saved once found. A failed lookup just shows no cause. */
+async function causeLater(db: Db, id: string, agentId: string, at: Date): Promise<TripwireCause | null> {
+  let cause: TripwireCause | null;
+  try {
+    cause = await latestCause(db, agentId, { before: at });
+  } catch (e) {
+    console.error(`[spotter] tripwire ${id}: looking again for what the agent read failed:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+  // A failed save only means looking again next time; the cause found is still shown.
+  if (cause) {
+    await db
+      .query("update tripwires set cause = $2 where id = $1 and cause is null", [id, JSON.stringify(cause)])
+      .catch((e) => console.error(`[spotter] tripwire ${id}: couldn't save the cause it found:`, e instanceof Error ? e.message : e));
+  }
+  return cause;
 }

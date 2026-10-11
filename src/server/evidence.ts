@@ -13,6 +13,8 @@ import { safeTz, whenText } from "@/core/holdtime";
 import { SIGN_LABEL } from "@/watchtower/data";
 import { BACKUP_LINE } from "@/core/aiwords";
 import { peekActivity } from "./peek";
+import { outcomeLine, settledCase } from "@/core/settled";
+import { withoutIds } from "@/core/userText";
 
 const EVIDENCE_STATUSES = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
 // Only a JPEG data URL Spotter made itself is ever embedded (the same rule as the case file).
@@ -109,11 +111,10 @@ const host = (u: string) => {
   }
 };
 
-function statusWords(p: Payment, denied: boolean): string {
-  if (p.status === "needs_approval" || p.status === "voiding") return "Held. PayPal is holding the money until the spotter decides. Nothing has been paid.";
-  if (p.status === "voided") return `${denied && p.decided_by ? `${p.decided_by} said no. ` : ""}PayPal released the hold. Nothing was paid.`;
-  if (p.status === "blocked") return "Stopped by Spotter before any money moved.";
-  return "Not sent: it was asked for in a way that has no buyer protection.";
+/** Where it stands: held while it waits, otherwise how it ended, in the same words as the app (core/settled.ts). */
+function statusWords(p: Payment): string {
+  if (p.status === "needs_approval") return "Held. PayPal is holding the money until the spotter decides. Nothing has been paid.";
+  return outcomeLine(p) ?? "Not decided yet.";
 }
 
 function eventWords(type: string, data: Record<string, unknown>, tz: string): string {
@@ -156,6 +157,8 @@ function eventWords(type: string, data: Record<string, unknown>, tz: string): st
       return "PayPal paid it";
     case "denied":
       return `${by || "The spotter"} said no`;
+    case "agent_read":
+      return "The agent read the shop's page, including a line hidden from people";
     case "withdrawn":
       return "The AI agent withdrew it";
     case "voided":
@@ -192,7 +195,8 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
   const currency = p.currency as Currency;
   const amount = formatMoney({ amount: Number(p.amount), currency });
   const r = p.request;
-  const c = p.case_file;
+  // Read after the decision: the PayPal hold line says what PayPal did, not that it is still holding the money.
+  const c = p.case_file ? settledCase(p.case_file, p) : null;
 
   // Every authorisation this hold has had: the first one, then any PayPal reauthorization moved it to.
   const earlier = events.filter((e) => e.type === "reauthorized").map((e) => str((e.data as Record<string, unknown>)?.from, 80)).filter((id) => ID.test(id));
@@ -248,7 +252,8 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
       ]
     : null;
   const stopped = p.status === "blocked" || p.status === "protected";
-  const title = p.status === "voided" ? "A payment that was denied" : stopped ? "A payment Spotter stopped" : "A payment Spotter is holding";
+  const released = p.status === "voided" || p.status === "voiding";
+  const title = released ? (denied ? "A payment that was denied" : "A payment that was released") : stopped ? "A payment Spotter stopped" : "A payment Spotter is holding";
 
   return {
     ref: p.id,
@@ -263,7 +268,7 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
       ["What for", [str(r.category, 60), str(r.item, 200)].filter(Boolean).join(": ")],
       ["How they were asked to pay", METHOD[r.method] ?? str(r.method, 40)],
       ["Asked at", fmt(p.created_at)],
-      ["Where it stands", statusWords(p, denied)],
+      ["Where it stands", statusWords(p)],
       ["PayPal order id", ID.test(p.paypal_order_id ?? "") ? p.paypal_order_id! : "None (nothing was sent to PayPal)"],
       ["PayPal authorisation id", auths.length ? auths.join(", then ") : "None"],
       ...(ID.test(p.paypal_capture_id ?? "") ? ([["PayPal capture id", p.paypal_capture_id!]] as Array<[string, string]>) : []),
@@ -279,8 +284,8 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
     checkedBy: p.ai?.ok && p.ai.aiEngine === "openai_backup" ? BACKUP_LINE : null,
     price,
     verdict: c ? (VERDICT[c.verdict] ?? null) : null,
-    headline: c ? say(c.headline, 300) : null,
-    findings: (c?.findings ?? []).map((f) => ({ label: TOOL[f.tool] ?? "Check", text: say(f.text, 400), ...(f.quote ? { quote: say(f.quote, 300) } : {}) })),
+    headline: c ? say(withoutIds(c.headline), 300) : null,
+    findings: (c?.findings ?? []).map((f) => ({ label: TOOL[f.tool] ?? "Check", text: say(withoutIds(f.text), 400), ...(f.quote ? { quote: say(f.quote, 300) } : {}) })),
     network,
     page: c?.page
       ? { host: host(c.page.finalUrl), title: str(c.page.title, 160), asks, hidden: trap ? say(trap.text, 400) : null, screenshot: shot }
@@ -294,7 +299,7 @@ async function buildPack(db: Db, householdId: string, p: Payment, now: Date): Pr
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 const WHO_TO_TELL =
-  "If money was lost or someone is trying to get it, tell your bank straight away, report it in PayPal's Resolution Centre, and report it to the police or your national fraud reporting service. Give them this page.";
+  "If money was lost or someone is trying to get it, tell your bank straight away, report it in the PayPal Resolution Centre, and report it to the police or your national fraud reporting service. Give them this page.";
 
 function html(p: Pack): string {
   const rows = (pairs: Array<[string, string]>) => pairs.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("");

@@ -105,7 +105,7 @@ export function AgentHolds({ initial }: { initial: Holds }) {
   return (
     <section className="ah" aria-labelledby="ah-title">
       <h2 id="ah-title" className="ah-title">
-        Your agents and PayPal&apos;s tools
+        Your agents and the PayPal tools
       </h2>
       {notice && (
         <p className="ah-notice" role="status">
@@ -125,7 +125,7 @@ export function AgentHolds({ initial }: { initial: Holds }) {
                   <>Someone used the decoy key Spotter planted in its config, so its secrets leaked. Spotter switched off both keys.</>
                 ) : (
                   <>
-                    It reached for PayPal&apos;s <code>{trip.tool}</code> tool, which has nothing to do with its job. Spotter never ran it and nothing was sent to PayPal.
+                    It reached for the PayPal tool <code>{trip.tool}</code>, which has nothing to do with its job. Spotter never ran it and nothing was sent to PayPal.
                   </>
                 )}
                 {trip.voided ? ` ${trip.voided === 1 ? "Its held payment was" : `Its ${trip.voided} held payments were`} let go.` : ""}{" "}
@@ -185,7 +185,7 @@ export function AgentHolds({ initial }: { initial: Holds }) {
           </h3>
           <p className="ah-line">
             {r.agent ?? "An agent"} asked to refund {money(r.amount, r.currency)} for &quot;{r.item}&quot;. The buyer paid {money(r.paid, r.currency)}.
-            {r.example ? " Example sale in PayPal's sandbox." : ""} <span className="ah-when" suppressHydrationWarning>{timeAgo(r.created_at)}</span>
+            {r.example ? " Example sale in the PayPal sandbox." : ""} <span className="ah-when" suppressHydrationWarning>{timeAgo(r.created_at)}</span>
           </p>
           {r.reason && <p className="ah-alarm">{r.reason}</p>}
           {r.note && (
@@ -265,7 +265,7 @@ export function AgentHolds({ initial }: { initial: Holds }) {
               setBusy(a.id);
               const problem = await act({ kind: "sale", id: a.id, action: "example" });
               setBusy(null);
-              setNotice(problem ?? "Example sale made in PayPal's sandbox: £50.00 paid for trainers.");
+              setNotice(problem ?? "Example sale made in the PayPal sandbox: £50.00 paid for trainers.");
             }}
           >
             {busy === a.id ? "Making it" : "Make an example sale (£50, sandbox)"}

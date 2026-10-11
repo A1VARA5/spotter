@@ -4,6 +4,7 @@ import type { Db } from "@/db";
 import type { Payment, Spender } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { askingAgain } from "@/core/sleep";
+import { topReason } from "@/core/reasons";
 import { askLines, buttonId, notMeText, tokenFor, wasItYouLine, type WasItYou } from "@/core/was-it-you";
 
 type Dm = (userId: string, content: string, components?: unknown[]) => Promise<void>;
@@ -21,7 +22,7 @@ export function alertContent(p: Payment, spender: Spender): string {
         : `Spotter stopped ${amountOf(p)} from ${spender.name}.`
     }**`,
     `To ${p.request.payee.name}.${held ? " PayPal is holding the money until you decide." : ""}`,
-    c?.headline ?? p.decision?.reasons[0] ?? "",
+    c?.headline ?? topReason(p) ?? "",
     ...(c?.findings.slice(0, 3).map((f) => `- ${f.text}`) ?? []),
     c?.ask[0] ? `*${c.ask[0]}*` : "",
     wiyLine(p, spender, held),

@@ -73,7 +73,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
         {exampleOff && household.demo && (
           <p className="lede" role="status">
-            PayPal&apos;s sandbox didn&apos;t answer, so your demo family started without its example hold. <Link href="/demo">Try a payment</Link> to see one.
+            The PayPal sandbox didn&apos;t answer, so your demo family started without its example hold. <Link href="/demo">Try a payment</Link> to see one.
           </p>
         )}
         <DashboardMain />

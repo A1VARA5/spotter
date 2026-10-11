@@ -51,8 +51,8 @@ describe("spotTheDifference", () => {
     expect(s!.typical).toBe(4999); // median of the three matching offers (4800, 4999, 4999); the accessory and other buds are left out
     expect(s!.offers).toBe(3);
     expect(s!.direction).toBe("cheaper");
-    expect(s!.headline).toBe("£19.99 here, about £49.99 at real shops");
-    expect(s!.verdict).toMatch(/fake shop tell/);
+    expect(s!.headline).toBe("£19.99 here, £48.00 at argos.co.uk"); // the listing the panel shows, never a middle price beside it
+    expect(s!.verdict).toMatch(/charge more for the same thing/); // £19.99 against the £48.00 shown: cheaper, not a fake shop tell
     expect(s!.genuine).toMatchObject({ domain: "argos.co.uk", price: 4800, image: "https://cdn.trychannel3.com/p2" });
     expect(s!.differences.map((d) => d.label)).toEqual(["Price", "Web address", "Seller"]);
     expect(s!.differences[1]).toEqual({ label: "Web address", here: "gadgetbarn.shop", real: "argos.co.uk" });
@@ -150,11 +150,20 @@ describe("spotTheDifference", () => {
     expect(close!.differences.map((d) => d.label)).not.toContain("Was price");
   });
 
-  it("keeps the price row in line with the verdict (both use the middle price, not the cheapest listing)", async () => {
+  it("keeps the headline, the price row and the verdict on the one listing it shows", async () => {
     search.mockResolvedValueOnce([product("a", "Aurora X2 wireless earbuds", [["argos.co.uk", 2000], ["currys.co.uk", 4500], ["johnlewis.com", 5000]])]);
     const s = await spotTheDifference(deps, input({ amount: 3000 }));
-    expect(s!.direction).toBe("cheaper");
-    expect(s!.differences[0]).toEqual({ label: "Price", here: "£30.00", real: "about £45.00" });
+    expect(s!.genuine).toMatchObject({ domain: "argos.co.uk", price: 2000 });
+    expect(s!.headline).toBe("£30.00 here, £20.00 at argos.co.uk");
+    expect(s!.direction).toBe("dearer");
+    expect(s!.differences[0]).toEqual({ label: "Price", here: "£30.00", real: "£20.00" });
+  });
+
+  it("from the saved going rate, says the shown listing's price and still counts the shops it came from", async () => {
+    const cheapest = { title: "Cast Iron Skillet Pans", domain: "debenhams.com", price: 1599, currency: "GBP" as const, url: "https://buy.trychannel3.com/deb" };
+    const s = await spotTheDifference(deps, input({ item: "cast iron skillet", amount: 499, market: { median: 1800, offers: 3, cheapest } }));
+    expect(s).toMatchObject({ headline: "£4.99 here, £15.99 at debenhams.com", offers: 3, typical: 1800, direction: "cheaper" });
+    expect(s!.verdict).toMatch(/fake shop tell/);
   });
 
   it("spends no daily slot when the search didn't answer, and still shows a result when the cache write fails", async () => {
@@ -213,9 +222,9 @@ describe("one going rate per card", () => {
       input({ item: "cast iron skillet", amount: 699, payee: "Panmoor Kitchen", page: skillet, market: { median: 2800, offers: 5, cheapest } }),
     );
     expect(search).not.toHaveBeenCalled();
-    expect(s).toMatchObject({ source: "market", typical: 2800, offers: 5, headline: "£6.99 here, about £28.00 at real shops" });
+    expect(s).toMatchObject({ source: "market", typical: 2800, offers: 5, headline: "£6.99 here, £15.99 at debenhams.com" });
     expect(s!.genuine).toMatchObject({ domain: "debenhams.com", price: 1599, image: "https://cdn.trychannel3.com/deb" });
-    expect(s!.differences[0]).toEqual({ label: "Price", here: "£6.99", real: "about £28.00" });
+    expect(s!.differences[0]).toEqual({ label: "Price", here: "£6.99", real: "£15.99" });
   });
 
   it("from an image search, leaves out other countries' shops, so the headline matches the listing it shows", async () => {

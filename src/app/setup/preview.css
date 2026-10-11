@@ -547,6 +547,14 @@
   }
 }
 
+/* The smallest phones (320 to 359 px): the 295 px preview phone is drawn a little smaller, so it fits inside the
+   dark band and the page never scrolls sideways. */
+@media (max-width: 359px) {
+  .pv-stage .device {
+    zoom: 0.86;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .pv-family li[data-new] {
     animation: pv-in 220ms var(--ease-out) both;

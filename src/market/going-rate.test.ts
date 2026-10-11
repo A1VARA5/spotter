@@ -33,17 +33,19 @@ describe("sellsTo", () => {
 });
 
 describe("the going rate from a recorded Channel3 answer", () => {
-  it("drops shops in other countries and counts each shop once, so a £6.99 skillet is compared with about £28", async () => {
+  it("drops other countries' shops and designer pans and counts each shop once, so a £4.99 skillet is compared with about £16", async () => {
     const products = await replay(recorded);
     const offers = offersFor(products, "cast iron skillet");
     expect(offers.some((o) => /\.(au|at|no)$/.test(o.domain))).toBe(false);
-    const m = priceCheck(699, "GBP", offers, { item: "cast iron skillet" });
-    // harrods 169 (three listings, one shop), hartsofstur 209, dunelm 28, debenhams 15.99, vonhaus 15.99
-    expect(m.offers).toBe(5);
-    expect(m.median).toBe(2800);
+    // Le Creuset at harrods (169) and hartsofstur (209) would lift the going rate of an everyday pan to £28.
+    expect(offers.some((o) => o.brand === "Le Creuset")).toBe(false);
+    const m = priceCheck(499, "GBP", offers, { item: "cast iron skillet" });
+    // dunelm 28, debenhams 15.99, vonhaus 15.99
+    expect(m.offers).toBe(3);
+    expect(m.median).toBe(1599);
     expect(m.cheapest?.price).toBe(1599);
     expect(m.flag?.severity).toBe("high");
-    expect(marketSummary({ ...m, item: "cast iron skillet" })).toMatchObject({ median: 2800, offers: 5 });
+    expect(marketSummary({ ...m, item: "cast iron skillet" })).toMatchObject({ median: 1599, offers: 3 });
   });
 
   it("keeps the real shop's picture with its listing", async () => {

@@ -33,6 +33,6 @@ describe("Panmoor Kitchen demo shop (spot the difference)", () => {
 
   it("is priced far below real shops, so Spotter stops it for a fake shop price (the reason spot the difference runs for)", () => {
     const offers: Offer[] = [5995, 7000, 1495, 12500, 12900, 20900].map((price, i) => ({ title: LIVE_TITLES[i]!, domain: `shop${i}.example`, price, currency: "GBP", url: "https://x" }));
-    expect(priceCheck(699, "GBP", offers).flag?.severity).toBe("high");
+    expect(priceCheck(499, "GBP", offers).flag?.severity).toBe("high");
   });
 });

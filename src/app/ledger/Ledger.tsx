@@ -18,8 +18,10 @@ import { money, STATE_LABEL, timeAgo, trackState, type TrackState } from "@/ui/f
 import { marketCell } from "@/core/market";
 import type { Payment } from "@/core/lifecycle";
 import { CaseFile } from "@/ui/CaseFile";
-import { kernelLead, realOne, unsaidReasons } from "@/ui/caseFold";
+import { realOne, whyLines } from "@/ui/caseFold";
 import { MarketNote } from "@/ui/components";
+import { topReason } from "@/core/reasons";
+import { outcomeLine, settledCase } from "@/core/settled";
 import "./ledger.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -69,7 +71,8 @@ function toRow(p: Payment, names: Record<string, string>): Row {
     amount: Number(p.amount),
     currency: p.currency,
     state: s,
-    why: s === "failed" ? (p.error ?? "") : (p.decision?.reasons[0] ?? "Within the rules."),
+    // The strongest sign, not whichever reason came first (src/core/reasons.ts).
+    why: s === "failed" ? (p.error ?? "") : (topReason(p) ?? "Within the rules."),
     // The same going rate as the card's price note and the reasons line (src/core/market.ts marketSummary).
     market: marketCell(p.market, p.currency),
     paypal: p.paypal_capture_id ?? p.paypal_authorization_id ?? "",
@@ -129,7 +132,7 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
         valueFormatter: (p) => money(p.value, p.data!.currency),
         cellClass: "num ledger-amount",
       },
-      { field: "state", headerName: "Outcome", width: 168, cellRenderer: StateCell, wrapText: true, autoHeight: true },
+      { field: "state", headerName: "Outcome", width: 168, cellRenderer: StateCell, wrapText: true, autoHeight: true, cellClass: "ledger-state" },
       { field: "why", headerName: "Why", flex: 2, minWidth: 220, wrapText: true, autoHeight: true, cellClass: "ledger-why" },
       {
         field: "market",
@@ -157,7 +160,7 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
     api.applyColumnState({
       state: wide
         ? [{ colId: "who", width: 140, flex: null }, { colId: "amount", width: 104, flex: null }, { colId: "state", width: 168, flex: null }]
-        : [{ colId: "who", flex: 1 }, { colId: "amount", width: 96, flex: null }, { colId: "state", flex: 1 }],
+        : [{ colId: "who", flex: 1 }, { colId: "amount", width: 118, flex: null }, { colId: "state", flex: 1 }],
     });
   }, []);
 
@@ -229,9 +232,11 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
 
   const s = p ? trackState(p.status) : null;
   const evidence = p && EVIDENCE_FOR.has(p.status) ? `/api/payments/${encodeURIComponent(p.id)}/evidence` : null;
-  // The reasons and the price note, minus what the case file below already says.
-  const c = p?.case_file ?? null;
-  const reasons = p ? unsaidReasons(p.decision?.reasons ?? [], p.decision?.flags ?? p.ai?.flags ?? [], c, { lead: kernelLead(c?.page)?.kind ?? null }) : [];
+  // How it ended (past tense once decided), then the strongest reason and the ones the case file below doesn't say.
+  const c = p?.case_file ? settledCase(p.case_file, p) : null;
+  const outcome = p ? outcomeLine(p) : null;
+  const reasons = p ? whyLines(p) : [];
+  const held = p ? p.decision?.outcome !== "allow" : false;
   const channel3OnCard = !!c && (c.findings.some((f) => f.tool === "find_genuine_offer") || !!c.spot);
   return (
     <dialog
@@ -260,12 +265,12 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
             </button>
           </header>
 
-          {s === "failed" && p.error ? (
-            <p className="ledger-drawer-why">{p.error}</p>
-          ) : reasons.length ? (
+          {outcome && <p className="ledger-drawer-outcome">{outcome}</p>}
+
+          {reasons.length > 0 && s !== "failed" ? (
             <section aria-labelledby="ledger-why">
               <h3 id="ledger-why" className="ledger-drawer-label">
-                Why
+                {s === "held" ? "Why it's waiting" : s === "blocked" || s === "protected" ? "Why Spotter stopped it" : held ? "Why Spotter held it" : "Why"}
               </h3>
               <ul className="ledger-drawer-reasons">
                 {reasons.map((r) => (
@@ -274,18 +279,18 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
               </ul>
             </section>
           ) : (
-            <p className="ledger-drawer-why">Within the rules.</p>
+            !outcome && <p className="ledger-drawer-why">Within the rules.</p>
           )}
 
           {!channel3OnCard && <MarketNote market={p.market} currency={p.currency} />}
 
-          {p.case_file ? (
+          {c ? (
             <section aria-labelledby="ledger-case">
               <h3 id="ledger-case" className="ledger-drawer-label">
                 Case file
               </h3>
               <CaseFile
-                c={p.case_file}
+                c={c}
                 currency={p.currency}
                 paymentId={p.id}
                 peekScrolls={p.peek_scrolls}

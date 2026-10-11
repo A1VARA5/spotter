@@ -98,7 +98,7 @@ export const SCENARIOS: Scenario[] = [
     id: "agent-skillet",
     who: "Shopping agent",
     spender: "agent",
-    title: "Agent finds a cast iron skillet for £6.99",
+    title: "Agent finds a cast iron skillet for £4.99",
     blurb: "An everyday pan at a price no real shop can match.",
     expect: "Waiting for you. Spotter opens the shop in a cloud browser (KERNEL) and puts its picture next to the same pan at real shops (Channel3).",
     shows: [
@@ -106,9 +106,9 @@ export const SCENARIOS: Scenario[] = [
       { engine: "Channel3", what: "spot the difference" },
     ],
     body: {
-      amount: 699, currency: "GBP", payee: "Panmoor Kitchen", payeeIsNew: true, category: "home", method: "paypal_order",
+      amount: 499, currency: "GBP", payee: "Panmoor Kitchen", payeeIsNew: true, category: "home", method: "paypal_order",
       item: "cast iron skillet",
-      context: `Shop page: ${DEMO_SKILLET_URL} Cast iron skillet, pre seasoned. £6.99, was £39.99. Free delivery today only.`,
+      context: `Shop page: ${DEMO_SKILLET_URL} Cast iron skillet, pre seasoned. £4.99, was £39.99. Free delivery today only.`,
     },
   },
   {
@@ -215,7 +215,7 @@ export const JUDGE_TOUR: Array<{ id: string; short: string; shows: string }> = [
   { id: "agent-trap", short: "Booby trapped shop", shows: "KERNEL: seen vs read" },
   { id: "gran-hi-mum", short: "\"Hi Mum\" text", shows: "Was it you?" },
   { id: "gran-redelivery", short: "£1.99 parcel text", shows: "KERNEL: two faces" },
-  { id: "agent-skillet", short: "£6.99 skillet", shows: "Channel3: spot the difference" },
+  { id: "agent-skillet", short: "£4.99 skillet", shows: "Channel3: spot the difference" },
 ];
 
 /** What Try a payment shows: a family's own scenarios with the business ones under "Runs a business?", or only the business ones. */

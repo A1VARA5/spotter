@@ -9,6 +9,7 @@ import { claudeUnavailable, withClaude } from "@/ai/client";
 import { AI_DOWN_LINE } from "@/core/aiwords";
 import type { Payment } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
+import { upTo, withoutIds } from "@/core/userText";
 import { contradictsPrice, marketFacts, marketSummary, priceVerdict } from "@/core/market";
 import { runTool, toolDefinitions, type CaseCtx, type CasePage, type ToolOutput } from "./tools";
 import { extractUrls } from "./links";
@@ -124,7 +125,8 @@ export { AI_DOWN_LINE };
 
 function fallback(calls: CaseCall[], started: number, error?: string, aiDown = false): Case {
   console.error(`[spotter] case agent fell back after ${calls.length} tool calls: ${error ?? "unknown"}`);
-  const findings = calls.filter((c) => c.ok).map((c) => ({ text: c.summary.slice(0, 320), tool: c.tool, source: c.id }));
+  // A tool's summary is written for the model (it cites offer ids), so ids come out before a person reads it.
+  const findings = calls.filter((c) => c.ok).map((c) => ({ text: upTo(withoutIds(c.summary), 320), tool: c.tool, source: c.id }));
   const done = findings.length > 0;
   return {
     status: done ? "partial" : "failed",
@@ -460,7 +462,7 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
   };
   const sourced = c.findings.flatMap((f) => {
     const call = resolve(f.source);
-    return call && !contradictsPrice(f.text, price) && !namesUnchecked(f.text) ? [{ text: f.text, source: call.id, tool: call.tool }] : [];
+    return call && !contradictsPrice(f.text, price) && !namesUnchecked(f.text) ? [{ text: withoutIds(f.text), source: call.id, tool: call.tool }] : [];
   });
   // The model sometimes says one check's fact twice in other words: the first one stays.
   const findings = sourced.filter((f, i) => !sourced.slice(0, i).some((g) => g.tool === f.tool && sameFact(g.text, f.text)));
@@ -469,8 +471,8 @@ function finish(input: unknown, ctx: CaseCtx, calls: CaseCall[], started: number
       ? PRICE_HEADLINE[price]
       : namesUnchecked(c.headline)
         ? plainHeadline(c.verdict, price)
-        : c.headline;
-  const ask = c.ask.filter((a) => !namesUnchecked(a));
+        : withoutIds(c.headline);
+  const ask = c.ask.filter((a) => !namesUnchecked(a)).map(withoutIds);
   const offer = c.swap_offer_id ? ctx.offers.get(c.swap_offer_id) : undefined;
   // A clean verdict needs support: if a check failed or no finding survived, the case is partial and never "fine".
   const shaky = calls.some((x) => !x.ok) || (findings.length === 0 && c.findings.length > 0);

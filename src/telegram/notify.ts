@@ -5,6 +5,7 @@ import type { Payment, Spender } from "@/core/lifecycle";
 import { formatMoney } from "@/core/types";
 import { esc } from "./inbound";
 import { askingAgain } from "@/core/sleep";
+import { topReason } from "@/core/reasons";
 import { askLines, buttonId, notMeText, tokenFor, wasItYouLine, type WasItYou } from "@/core/was-it-you";
 
 type Send = (chatId: string, html: string, extra?: Record<string, unknown>) => Promise<void>;
@@ -22,7 +23,7 @@ export function alertText(p: Payment, spender: Spender): string {
   const lines = [
     `<b>${esc(head)}</b>`,
     `To ${esc(p.request.payee.name)}.${held ? " PayPal is holding the money until you decide." : ""}`,
-    c ? esc(c.headline) : p.decision?.reasons[0] ? esc(p.decision.reasons[0]) : "",
+    c ? esc(c.headline) : esc(topReason(p) ?? ""),
     ...(c?.findings.slice(0, 3).map((f) => `• ${esc(f.text)}`) ?? []),
     c?.ask[0] ? `<i>${esc(c.ask[0])}</i>` : "",
   ];

@@ -9,7 +9,8 @@ import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
 import { Hint } from "./Hint";
 import { Peek } from "./Peek";
-import { keyFacts, kernelLead, leadParts, type RealOne } from "./caseFold";
+import { keyFacts, kernelLead, leadParts, panelShows, type RealOne } from "./caseFold";
+import { withoutIds } from "@/core/userText";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
@@ -217,7 +218,7 @@ export function CaseFile({
           {c.example && <span className="case-example"> · Example, checked earlier</span>}
         </p>
         <p className="case-headline" id={ids.head} tabIndex={-1}>
-          {c.headline}
+          {withoutIds(c.headline)}
         </p>
         {chips.length > 0 && <CheckedBy chips={chips} reveal={reveal} />}
       </div>
@@ -311,18 +312,6 @@ export function CaseFile({
 }
 
 type Chip = { key: string; label: string; target?: string };
-
-/**
- * True when one of the evidence panels already shows this code made finding (two faces, the money trail, the hidden
- * line, a poisoned tool), so the list doesn't say it a second time. The finding still goes to alerts and the pack.
- */
-function panelShows(f: Case["findings"][number], page: Case["page"]): boolean {
-  if (!page || !f.kind) return false;
-  if (f.kind === "cloaking") return !!page.faces;
-  if (f.kind === "money_offsite") return !!page.trail;
-  if (f.toolName) return !!(page.tools?.checked && page.tools.total > 0 && page.tools.tools.some((t) => t.name === f.toolName));
-  return !!(page.seen && page.seen.hidden.some((h) => h.instruction));
-}
 
 /** Only the checks that really ran, each pointing at what it found (a finding or a panel). */
 function checksThatRan(
@@ -431,9 +420,9 @@ const RAW_HOLD: Record<string, string> = {
   CAPTURED: "paid",
 };
 
-/** Older case files quoted PayPal's raw status and ISO dates; they read in plain words here. */
+/** Older case files quoted PayPal's raw status, ISO dates and offer ids; they read in plain words here. */
 function plainWords(text: string): string {
-  return text
+  return withoutIds(text)
     .replace(/PayPal hold [A-Z0-9]{6,} is (CREATED|PENDING|VOIDED|EXPIRED|CAPTURED)\b/g, (_, s: string) => `The PayPal hold is ${RAW_HOLD[s]}`)
     .replace(/\b(20\d\d)-(\d\d)-(\d\d)\b/g, (m, y: string, mo: string, d: string) => (MONTH[Number(mo) - 1] ? `${Number(d)} ${MONTH[Number(mo) - 1]} ${y}` : m));
 }
