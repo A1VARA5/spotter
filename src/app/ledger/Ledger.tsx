@@ -1,11 +1,25 @@
 "use client";
 // The full ledger: every payment Spotter has seen, with its evidence, market price and PayPal ids.
-// Built on AG Grid Community (MIT), themed with Spotter's tokens.
-import { useMemo, useState } from "react";
+// Built on AG Grid Community (MIT), themed with Spotter's tokens. A row opens that payment's case file in a drawer.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ICellRendererParams } from "ag-grid-community";
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  themeQuartz,
+  type CellKeyDownEvent,
+  type ColDef,
+  type GridApi,
+  type ICellRendererParams,
+  type RowClickedEvent,
+} from "ag-grid-community";
+import { FileText, X } from "lucide-react";
 import { money, STATE_LABEL, timeAgo, trackState, type TrackState } from "@/ui/format";
+import { marketCell } from "@/core/market";
 import type { Payment } from "@/core/lifecycle";
+import { CaseFile } from "@/ui/CaseFile";
+import { MarketNote } from "@/ui/components";
+import "./ledger.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -45,7 +59,6 @@ type Row = {
 
 function toRow(p: Payment, names: Record<string, string>): Row {
   const s = trackState(p.status);
-  const m = p.market;
   return {
     id: p.id,
     when: p.created_at,
@@ -56,7 +69,8 @@ function toRow(p: Payment, names: Record<string, string>): Row {
     currency: p.currency,
     state: s,
     why: s === "failed" ? (p.error ?? "") : (p.decision?.reasons[0] ?? "Within the rules."),
-    market: m?.cheapest && m.median ? `${money(m.cheapest.price, p.currency)} at ${m.cheapest.domain}` : "",
+    // The same going rate as the card's price note and the reasons line (src/core/market.ts marketSummary).
+    market: marketCell(p.market, p.currency),
     paypal: p.paypal_capture_id ?? p.paypal_authorization_id ?? "",
   };
 }
@@ -64,9 +78,16 @@ function toRow(p: Payment, names: Record<string, string>): Row {
 const FILTERS: Array<{ label: string; states: TrackState[] | null }> = [
   { label: "Everything", states: null },
   { label: "Waiting for you", states: ["held"] },
-  { label: "Stopped", states: ["blocked", "protected", "failed"] },
+  { label: "Stopped", states: ["blocked", "failed"] },
+  { label: "Not sent", states: ["protected"] },
+  { label: "Denied", states: ["returned"] },
   { label: "Paid", states: ["paid"] },
 ];
+
+/** Columns a phone has no room for: the drawer shows all of them for the row that's opened. */
+const WIDE_ONLY = ["when", "why", "market", "paypal"];
+const PHONE = 760;
+const EVIDENCE_FOR = new Set(["needs_approval", "voiding", "voided", "blocked", "protected"]);
 
 function StateCell({ value }: ICellRendererParams<Row, TrackState>) {
   if (!value) return null;
@@ -80,21 +101,23 @@ function StateCell({ value }: ICellRendererParams<Row, TrackState>) {
 export function Ledger({ payments, names }: { payments: Payment[]; names: Record<string, string> }) {
   const [filter, setFilter] = useState(0);
   const [search, setSearch] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
   const rows = useMemo(() => payments.map((p) => toRow(p, names)), [payments, names]);
   const shown = useMemo(() => {
     const states = FILTERS[filter]!.states;
     return states ? rows.filter((r) => states.includes(r.state)) : rows;
   }, [rows, filter]);
+  const open = openId ? (payments.find((p) => p.id === openId) ?? null) : null;
 
   const columns = useMemo<ColDef<Row>[]>(
     () => [
       { field: "when", headerName: "When", width: 108, valueFormatter: (p) => timeAgo(p.value), sort: "desc" },
-      { field: "who", headerName: "Who", width: 150 },
+      { field: "who", headerName: "Who", width: 140 },
       {
         field: "payee",
         headerName: "Paid to",
         flex: 1,
-        minWidth: 150,
+        minWidth: 140,
         tooltipValueGetter: (p) => (p.data?.item ? `${p.value}, for ${p.data.item}` : p.value),
       },
       {
@@ -105,13 +128,46 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
         valueFormatter: (p) => money(p.value, p.data!.currency),
         cellClass: "num ledger-amount",
       },
-      { field: "state", headerName: "Outcome", width: 168, cellRenderer: StateCell },
+      { field: "state", headerName: "Outcome", width: 168, cellRenderer: StateCell, wrapText: true, autoHeight: true },
       { field: "why", headerName: "Why", flex: 2, minWidth: 220, wrapText: true, autoHeight: true, cellClass: "ledger-why" },
-      { field: "market", headerName: "Real shops (Channel3)", width: 176, tooltipField: "market" },
+      {
+        field: "market",
+        headerName: "Real shop prices (Channel3)",
+        width: 200,
+        wrapText: true,
+        autoHeight: true,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        cellClass: "ledger-market",
+        tooltipField: "market",
+      },
       { field: "paypal", headerName: "PayPal id", width: 150, cellClass: "ledger-id", tooltipField: "paypal" },
     ],
     [],
   );
+
+  // Phones keep who, paid to, amount and outcome; the rest is one tap away in the drawer.
+  const gridBox = useRef<HTMLDivElement>(null);
+  const fit = useCallback((api: GridApi<Row>) => {
+    const wide = (gridBox.current?.clientWidth ?? window.innerWidth) >= PHONE;
+    api.setColumnsVisible(WIDE_ONLY, wide);
+    // On a phone who, amount and outcome share the width (paid to is in the drawer); on wider screens the set widths.
+    api.setColumnsVisible(["payee"], wide);
+    api.applyColumnState({
+      state: wide
+        ? [{ colId: "who", width: 140, flex: null }, { colId: "amount", width: 104, flex: null }, { colId: "state", width: 168, flex: null }]
+        : [{ colId: "who", flex: 1 }, { colId: "amount", width: 96, flex: null }, { colId: "state", flex: 1 }],
+    });
+  }, []);
+
+  const onRowClicked = useCallback((e: RowClickedEvent<Row>) => e.data && setOpenId(e.data.id), []);
+  const onCellKeyDown = useCallback((e: CellKeyDownEvent<Row>) => {
+    const key = (e.event as KeyboardEvent | null)?.key;
+    if ((key === "Enter" || key === " ") && e.data) {
+      e.event?.preventDefault();
+      setOpenId(e.data.id);
+    }
+  }, []);
 
   return (
     <section className="ledger" aria-label="All payments">
@@ -135,7 +191,8 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <div className="ledger-grid">
+      <p className="ledger-hint">Click a payment, or press Enter on it, to open its case file and evidence pack.</p>
+      <div className="ledger-grid" ref={gridBox}>
         <AgGridReact<Row>
           theme={theme}
           rowData={shown}
@@ -146,9 +203,110 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
           pagination
           paginationPageSize={20}
           paginationPageSizeSelector={[20, 50, 100]}
+          rowClass="ledger-row"
+          onRowClicked={onRowClicked}
+          onCellKeyDown={onCellKeyDown}
+          onGridReady={(e) => fit(e.api)}
+          onGridSizeChanged={(e) => fit(e.api)}
           overlayNoRowsTemplate='<span>No payments here yet. <a href="/demo">Try one with fake money</a>.</span>'
         />
       </div>
+      <CaseDrawer p={open} who={open ? (names[open.spender_id] ?? "Someone") : ""} onClose={() => setOpenId(null)} />
     </section>
+  );
+}
+
+/** One payment's case file, in a drawer from the right: what happened, why, real shop prices, and where to go next. */
+function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (p && !d.open) d.showModal();
+    if (!p && d.open) d.close();
+  }, [p]);
+
+  const s = p ? trackState(p.status) : null;
+  const evidence = p && EVIDENCE_FOR.has(p.status) ? `/api/payments/${encodeURIComponent(p.id)}/evidence` : null;
+  return (
+    <dialog
+      ref={ref}
+      className="ledger-drawer"
+      aria-labelledby="ledger-drawer-title"
+      onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {p && s && (
+        <div className="ledger-drawer-box">
+          <header className="ledger-drawer-head">
+            <div>
+              <p className="ledger-drawer-kicker">
+                {timeAgo(p.created_at)} · {p.request.item ?? p.request.category}
+              </p>
+              <h2 id="ledger-drawer-title" className="ledger-drawer-title">
+                {who} to {p.request.payee.name}, <span className="num">{money(p.amount, p.currency)}</span>
+              </h2>
+              <span className="feed-state" data-state={s}>
+                {STATE_LABEL[s]}
+              </span>
+            </div>
+            <button type="button" className="btn btn-quiet ledger-drawer-close" onClick={onClose} aria-label="Close the case file">
+              <X size={18} aria-hidden="true" />
+            </button>
+          </header>
+
+          {s === "failed" && p.error ? (
+            <p className="ledger-drawer-why">{p.error}</p>
+          ) : p.decision?.reasons.length ? (
+            <section aria-labelledby="ledger-why">
+              <h3 id="ledger-why" className="ledger-drawer-label">
+                Why
+              </h3>
+              <ul className="ledger-drawer-reasons">
+                {p.decision.reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <p className="ledger-drawer-why">Within the rules.</p>
+          )}
+
+          <MarketNote market={p.market} currency={p.currency} />
+
+          {p.case_file ? (
+            <section aria-labelledby="ledger-case">
+              <h3 id="ledger-case" className="ledger-drawer-label">
+                Case file
+              </h3>
+              <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} />
+            </section>
+          ) : (
+            <p className="ledger-drawer-why">No case file: Spotter only opens one for payments it held or stopped.</p>
+          )}
+
+          <footer className="ledger-drawer-links">
+            <a className="btn btn-quiet" href={`/dashboard#pay-${encodeURIComponent(p.id)}`}>
+              See it on the dashboard
+            </a>
+            {evidence && (
+              <>
+                <a className="btn btn-quiet" href={evidence} target="_blank" rel="noopener">
+                  <FileText size={16} strokeWidth={2} aria-hidden="true" /> Evidence pack<span className="sr-only"> (opens a printable page in a new tab)</span>
+                </a>
+                <a className="ledger-drawer-txt" href={`${evidence}?format=txt`} download>
+                  Plain text copy
+                </a>
+              </>
+            )}
+            {(p.paypal_capture_id ?? p.paypal_authorization_id) && (
+              <p className="ledger-drawer-id">
+                PayPal id <span className="ledger-id">{p.paypal_capture_id ?? p.paypal_authorization_id}</span>
+              </p>
+            )}
+          </footer>
+        </div>
+      )}
+    </dialog>
   );
 }

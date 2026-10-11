@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { claimsUsed, contradictsPrice, marketFacts, priceCheck, priceVerdict, type Offer } from "./market";
+import { claimsUsed, contradictsPrice, marketCell, marketFacts, marketSummary, priceCheck, priceVerdict, priceWatchFits, type Offer } from "./market";
+import { formatMoney } from "./types";
 
 const offer = (price: number, domain = "currys.co.uk", title = "Sony WF-1000XM5"): Offer => ({
   title,
@@ -157,5 +158,78 @@ describe("claimsUsed", () => {
     expect(claimsUsed("Brand new, sealed")).toBe(false);
     expect(claimsUsed("Usedom travel guide")).toBe(false);
     expect(claimsUsed(undefined)).toBe(false);
+  });
+});
+
+describe("one going rate per payment (the card, the reasons and Activity agree)", () => {
+  // Shaped like the live GadgetBarn case: one listing far below the rest (another product), and the real ones.
+  const withOutlier = [offer(1799, "odd-shop.com", "Pulse earbuds tips"), offer(7995, "a.co.uk"), offer(8499, "b.co.uk"), offer(6999, "c.co.uk"), offer(9999, "d.co.uk")];
+
+  it("never names a listing far below the going rate as the cheapest real shop", () => {
+    const r = priceCheck(24900, "GBP", withOutlier);
+    expect(r.cheapest?.domain).toBe("c.co.uk");
+    expect(r.flag?.why).toContain("c.co.uk sells it for £69.99");
+  });
+
+  it("gives the reasons line, the price note and the Activity cell the same numbers", () => {
+    for (const amount of [1999, 24900, 8000]) {
+      const m = { ...priceCheck(amount, "GBP", withOutlier), item: "Pulse earbuds" };
+      const s = marketSummary(m);
+      expect(s).not.toBeNull();
+      const cell = marketCell(m, "GBP");
+      expect(cell).toContain(formatMoney({ amount: s!.median, currency: "GBP" }));
+      expect(cell).toContain(formatMoney({ amount: s!.cheapest!.price, currency: "GBP" }));
+      if (m.flag?.severity === "high") expect(m.flag.why).toContain(`around ${formatMoney({ amount: s!.median, currency: "GBP" })}`);
+      if (m.flag?.severity === "medium") expect(m.flag.why).toContain(formatMoney({ amount: s!.cheapest!.price, currency: "GBP" }));
+    }
+  });
+
+  it("drops a saved cheapest listing that is far below the going rate (rows saved before this rule)", () => {
+    const old = { flag: null, median: 7995, offers: 5, cheapest: offer(1799, "odd-shop.com"), item: "Pulse earbuds" };
+    expect(marketSummary(old)).toEqual({ median: 7995, offers: 5, cheapest: null });
+    expect(marketCell(old, "GBP")).toBe("around £79.95");
+  });
+
+  it("says nothing without a going rate", () => {
+    expect(marketSummary(null)).toBeNull();
+    expect(marketCell({ flag: null, offers: 1, item: "x" }, "GBP")).toBe("");
+  });
+});
+
+describe("priceWatchFits (Watch the price only where it makes sense)", () => {
+  const base = {
+    status: "needs_approval",
+    amount: 24900,
+    request: { item: "noise cancelling wireless earbuds" },
+    ai: { flags: [] as Array<{ kind: string; severity: string }> },
+    market: { ...priceCheck(24900, "GBP", market), item: "earbuds" },
+  };
+
+  it("is offered on a held payment that costs more than real shops charge", () => {
+    expect(priceWatchFits(base)).toBe(true);
+  });
+
+  it("is not offered on a price far below real shops (a fake shop)", () => {
+    expect(priceWatchFits({ ...base, amount: 2499, market: { ...priceCheck(2499, "GBP", market), item: "earbuds" } })).toBe(false);
+  });
+
+  it("is not offered when the shop hid instructions for AI agents", () => {
+    expect(priceWatchFits({ ...base, ai: { flags: [{ kind: "prompt_injection", severity: "high" }] } })).toBe(false);
+  });
+
+  it("is not offered when the case file found hidden orders (GadgetBarn) or called it a likely scam", () => {
+    expect(priceWatchFits({ ...base, case_file: { verdict: "unclear", findings: [{ kind: "prompt_injection" }] } })).toBe(false);
+    expect(priceWatchFits({ ...base, case_file: { verdict: "likely_scam", findings: [] } })).toBe(false);
+    expect(priceWatchFits({ ...base, case_file: { verdict: "unclear", findings: [{}] } })).toBe(true);
+  });
+
+  it("is not offered when the ask is already at or under the cheapest real shop", () => {
+    expect(priceWatchFits({ ...base, amount: 16999, market: { ...priceCheck(16999, "GBP", market), item: "earbuds" } })).toBe(false);
+  });
+
+  it("needs a product, a known going rate and a held, denied or stopped payment", () => {
+    expect(priceWatchFits({ ...base, request: {} })).toBe(false);
+    expect(priceWatchFits({ ...base, market: null })).toBe(false);
+    expect(priceWatchFits({ ...base, status: "captured" })).toBe(false);
   });
 });

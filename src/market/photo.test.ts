@@ -118,7 +118,7 @@ describe("buildPhoto", () => {
   it("prices confirmed things from new offers when buying, and says plainly which it couldn't find", () => {
     const r = buildPhoto(scene(), "buy", "GBP", 4900);
     expect(r.items).toHaveLength(2);
-    expect(r.items[0]).toMatchObject({ n: 1, thing: "Overear headphones", found: true, low: 21900, high: 21999, typical: 21900, shops: 3, bbox: [86, 117, 217, 253] });
+    expect(r.items[0]).toMatchObject({ n: 1, thing: "Over ear headphones", found: true, low: 21900, high: 21999, typical: 21900, shops: 3, bbox: [86, 117, 217, 253] });
     expect(r.items[0]!.found && r.items[0]!.cheapest).toMatchObject({ domain: "currys.co.uk", price: 21900 });
     expect(r.items[1]).toMatchObject({ n: 2, thing: "Computer monitor", found: false });
     expect(r.total).toBe("Real shops: about £219 for the 1 thing Spotter could match. It couldn't find the other 1, so the real total is higher.");
@@ -182,6 +182,73 @@ describe("buildPhoto", () => {
     const s = scene();
     s.things = [s.things[0]!];
     expect(buildPhoto(s, "buy", "GBP", 90000).verdict).toMatch(/well over/);
+  });
+});
+
+describe("similar ones (everyday things with no model number)", () => {
+  // Shaped like the live answer for the example living room photo (11 Oct 2026): sofas of many makes, no model numbers.
+  const sofa = (id: string, title: string, price: number) => prod(id, title, "Maker " + id, [[`${id}.co.uk`, price, "new"]], ["sofas", "furniture"]);
+  const SOFAS = [
+    sofa("s1", "Armitage Scatter Back Chenille 3 Seater Sofa", 48930),
+    sofa("s2", "Newton Luxe Chenille Seater Sofa", 91920),
+    sofa("s3", "2 Seater Sofa", 24900),
+    sofa("s4", "Continuous Three Seat Sofa", 585400),
+    sofa("s5", "Aspen Textured Faux Linen 3 Seater Sofa", 114900),
+    sofa("s6", "Osaka sofa", 235900),
+  ];
+  const sofaThing = { thing: "blue sofa", bbox: [0, 439, 334, 854] as [number, number, number, number], categories: ["sofas"], matches: SOFAS };
+
+  it("prices an everyday thing from similar listings of the same kind, says so, and gives the middle of the range", () => {
+    const r = buildPhoto({ size: [1280, 854], things: [sofaThing] }, "buy", "GBP", null);
+    const i = r.items[0]!;
+    expect(i).toMatchObject({ found: true, match: "similar", offers: 6 });
+    if (!i.found) throw new Error("not found");
+    // The middle half of the listings, so one designer sofa can't stretch the range.
+    expect(i.low).toBe(48930);
+    expect(i.high).toBe(235900);
+    expect(i.typical).toBe(103410);
+    // The example shop is the cheapest inside the range shown, not the odd one below it.
+    expect(i.cheapest).toMatchObject({ domain: "s1.co.uk", price: 48930 });
+    expect(r.total).toBe("Similar ones at real shops: about £1,034 for these. These are similar things, not the exact ones in the photo.");
+  });
+
+  it("two listings of one model from the same shop aren't an exact match (live: a designer lamp and its twin)", () => {
+    const lamp = (id: string, title: string, domain: string, price: number) => prod(id, title, "Maker", [[domain, price, "new"]], ["lamps"]);
+    const matches = [
+      lamp("l1", "Kaiser Idell 6580-F floor lamp", "designer.co.uk", 104900),
+      lamp("l2", "Retro Task Floor Lamp", "a.co.uk", 9900),
+      lamp("l3", "Kaiser Idell 6580-F Luxus floor lamp", "designer.co.uk", 104900),
+      lamp("l4", "Finn Floor Lamp", "b.co.uk", 9900),
+      lamp("l5", "Charlie Floor Lamp", "c.co.uk", 4399),
+    ];
+    const i = buildPhoto({ size: [100, 100], things: [{ thing: "white floor lamp", bbox: null, categories: ["lamps"], matches }] }, "buy", "GBP", null).items[0]!;
+    expect(i).toMatchObject({ found: true, match: "similar", typical: 9900 });
+  });
+
+  it("an exact model match still wins, and is marked exact", () => {
+    expect(buildPhoto(scene(), "buy", "GBP", null).items[0]).toMatchObject({ found: true, match: "exact" });
+  });
+
+  it("needs three listings of the right kind, so two odd matches price nothing", () => {
+    expect(buildPhoto({ size: [1280, 854], things: [{ ...sofaThing, matches: SOFAS.slice(0, 2) }] }, "buy", "GBP", null).items[0]!.found).toBe(false);
+    const wrongKind = SOFAS.map((p) => ({ ...p, categories: ["televisions"], title: p.title.replace(/sofa/i, "stand") }));
+    expect(buildPhoto({ size: [1280, 854], things: [{ ...sofaThing, matches: wrongKind }] }, "buy", "GBP", null).items[0]!.found).toBe(false);
+  });
+
+  it("never prices model numbered things (monitors, TVs) from similar ones: there the exact model matters", () => {
+    expect(confirmMatch(scene().things[1]!)).toBeNull();
+    expect(buildPhoto(scene(), "buy", "GBP", null).items[1]!.found).toBe(false);
+  });
+
+  it("only says 'far below' against the low end of similar prices, and never 'well over'", () => {
+    const s = { size: [1280, 854] as [number, number], things: [sofaThing] };
+    expect(buildPhoto(s, "buy", "GBP", 4900).verdict).toMatch(/far below/);
+    expect(buildPhoto(s, "buy", "GBP", 25000).verdict).toBeNull();
+    expect(buildPhoto(s, "buy", "GBP", 900000).verdict).toBeNull();
+  });
+
+  it("writes 'over ear', not Channel3's 'overear'", () => {
+    expect(buildPhoto(scene(), "buy", "GBP", null).items[0]!.thing).toBe("Over ear headphones");
   });
 });
 

@@ -1,7 +1,7 @@
 // Channel3 product search: real retailer offers for an item, used as price evidence and for agent shopping.
 // Docs: docs/channel3/ (https://docs.trychannel3.com). Cached in Postgres so repeat checks cost no credits.
 import type { Db } from "@/db";
-import type { Offer } from "@/core/market";
+import { genuineOffers, type Offer } from "@/core/market";
 import type { Currency } from "@/core/types";
 
 const BASE = "https://api.trychannel3.com";
@@ -220,9 +220,15 @@ export function sameProduct(item: string, title: string): boolean {
   return words.filter((t) => !have.has(t)).length <= 1;
 }
 
-/** Offers pooled from every listing of the same product. Empty when nothing matches: no guess is better than a wrong one. */
+/**
+ * Offers pooled from every listing of the same product. Empty when nothing matches: no guess is better than a wrong one.
+ * A new listing far below the going rate of the others (another product, a part, a fake listing) is left out, so the
+ * payment check and the case agent's "real shops" never start from different cheapest prices. Used ones stay.
+ */
 export function offersFor(products: Product[], item: string): Offer[] {
-  return products.filter((p) => sameProduct(item, p.title)).flatMap((p) => p.offers);
+  const all = products.filter((p) => sameProduct(item, p.title)).flatMap((p) => p.offers);
+  const real = new Set([...new Set(all.map((o) => o.currency))].flatMap((c) => genuineOffers(all, c)));
+  return all.filter((o) => o.condition === "used" || real.has(o));
 }
 
 /** Cached lookup used by the payment check. */

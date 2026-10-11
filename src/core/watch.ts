@@ -9,13 +9,12 @@
 // subscription is stopped when a watch ends (retried by the daily job when Channel3 is down).
 import { randomBytes } from "node:crypto";
 import type { Db } from "@/db";
-import type { Offer } from "./market";
+import { genuineOffers, looksFake, priceCheck, type MarketResult, type Offer } from "./market";
 import type { Currency } from "./types";
 import { bestProduct, familySearch, type PriceHistory, type Product } from "@/market/channel3";
 import { cleanQuery } from "@/watchtower/price";
 
 export const WATCH_DAYS = 14;
-const TOO_CHEAP = 0.4; // same line as the price check: under 40% of the going rate is a fake shop tell
 const HINT_QUIET_MINUTES = 10; // a webhook for a product checked this recently is a repeat
 const POLL_HOURS = 12; // the daily job rechecks a watch at most this often
 const POLL_BATCH = 50;
@@ -125,13 +124,7 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
-/** Real offers only: new ones (a used listing is not a drop), the family's currency, never far below the going rate. */
-export function genuineOffers(offers: Offer[], currency: Currency): Offer[] {
-  const same = offers.filter((o) => o.condition !== "used" && o.currency === currency && o.price > 0);
-  if (same.length < 2) return same;
-  const going = median(same.map((o) => o.price));
-  return same.filter((o) => o.price >= going * TOO_CHEAP);
-}
+export { genuineOffers };
 
 const cheapest = (offers: Offer[]) => offers.reduce<Offer | null>((a, b) => (!a || b.price < a.price ? b : a), null);
 
@@ -139,15 +132,14 @@ const cheapest = (offers: Offer[]) => offers.reduce<Offer | null>((a, b) => (!a 
 const roundDown = (n: number) => (n >= 2000 ? Math.floor(n / 100) * 100 : Math.floor(n / 10) * 10);
 
 /**
- * The price that counts as a real drop: a little (3%) under today's best real price, and at least 10% under what they
- * nearly paid when that was more. Without a real price, 10% under what they nearly paid. A nearly paid price below
- * every real shop (a fake shop) is ignored.
+ * The price that counts as a real drop: a little (3%) under today's best real price, and always at least 10% under
+ * what they nearly paid, so the target is never above the price they were asked. Without a real price, 10% under
+ * what they nearly paid. (A price far below every real shop is a fake shop and is never watched: startWatch.)
  */
 export function targetPrice(nearly: number, startBest: number | null): number {
   const tenOff = nearly * 0.9;
   if (startBest === null) return Math.max(1, roundDown(tenOff));
-  const under = startBest * 0.97;
-  return Math.max(1, roundDown(nearly > startBest ? Math.min(under, tenOff) : under));
+  return Math.max(1, roundDown(Math.min(startBest * 0.97, tenOff)));
 }
 
 /**
@@ -249,6 +241,10 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
   const existing = (await db.query<Row>(`${SELECT} where w.household_id = $1 and w.product_id = $2 and w.status = 'watching'`, [input.householdId, product.id]))[0];
   if (existing) return { watch: toView(existing) };
 
+  // A price far below what real shops charge is a fake shop, not a deal to wait for: nothing to watch.
+  if (priceCheck(input.nearly, input.currency, product.offers).flag?.severity === "high") {
+    return { error: "That price is far below what real shops charge, which is a fake shop sign. There's no lower price to wait for.", status: 409 };
+  }
   const best = cheapest(genuineOffers(product.offers, input.currency));
   const target = targetPrice(input.nearly, best?.price ?? null);
 
@@ -321,18 +317,30 @@ export async function startWatch(deps: WatchDeps, input: StartInput): Promise<Wa
   return { watch: toView((await getRow(db, id))!) };
 }
 
-type PaymentBits = { id: string; spender_id: string; status: string; amount: string | number; currency: Currency; item: string | null; household_id: string };
+type PaymentBits = {
+  id: string;
+  spender_id: string;
+  status: string;
+  amount: string | number;
+  currency: Currency;
+  item: string | null;
+  household_id: string;
+  ai: { flags?: Array<{ kind: string; severity: string }> } | null;
+  market: MarketResult | null;
+  case_file: { verdict?: string; findings?: Array<{ kind?: string }> } | null;
+};
 
 /** A watch on the product of one of this family's held, denied or stopped payments. `onlySpender` keeps an agent to its own payments. */
 export async function watchFromPayment(deps: WatchDeps, householdId: string, paymentId: string, opts: { createdBy?: string; onlySpender?: string } = {}): Promise<WatchResult> {
   const [p] = await deps.db.query<PaymentBits>(
-    `select p.id, p.spender_id, p.status, p.amount, p.currency, p.request->>'item' as item, s.household_id
+    `select p.id, p.spender_id, p.status, p.amount, p.currency, p.request->>'item' as item, p.ai, p.market, p.case_file, s.household_id
      from payments p join spenders s on s.id = p.spender_id where p.id = $1`,
     [paymentId],
   );
   if (!p || p.household_id !== householdId || (opts.onlySpender && p.spender_id !== opts.onlySpender)) return { error: "No payment with that id.", status: 404 };
   if (!WATCHABLE.includes(p.status)) return { error: "Only a held, denied or stopped payment can have its price watched.", status: 409 };
   if (!p.item?.trim()) return { error: "This payment didn't say which product it was for, so there's no price to watch.", status: 400 };
+  if (looksFake(p)) return { error: "This shop looked fake or unsafe, so Spotter won't watch its price. Buy it from a real shop instead.", status: 409 };
   return startWatch(deps, { householdId, paymentId: p.id, spenderId: p.spender_id, item: p.item, currency: p.currency, nearly: Number(p.amount), createdBy: opts.createdBy ?? "spotter" });
 }
 

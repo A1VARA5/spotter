@@ -24,9 +24,14 @@ export type PhotoItem = {
   | { found: false }
   | {
       found: true;
+      /**
+       * "exact": the best matches agree on the model. "similar": an everyday thing with no model number (a sofa, a
+       * lamp), priced from listings of the same kind of thing, and always said to be similar ones.
+       */
+      match: "exact" | "similar";
       title: string;
       image?: string;
-      /** Lowest, highest and middle price of the matching offers, in minor units. */
+      /** Lowest, highest and middle price of the matching offers, in minor units. For similar ones, the middle half of the listings. */
       low: number;
       high: number;
       typical: number;
@@ -143,6 +148,29 @@ export function confirmMatch(t: SceneThing): Product[] | null {
   return null;
 }
 
+/** A listing title with a model number in it (G8, WH-1000XM4, iPhone 13): for these the exact model matters. */
+const modelled = (title: string) => {
+  const m = modelParts(title);
+  return m.mixed.size > 0 || m.pairs.size > 0;
+};
+const SIMILAR_MIN = 3;
+
+/**
+ * For an everyday thing with no model number (a sofa, a floor lamp, curtains): the listings of the same kind among
+ * Channel3's best eight, when the first or second match is that kind, there are at least three, and most of them have
+ * no model number. Priced as "similar ones", never as the thing itself. Null otherwise.
+ */
+export function similarMatch(t: SceneThing): Product[] | null {
+  if (t.thing === WHOLE_PHOTO) return null;
+  const wantsAccessory = ACCESSORY.test(t.thing);
+  const cands = t.matches.slice(0, LOOK).filter((p) => (wantsAccessory || !accessory(p.title)) && p.offers.length > 0);
+  if (!cands.slice(0, ANCHORS).some((p) => rightKind(t, p))) return null;
+  const kind = cands.filter((p) => rightKind(t, p));
+  if (kind.length < SIMILAR_MIN) return null;
+  if (kind.filter((p) => modelled(p.title)).length * 2 > kind.length) return null;
+  return kind;
+}
+
 // ---------- the answer ----------
 
 const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/;
@@ -165,37 +193,75 @@ const exact = (minor: number, currency: Currency) =>
 
 const label = (thing: string) => {
   if (thing === WHOLE_PHOTO) return "The whole photo";
-  const s = plain(thing.replace(/#\d+/g, ""), 60);
+  // Channel3 writes some things as one word ("overear headphones").
+  const s = plain(thing.replace(/#\d+/g, "").replace(/\b(over|in|on)ear\b/gi, "$1 ear"), 60);
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Something";
 };
 
 const wanted = (mode: PhotoMode) => (o: Offer) => (mode === "sell" ? o.condition === "used" : o.condition !== "used");
 
-function priceThing(t: SceneThing, n: number, mode: PhotoMode, currency: Currency): PhotoItem {
-  const base = { n, thing: label(t.thing), bbox: t.bbox };
-  const group = confirmMatch(t);
-  if (!group) return { ...base, found: false };
+/** The usable offers of some listings: the right condition and currency, a real shop domain and link, no repeats. */
+function usable(products: Product[], mode: PhotoMode, currency: Currency) {
   const seen = new Set<string>();
-  const offers = group
+  return products
     .flatMap((p) => p.offers)
     .map((o) => ({ ...o, domain: o.domain.toLowerCase().replace(/^www\./, "") }))
     .filter((o) => wanted(mode)(o) && o.currency === currency && o.price > 0 && DOMAIN.test(o.domain) && BUY_URL.test(o.url))
     .filter((o) => !seen.has(o.url) && Boolean(seen.add(o.url)));
-  if (!offers.length) return { ...base, found: false };
-  const prices = offers.map((o) => o.price);
-  const cheapest = offers.reduce((a, b) => (b.price < a.price ? b : a));
-  const top = group[0]!;
+}
+
+/** Nearest rank quartiles of sorted prices: the middle half, so one designer piece can't stretch the range. */
+const quartiles = (sorted: number[]) => ({ low: sorted[Math.floor((sorted.length - 1) * 0.25)]!, high: sorted[Math.ceil((sorted.length - 1) * 0.75)]! });
+
+function priceThing(t: SceneThing, n: number, mode: PhotoMode, currency: Currency): PhotoItem {
+  const base = { n, thing: label(t.thing), bbox: t.bbox };
+  const group = confirmMatch(t);
+  if (group) {
+    const offers = usable(group, mode, currency);
+    // Two listings from one shop aren't two opinions (live: a designer lamp and its "Luxus" twin, both at one shop,
+    // claimed an ordinary floor lamp). An exact price needs at least two shops; otherwise it is priced as similar.
+    if (new Set(offers.map((o) => o.domain)).size >= 2) {
+      const prices = offers.map((o) => o.price);
+      const cheapest = offers.reduce((a, b) => (b.price < a.price ? b : a));
+      const top = group[0]!;
+      return {
+        ...base,
+        found: true,
+        match: "exact",
+        title: plain(top.title),
+        ...(top.image && CDN_IMAGE.test(top.image) ? { image: top.image } : {}),
+        low: Math.min(...prices),
+        high: Math.max(...prices),
+        typical: median(prices),
+        offers: offers.length,
+        shops: new Set(offers.map((o) => o.domain)).size,
+        cheapest: { domain: cheapest.domain, price: cheapest.price, url: cheapest.url },
+      };
+    }
+  }
+  const similar = similarMatch(t);
+  if (!similar) return { ...base, found: false };
+  // One price per listing (its cheapest usable offer), so a listing sold by many shops doesn't outweigh the rest.
+  const each = similar.flatMap((p) => {
+    const o = usable([p], mode, currency);
+    return o.length ? [{ p, o: o.reduce((a, b) => (b.price < a.price ? b : a)) }] : [];
+  });
+  if (each.length < SIMILAR_MIN) return { ...base, found: false };
+  const sorted = each.map((e) => e.o.price).sort((a, b) => a - b);
+  const q = quartiles(sorted);
+  // The example shop is the cheapest inside the range shown, never an odd one below it (live: a tree skirt among sheepskin rugs).
+  const cheapest = each.filter((e) => e.o.price >= q.low).reduce((a, b) => (b.o.price < a.o.price ? b : a));
   return {
     ...base,
     found: true,
-    title: plain(top.title),
-    ...(top.image && CDN_IMAGE.test(top.image) ? { image: top.image } : {}),
-    low: Math.min(...prices),
-    high: Math.max(...prices),
-    typical: median(prices),
-    offers: offers.length,
-    shops: new Set(offers.map((o) => o.domain)).size,
-    cheapest: { domain: cheapest.domain, price: cheapest.price, url: cheapest.url },
+    match: "similar",
+    title: plain(cheapest.p.title),
+    ...(cheapest.p.image && CDN_IMAGE.test(cheapest.p.image) ? { image: cheapest.p.image } : {}),
+    ...q,
+    typical: median(sorted),
+    offers: each.length,
+    shops: new Set(each.map((e) => e.o.domain)).size,
+    cheapest: { domain: cheapest.o.domain, price: cheapest.o.price, url: cheapest.o.url },
   };
 }
 
@@ -221,20 +287,29 @@ export function buildPhoto(scene: Scene, mode: PhotoMode, currency: Currency, qu
     total = "Spotter couldn't match any of these to real shop listings, so it can't say what they're worth.";
   } else {
     const amount = mode === "buy" ? `about ${about(typical, currency)}` : low === high || about(low, currency) === about(high, currency) ? `about ${about(low, currency)}` : `about ${about(low, currency)} to ${about(high, currency)}`;
-    const lead = mode === "buy" ? `Real shops: ${amount}` : `Used ones sell for ${amount}`;
-    total = missing
-      ? `${lead} for the ${things(found.length)} Spotter could match. It couldn't find the other ${missing}, so the real total is higher.`
-      : mode === "buy"
-        ? `${lead} for these.`
-        : `${lead}.`;
+    const allSimilar = found.every((i) => i.match === "similar");
+    const lead = mode === "buy" ? `${allSimilar ? "Similar ones at real shops" : "Real shops"}: ${amount}` : `${allSimilar ? "Similar used ones" : "Used ones"} sell for ${amount}`;
+    const note = allSimilar
+      ? " These are similar things, not the exact ones in the photo."
+      : found.some((i) => i.match === "similar")
+        ? " Some are priced from similar things, not the exact ones."
+        : "";
+    total =
+      (missing
+        ? `${lead} for the ${things(found.length)} Spotter could match. It couldn't find the other ${missing}, so the real total is higher.`
+        : mode === "buy"
+          ? `${lead} for these.`
+          : `${lead}.`) + note;
   }
 
   const quote = quoted === null ? null : mode === "buy" ? `They're asking ${exact(quoted, currency)} for all of it.` : `They offered ${exact(quoted, currency)}.`;
   let verdict: string | null = null;
   // Channel3 stops at MAX_THINGS, so a full list may still have left things out: no "well over" then.
-  const complete = !missing && scene.things.length < MAX_THINGS;
+  // Similar ones are a range of other makes, so "far below" is judged against the low end and "well over" never said.
+  const exactOnly = found.every((i) => i.match === "exact");
+  const complete = !missing && scene.things.length < MAX_THINGS && exactOnly;
   if (quoted !== null && found.length && !scene.fallback) {
-    if (mode === "buy" && quoted < typical * 0.4) {
+    if (mode === "buy" && quoted < (exactOnly ? typical : low) * 0.4) {
       verdict = "That's far below what real shops charge. Deals this cheap are a common scam: never pay by bank transfer or Friends and Family.";
     } else if (mode === "buy" && complete && quoted > typical * 1.3) {
       verdict = "That's well over what real shops charge for these.";
