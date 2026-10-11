@@ -69,6 +69,24 @@ describe("How Spotter checked it", () => {
     expect(k.href).toBe("/dashboard#pay-p_trap");
   });
 
+  it("the cloud browser row shows KERNEL's own screenshot, and offers a safe look at that page", () => {
+    const shot = "data:image/jpeg;base64,AAAA";
+    const p = pay({
+      id: "p_skillet",
+      spender_id: "agent",
+      request: { payee: { name: "Panmoor Kitchen" }, context: "Shop page: https://spotter-pay.vercel.app/demo-shop/skillet Cast iron" } as never,
+      case_file: { page: { url: "https://spotter-pay.vercel.app/demo-shop/skillet", finalUrl: "https://spotter-pay.vercel.app/demo-shop/skillet", title: "Skillet", asks: {}, screenshot: shot } } as never,
+    });
+    const k = byId(engines([p], names, none), "kernel").example!;
+    expect(k.thumb).toEqual({ src: shot, alt: expect.stringContaining("spotter-pay.vercel.app") });
+    expect(k.peek).toEqual({ paymentId: "p_skillet", host: "spotter-pay.vercel.app" });
+    // Never a picture that isn't our own JPEG, and no look at a page the payment's message never linked.
+    const odd = pay({ ...p, id: "p_odd", request: { payee: { name: "x" }, context: "no link here" } as never, case_file: { page: { ...(p.case_file!.page as object), screenshot: "https://evil.example/x.jpg" } } as never });
+    const o = byId(engines([odd], names, none), "kernel").example!;
+    expect(o.thumb).toBeUndefined();
+    expect(o.peek).toBeUndefined();
+  });
+
   it("the real shop prices row compares the ask with the cheapest real shop", () => {
     const p = pay({ id: "p_ear", spender_id: "agent", amount: 24900, request: { payee: { name: "SoundDepot UK" } } as never, market: { flag: null, offers: 6, item: "earbuds", cheapest: { title: "x", domain: "shop.example", price: 17900, currency: "GBP", url: "" } } as never });
     const c = byId(engines([p], names, none), "channel3").example!;

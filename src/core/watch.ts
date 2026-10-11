@@ -37,6 +37,10 @@ export type WatchC3 = {
 export type WatchCaps = { perHousehold: number; active: number; perDay: number; perFamilyDay?: number };
 export type WatchDeps = { db: Db; c3: WatchC3; notify?: (w: WatchView & { householdId: string }) => Promise<void>; caps?: WatchCaps };
 
+/** How a live watch hears about prices: Channel3's price change webhook (when its secret is set) or only the daily check. */
+export type WatchUpdates = "on_change" | "daily";
+export const watchUpdates = (env: Record<string, string | undefined> = process.env): WatchUpdates => (env.CHANNEL3_WEBHOOK_SECRET ? "on_change" : "daily");
+
 export type WatchStatus = "watching" | "dropped" | "stopped" | "expired";
 export type WatchHistory = { source: "channel3" | "checks"; points: Array<{ at: string; price: number }>; status?: "low" | "typical" | "high" };
 export type WatchView = {
