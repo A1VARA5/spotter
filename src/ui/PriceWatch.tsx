@@ -4,7 +4,7 @@
 // is ever bought: the line only says where and for how much, with a link to the shop's own page.
 import { useEffect, useRef, useState } from "react";
 import { Eye, TrendingDown } from "lucide-react";
-import type { WatchView } from "@/core/watch";
+import type { WatchUpdates, WatchView } from "@/core/watch";
 import { priceWatchFits } from "@/core/market";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
@@ -41,7 +41,31 @@ function Spark({ w }: { w: WatchView }) {
   );
 }
 
-function WatchLine({ w, onStop, busy, lineRef }: { w: WatchView; onStop?: () => void; busy: boolean; lineRef: React.RefObject<HTMLParagraphElement | null> }) {
+/** How often a live watch is really checked: daily by the cron job, plus Channel3's webhook when it is set up. */
+function HowChecked({ updates }: { updates?: WatchUpdates }) {
+  if (!updates) return null;
+  return (
+    <p className="watch-how">
+      {updates === "on_change"
+        ? "Channel3 price tracking tells Spotter as soon as the price changes, and Spotter checks it every day as well."
+        : "Spotter checks the price every day with Channel3 price tracking. It only says it dropped when a real shop's listing shows it."}
+    </p>
+  );
+}
+
+function WatchLine({
+  w,
+  onStop,
+  busy,
+  lineRef,
+  updates,
+}: {
+  w: WatchView;
+  onStop?: () => void;
+  busy: boolean;
+  lineRef: React.RefObject<HTMLParagraphElement | null>;
+  updates?: WatchUpdates;
+}) {
   const who = w.who ?? "they";
   const tag = w.example ? <span className="case-example"> · Example, checked earlier</span> : null;
   if (w.status === "dropped" && w.best) {
@@ -71,11 +95,13 @@ function WatchLine({ w, onStop, busy, lineRef }: { w: WatchView; onStop?: () => 
         <p className="watch-head">
           <Eye size={16} strokeWidth={2.2} aria-hidden="true" /> Watching the price until {day(w.expiresAt)}
           {tag}
+          {!w.example && <span className="watch-live">Live</span>}
         </p>
         <p ref={lineRef} tabIndex={-1} className="watch-line">
-          Spotter tells you if a real shop sells it for {money(w.target, w.currency)} or less.
+          Target <b className="num">{money(w.target, w.currency)}</b> or less at a real shop: Spotter tells you when one sells it for that.
           {w.best ? ` Best real price now: ${money(w.best.price, w.currency)} at ${w.best.shop}.` : ""}
         </p>
+        {!w.example && <HowChecked updates={updates} />}
         <Spark w={w} />
         {onStop && (
           <button type="button" className="btn btn-quiet watch-stop" aria-disabled={busy || undefined} onClick={() => !busy && onStop()}>
@@ -96,7 +122,7 @@ function WatchLine({ w, onStop, busy, lineRef }: { w: WatchView; onStop?: () => 
  * The watch for one payment, or the button that starts one. Spotter only, no PIN: watching moves no money.
  * Focus moves to the result line after either button, like the rest of the dashboard.
  */
-export function PriceWatch({ watch, paymentId, onChanged }: { watch?: WatchView; paymentId?: string; onChanged?: () => void }) {
+export function PriceWatch({ watch, paymentId, onChanged, updates }: { watch?: WatchView; paymentId?: string; onChanged?: () => void; updates?: WatchUpdates }) {
   const [mine, setMine] = useState<WatchView | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +171,7 @@ export function PriceWatch({ watch, paymentId, onChanged }: { watch?: WatchView;
 
   const start = () =>
     call("/api/watches", { paymentId }, (v) =>
-      v.status === "dropped" ? "A real shop already has it for less." : `Watching the price. Spotter tells you if a real shop sells it for ${money(v.target, v.currency)} or less.`,
+      v.status === "dropped" ? "A real shop already has it for less." : `Watching the price live. Target ${money(v.target, v.currency)} or less at a real shop.`,
     );
   const stop = () => w && call(`/api/watches/${encodeURIComponent(w.id)}/stop`, {}, () => "You stopped watching this price.");
 
@@ -153,7 +179,7 @@ export function PriceWatch({ watch, paymentId, onChanged }: { watch?: WatchView;
     <div className="watch-slot">
       {w ? (
         <>
-          <WatchLine w={w} busy={busy} lineRef={lineRef} onStop={w.example ? undefined : stop} />
+          <WatchLine w={w} busy={busy} lineRef={lineRef} onStop={w.example ? undefined : stop} updates={updates} />
           {paymentId && (w.status === "stopped" || w.status === "expired") && (
             <button type="button" className="btn btn-quiet watch-stop" aria-disabled={busy || undefined} onClick={start}>
               <Eye size={16} strokeWidth={2.2} aria-hidden="true" /> {busy ? "Starting" : "Watch the price again"}

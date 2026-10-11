@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
-import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock, FileText, Camera, TrendingDown, ChevronRight, ChevronDown, X } from "lucide-react";
+import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock, FileText, Camera, TrendingDown, ChevronRight, ChevronDown, X, ExternalLink, ScanEye } from "lucide-react";
 import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
 import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
 import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
@@ -12,12 +12,16 @@ import { contradictsPrice, priceVerdict } from "@/core/market";
 import { Hint } from "@/ui/Hint";
 import { CaseFile, CasePending } from "@/ui/CaseFile";
 import { PriceWatch, watchable } from "@/ui/PriceWatch";
-import type { WatchView } from "@/core/watch";
+import type { WatchUpdates, WatchView } from "@/core/watch";
 import { WasItYouLine, wiyStatus } from "@/ui/WasItYou";
 import { PhotoCheck } from "@/ui/PhotoCheck";
+import { Peek } from "@/ui/Peek";
+import { peekableHost } from "@/ui/peekable";
 import { weekSummary } from "@/ui/week";
 import { approveWarning } from "@/ui/labels";
+import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
 import "./allclear.css";
+import "./wide.css";
 import { BUSINESS_SCENARIOS, SCENARIOS, type Scenario } from "@/ui/scenarios";
 
 
@@ -29,6 +33,8 @@ type DashCtx = {
   tz: string;
   now: number;
   watches: WatchView[];
+  /** How live watches hear about prices (daily checks, or Channel3's webhook as well). */
+  watchUpdates?: WatchUpdates;
   error: string | null;
   locked: boolean;
   setLocked: (v: boolean) => void;
@@ -87,6 +93,7 @@ export function DashboardState({
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(!unlocked);
   const [watches, setWatches] = useState<WatchView[]>([]);
+  const [watchUpdates, setWatchUpdates] = useState<WatchUpdates | undefined>(undefined);
   const now = useNow(serverNow);
 
   const refresh = useCallback(async () => {
@@ -95,7 +102,10 @@ export function DashboardState({
       const watchesCall = fetch("/api/watches", { cache: "no-store" })
         .then(async (w) => {
           const jw = await readJson(w);
-          if (w.ok && Array.isArray(jw.watches)) setWatches(jw.watches);
+          if (w.ok && Array.isArray(jw.watches)) {
+            setWatches(jw.watches);
+            if (jw.updates === "on_change" || jw.updates === "daily") setWatchUpdates(jw.updates);
+          }
           else console.warn("[spotter] price watches didn't load:", jw.error ?? w.status);
         })
         .catch((e: unknown) => console.warn("[spotter] price watches didn't load:", e));
@@ -116,7 +126,7 @@ export function DashboardState({
     return () => clearInterval(t);
   }, [refresh]);
 
-  return <Ctx.Provider value={{ payments, names, demo, business, tz, now, watches, error, locked, setLocked, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ payments, names, demo, business, tz, now, watches, watchUpdates, error, locked, setLocked, refresh }}>{children}</Ctx.Provider>;
 }
 
 /** The hold that opens first: one Spotter thinks is a scam, else the oldest. */
@@ -127,7 +137,7 @@ export function firstToOpen(waiting: Payment[]): string | null {
 
 /** Primary column: what is waiting for a decision, one card open at a time. */
 export function DashboardMain() {
-  const { payments, names, demo, tz, now, watches, error, locked, setLocked, refresh } = useDash();
+  const { payments, names, demo, tz, now, watches, watchUpdates, error, locked, setLocked, refresh } = useDash();
   const waiting = payments.filter((p) => p.status === "needs_approval");
   const watchFor = (id: string) => watches.find((w) => w.paymentId === id);
 
@@ -147,7 +157,7 @@ export function DashboardMain() {
 
   // What a decision just did, shown where the card was and focused, so keyboard and screen reader users
   // land on the result instead of the page body when the card goes.
-  const [notice, setNotice] = useState<{ text: string; n: number } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; real?: RealOne & { currency: string }; n: number } | null>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (notice) noticeRef.current?.focus();
@@ -213,6 +223,17 @@ export function DashboardMain() {
       {notice && (
         <p ref={noticeRef} tabIndex={-1} className="dash-notice" key={notice.n}>
           {notice.text}
+          {notice.real && (
+            <>
+              {" "}
+              Here&apos;s the real one at {notice.real.domain} for {money(notice.real.price, notice.real.currency)}:{" "}
+              <a href={notice.real.url} target="_blank" rel="noopener noreferrer nofollow" className="dash-notice-real">
+                {notice.real.title}
+                <ExternalLink size={14} strokeWidth={2.2} aria-hidden="true" />
+                <span className="sr-only"> (opens {notice.real.domain}&apos;s own page in a new tab)</span>
+              </a>
+            </>
+          )}
         </p>
       )}
       <div className="stack">
@@ -229,9 +250,10 @@ export function DashboardMain() {
             open={openId === p.id}
             onToggle={() => setPicked(openId === p.id ? null : p.id)}
             watch={watchFor(p.id)}
+            watchUpdates={watchUpdates}
             onSettled={refresh}
             onLocked={() => setLocked(true)}
-            onDecided={(text) => setNotice((n) => ({ text, n: (n?.n ?? 0) + 1 }))}
+            onDecided={(text, real) => setNotice((n) => ({ text, real, n: (n?.n ?? 0) + 1 }))}
           />
         ))}
       </div>
@@ -341,11 +363,14 @@ function AllClear() {
 
 /** The rail: Everything today (newest first, each opens its case file), then the tools as compact buttons. */
 export function DashboardRail() {
-  const { payments, names, now, watches, refresh } = useDash();
+  const { payments, names, now, watches, watchUpdates, refresh } = useDash();
   const rest = payments.filter((p) => p.status !== "needs_approval");
   const watchFor = (id: string) => watches.find((w) => w.paymentId === id);
-  // Watches without a payment on this page: the demo family's example, or one an AI agent started.
-  const loose = watches.filter((w) => !w.paymentId || !payments.some((p) => p.id === w.paymentId));
+  // Every price watch, live ones first: one started on a held card shows here straight away, next to the example.
+  const listed = [...watches].sort((a, b) => Number(a.example) - Number(b.example));
+  const live = listed.filter((w) => !w.example && w.status === "watching").length;
+  // The latest page KERNEL opened that can be looked at again safely (a link from the payment's own message).
+  const peekable = payments.find((p) => peekableHost(p));
 
   return (
     <div className="dash-rail">
@@ -360,7 +385,7 @@ export function DashboardRail() {
         ) : (
           <ul className="feed">
             {rest.map((p) => (
-              <FeedRow key={p.id} p={p} all={payments} who={names[p.spender_id] ?? "Someone"} now={now} watch={watchFor(p.id)} onWatchChanged={refresh} />
+              <FeedRow key={p.id} p={p} all={payments} who={names[p.spender_id] ?? "Someone"} now={now} watch={watchFor(p.id)} watchUpdates={watchUpdates} onWatchChanged={refresh} />
             ))}
           </ul>
         )}
@@ -370,20 +395,42 @@ export function DashboardRail() {
         <h2 id="tools" className="section-title">
           Tools
         </h2>
-        <Sheet label="Check a photo or a screenshot" triggerClass="tool-btn" trigger={<ToolLabel icon={Camera} title="Check a photo or a screenshot" sub="A scam text, a doorstep quote or an ad. Nothing is paid." />}>
+        <Sheet label="Check a photo or a screenshot" wide triggerClass="tool-btn" trigger={<ToolLabel icon={Camera} title="Check a photo or a screenshot" sub="A scam text, a doorstep quote or an ad. Nothing is paid." />}>
           <PhotoCheck />
         </Sheet>
-        {loose.length > 0 && (
-          <Sheet title="Price watches" triggerClass="tool-btn" trigger={<ToolLabel icon={TrendingDown} title={`Price watches (${loose.length})`} sub="Spotter tells you when a price comes down." />}>
-            <p className="feed-meta">Spotter watches real shops and tells you when a price comes down. It never buys anything.</p>
+        {peekable && (
+          <div className="tool-peek">
+            <p className="tool-peek-title">
+              <ScanEye size={18} strokeWidth={1.9} aria-hidden="true" className="tool-icon" /> Look at a link safely
+            </p>
+            <p className="tool-sub">
+              Opens {peekableHost(peekable)}, from {names[peekable.spender_id] ?? "someone"}&apos;s {money(peekable.amount, peekable.currency)} payment, in a throwaway cloud browser (KERNEL). You see
+              the page; nothing is typed or clicked. Three looks a day.
+            </p>
+            <Peek paymentId={peekable.id} host={peekableHost(peekable)!} />
+          </div>
+        )}
+        {listed.length > 0 && (
+          <Sheet
+            title="Price watches"
+            triggerClass="tool-btn"
+            trigger={
+              <ToolLabel
+                icon={TrendingDown}
+                title={`Price watches (${listed.length})`}
+                sub={live > 0 ? `${live} live, checked with Channel3. Spotter tells you when a price comes down.` : "Spotter tells you when a price comes down."}
+              />
+            }
+          >
+            <p className="feed-meta">Spotter watches real shops (Channel3) and tells you when a price comes down. It never buys anything.</p>
             <ul className="watch-list">
-              {loose.map((w) => (
+              {listed.map((w) => (
                 <li key={w.id}>
                   <p className="watch-for">
                     {w.who ?? "Someone"} nearly paid {money(w.nearlyPaid, w.currency)} for {w.item}
                     {w.createdBy === "agent" ? " (the agent asked Spotter to watch it)" : ""}
                   </p>
-                  <PriceWatch watch={w} onChanged={refresh} />
+                  <PriceWatch watch={w} onChanged={refresh} updates={watchUpdates} />
                 </li>
               ))}
             </ul>
@@ -567,6 +614,7 @@ function HeldCard({
   open,
   onToggle,
   watch,
+  watchUpdates,
   onSettled,
   onLocked,
   onDecided,
@@ -582,9 +630,10 @@ function HeldCard({
   open: boolean;
   onToggle: () => void;
   watch?: WatchView;
+  watchUpdates?: WatchUpdates;
   onSettled: () => void;
   onLocked: () => void;
-  onDecided: (text: string) => void;
+  onDecided: (text: string, real?: RealOne & { currency: string }) => void;
 }) {
   const [busy, setBusy] = useState<"approve" | "deny" | "swap" | "sleep" | null>(null);
   const [state, setState] = useState(trackState(p.status));
@@ -599,6 +648,8 @@ function HeldCard({
   const scamLike = p.case_file?.verdict === "likely_scam" || flags.some((f) => f.severity === "high");
   const warning = approveWarning(p.case_file?.verdict, flags.some((f) => f.severity === "high"));
   const bodyId = `body-${p.id}`;
+  // A genuine listing from Channel3 (the case's own offer, else the market check's cheapest real shop).
+  const real = realOne(p.case_file, p.market);
 
   useEffect(() => {
     if (!pending) return;
@@ -653,7 +704,8 @@ function HeldCard({
       // Wrong PIN, still being checked, or someone already decided it in another tab: say so, don't pretend.
       if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
       setState(trackState(j.payment.status));
-      if (action !== "swap") onDecided(decidedLine(j.payment, p));
+      const released = trackState(j.payment.status) === "returned";
+      if (action !== "swap") onDecided(decidedLine(j.payment, p), action === "deny" && released && real ? { ...real, currency: p.currency } : undefined);
       setTimeout(onSettled, 700);
     } catch (e) {
       setError(plainError(e));
@@ -662,6 +714,119 @@ function HeldCard({
       if (action === "approve") pinRef.current?.focus();
     }
   }
+
+  const decide = confirming ? (
+    <form
+      className="held-confirm"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (pin) act("approve");
+      }}
+    >
+      <p className="held-confirm-title">
+        Pay {money(p.amount, p.currency)} to {p.request.payee.name}?
+      </p>
+      {warning && <p className="held-confirm-warn">{warning}</p>}
+      <label className="field-label" htmlFor={`pin-${p.id}`}>
+        Your PIN{demo ? " (the demo family's PIN is 2468)" : ""}
+      </label>
+      <input
+        ref={pinRef}
+        id={`pin-${p.id}`}
+        className="pin-input num"
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        autoFocus
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+      />
+      <div className="held-actions">
+        <button type="submit" className={scamLike ? "btn btn-deny" : "btn btn-approve"} disabled={!pin} aria-disabled={busy !== null || undefined}>
+          {busy === "approve" ? "Paying" : `Pay ${money(p.amount, p.currency)}`}
+        </button>
+        <button type="button" className="btn btn-quiet" aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  ) : (
+    <div className="held-actions" data-scam={scamLike || undefined}>
+      {scamLike ? (
+        <>
+          <button className="btn btn-stop" aria-disabled={busy !== null || undefined} onClick={() => act("deny")}>
+            {busy === "deny" ? "Releasing" : "Deny"}
+          </button>
+          <button ref={approveRef} className="btn btn-quiet" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
+            {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)} anyway`}
+          </button>
+        </>
+      ) : (
+        <>
+          <button ref={approveRef} className="btn btn-approve" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
+            {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)}`}
+          </button>
+          <button className="btn btn-deny" aria-disabled={busy !== null || undefined} onClick={() => act("deny")}>
+            {busy === "deny" ? "Releasing" : "Deny"}
+          </button>
+        </>
+      )}
+      {!p.ask_again_at && (
+        <button type="button" className="btn btn-quiet btn-sleep" aria-disabled={busy !== null || undefined} onClick={sleepOnIt}>
+          {busy === "sleep" ? "Saving" : "Ask again tomorrow"}
+        </button>
+      )}
+    </div>
+  );
+  const decision = (
+    <div className="held-decide">
+      {decide}
+      {pending && !confirming && <p className="held-wait">Approve opens once Spotter has finished looking into it (a few seconds). Deny works now.</p>}
+      {error && (
+        <p className="error-line" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+
+  const c = p.case_file ? withoutHoldFinding(p.case_file) : null;
+  const priceWatch = watchable(p) || watch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} updates={watchUpdates} /> : null;
+  // Inside the case file the decision sits right after the three facts; without one (still looking), after the card.
+  const decideInCase = open && !!c;
+  // The rules engine's reasons, minus the ones the case file already says (price, first time payee, hidden orders).
+  const reasons = unsaidReasons(p.decision?.reasons ?? [], p.decision?.flags ?? p.ai?.flags ?? [], c, { lead: kernelLead(c?.page)?.kind ?? null });
+  const channel3OnCard = !!c && (c.findings.some((f) => f.tool === "find_genuine_offer") || !!c.spot);
+
+  const extras = (
+    <>
+      <HoldClock p={p} who={who} tz={tz} />
+      <EvidenceLinks p={p} />
+
+      {/* The case file's verdict is the card's one summary, so the message check's own line only shows without one.
+          It never saw the market listings either, so it is hidden when it argues with them. */}
+      {!c && p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
+        <p className="held-summary">
+          <strong>Scam check:</strong> {p.ai.summary}
+        </p>
+      )}
+
+      {reasons.length > 0 && (
+        <ul className="reasons" aria-label={c ? "Spotter's rules" : "Why it was held"}>
+          {reasons.map((r, i) => (
+            <li key={i} className="reason">
+              <Info className="reason-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span>{r}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!channel3OnCard && <MarketNote market={p.market} currency={p.currency} />}
+
+      {p.request.context && <Evidence text={p.request.context} flags={flags} />}
+    </>
+  );
 
   return (
     <article className="held" id={`pay-${p.id}`} aria-labelledby={`h-${p.id}`} data-open={open || undefined}>
@@ -689,120 +854,32 @@ function HeldCard({
 
         <ReplacedLink p={p} all={all} who={who} />
 
-        {p.case_file ? (
+        {c ? (
           <CaseFile
-            c={withoutHoldFinding(p.case_file)}
+            c={c}
             currency={p.currency}
             paymentId={p.id}
             peekScrolls={p.peek_scrolls}
             now={now}
             busy={busy === "swap"}
             onSwap={busy ? undefined : () => act("swap")}
-            footer={watchable(p) || watch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} /> : null}
+            fold
+            real={real}
+            aside={priceWatch}
+            actions={decideInCase ? decision : undefined}
+            more={extras}
+            moreCount={p.request.context ? 1 : 0}
           />
         ) : (
           <>
             <CasePending createdAt={p.created_at} now={tick ?? now} />
-            {(watchable(p) || watch) && <PriceWatch watch={watch} paymentId={p.id} onChanged={onSettled} />}
+            {priceWatch}
+            {extras}
           </>
         )}
-
-        <HoldClock p={p} who={who} tz={tz} />
-        <EvidenceLinks p={p} />
-
-        {/* The case file's verdict is the card's one summary, so the message check's own line only shows without one.
-            It never saw the market listings either, so it is hidden when it argues with them. */}
-        {!p.case_file && p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
-          <p className="held-summary">
-            <strong>Scam check:</strong> {p.ai.summary}
-          </p>
-        )}
-
-        {p.decision && p.decision.reasons.length > 0 && (
-          <ul className="reasons">
-            {p.decision.reasons.map((r, i) => (
-              <li key={i} className="reason">
-                <Info className="reason-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>{r}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <MarketNote market={p.market} currency={p.currency} />
-
-        {p.request.context && <Evidence text={p.request.context} flags={flags} />}
       </div>
 
-      {confirming ? (
-        <form
-          className="held-confirm"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (pin) act("approve");
-          }}
-        >
-          <p className="held-confirm-title">
-            Pay {money(p.amount, p.currency)} to {p.request.payee.name}?
-          </p>
-          {warning && <p className="held-confirm-warn">{warning}</p>}
-          <label className="field-label" htmlFor={`pin-${p.id}`}>
-            Your PIN{demo ? " (the demo family's PIN is 2468)" : ""}
-          </label>
-          <input
-            ref={pinRef}
-            id={`pin-${p.id}`}
-            className="pin-input num"
-            type="password"
-            inputMode="numeric"
-            autoComplete="off"
-            autoFocus
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-          />
-          <div className="held-actions">
-            <button type="submit" className={scamLike ? "btn btn-deny" : "btn btn-approve"} disabled={!pin} aria-disabled={busy !== null || undefined}>
-              {busy === "approve" ? "Paying" : `Pay ${money(p.amount, p.currency)}`}
-            </button>
-            <button type="button" className="btn btn-quiet" aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(false)}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="held-actions" data-scam={scamLike || undefined}>
-          {scamLike ? (
-            <>
-              <button className="btn btn-stop" aria-disabled={busy !== null || undefined} onClick={() => act("deny")}>
-                {busy === "deny" ? "Releasing" : "Deny"}
-              </button>
-              <button ref={approveRef} className="btn btn-quiet" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
-                {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)} anyway`}
-              </button>
-            </>
-          ) : (
-            <>
-              <button ref={approveRef} className="btn btn-approve" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
-                {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)}`}
-              </button>
-              <button className="btn btn-deny" aria-disabled={busy !== null || undefined} onClick={() => act("deny")}>
-                {busy === "deny" ? "Releasing" : "Deny"}
-              </button>
-            </>
-          )}
-          {!p.ask_again_at && (
-            <button type="button" className="btn btn-quiet btn-sleep" aria-disabled={busy !== null || undefined} onClick={sleepOnIt}>
-              {busy === "sleep" ? "Saving" : "Ask again tomorrow"}
-            </button>
-          )}
-        </div>
-      )}
-      {pending && !confirming && <p className="held-wait">Approve opens once Spotter has finished looking into it (a few seconds). Deny works now.</p>}
-      {error && (
-        <p className="error-line" role="alert">
-          {error}
-        </p>
-      )}
+      {!decideInCase && decision}
     </article>
   );
 }
@@ -877,7 +954,23 @@ function HeldSummary({ p, pending }: { p: Payment; pending: boolean }) {
   return <p className="held-sum">{pending ? "Spotter is still looking into it." : (reason ?? "Open the case file to see why it was held.")}</p>;
 }
 
-function FeedRow({ p, all, who, now, watch, onWatchChanged }: { p: Payment; all: Payment[]; who: string; now: number; watch?: WatchView; onWatchChanged: () => void }) {
+function FeedRow({
+  p,
+  all,
+  who,
+  now,
+  watch,
+  watchUpdates,
+  onWatchChanged,
+}: {
+  p: Payment;
+  all: Payment[];
+  who: string;
+  now: number;
+  watch?: WatchView;
+  watchUpdates?: WatchUpdates;
+  onWatchChanged: () => void;
+}) {
   const s = trackState(p.status);
   const Icon = ROW_ICON[s as keyof typeof ROW_ICON];
   const firstReason = p.decision?.reasons[0];
@@ -917,8 +1010,20 @@ function FeedRow({ p, all, who, now, watch, onWatchChanged }: { p: Payment; all:
             </p>
             <ReplacedLink p={p} all={all} who={who} />
             <EvidenceLinks p={p} />
-            {p.case_file && <CaseFile c={p.case_file} currency={p.currency} paymentId={p.id} peekScrolls={p.peek_scrolls} now={now} />}
-            {canWatch && <PriceWatch watch={watch} paymentId={p.id} onChanged={onWatchChanged} />}
+            {p.case_file && (
+              <CaseFile
+                c={p.case_file}
+                currency={p.currency}
+                paymentId={p.id}
+                peekScrolls={p.peek_scrolls}
+                now={now}
+                fold
+                settled
+                real={s === "paid" ? null : realOne(p.case_file, p.market)}
+                aside={canWatch ? <PriceWatch watch={watch} paymentId={p.id} onChanged={onWatchChanged} updates={watchUpdates} /> : null}
+              />
+            )}
+            {!p.case_file && canWatch && <PriceWatch watch={watch} paymentId={p.id} onChanged={onWatchChanged} updates={watchUpdates} />}
           </Sheet>
         </div>
       )}

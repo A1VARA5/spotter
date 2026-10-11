@@ -6,6 +6,7 @@ import { Camera, ImageUp } from "lucide-react";
 import type { PhotoItem, PhotoMode, PhotoResult } from "@/market/photo";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
+import "./photo.css";
 
 const MAX_EDGE = 1600;
 const EXAMPLE = "/examples/living-room.jpg";
@@ -205,6 +206,7 @@ export function PhotoCheck() {
         )}
       </div>
 
+      <div className="photo-out" data-done={result || words || ask ? "true" : undefined}>
       {picked && (
         <figure className="photo-figure">
           <div className="photo-frame">
@@ -279,7 +281,8 @@ export function PhotoCheck() {
       )}
 
       {result && (
-        <div className="photo-result">
+        <div className="photo-result case" data-verdict={result.verdict ? "likely_scam" : "unclear"}>
+          <p className="case-verdict">{result.verdict ? "Far below real shops" : "Real shop prices"}</p>
           <h3 ref={resultRef} tabIndex={-1} className="photo-total">
             {result.total}
           </h3>
@@ -305,6 +308,7 @@ export function PhotoCheck() {
           </p>
         </div>
       )}
+      </div>
     </section>
   );
 }
@@ -330,12 +334,16 @@ function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: 
           : `Used ones sell for ${money(i.low, currency)} to ${money(i.high, currency)}`;
   return (
     <span>
-      <b>{i.thing}</b> {price}. <span className="photo-match">{i.match === "similar" ? `For example: ${i.title}` : i.title}</span>{" "}
-      {HTTPS.test(i.cheapest.url) && (
-        <a href={i.cheapest.url} target="_blank" rel="noopener noreferrer nofollow">
-          {money(i.cheapest.price, currency)} at {i.cheapest.domain}
-        </a>
-      )}
+      <b>{i.thing}</b> <span className="photo-price">{price}.</span>{" "}
+      <span className="photo-match">
+        {i.match === "similar" ? `For example: ${i.title}` : i.title}{" "}
+        {HTTPS.test(i.cheapest.url) && (
+          <a href={i.cheapest.url} target="_blank" rel="noopener noreferrer nofollow">
+            {money(i.cheapest.price, currency)} at {i.cheapest.domain}
+            <span className="sr-only"> (the shop&apos;s own page, opens in a new tab)</span>
+          </a>
+        )}
+      </span>
     </span>
   );
 }
