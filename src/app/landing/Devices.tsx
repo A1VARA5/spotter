@@ -148,7 +148,7 @@ export function SpotterPhone({ scale }: { scale?: number }) {
     <Iphone dark scale={scale} className="iphone-you" label="Your phone: a Spotter notification saying Gran wants to pay £250, with Approve and Deny">
       <LockScreen>
         <IosNotification title="Gran wants to pay £250" body="To jamie.k1994@mail.example, a first time payee. It looks like the Hi Mum scam. The money is on hold." />
-        <IosActions items={[{ label: "Approve £250" }, { label: "Deny", tone: "danger" }, { label: "Open Spotter" }]} />
+        <IosActions items={[{ label: "Deny", tone: "danger" }, { label: "Review with PIN" }, { label: "Open Spotter" }]} />
       </LockScreen>
     </Iphone>
   );
