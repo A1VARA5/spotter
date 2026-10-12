@@ -2,6 +2,21 @@
 
 What changed each day, from the git history. Dates are the commit dates. Spotter is built for the PayPal AI Hackathon 2026, so every day so far is a build day.
 
+## 2026-10-12
+
+Status and honesty
+- `/api/health`: one entry each for the database, the PayPal sandbox, the AI check (main key, backup key or backup model), KERNEL, Channel3 (with the shared price watch) and PayPal webhooks, with the last time each one really worked. Cached for a minute and rate limited per address, only free probes, and no keys, ids or error text in the answer.
+- `/api/badge`: a shields.io badge from the same answer.
+- `/status` says it in plain words with a live dot, and `/real-money` lists what would need to be true before real money. Both are linked from the footer and from How it works.
+- Repo: dependabot for npm and GitHub Actions, a CodeQL workflow that only runs once the repo is public, and SECURITY.md now explains the known `npm audit` warnings (all from PayPal's Agent Toolkit dependencies) and where secrets live.
+
+Docs
+- Four partner guides written from real runs, in `docs/guides/`: AG Studio, Channel3, KERNEL and the PayPal Agent Toolkit. The README gets a What's real table, links to the guides, and a badge row without the static test count.
+
+Round 6 fixes
+- The live price watch reads true, the wide rail wraps, Deny is on the phone's first screen, footer links are 32 px tall, and the docs drop sponsor possessives.
+- Watchtower: the fair price headline keeps overpaid and too cheap apart, every answer card gets a one line answer, Gran's view names who said no and keeps the sample month apart, and single bars are slimmer.
+
 ## 2026-10-11
 
 PayPal and agents

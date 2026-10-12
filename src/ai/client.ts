@@ -106,6 +106,11 @@ export async function withClaude<T>(label: string, opts: ClientOptions, run: (cl
   throw new ClaudeKeysUnusable(label, last!.reason, { cause: last!.error });
 }
 
+/** True while this server instance is skipping the primary key (it failed in the last few minutes). For /api/health. */
+export function primaryKeyOut(now = Date.now()): boolean {
+  return now < primaryOutUntil;
+}
+
 /** For tests: forget that the primary key was out. */
 export function resetKeyMemory(): void {
   primaryOutUntil = 0;

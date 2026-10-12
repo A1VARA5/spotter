@@ -34,3 +34,19 @@ Useful to include: what you did, what happened, what you expected, and the page 
 - Every status change is a conditional update, and every PayPal money call that can be retried carries a `PayPal-Request-Id`.
 
 The full threat model, including the gaps I know about, is in [docs/threat-model.md](docs/threat-model.md).
+
+## Sandbox only, and where the secrets live
+
+- The demo only talks to the PayPal sandbox. No real money moves, and no real card is ever used. What would need to change before real money is on [/real-money](https://spotter-pay.vercel.app/real-money).
+- Secrets live in a git ignored `.env.local` on my machine and in the Vercel project's environment settings. No `.env` file with real values has ever been committed. `.env.example` lists the names, with no secret values.
+- [/status](https://spotter-pay.vercel.app/status) and `/api/health` say what's working without showing any key, id or error text.
+
+## Known `npm audit` warnings
+
+`npm audit --omit=dev` (checked 12 Oct 2026) reports 10: 5 high, 2 moderate, 3 low. Every one of them comes through `@paypal/agent-toolkit` 1.11.0, PayPal's own Agent Toolkit, which pins old versions of its dependencies:
+
+- `@langchain/core` 0.3.6 and `langsmith` 0.1.68 (high: serialization injection, prototype pollution, redaction bypass) and the `uuid` 10 inside them (moderate). They're used by the toolkit's LangChain entry. Spotter only imports `@paypal/agent-toolkit/mcp`, which doesn't load LangChain.
+- `ai` 4.3.19, `@ai-sdk/*` and `jsondiffpatch` 0.6.0 (high: XSS in its HTML formatter, prototype pollution; low and moderate in the AI SDK). They're used by the toolkit's AI SDK entry. Spotter doesn't import it, and never renders a JSON diff.
+- `mathjs` 14.9.1 (high: unsafe property setters in its expression parser). The `mcp` entry does load mathjs, but only calls `round()` on numbers Spotter's guard already checked. No user text reaches a mathjs expression.
+
+`npm audit fix --force` would "fix" this by downgrading the toolkit from 1.11.0 to 1.3.5, a breaking change to the version Spotter's guard and its tests are built on, so I haven't. I'll move to a fixed toolkit release when PayPal ships one, and recheck before every release.

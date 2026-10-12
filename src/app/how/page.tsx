@@ -195,6 +195,10 @@ export default async function HowPage() {
             </ul>
           </div>
         </div>
+        <p className="canc-more">
+          It only runs on the sandbox for now. <Link href="/real-money">What would need to be true before real money</Link>, and{" "}
+          <Link href="/status">what&apos;s working right now</Link>.
+        </p>
       </section>
 
       <section id="faq" className="shell how-sec" aria-labelledby="faq-title">

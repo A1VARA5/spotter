@@ -52,6 +52,8 @@ export function PublicFooter({ band = false }: { band?: boolean }) {
         <Link href="/how">How it works</Link>
         <Link href="/how#faq">FAQ</Link>
         <Link href="/agent-lab">Agent lab</Link>
+        <Link href="/real-money">Before real money</Link>
+        <Link href="/status">Status</Link>
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>
       </nav>
