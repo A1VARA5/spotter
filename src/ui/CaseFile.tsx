@@ -13,6 +13,7 @@ import { FACE_SIZE, padBox } from "./facesBox";
 import { keyFacts, kernelLead, leadParts, panelShows, type RealOne } from "./caseFold";
 import { withoutIds } from "@/core/userText";
 import { useRec } from "./rec";
+import { EXAMPLE_LABEL } from "./labels";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
@@ -74,9 +75,10 @@ function useClientNow(): number | null {
  * Still being built: only for a minute or two after the payment, after that there just isn't one. now is the
  * dashboard's clock (the server's on the first render), so the server HTML and the first client render agree.
  */
-/** An example's headline starts "Example, checked earlier: ..." for the places without the verdict line; here the verdict line says it. */
+/** A sample's headline starts with EXAMPLE_LABEL (older rows: "Example, checked earlier") for the places without the verdict line; here the verdict line says it. */
+const EXAMPLE_PREFIX = new RegExp(`^(?:${EXAMPLE_LABEL}|Example, checked earlier):\\s*`);
 const unlabelled = (headline: string) => {
-  const rest = headline.replace(/^Example, checked earlier:\s*/, "");
+  const rest = headline.replace(EXAMPLE_PREFIX, "");
   return rest.charAt(0).toUpperCase() + rest.slice(1);
 };
 
@@ -226,7 +228,7 @@ export function CaseFile({
       <div className="cf-top">
         <p className="case-verdict">
           {VERDICT[c.verdict]}
-          {c.example && <span className="case-example"> · Example, checked earlier</span>}
+          {c.example && <span className="case-example"> · {EXAMPLE_LABEL}</span>}
         </p>
         <p className="case-headline" id={ids.head} tabIndex={-1}>
           {rec.text(withoutIds(c.example ? unlabelled(c.headline) : c.headline))}

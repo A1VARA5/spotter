@@ -55,11 +55,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const chipHidden = (await cookies()).get(START_COOKIE)?.value === "1";
 
   return (
-    <DashboardState names={names} unlocked={unlocked} demo={household.demo} tz={safeTz(household.time_zone)} serverNow={Date.now()} business={household.kind === "business"} initial={JSON.parse(JSON.stringify(payments))}>
+    <DashboardState names={names} unlocked={unlocked} demo={household.demo} tz={safeTz(household.time_zone)} serverNow={Date.now()} business={household.kind === "business"} spotter={household.spotter_name} relative={spenders.find((s) => s.kind === "person")?.name ?? null} initial={JSON.parse(JSON.stringify(payments))}>
       <AppShell db={db} household={household} current="waiting" layout="rail" rail={<DashboardRail />} railLabel="Everything today and tools">
         <Warnings initial={warnings} />
         <AgentHolds initial={JSON.parse(JSON.stringify(agentHolds))} />
-        {next && !chipHidden && <StartChip done={steps.length - steps.filter((s) => !s.done).length} total={steps.length} next={next} />}
+        {/* Demo families skip the first run checklist: their family is set up already and needs no email. */}
+        {next && !chipHidden && !household.demo && <StartChip done={steps.length - steps.filter((s) => !s.done).length} total={steps.length} next={next} />}
         {spenders.length > 0 && (
           <nav className="people-strip mobile-only" aria-label="Your people">
             {spenders.map((s) => (

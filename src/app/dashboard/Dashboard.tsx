@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { Hand, ShieldCheck, Ban, Info, Repeat, Moon, Clock, FileText, Camera, TrendingDown, ChevronRight, ChevronDown, X, ExternalLink, ScanEye } from "lucide-react";
 import { DEFAULT_TZ, holdEndLine, whenText } from "@/core/holdtime";
-import { Evidence, HoldTrack, MarketNote } from "@/ui/components";
-import { money, replacementLink, STATE_LABEL, timeAgo, trackState } from "@/ui/format";
+import { Evidence, MarketNote } from "@/ui/components";
+import { money, replacementLink, STATE_LABEL, timeAgo, trackState, type TrackState } from "@/ui/format";
 import type { Payment } from "@/core/lifecycle";
 import type { Case } from "@/agents/case";
 import { plainError, readJson } from "@/ui/http";
@@ -39,6 +39,9 @@ type DashCtx = {
   names: Record<string, string>;
   demo: boolean;
   business: boolean;
+  /** The spotter's name and the family's first relative, for the demo's "You're Sam, Gran's spotter" line. */
+  spotter: string;
+  relative: string | null;
   tz: string;
   now: number;
   watches: WatchView[];
@@ -91,12 +94,16 @@ export function DashboardState({
   tz = DEFAULT_TZ,
   serverNow,
   business = false,
+  spotter = "you",
+  relative = null,
   children,
 }: {
   initial: Payment[];
   names: Record<string, string>;
   unlocked: boolean;
   demo?: boolean;
+  spotter?: string;
+  relative?: string | null;
   /** A small business household: the empty state suggests the business Try scenarios. */
   business?: boolean;
   /** The household's time zone, for "asks again tomorrow at 9am" and when a hold ends. */
@@ -151,7 +158,7 @@ export function DashboardState({
     return () => clearInterval(t);
   }, [refresh]);
 
-  return <Ctx.Provider value={{ payments, names, demo, business, tz, now, watches, watchUpdates, error, locked, setLocked, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ payments, names, demo, business, spotter, relative, tz, now, watches, watchUpdates, error, locked, setLocked, refresh }}>{children}</Ctx.Provider>;
 }
 
 /** The hold that opens first: one Spotter thinks is a scam, else the oldest. */
@@ -168,9 +175,18 @@ export function firstToOpen(waiting: Payment[]): string | null {
 
 /** Primary column: what is waiting for a decision, one card open at a time. */
 export function DashboardMain() {
-  const { payments, names, demo, tz, now, watches, watchUpdates, error, locked, setLocked, refresh } = useDash();
+  const { payments, names, demo, business, spotter, relative, tz, now, watches, watchUpdates, error, locked, setLocked, refresh } = useDash();
   const rec = useRec();
   const waiting = payments.filter((p) => p.status === "needs_approval");
+  const orient = orientLine({ demo, business, spotter, who: waiting.length ? relative : null });
+  // Cards decided on this visit stay where they were, as their result. They are gone on the next visit (the rail and
+  // Activity list them). after: the payment as the decision returned it, until polling brings a newer row.
+  const [decided, setDecided] = useState<Map<string, { after: Payment; real?: RealOne & { currency: string } }>>(() => new Map());
+  const resultRow = (id: string) => {
+    const polled = payments.find((x) => x.id === id);
+    return polled && polled.status !== "needs_approval" ? polled : decided.get(id)!.after;
+  };
+  const cards = payments.filter((p) => p.status === "needs_approval" || decided.has(p.id));
   const watchFor = (id: string) => watches.find((w) => w.paymentId === id);
 
   // undefined: nobody has picked yet, so the first card opens. null: the spotter closed them all.
@@ -189,7 +205,7 @@ export function DashboardMain() {
 
   // What a decision just did, shown where the card was and focused, so keyboard and screen reader users
   // land on the result instead of the page body when the card goes.
-  const [notice, setNotice] = useState<{ text: string; real?: RealOne & { currency: string }; n: number } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; n: number } | null>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (notice) noticeRef.current?.focus();
@@ -238,6 +254,7 @@ export function DashboardMain() {
         <h1 id="waiting" className="page-title">
           {waiting.length ? `${waiting.length} waiting for you` : "Nothing waiting for you"}
         </h1>
+        {orient && <p className="dash-orient">{orient}</p>}
         <p className="lede" style={{ marginTop: 6 }}>
           Payments that need a yes from you. The money is held by PayPal until you decide.
         </p>
@@ -255,39 +272,37 @@ export function DashboardMain() {
       {notice && (
         <p ref={noticeRef} tabIndex={-1} className="dash-notice" key={notice.n}>
           {rec.text(notice.text)}
-          {notice.real && (
-            <>
-              {" "}
-              {notice.real.exact ? "Here's the real one" : "Here's a real listing"} at {rec.shop(notice.real.domain)} for {money(notice.real.price, notice.real.currency)}:{" "}
-              <a href={notice.real.url} target="_blank" rel="noopener noreferrer nofollow" className="dash-notice-real">
-                {rec.title(notice.real.title)}
-                <ExternalLink size={14} strokeWidth={2.2} aria-hidden="true" />
-                <span className="sr-only"> (opens {rec.on ? "the shop" : notice.real.domain}&apos;s own page in a new tab)</span>
-              </a>
-            </>
-          )}
         </p>
       )}
       <div className="stack" data-beside={waiting.length === 1 || undefined}>
+        {cards.map((p) =>
+          decided.has(p.id) ? (
+            <ResultCard key={p.id} p={resultRow(p.id)} who={names[p.spender_id] ?? "Someone"} real={decided.get(p.id)!.real} />
+          ) : (
+            <HeldCard
+              key={p.id}
+              p={p}
+              all={payments}
+              who={names[p.spender_id] ?? "Someone"}
+              demo={demo}
+              tz={tz}
+              now={now}
+              open={openId === p.id}
+              onToggle={() => setPicked(openId === p.id ? null : p.id)}
+              watch={watchFor(p.id)}
+              watchUpdates={watchUpdates}
+              onSettled={refresh}
+              onLocked={() => setLocked(true)}
+              onNotice={(text) => setNotice((n) => ({ text, n: (n?.n ?? 0) + 1 }))}
+              onResult={(after, real) => {
+                setNotice(null);
+                setDecided((m) => new Map(m).set(p.id, { after, real }));
+              }}
+            />
+          ),
+        )}
+        {/* Under any card decided just now, so the result stays where the card was. */}
         {waiting.length === 0 && <AllClear />}
-        {waiting.map((p) => (
-          <HeldCard
-            key={p.id}
-            p={p}
-            all={payments}
-            who={names[p.spender_id] ?? "Someone"}
-            demo={demo}
-            tz={tz}
-            now={now}
-            open={openId === p.id}
-            onToggle={() => setPicked(openId === p.id ? null : p.id)}
-            watch={watchFor(p.id)}
-            watchUpdates={watchUpdates}
-            onSettled={refresh}
-            onLocked={() => setLocked(true)}
-            onDecided={(text, real) => setNotice((n) => ({ text, real, n: (n?.n ?? 0) + 1 }))}
-          />
-        ))}
         {/* One card on a very wide screen (2200 px and up): the week and the Try scenarios sit beside it (wide.css). */}
         {waiting.length === 1 && (
           <aside className="allclear dash-beside" aria-label="While you decide">
@@ -647,18 +662,86 @@ function ReplacedLink({ p, all, who }: { p: Payment; all: Payment[]; who: string
 /** The case agent has up to 45 seconds; until its case file lands (or that time passes) nobody approves blind. */
 const CASE_WAIT_MS = 50_000;
 
-/** One sentence for what a decision did, read out and shown where the card was. */
-function decidedLine(after: Payment, before: Payment) {
-  const amount = money(before.amount, before.currency);
-  const payee = before.request.payee.name;
-  const s = trackState(after.status);
-  if (s === "paid") return `Paid. ${amount} went to ${payee}.`;
-  if (s === "moving") return `Approved. PayPal is paying ${amount} to ${payee}.`;
-  if (after.status === "needs_approval" && after.error) return after.error;
-  if (after.status === "voiding" && after.error) return `Denied. PayPal didn't confirm releasing the ${amount} yet, so Spotter is retrying. Spotter won't pay ${payee}.`;
-  if (s === "returned") return `Denied. PayPal released the ${amount}, nothing went to ${payee}.`;
-  if (s === "failed") return `PayPal said no to ${amount} for ${payee}. Nothing was paid.`;
-  return `${amount} to ${payee}: ${STATE_LABEL[s]}.`;
+/** The last 6 characters of a PayPal id, enough to match it in Activity or PayPal's sandbox. */
+export function shortPayPalId(id: string | null | undefined): string | null {
+  return id ? id.slice(-6) : null;
+}
+
+export type DecidedResult = { state: TrackState; title: string; line: string; paypalId: string | null; href: string };
+
+/**
+ * What a held card turns into once the spotter decided: the outcome at PayPal in one line, the PayPal id and a link to
+ * the payment's row in Activity. Read from the payment as it is now, so a capture still under way says so.
+ */
+export function decidedResult(p: Payment): DecidedResult {
+  const amount = money(p.amount, p.currency);
+  const payee = p.request.payee.name;
+  const s = trackState(p.status);
+  const href = `/ledger#pay-${encodeURIComponent(p.id)}`;
+  const auth = p.paypal_authorization_id ?? null;
+  if (s === "paid") return { state: s, title: "Approved", line: `PayPal took the ${amount} (sandbox).`, paypalId: p.paypal_capture_id ?? auth, href };
+  if (s === "moving") return { state: s, title: "Approved", line: `PayPal is taking the ${amount} (sandbox).`, paypalId: auth, href };
+  if (p.status === "voiding")
+    return { state: s, title: "Denied", line: `PayPal hasn't confirmed cancelling the hold yet, so Spotter is retrying. Spotter won't pay ${payee}.`, paypalId: auth, href };
+  if (s === "returned") return { state: s, title: "Denied", line: "PayPal cancelled the hold. Nothing was paid.", paypalId: auth, href };
+  if (s === "failed") return { state: s, title: "Not paid", line: `PayPal said no to ${amount} for ${payee}. Nothing was paid.`, paypalId: auth, href };
+  return { state: s, title: STATE_LABEL[s], line: `${amount} to ${payee}: ${STATE_LABEL[s]}.`, paypalId: auth, href };
+}
+
+/**
+ * A held card after Approve or Deny, in the same place: what PayPal did in one
+ * line, the PayPal id and the payment's row in Activity. Focused when it appears, so keyboard and screen reader users
+ * land on the result.
+ */
+function ResultCard({ p, who, real }: { p: Payment; who: string; real?: RealOne & { currency: string } }) {
+  const rec = useRec();
+  const r = decidedResult(p);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
+  const short = shortPayPalId(r.paypalId);
+  return (
+    <article ref={ref} tabIndex={-1} className="held held-result" data-result={r.state} id={`pay-${p.id}`} aria-labelledby={`h-${p.id}`} aria-describedby={`r-${p.id}`}>
+      <div className="held-head">
+        <div>
+          <p id={`h-${p.id}`} className="held-amount num">
+            {money(p.amount, p.currency)}
+          </p>
+          <p className="held-who">
+            {who} to {p.request.payee.name}
+          </p>
+        </div>
+      </div>
+      <p id={`r-${p.id}`} className="held-result-line">
+        <b>{r.title}.</b> {r.line}
+      </p>
+      {real && (
+        <p className="held-result-real">
+          {real.exact ? "Here's the real one" : "Here's a real listing"} at {rec.shop(real.domain)} for {money(real.price, real.currency)}:{" "}
+          <a href={real.url} target="_blank" rel="noopener noreferrer nofollow" className="dash-notice-real">
+            {rec.title(real.title)}
+            <ExternalLink size={14} strokeWidth={2.2} aria-hidden="true" />
+            <span className="sr-only"> (opens {rec.on ? "the shop" : real.domain}&apos;s own page in a new tab)</span>
+          </a>
+        </p>
+      )}
+      <p className="held-result-meta">
+        {short && (
+          <span title={r.paypalId ?? undefined}>
+            PayPal id ending <span className="num">{short}</span>
+          </span>
+        )}
+        <Link href={r.href}>See it in Activity</Link>
+      </p>
+    </article>
+  );
+}
+
+/** One line telling a demo visitor who they are, while there is a hold to decide. */
+export function orientLine({ demo, business, spotter, who }: { demo: boolean; business: boolean; spotter: string; who: string | null }): string | null {
+  if (!demo || business || !who) return null;
+  return `You're ${spotter}, ${who}'s spotter. Deny it, or approve with the demo PIN 2468.`;
 }
 
 function HeldCard({
@@ -674,7 +757,8 @@ function HeldCard({
   watchUpdates,
   onSettled,
   onLocked,
-  onDecided,
+  onNotice,
+  onResult,
 }: {
   p: Payment;
   all: Payment[];
@@ -690,10 +774,12 @@ function HeldCard({
   watchUpdates?: WatchUpdates;
   onSettled: () => void;
   onLocked: () => void;
-  onDecided: (text: string, real?: RealOne & { currency: string }) => void;
+  /** A line where the card is (Ask again tomorrow, or a decision that didn't go through). */
+  onNotice: (text: string) => void;
+  /** Approve or Deny went through: the card becomes its result. real: a genuine listing to show after a Deny. */
+  onResult: (after: Payment, real?: RealOne & { currency: string }) => void;
 }) {
   const [busy, setBusy] = useState<"approve" | "deny" | "swap" | "sleep" | null>(null);
-  const [state, setState] = useState(trackState(p.status));
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pin, setPin] = useState("");
@@ -720,9 +806,15 @@ function HeldCard({
   const approveRef = useRef<HTMLButtonElement>(null);
   const pinRef = useRef<HTMLInputElement>(null);
   const wasConfirming = useRef(false);
-  // Cancelling the PIN step puts focus back on the button that opened it.
+  const confirmRef = useRef<HTMLFormElement>(null);
+  // Cancelling the PIN step puts focus back on the button that opened it. Opening it brings the whole step, Pay
+  // button included, into view (it opened below the fold on a laptop).
   useEffect(() => {
     if (wasConfirming.current && !confirming) approveRef.current?.focus();
+    if (confirming) {
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      confirmRef.current?.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+    }
     wasConfirming.current = confirming;
   }, [confirming]);
 
@@ -735,7 +827,7 @@ function HeldCard({
       const r = await fetch(`/api/payments/${p.id}/sleep`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       const j = await readJson(r);
       if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
-      onDecided(`${money(p.amount, p.currency)} to ${p.request.payee.name}: ${j.message ?? "Spotter asks again tomorrow."}`);
+      onNotice(`${money(p.amount, p.currency)} to ${p.request.payee.name}: ${j.message ?? "Spotter asks again tomorrow."}`);
       onSettled();
     } catch (e) {
       setError(plainError(e));
@@ -763,9 +855,12 @@ function HeldCard({
       }
       // Wrong PIN, still being checked, or someone already decided it in another tab: say so, don't pretend.
       if (!r.ok || !j.payment) throw new Error(j.error ?? `That didn't go through (${r.status}).`);
-      setState(trackState(j.payment.status));
       const released = j.payment.status === "voided"; // a void PayPal didn't confirm yet (voiding) isn't released money
-      if (action !== "swap") onDecided(decidedLine(j.payment, p), action === "deny" && released && real ? { ...real, currency: p.currency } : undefined);
+      if (action !== "swap") {
+        // Still waiting (PayPal said no to the capture and the hold stands): say why on the card, which stays.
+        if (j.payment.status === "needs_approval") onNotice(j.payment.error ?? "That didn't go through. The hold is still waiting for you.");
+        else onResult(j.payment, action === "deny" && released && real ? { ...real, currency: p.currency } : undefined);
+      }
       setTimeout(onSettled, 700);
     } catch (e) {
       setError(plainError(e));
@@ -777,6 +872,7 @@ function HeldCard({
 
   const decide = confirming ? (
     <form
+      ref={confirmRef}
       className="held-confirm"
       onSubmit={(e) => {
         e.preventDefault();
@@ -826,7 +922,7 @@ function HeldCard({
             {busy === "deny" ? "Releasing" : "Deny"}
           </button>
           <button ref={approveRef} className="btn btn-quiet" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
-            {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)} anyway`}
+            {pending ? "Checking first" : "Approve anyway"}
           </button>
         </>
       ) : denyFirst ? (
@@ -835,13 +931,13 @@ function HeldCard({
             {busy === "deny" ? "Releasing" : "Deny"}
           </button>
           <button ref={approveRef} className="btn btn-approve" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
-            {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)}`}
+            {pending ? "Checking first" : "Approve"}
           </button>
         </>
       ) : (
         <>
           <button ref={approveRef} className="btn btn-approve" disabled={pending} aria-disabled={busy !== null || undefined} onClick={() => !busy && setConfirming(true)}>
-            {pending ? "Checking first" : `Approve ${money(p.amount, p.currency)}`}
+            {pending ? "Checking first" : "Approve"}
           </button>
           <button className="btn btn-deny" aria-disabled={busy !== null || undefined} onClick={() => act("deny")}>
             {busy === "deny" ? "Releasing" : "Deny"}
@@ -928,9 +1024,18 @@ function HeldCard({
 
       <WasItYouLine w={p.was_it_you} status={p.status} now={now} />
 
-      <div className="held-body" id={bodyId} hidden={!open}>
-        <HoldTrack state={state} from={who} to={p.request.payee.name} amount={p.amount} currency={p.currency} />
+      {/* The demo's sample hold is the landing page's "it's Tom" text: Tom's side of it is the Was it you? demo on Try. */}
+      {p.case_file?.example && (
+        <p className="held-tom">
+          <Link href="/demo#wiy-title">
+            See what Tom got
+            <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
+          </Link>
+          <span>The text says it&apos;s Tom, so Spotter can ask the real Tom.</span>
+        </p>
+      )}
 
+      <div className="held-body" id={bodyId} hidden={!open}>
         <ReplacedLink p={p} all={all} who={who} />
 
         {c ? (

@@ -50,9 +50,28 @@
   .held .held-actions > .btn { flex: 0 0 auto; min-width: 168px; padding-inline: 28px; }
 }
 
-/* Deny, then the real one: the link inside the notice. */
+/* Deny, then the real one: the link inside the result card. */
 .dash-notice-real { display: inline-flex; align-items: center; gap: 5px; color: var(--go); font-weight: 650; }
 .dash-notice-real svg { flex: none; }
+
+/* A held card after Approve or Deny: stays where it was, as its result (Dashboard.tsx ResultCard). */
+.held-result { border-left: 4px solid var(--ink); }
+.held-result[data-result="returned"] { border-left-color: var(--go); }
+.held-result[data-result="failed"] { border-left-color: var(--stop); }
+.held-result:focus-visible { outline: 3px solid var(--hold); outline-offset: 3px; }
+.held-result-line { font-size: 19px; max-width: 60ch; }
+.held-result[data-result="returned"] .held-result-line b { color: var(--go-text); }
+.held-result-real { max-width: 60ch; }
+.held-result-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; color: var(--ink-2); font-size: 15px; }
+.held-result-meta a { color: var(--ink); font-weight: 600; }
+
+/* The sample hold's link to Tom's side (the Was it you? demo). */
+.held-tom { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 15px; color: var(--ink-2); }
+.held-tom a { display: inline-flex; align-items: center; gap: 3px; color: var(--ink); font-weight: 650; }
+.held-tom a svg { flex: none; align-self: center; }
+
+/* Demo families: who you are, above the queue. */
+.dash-orient { margin: 0 0 6px; font-weight: 600; color: var(--ink); }
 
 /* Look at a link safely (KERNEL): the latest page Spotter opened, looked at again live. */
 .tool-peek {

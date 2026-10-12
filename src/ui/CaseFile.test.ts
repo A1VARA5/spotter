@@ -20,8 +20,9 @@ const html = (c: Case, peekScrolls?: number | null) => renderToStaticMarkup(crea
 
 describe("an example case file says it is an example once", () => {
   it("keeps the label in the verdict line and drops it from the headline", () => {
-    const out = html({ ...base, example: true, headline: "Example, checked earlier: this looks like the Hi Mum scam." });
-    expect(out.match(/Example, checked earlier/g)).toHaveLength(1);
+    const out = html({ ...base, example: true, headline: "Sample message, live PayPal hold: this looks like the Hi Mum scam." });
+    expect(out.match(/Sample message, live PayPal hold/g)).toHaveLength(1);
+    expect(out).not.toMatch(/checked earlier/);
     expect(out).toContain("This looks like the Hi Mum scam.");
   });
 });

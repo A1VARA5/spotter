@@ -44,6 +44,15 @@ describe("weekSummary", () => {
     ]);
   });
 
+  // UX audit 12 Oct #1: after Approve or Deny on the demo's sample hold, the week said "No payments went through
+  // Spotter this week yet" beside the decided £250. Once decided it's a real PayPal capture or void made this week.
+  it("counts the sample hold once the spotter has decided it", () => {
+    const sample = { case_file: { example: true } };
+    expect(weekSummary([p("voided", 25000, 0, sample)] as never, NOW)).toMatchObject({ checked: 1, stopped: 1, paid: 0, kept: [{ currency: "GBP", amount: 25000 }] });
+    expect(weekSummary([p("voiding", 25000, 0, sample)] as never, NOW)).toMatchObject({ checked: 1, stopped: 1 });
+    expect(weekSummary([p("captured", 25000, 0, sample)] as never, NOW)).toMatchObject({ checked: 1, paid: 1, stopped: 0 });
+  });
+
   it("is all zeros for a quiet week", () => {
     expect(weekSummary([], NOW)).toEqual({ checked: 0, paid: 0, stopped: 0, waiting: 0, kept: [] });
   });

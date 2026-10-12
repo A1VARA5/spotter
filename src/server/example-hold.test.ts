@@ -3,6 +3,7 @@ import { pgliteDb, type Db } from "@/db";
 import { createDemoHousehold, listSpenders } from "@/core/households";
 import { approve, deny, listPayments, type Deps } from "@/core/lifecycle";
 import { createExampleHold, createWasItYouExample, EXAMPLE_LABEL } from "./example-hold";
+import { GRAN } from "@/app/landing/copy";
 
 let db: Db;
 let hh: string;
@@ -32,9 +33,16 @@ describe("the demo family's example hold", () => {
     expect(p!.case_file).toMatchObject({ example: true, verdict: "likely_scam", status: "done" });
     expect(p!.case_file!.headline).toContain(EXAMPLE_LABEL);
     expect(p!.ai!.summary).toContain(EXAMPLE_LABEL);
-    expect(EXAMPLE_LABEL).toBe("Example, checked earlier");
+    expect(EXAMPLE_LABEL).toBe("Sample message, live PayPal hold");
     // Every warning sign quotes the message for real.
     for (const f of p!.ai!.flags) expect(p!.request.context.toLowerCase()).toContain(f.quote.toLowerCase());
+    // UX audit 12 Oct #5/#6: the same "it's Tom, new number" text the landing page tells, word for word.
+    expect(p!.request.context).toContain(GRAN.text);
+    expect(p!.request.context).toContain(GRAN.payee);
+    expect(p!.case_file!.headline).toMatch(/Tom/);
+    expect(p!.ai!.flags.map((f) => f.quote)).toContain("it's Tom, new number");
+    // A sample, not the visitor's own Was it you run: nobody is asked.
+    expect(p!.was_it_you).toBeFalsy();
     // Every finding names a call in its own call list.
     for (const f of p!.case_file!.findings) expect(p!.case_file!.calls.map((c) => c.id)).toContain(f.source);
   });
@@ -67,15 +75,15 @@ describe("the demo family's example hold", () => {
 });
 
 // Round 8 m2: the Was it you run a visitor starts on Try is their own run, so it never carries the example label.
-// Only the seeded hold the demo family starts with is "Example, checked earlier".
+// Only the seeded hold the demo family starts with is labelled a sample.
 describe("the Was it you run started on Try", () => {
   it("is never tagged as an example, in the case file, the AI summary or anything Gran's view reads", async () => {
     const r = await createWasItYouExample({ db, paypal: paypal() }, hh);
     expect(typeof r).toBe("object");
     const [p] = await listPayments(db, hh);
     expect(p!.case_file!.example).not.toBe(true);
-    expect(p!.case_file!.headline).not.toMatch(/example|checked earlier/i);
-    expect(p!.ai!.summary).not.toMatch(/example|checked earlier/i);
+    expect(p!.case_file!.headline).not.toMatch(/example|checked earlier|sample/i);
+    expect(p!.ai!.summary).not.toMatch(/example|checked earlier|sample/i);
     expect(p!.case_file!.headline).toMatch(/Tom/);
     // Still honest about where its warning signs came from: each one quotes the message.
     for (const f of p!.ai!.flags) expect(p!.request.context.toLowerCase()).toContain(f.quote.toLowerCase());

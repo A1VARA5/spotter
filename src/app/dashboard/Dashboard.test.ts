@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { aiFailedLine, checkComplete, denyLeads, feedEmpty, firstToOpen, waitingChanged, withoutHoldFinding } from "./Dashboard";
+import { aiFailedLine, checkComplete, decidedResult, denyLeads, feedEmpty, firstToOpen, orientLine, shortPayPalId, waitingChanged, withoutHoldFinding } from "./Dashboard";
 import type { Case } from "@/agents/case";
 
 // Round 8 m5: the "Worth a closer look" earbuds card showed Approve before Deny. Deny leads on every card that isn't clean.
@@ -113,5 +113,53 @@ describe("waitingChanged (the sidebar's Waiting for you count follows the queue)
   });
   it("is null when the count didn't change, so the shell isn't refreshed every poll", () => {
     expect(waitingChanged(1, at("needs_approval", "voided"))).toBeNull();
+  });
+});
+
+// UX audit 12 Oct #9 and #16: a decision ends on a clear result where the card was, never a vanished card.
+describe("decidedResult (what the card turns into after Approve or Deny)", () => {
+  const held = (extra: Partial<Payment> = {}) =>
+    ({ id: "pay_1", status: "needs_approval", amount: "25000", currency: "GBP", request: { payee: { name: "jamie.k1994@mail.example" } }, paypal_authorization_id: "4DX12345AB6789012", paypal_capture_id: null, error: null, ...extra }) as unknown as Payment;
+
+  it("Deny: PayPal cancelled the hold, nothing was paid, with the authorisation's id and its Activity row", () => {
+    const r = decidedResult(held({ status: "voided" }));
+    expect(r).toMatchObject({ state: "returned", title: "Denied", line: "PayPal cancelled the hold. Nothing was paid.", paypalId: "4DX12345AB6789012", href: "/ledger#pay-pay_1" });
+  });
+
+  it("Approve: PayPal took the money, said as the sandbox, with the capture's id", () => {
+    const r = decidedResult(held({ status: "captured", paypal_capture_id: "9CAP0000000001234" }));
+    expect(r).toMatchObject({ state: "paid", title: "Approved", line: "PayPal took the £250.00 (sandbox).", paypalId: "9CAP0000000001234" });
+  });
+
+  it("says a capture still under way as under way, never as taken", () => {
+    expect(decidedResult(held({ status: "capturing" })).line).toBe("PayPal is taking the £250.00 (sandbox).");
+  });
+
+  it("never says cancelled before PayPal confirmed the void", () => {
+    const r = decidedResult(held({ status: "voiding", error: "timeout" }));
+    expect(r.title).toBe("Denied");
+    expect(r.line).not.toMatch(/cancelled the hold/);
+    expect(r.line).toMatch(/won't pay/);
+  });
+
+  it("a declined capture says nothing was paid", () => {
+    expect(decidedResult(held({ status: "failed" })).line).toMatch(/Nothing was paid/);
+  });
+
+  it("short PayPal ids keep the last 6 characters", () => {
+    expect(shortPayPalId("4DX12345AB6789012")).toBe("789012");
+    expect(shortPayPalId(null)).toBeNull();
+  });
+});
+
+// UX audit 12 Oct #18: a judge lands on the demo dashboard and needs to know who they are.
+describe("orientLine (one line for demo families)", () => {
+  it("names the spotter, the relative and the demo PIN while something waits", () => {
+    expect(orientLine({ demo: true, business: false, spotter: "Sam", who: "Gran" })).toBe("You're Sam, Gran's spotter. Deny it, or approve with the demo PIN 2468.");
+  });
+  it("is null for real families, business demos and when nothing waits", () => {
+    expect(orientLine({ demo: false, business: false, spotter: "Sam", who: "Gran" })).toBeNull();
+    expect(orientLine({ demo: true, business: true, spotter: "Sam", who: "Gran" })).toBeNull();
+    expect(orientLine({ demo: true, business: false, spotter: "Sam", who: null })).toBeNull();
   });
 });
