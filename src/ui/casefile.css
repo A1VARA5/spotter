@@ -109,7 +109,8 @@ a.cf-chip:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px
 .cf-lead .case-seen { margin: 0; }
 .cf-lead .case-seen-side img,
 .cf-lead .case-seen-side .case-page-video { max-height: 220px; object-fit: cover; object-position: top; }
-.cf-lead .faces-frame img { max-height: 240px; object-fit: cover; object-position: top; }
+/* No height cap on the two faces pictures: the frame keeps the screenshot's own shape and the form outline is placed
+   in fractions of that frame, so cropping the picture left the outline over an empty strip (12 Oct). */
 .cf-lead .faces-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.7fr); }
 @container casefile (min-width: 900px) {
   .cf-lead .case-seen-side img { max-height: 280px; }

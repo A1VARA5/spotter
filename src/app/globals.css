@@ -7620,7 +7620,7 @@ h3 {
 .faces-phone .faces-frame { aspect-ratio: 390 / 844; border-radius: 18px; border: 6px solid var(--ink); }
 .faces-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .faces-blank { width: 100%; height: 100%; }
-.faces-box { position: absolute; border: 2px dashed var(--stop); border-radius: 4px; background: color-mix(in srgb, var(--stop) 10%, transparent); box-shadow: 0 0 0 2px rgb(255 255 255 / 0.7); pointer-events: none; }
+.faces-box { position: absolute; border: 2px solid var(--stop); border-radius: 4px; background: transparent; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.8); pointer-events: none; }
 .faces-onion { display: grid; gap: 8px; }
 .faces-stage { position: relative; aspect-ratio: 4 / 3; max-width: 360px; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--chalk); }
 .faces-stage img { position: absolute; inset: 0; height: 100%; transition: opacity 120ms linear; }
