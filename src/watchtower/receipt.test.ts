@@ -232,3 +232,45 @@ describe("missing or odd telemetry never makes a reassuring receipt", () => {
     expect(receiptLines({ ...r, boardKnown: false }).board).toBe("Board changes: couldn't be checked.");
   });
 });
+
+// Task 3: board changes that carried a scammer's words wait for the spotter (src/watchtower/hold.ts).
+describe("held AI actions on the receipt", () => {
+  it("counts authorised, allowed and refused", () => {
+    const done: Receipt[] = [];
+    const rec = createRecorder({ onFinish: (r) => done.push(r) });
+    rec.onEvent(runStarted("r1", 0));
+    rec.onEvent(runStarted("r2", 1, { agentId: "widget", parentRunId: "r1", parentToolCallId: "c0" }));
+    rec.noteHold("r1", "authorised");
+    rec.noteHold("r2", "authorised");
+    rec.noteHold("r2", "allowed");
+    rec.noteHold("r1", "refused");
+    rec.noteHold("nobody", "allowed"); // a run the receipt never saw: on no receipt
+    rec.onEvent(runFinished("r2", 2, "ok", { agentId: "widget", parentRunId: "r1" }));
+    rec.onEvent(runFinished("r1", 3));
+    expect(done[0]!.held).toEqual({ authorised: 2, allowed: 1, refused: 1 });
+    expect(receiptLines(done[0]!).held).toBe("AI actions: authorised 2, allowed 1, refused 1.");
+    expect(receiptLines(done[0]!).summary).toContain("AI actions: authorised 2, allowed 1, refused 1.");
+    expect(isReceipt(done[0])).toBe(true);
+    expect(isReceipt(forServer(done[0]!))).toBe(true);
+  });
+  it("a run with no board changes still says 0, and keeps the old summary", () => {
+    const { done } = record([runStarted("r1", 0), runFinished("r1", 1)]);
+    expect(done[0]!.held).toEqual({ authorised: 0, allowed: 0, refused: 0 });
+    expect(receiptLines(done[0]!).held).toBe("AI actions: authorised 0, allowed 0, refused 0.");
+    expect(receiptLines(done[0]!).summary).not.toContain("AI actions");
+  });
+  it("the server takes receipts kept before held counts existed, and refuses odd counts", () => {
+    const good = { runId: "r_1", threadId: "t_1", agentId: "spotter", startedAt: 1, ms: 2, status: "ok", turns: 1, tokens: { input: 1, output: 1 }, tools: [], helpers: [], unknown: [], moneyActions: 0, boardChanges: 0, boardKnown: true, flagged: false };
+    expect(isReceipt(good)).toBe(true);
+    expect(isReceipt({ ...good, held: { authorised: 1, allowed: 0, refused: 2 } })).toBe(true);
+    expect(isReceipt({ ...good, held: { authorised: -1, allowed: 0, refused: 0 } })).toBe(false);
+    expect(isReceipt({ ...good, held: { authorised: 1, allowed: 0, refused: 0, note: "hi" } })).toBe(false);
+    expect(isReceipt({ ...good, held: "lots" })).toBe(false);
+    expect(receiptLines(good as Receipt).held).toBe("");
+  });
+  it("an unfinished receipt claims no held actions", () => {
+    const r = startedReceipt({ runId: "r_2", threadId: "t_1", agentId: "spotter", startedAt: 1 });
+    expect(r.held).toBeUndefined();
+    expect(isReceipt({ ...r, held: { authorised: 1, allowed: 0, refused: 0 } })).toBe(false);
+  });
+});

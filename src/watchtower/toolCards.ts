@@ -4,6 +4,7 @@
 // result is shown only when it matches one of those labels exactly; everything else is counted, never echoed.
 import { networkKind } from "@/core/networkLine";
 import { accessOf, type Access } from "./receipt";
+import { REFUSED } from "./hold";
 
 export const CARD_TOOLS = ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "fair_prices", "add_page", "place_widget", "my_month"] as const;
 
@@ -169,6 +170,26 @@ function placed(d: Record<string, unknown>): string {
   return "Placed one empty tile on the Answers page for the widget agent to build. The receipt can undo it.";
 }
 
+export const HELD = "Held for you";
+// What a held board change would do if allowed, for "The assistant wants to ..." (every "board" tool in receipt.ts).
+const WANTS: Record<string, string> = {
+  add_page: "add a page",
+  place_widget: "place a tile",
+  add_widget: "add a widget",
+  configure_widget: "set up a widget",
+  position_widget: "move a widget",
+  remove_widget: "remove a widget",
+  create_expression: "make a calculation",
+  update_expression: "change a calculation",
+  delete_expression: "remove a calculation",
+  add_page_filter: "add a page filter",
+  remove_page_filter: "remove a page filter",
+  add_widget_filter: "add a widget filter",
+  remove_widget_filter: "remove a widget filter",
+};
+export const wantsTo = (name: string) => (Object.prototype.hasOwnProperty.call(WANTS, name) ? WANTS[name]! : "change the board");
+const refused = (r: { issues?: unknown }) => arr(r.issues).some((i) => obj(i).message === REFUSED);
+
 /** The card for one call. `args` are never shown: the model wrote them, maybe after reading a scammer's words. */
 export function describeCall(name: string, _args: Record<string, unknown>, call: { status: CallStatus; result?: Result }): Card {
   const tool = (CARD_TOOLS as readonly string[]).includes(name) ? (name as (typeof CARD_TOOLS)[number]) : null;
@@ -177,8 +198,11 @@ export function describeCall(name: string, _args: Record<string, unknown>, call:
   const words = tool ? WORDS[tool] : (["Using a tool", "Used a tool"] as const);
   const card: Card = { text: settled ? words[1] : words[0], lines: [], access };
   const r = call.result;
+  // Held for the spotter (src/watchtower/hold.ts): the card itself shows the scammer's words and the buttons.
+  if (call.status === "awaiting_approval") return { ...card, text: HELD, pill: "Waiting for you", lines: ["This change used words a scammer wrote, so it waits for you."] };
   if (!settled) return { ...card, lines: ["Working…"] };
   if (!r) return { ...card, pill: "Stopped", lines: ["Stopped before it finished. No money was touched."] };
+  if (!r.success && refused(r)) return { ...card, text: "Refused by you", pill: "Refused by you", lines: ["You refused this change: it used words a scammer wrote. Nothing on the board changed."] };
   if (!r.success) return { ...card, lines: ["It didn't work. No money was touched."] };
   const d = obj(r.data);
   const took = num(d.took);
@@ -194,5 +218,6 @@ export function describeCall(name: string, _args: Record<string, unknown>, call:
     : tool === "add_page" ? { pill: "Board change", lines: ["Added one empty page to the board. The receipt can undo it."] }
     : tool === "place_widget" ? { pill: "Board change", lines: [placed(d)] }
     : { lines: ["Spotter doesn't know this tool."] };
+  if (d.allowedByYou === true) return { ...card, ...body, pill: "Allowed by you", lines: [...body.lines, "Allowed by you. It used words a scammer wrote, and you said yes."] };
   return { ...card, ...body };
 }

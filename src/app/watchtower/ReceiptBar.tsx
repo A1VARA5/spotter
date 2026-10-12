@@ -185,6 +185,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
           {r.flagged ? `Money actions: ${r.moneyActions} unchecked` : "Money actions: 0"}
         </p>
         <p className="wt-rc-fact">{boardWords(r).replace(/\.$/, "")}</p>
+        {lines.held && <p className="wt-rc-fact" data-refused={(r.held?.refused ?? 0) > 0 || undefined}>{lines.held.replace(/\.$/, "")}</p>}
         <div className="wt-rc-actions">
           {rc && rc.count > 0 && (
             rc.undone ? (
@@ -237,6 +238,7 @@ function Bar({ book, api }: { book: ReceiptBook; api: () => BoardApi | null }) {
           </tbody>
         </table>
         {r.helpers.length > 0 && <p className="wt-rc-note">Handed work to: {r.helpers.map(helperName).join(", ")}.</p>}
+        {lines.held && <p className="wt-rc-note">AI actions are the board changes the assistant tried. Authorised: Spotter let them through, as they used none of a scammer&apos;s words. Allowed or refused: they did, so they waited for you.</p>}
         {entry.notKept && <p className="wt-rc-alarm">This receipt couldn&apos;t be kept on the server, so it goes when you leave the page, and after a reload this run may show as not finished.</p>}
         <p className="wt-rc-note">Names, times and counts only. The receipt never keeps your question, the payees or what the tools returned.</p>
       </div>

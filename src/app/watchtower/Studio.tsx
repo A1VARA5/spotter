@@ -26,9 +26,10 @@ import { GRAN_LANGS, granAiText, granLocaleText, gt, isGranLang, outcomeIn, type
 import { radarLines } from "@/watchtower/widgetLogic";
 import type { PriceSummary } from "@/watchtower/price";
 import { fairBrief, todayLine, todayUnavailable } from "@/watchtower/fair";
-import { createRecorder, type Recorder } from "@/watchtower/receipt";
+import { accessOf, createRecorder, type Recorder } from "@/watchtower/receipt";
+import { createGate, gated, holdingHarness, scammerTexts, taintIndex, type Taint } from "@/watchtower/hold";
 import { captureEnd, captureStart, type RunStartSnapshot } from "@/watchtower/runUndo";
-import { spotterToolDisplay } from "./ToolCards";
+import { HeldBar, spotterToolDisplay } from "./ToolCards";
 import { ReceiptBar, createReceiptBook, keepStart, record, useBook, type ReceiptBook } from "./ReceiptBar";
 import { AiChecksWidget } from "./AiChecks";
 import { AnswerSummaryWidget, createAnswerFeed, type Starter } from "./AnswerCard";
@@ -581,14 +582,18 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       live = false;
     };
   }, [book]);
-  const [toolDisplay] = useState(spotterToolDisplay);
+  // Board changes carrying a scammer's words wait here for the spotter (src/watchtower/hold.ts). One gate for
+  // the page: a remount refuses whatever was waiting, so nothing held runs on a board that's gone.
+  const [gate] = useState(createGate);
+  const [toolDisplay] = useState(() => spotterToolDisplay(gate));
   // Every harness's recorder, so runs still going when Studio remounts get a receipt marked stopped.
   const recorders = useRef<Recorder[]>([]);
   const abandonRuns = useCallback(() => {
+    gate.cancelAll();
     for (const r of recorders.current.splice(0)) r.abandon();
     // Every caller remounts Studio next, so this harness dies with it; the new board builds its own.
     harness.current = null;
-  }, []);
+  }, [gate]);
 
   // ---------- the card beside the newest answer ----------
   // Its "Ask next" buttons ask in the chat like Ask again; one at a time, and not while a run is going.
@@ -957,6 +962,15 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         console.warn("[watchtower] took off answer tiles that were never set up:", removed);
         noted?.addNote(threadId, removed.length === 1 ? EMPTY_TILE_NOTE : EMPTY_TILES_NOTE);
       };
+      // The words a scammer could have written, read fresh for each board change (cached until the rows change).
+      let taintOf: { payments: unknown; signs: unknown; notes: unknown; taint: Taint } | null = null;
+      const taint = (): Taint => {
+        const { payments, signs } = sourcesRef.current;
+        const { notes } = store.get();
+        if (taintOf?.payments === payments && taintOf.signs === signs && taintOf.notes === notes) return taintOf.taint;
+        taintOf = { payments, signs, notes, taint: taintIndex(scammerTexts({ payments, signs, notes: notes.values() })) };
+        return taintOf.taint;
+      };
       const recorder = receiptRecorder(api, book, recorders.current, tidy, (run) => {
         placedBy.delete(run.threadId);
         runOf.set(run.threadId, run.runId);
@@ -971,9 +985,16 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           context: [SPOTTER_CONTEXT, kind === "business" ? BUSINESS_CONTEXT : ""].filter(Boolean).join("\n\n"),
           demo,
         });
+        // Every tool goes through the gate except the ones receipt.ts lists as read or chat only: board changes
+        // (ours and Studio's own) and any tool Spotter doesn't know yet. Tools are re-resolved each turn, so this
+        // wraps whatever the agent lists then.
+        const hold = (t: AgAiTool) => {
+          const access = accessOf(t.name);
+          return access === "read" || access === "chat" ? t : gated(t, gate, taint, (run, outcome) => run && recorder.noteHold(run.runId, outcome));
+        };
         return {
           // Each agent's turns say which agent they are, so the server picks its model (llm.ts modelFor).
-          agents: roster.agents.map((d) => directLlmRunner({ ...d, adapter: spotterAdapter(undefined, d.id) } as never)),
+          agents: roster.agents.map((d) => directLlmRunner({ ...d, tools: d.tools && ((c: never, p: never) => d.tools!(c, p).map(hold)), adapter: spotterAdapter(undefined, d.id) } as never)),
           primary: roster.primary,
           history,
           observers: [recorder],
@@ -993,7 +1014,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       const n = noted;
       for (const stop of stopRefresh) stop();
       stopRefresh = [book.subscribe(() => n.refresh()), onAnswerTotals(() => n.refresh())];
-      const h = focusable(noted);
+      // Held calls show on AG's approval surface: the chat waits (awaiting_input) and session.respond answers.
+      const h = focusable(holdingHarness(noted, gate));
       harness.current = h;
       for (const w of harnessWaiters.current.splice(0)) w(h);
       return h;
@@ -1214,6 +1236,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
               )}
             </p>
           )}
+          <HeldBar gate={gate} />
           {board}
           {!phone && <ReceiptBar book={book} api={() => apiRef.current} />}
         </>
