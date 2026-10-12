@@ -70,6 +70,21 @@ describe("which texts count as a scammer's", () => {
   });
 });
 
+describe("only flagged payments count as scammer words", () => {
+  const holds = (row: { payee: string; outcome: string; signs?: number }, title: string) => carries(taintIndex(scammerTexts({ payments: [row], notes: [] })), { title }).hit;
+  it("a clean paid payee never holds", () => {
+    expect(holds({ payee: "Tesco Superstore", outcome: "Paid", signs: 0 }, "Payments to Tesco Superstore")).toBe(false);
+    expect(holds({ payee: "Tesco Superstore", outcome: "Paying", signs: 0 }, "Payments to Tesco Superstore")).toBe(false);
+  });
+  it("a stopped payee still holds", () => {
+    expect(holds({ payee: "Tesco Superstore", outcome: "Stopped", signs: 0 }, "Payments to Tesco Superstore")).toBe(true);
+    for (const outcome of ["Denied", "Waiting", "Protected"]) expect(holds({ payee: "Tesco Superstore", outcome, signs: 0 }, "Payments to Tesco Superstore")).toBe(true);
+  });
+  it("a paid payment with a scam sign still holds", () => {
+    expect(holds({ payee: "Tesco Superstore", outcome: "Paid", signs: 1 }, "Payments to Tesco Superstore")).toBe(true);
+  });
+});
+
 describe("gate and gated tools", () => {
   const taint = () => taintIndex([SCAM]);
 

@@ -6,6 +6,7 @@
 // `session.respond` answers it. AG's own harness never pauses, so nothing in AG reports these states itself.
 // Reads are never gated, and no tool here can move money.
 import type { AgAiChatMessage, AgAiChatSession, AgAiHarness, AgAiTool, AgAiToolCallResponse, AgAiToolContext, AgAiToolRunContext } from "ag-studio";
+import { OUTCOME_WORDS } from "@/ui/labels";
 
 /** A shared run this long (after normalising) counts as the scammer's words. Shorter runs ("the", "£5") never do. */
 export const RUN = 12;
@@ -28,18 +29,23 @@ export function taintIndex(texts: readonly string[]): Taint {
   return { texts: kept, grams };
 }
 
+/** Outcomes (data.ts row labels) where Spotter stepped in: held, stopped or blocked, denied, or moved to a protected method. */
+const FLAGGED_OUTCOMES = new Set([OUTCOME_WORDS.held.short, OUTCOME_WORDS.blocked.short, OUTCOME_WORDS.returned.short, OUTCOME_WORDS.protected.short]);
+
 /**
- * The words on the board a scammer could have written: payee names, the item a shop listed, and the case
- * note text (reasons and findings can quote the message). Spotter's own fixed labels (outcome, top sign,
- * verdict) are left out: they are ours, and a tile titled "Pressure to hurry" is no reason to wait.
+ * The words on the board a scammer could have written: payee names and the item a shop listed, from payments
+ * Spotter stepped in on or found a scam sign in (an ordinary paid payee like a supermarket is no reason to
+ * wait), plus scam signs' payees and the case note text (reasons and findings can quote the message).
+ * Spotter's own fixed labels (outcome, top sign, verdict) are left out: they are ours, and a tile titled
+ * "Pressure to hurry" is no reason to wait.
  */
 export function scammerTexts(o: {
-  payments: Iterable<{ payee: string; marketItem?: string }>;
+  payments: Iterable<{ payee: string; marketItem?: string; outcome: string; signs?: number }>;
   signs?: Iterable<{ payee: string }>;
   notes: Iterable<{ reasons: string[]; signs: Array<{ why: string }>; caseHeadline?: string; caseFindings?: string[] }>;
 }): string[] {
   const out: string[] = [];
-  for (const p of o.payments) out.push(p.payee, p.marketItem ?? "");
+  for (const p of o.payments) if (FLAGGED_OUTCOMES.has(p.outcome) || (p.signs ?? 0) > 0) out.push(p.payee, p.marketItem ?? "");
   for (const s of o.signs ?? []) out.push(s.payee);
   for (const n of o.notes) out.push(...n.reasons, ...n.signs.map((s) => s.why), n.caseHeadline ?? "", ...(n.caseFindings ?? []));
   return out.filter((t) => typeof t === "string" && t !== "");
