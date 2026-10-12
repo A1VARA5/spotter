@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/ui/AppShell";
-import { Demo, JudgeTour } from "./Demo";
+import { Demo } from "./Demo";
 import { WasItYouDemo } from "./WasItYouDemo";
 import { Hint } from "@/ui/Hint";
 import { getDeps } from "@/server/deps";
@@ -42,13 +42,13 @@ export default async function DemoPage() {
     <AppShell db={db} household={household} current="try" layout="rail" rail={rail} railLabel="How Try a payment works">
       <h1 className="page-title">Try a payment</h1>
       <p className="lede demo-lede">Real checks and real PayPal sandbox holds, on fake money.</p>
-      {family && <JudgeTour spenders={spenders} />}
-      <Demo spenders={spenders} kind={household.kind} />
+      {/* Was it you? first: it's the idea the landing page leads with. Then the featured four, then More scenarios. */}
       {household.demo && family && <WasItYouDemo spotter={household.spotter_name} resume={await openExampleAsk(db, household.id).catch((e) => {
             // Resuming is a nicety: the demo still starts fresh, and the dashboard can answer the old one.
             console.error(`[spotter] couldn't look up an open example ask for ${household.id}:`, e);
             return null;
           })} />}
+      <Demo spenders={spenders} kind={household.kind} />
     </AppShell>
   );
 }

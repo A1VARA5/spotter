@@ -2,30 +2,36 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { HoldTrack } from "@/ui/components";
 import { trackState } from "@/ui/format";
-import { JUDGE_TOUR, SCENARIOS, scenariosFor, type Scenario } from "@/ui/scenarios";
+import { sponsorsOf, tryLayout, type Scenario } from "@/ui/scenarios";
 import { labelsFor, OUTCOME_WORDS, type Labels } from "@/ui/labels";
 import type { HouseholdKind } from "@/core/households";
 import type { Payment } from "@/core/lifecycle";
 import { plainError, readJson } from "@/ui/http";
 import { Confirm } from "@/ui/Confirm";
+import { OpenedPage } from "@/ui/CaseFile";
 import { topReason } from "@/core/reasons";
+import { caseStillComing, seenPage } from "./inline";
 import "./demo.css";
 
 export type SpenderLite = { id: string; name: string; kind: string };
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/**
+ * Try a payment: the featured four first (families), then every other scenario exactly once, behind one
+ * "More scenarios" disclosure. A business has no featured row, so its own two are shown openly.
+ */
 export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; kind?: HouseholdKind }) {
   const labels = labelsFor(kind);
-  const { main, extra } = scenariosFor(kind);
-  // One group per person, in the order the scenarios list them (families: agent, Gran, Leo; a business: staff first).
-  const groups = [...new Set(main.map((s) => s.spender))];
+  const { featured, more, extra } = tryLayout(kind);
   const [round, setRound] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const router = useRouter();
+  const spenderFor = (s: Scenario) => spenders.find((p) => p.kind === s.spender);
 
   async function reset() {
     setResetting(true);
@@ -47,8 +53,56 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
     }
   }
 
+  const inMore = featured.length > 0;
+  // One group per person, in the order the scenarios list them (families: agent, Gran, Leo; a business: staff first).
+  const groups = [...new Set(more.map((s) => s.spender))].map((who) => {
+    const spender = spenders.find((p) => p.kind === who);
+    const name = spender?.name ?? cap(labels.addWho[who]);
+    const list = more.filter((s) => s.spender === who);
+    return (
+      <section key={who} className="scen-group" aria-label={name}>
+        {inMore ? <h3 className="section-title scen-sub">{name}</h3> : <h2 className="section-title">{name}</h2>}
+        <div className="scenarios">
+          {list.map((s) => (
+            <ScenarioCard key={s.id} s={s} spender={spender} labels={labels} level={inMore ? "h4" : "h3"} />
+          ))}
+        </div>
+      </section>
+    );
+  });
+  const business = extra.length > 0 && (
+    <section className="scen-group scen-business" aria-labelledby="scen-business">
+      <h3 id="scen-business" className="section-title scen-sub">
+        Runs a business?
+      </h3>
+      <p className="scen-group-note">
+        Same Spotter, different people: staff paying suppliers and AI buying agents ordering stock. Here{" "}
+        {spenders.find((p) => p.kind === "person")?.name ?? "your relative"} forwards the invoice and{" "}
+        the {spenders.find((p) => p.kind === "agent")?.name.toLowerCase() ?? "agent"} places the order.
+      </p>
+      <div className="scenarios">
+        {extra.map((s) => (
+          <ScenarioCard key={s.id} s={s} spender={spenderFor(s)} labels={labels} level="h4" />
+        ))}
+      </div>
+    </section>
+  );
+  const count = more.length + extra.length;
+
   return (
-    <>
+    <div key={round}>
+      {inMore && (
+        <section className="scen-group scen-featured" aria-labelledby="featured-title">
+          <h2 id="featured-title" className="section-title">
+            Short on time? Start with these four
+          </h2>
+          <div className="scenarios">
+            {featured.map(({ s, short }) => (
+              <ScenarioCard key={s.id} s={s} short={short} spender={spenderFor(s)} labels={labels} level="h3" />
+            ))}
+          </div>
+        </section>
+      )}
       <div className="demo-bar">
         <Confirm
           trigger={resetting ? "Clearing" : "Start fresh"}
@@ -62,57 +116,64 @@ export function Demo({ spenders, kind = "family" }: { spenders: SpenderLite[]; k
           {note ?? "Send them in any order. Payments you send use up this week's allowance, so after lots of sends, Start fresh fills it up again."}
         </span>
       </div>
-      <div key={round}>
-        {groups.map((who) => {
-          const spender = spenders.find((p) => p.kind === who);
-          const list = main.filter((s) => s.spender === who);
-          const fallback = cap(labels.addWho[who]);
-          return (
-            <section key={who} className="scen-group" aria-label={spender?.name ?? fallback}>
-              <h2 className="section-title">{spender?.name ?? fallback}</h2>
-              <div className="scenarios">
-                {list.map((s) => (
-                  <ScenarioCard key={s.id} s={s} spender={spender} labels={labels} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-        {extra.length > 0 && (
-          <section className="scen-group scen-business" aria-labelledby="scen-business">
-            <h2 id="scen-business" className="section-title">
-              Runs a business?
-            </h2>
-            <p className="scen-group-note">
-              Same Spotter, different people: staff paying suppliers and AI buying agents ordering stock. Here{" "}
-              {spenders.find((p) => p.kind === "person")?.name ?? "your relative"} forwards the invoice and{" "}
-              the {spenders.find((p) => p.kind === "agent")?.name.toLowerCase() ?? "agent"} places the order.
-            </p>
-            <div className="scenarios">
-              {extra.map((s) => (
-                <ScenarioCard key={s.id} s={s} spender={spenders.find((p) => p.kind === s.spender)} labels={labels} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-    </>
+      {inMore ? (
+        <details className="more-scen">
+          <summary className="more-scen-sum">
+            <span className="more-scen-title">More scenarios</span>
+            <span className="more-scen-count">{count} more, from ordinary payments to a business invoice</span>
+            <ChevronDown className="more-scen-chev" size={18} strokeWidth={2.2} aria-hidden="true" />
+          </summary>
+          <div className="more-scen-body">
+            {groups}
+            {business}
+          </div>
+        </details>
+      ) : (
+        groups
+      )}
+    </div>
   );
 }
 
-/** Sends one scenario through Spotter as that person, for a scenario card and the judge's tour alike. */
+/** Sends one scenario through Spotter as that person, then keeps the result fresh until its case file arrives. */
 function useSend(s: Scenario, spender?: SpenderLite) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Payment | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Bumped after each finished send, so focus moves to the new result even when the outcome is the same.
   const [sent, setSent] = useState(0);
+  const [sentAt, setSentAt] = useState(0);
+  const [polls, setPolls] = useState(0);
   const next = useRef<HTMLAnchorElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     if (sent) next.current?.focus();
   }, [sent]);
+
+  // The case agent files its case a few seconds after the decision: look again every 3 s, for a minute at most.
+  useEffect(() => {
+    if (!result || !caseStillComing(result, sentAt, Date.now())) return;
+    let live = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch("/api/payments", { cache: "no-store" });
+        const j = await readJson(r);
+        if (!r.ok) throw new Error(j.error ?? `status ${r.status}`);
+        const fresh = Array.isArray(j.payments) ? (j.payments as Payment[]).find((p) => p.id === result.id) : undefined;
+        if (live && fresh) setResult(fresh);
+      } catch (e) {
+        // The outcome is already on screen and "Open case file" still works: the next look tries again.
+        console.warn("[spotter] couldn't look for the case file yet:", e);
+      } finally {
+        if (live) setPolls((n) => n + 1);
+      }
+    }, 3000);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [result, sentAt, polls]);
 
   async function run() {
     // The button stays focusable while checking (aria-disabled), so ignore repeat presses here instead.
@@ -123,6 +184,7 @@ function useSend(s: Scenario, spender?: SpenderLite) {
       const r = await fetch("/api/payments", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...s.body, spenderId: spender.id }) });
       const j = await readJson(r);
       if (!r.ok) throw new Error(j.error ?? `Something went wrong (${r.status}).`);
+      setSentAt(Date.now());
       setResult(j.payment);
       setSent((n) => n + 1);
       // A new hold changes the sidebar's "Waiting for you" count: re-render the server shell (client state stays).
@@ -133,88 +195,46 @@ function useSend(s: Scenario, spender?: SpenderLite) {
       setRunning(false);
     }
   }
-  return { running, result, error, next, run };
+  return { running, result, error, next, run, waiting: !!result && caseStillComing(result, sentAt, Date.now()) };
 }
 
-/** Four buttons at the top of Try: the demos that show the most, without scrolling for them. */
-export function JudgeTour({ spenders }: { spenders: SpenderLite[] }) {
-  const stops = JUDGE_TOUR.map((t) => ({ t, s: SCENARIOS.find((x) => x.id === t.id) })).filter((x): x is { t: (typeof JUDGE_TOUR)[number]; s: Scenario } => Boolean(x.s));
+/** What the card shows, in plain words, with the sponsor behind it as a small grey tag. */
+function Sees({ s }: { s: Scenario }) {
+  if (!s.sees) return null;
   return (
-    <section className="tour" aria-labelledby="tour-title">
-      <h2 id="tour-title" className="tour-title">
-        Short on time? Start with these four
-      </h2>
-      <ul className="tour-list">
-        {stops.map(({ t, s }) => (
-          <TourStop key={t.id} short={t.short} shows={t.shows} s={s} spender={spenders.find((p) => p.kind === s.spender)} />
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function TourStop({ short, shows, s, spender }: { short: string; shows: string; s: Scenario; spender?: SpenderLite }) {
-  const { running, result, error, next, run } = useSend(s, spender);
-  const state = result ? trackState(result.status) : null;
-  return (
-    <li className="tour-stop" data-state={state ?? undefined}>
-      <p className="tour-name">{short}</p>
-      <p className="tour-shows">Shows {shows}</p>
-      {result && state ? (
-        <>
-          <p className="tour-out">{OUTCOME_WORDS[state].long}.</p>
-          <Link ref={next} className="btn btn-primary tour-btn" href={state === "paid" ? "/ledger" : `/dashboard#pay-${result.id}`}>
-            {state === "held" ? "Review it now" : state === "paid" ? "See it in Activity" : "See why"}
-          </Link>
-        </>
-      ) : spender ? (
-        <button type="button" className="btn btn-quiet tour-btn" onClick={run} aria-disabled={running || undefined} aria-label={running ? `Checking: ${short}` : `Send it: ${short}`}>
-          {running ? "Checking" : "Send it"}
-        </button>
-      ) : (
-        <p className="tour-shows">Needs {s.who} in the family.</p>
-      )}
-      <p className="sr-only" role="status">
-        {running ? `Checking ${short}.` : result ? outcomeLine(result) : ""}
-      </p>
-      {error && (
-        <p className="error-line" role="alert">
-          {error}
-        </p>
-      )}
-    </li>
-  );
-}
-
-function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLite; labels: Labels }) {
-  const { running, result, error, next, run } = useSend(s, spender);
-  const state = result ? trackState(result.status) : running ? "checking" : null;
-  return (
-    <article className="scenario" aria-labelledby={`s-${s.id}`}>
-      <h3 id={`s-${s.id}`} className="scenario-title">
-        {s.title}
-      </h3>
-      <p className="scenario-body">{s.blurb}</p>
-      {s.shows && (
-        <ul className="scen-shows" aria-label="What this one shows">
-          {s.shows.map((t) => (
-            <li key={t.engine + t.what} className="scen-show">
-              Shows: <b>{t.engine}</b> {t.what}
-            </li>
+    <p className="scen-sees">
+      <span>{s.sees}</span>
+      {sponsorsOf(s).length > 0 && (
+        <span className="scen-sees-tags">
+          {sponsorsOf(s).map((t) => (
+            <span key={t} className="scen-tag">
+              <span className="sr-only">, with </span>
+              {t}
+            </span>
           ))}
-        </ul>
+        </span>
       )}
-      {state && (
-        <HoldTrack state={state} from={spender?.name ?? s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />
-      )}
-      {result ? (
-        <Outcome p={result} onAgain={run} running={running} nextRef={next} />
-      ) : (
-        <p className="scenario-body">Expected: {s.expect}</p>
-      )}
+    </p>
+  );
+}
+
+function ScenarioCard({ s, short, spender, labels, level }: { s: Scenario; short?: string; spender?: SpenderLite; labels: Labels; level: "h3" | "h4" }) {
+  const { running, result, error, next, run, waiting } = useSend(s, spender);
+  const state = result ? trackState(result.status) : running ? "checking" : null;
+  const Title = level;
+  const name = short ?? s.title;
+  return (
+    <article className="scenario" aria-labelledby={`s-${s.id}`} data-featured={short ? "" : undefined}>
+      <Title id={`s-${s.id}`} className="scenario-title">
+        {s.title}
+      </Title>
+      <p className="scenario-body">{s.blurb}</p>
+      <Sees s={s} />
+      {state && <HoldTrack state={state} from={spender?.name ?? s.who} to={s.body.payee} amount={s.body.amount} currency={s.body.currency} />}
+      {result ? <Outcome p={result} waiting={waiting} onAgain={run} running={running} nextRef={next} /> : !short && <p className="scenario-body">Expected: {s.expect}</p>}
       {/* Always in the page, so screen readers hear the change when the text arrives. */}
       <p className="sr-only" role="status">
-        {running ? `Checking ${s.title}.` : result ? outcomeLine(result) : ""}
+        {running ? `Checking ${name}.` : result ? `${outcomeLine(result)}${seenPage(result) ? " The case file is ready: what a person sees next to what your agent read." : ""}` : ""}
       </p>
       {error && (
         <p className="error-line" role="alert">
@@ -224,7 +244,7 @@ function ScenarioCard({ s, spender, labels }: { s: Scenario; spender?: SpenderLi
       <div>
         {spender ? (
           !result && (
-            <button className="btn btn-quiet" onClick={run} aria-disabled={running || undefined}>
+            <button type="button" className="btn btn-quiet" onClick={run} aria-disabled={running || undefined} aria-label={running ? `Checking: ${name}` : `Send it: ${name}`}>
               {running ? "Checking" : "Send it"}
             </button>
           )
@@ -248,16 +268,22 @@ function outcomeLine(p: Payment) {
   return `${status}. ${why}`;
 }
 
-/** The outcome in one line, and the one sensible next step for it. */
-function Outcome({ p, onAgain, running, nextRef }: { p: Payment; onAgain: () => void; running: boolean; nextRef: React.Ref<HTMLAnchorElement> }) {
+/** The verdict in one line, the seen vs read evidence when the case found it, and the one sensible next step. */
+function Outcome({ p, waiting, onAgain, running, nextRef }: { p: Payment; waiting: boolean; onAgain: () => void; running: boolean; nextRef: React.Ref<HTMLAnchorElement> }) {
   const s = trackState(p.status);
   const [status, why] = outcomeParts(p);
   const tone = s === "held" ? "held" : s === "paid" ? "paid" : "stop";
+  const page = seenPage(p);
   return (
     <div className="scen-result" data-tone={tone}>
       <p>
         <strong>{status}.</strong> {why}
       </p>
+      {page ? (
+        <OpenedPage id={`seen-${p.id}`} page={page} now={null} />
+      ) : (
+        waiting && <p className="scen-wait">Spotter is building the case file.</p>
+      )}
       <div className="scen-next">
         {s === "held" ? (
           <Link ref={nextRef} className="btn btn-primary" href={`/dashboard#pay-${p.id}`}>
@@ -265,10 +291,10 @@ function Outcome({ p, onAgain, running, nextRef }: { p: Payment; onAgain: () => 
           </Link>
         ) : (
           <Link ref={nextRef} className="btn btn-quiet" href={s === "paid" ? "/ledger" : `/dashboard#pay-${p.id}`}>
-            {s === "paid" ? "See it in Activity" : "See the full reasons"}
+            {s === "paid" ? "See it in Activity" : "Open case file"}
           </Link>
         )}
-        <button className="scen-again" onClick={onAgain} aria-disabled={running || undefined}>
+        <button type="button" className="scen-again" onClick={onAgain} aria-disabled={running || undefined}>
           {running ? "Checking" : "Send it again"}
         </button>
       </div>
