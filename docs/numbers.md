@@ -6,7 +6,7 @@ Every number the README, the guides and the Devpost text quote comes from this p
 
 | What | Number | Date | Source |
 | --- | --- | --- | --- |
-| Full suite | 1,812 tests in 138 files, all passing | 12 Oct 2026 | `npx vitest run --maxWorkers=4` on my laptop, 196 s, no timeouts |
+| Full suite | 1,840 tests in 140 files, all passing | 12 Oct 2026 | `npx vitest run --maxWorkers=4` on my laptop, no timeouts |
 | AG Studio guide command | 456 tests in 28 files | 12 Oct 2026 | the command in [the AG Studio guide](guides/ag-studio-custom-agent.md#run-it) |
 | Channel3 guide command | 205 tests in 10 files | 12 Oct 2026 | the command in [the Channel3 guide](guides/channel3-price-checks-that-change-decisions.md#run-it) |
 | KERNEL guide command | 153 tests in 10 files | 12 Oct 2026 | the command in [the KERNEL guide](guides/kernel-seen-vs-read.md#run-it) |
@@ -22,7 +22,7 @@ All on https://spotter-pay.vercel.app with a fresh demo family, from the round 7
 | --- | --- | --- |
 | Try it on fake money to a dashboard with the £250 hold | heading and held card there at the 1.0 s sample | about a second |
 | The four tour scenarios, Send it to the verdict | 4.3 to 8.3 s (11 October walkthrough). Round 7 timed the £4.99 skillet at 6.3 s, with "Checking" 250 ms after the click | about 4 to 8 s |
-| Was it you?, Tom's Not me to "Your money is safe" | 1.4 s (12 October, about 02:30 BST, two runs at 1.36 and 1.37 s while recording the Gran clip) | about a second |
+| Was it you?, Tom's Not me to "Your money is safe" | 1.0 to 1.4 s (12 October, three runs: 1.36 and 1.37 s while recording the Gran clip, 1.0 s in the round 8 judge pass) | about a second |
 | Case files settled after opening the dashboard | 2.3 s | a few seconds |
 | Approve with the PIN (2468) to paid | 1.9 s | about 2 s |
 | Agent lab, Hijack the agent | `create_order` held at +4.4 s, frozen and the hold voided at +5.3 s, verified PayPal webhook at +11.3 s | about 5 s, webhook within about 15 s |

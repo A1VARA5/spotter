@@ -306,7 +306,7 @@ Timed on the live site with a fresh demo family on 12 October 2026. Where each n
 | --- | --- |
 | Try it on fake money to a ready dashboard with a real sandbox hold | the held card is there within 1.0 s |
 | The four tour scenarios, Send it to the verdict | 4.3 to 8.3 s (11 October). The £4.99 skillet took 6.3 s, with "Checking" 250 ms after the click |
-| Was it you?, Tom's Not me to "Your money is safe" | 1.4 s |
+| Was it you?, Tom's Not me to "Your money is safe" | 1.0 to 1.4 s |
 | Case files written by the case agent | settled 2.3 s after opening the dashboard |
 | Approve with the PIN to paid | 1.9 s |
 | Watchtower, "What did Leo spend on games?" (builds a chart) | about 20 s, 14 tool calls (runs vary from 15.8 to 18.1 s) |
