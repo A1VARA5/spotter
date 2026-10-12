@@ -50,7 +50,7 @@ Every money call carries a `PayPal-Request-Id`: `create-<id>`, `capture-<id>-<au
 
 ## The lab
 
-`/agent-lab` runs a scripted naive test agent (regex, no model, labelled as that). It obeys the hidden GadgetBarn line, calls `create_refund` and gets frozen. The hold and the void are real sandbox calls. In the live run on 12 October the void landed about 5 s after the start, and the PayPal webhook confirmed it about 11 s in.
+`/agent-lab` runs a scripted naive test agent (regex, no model, labelled as that). It obeys the hidden GadgetBarn line, calls `create_refund` and gets frozen. The hold and the void are real sandbox calls. In the live run on 12 October the void landed about 5 s after the start, and the PayPal webhook confirmed it within about 15 s in.
 
 ## What went wrong and how I fixed it
 

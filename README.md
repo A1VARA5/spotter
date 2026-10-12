@@ -119,9 +119,9 @@ The PayPal Agent Toolkit has 47 tools. A shopping agent needs six of them. Refun
 | Leo, a kid | A "Check with Spotter" right click on Discord messages | Ask before paying a stranger in a game chat |
 | An AI shopping agent | Spotter's tools, or the PayPal Agent Toolkit tools pointed at Spotter. A held order comes back as `HELD_FOR_APPROVAL` | Ask to pay. Never approve |
 
-![Tom taps Not me on the Was it you example, then Watchtower switches to Gran's view: "Your money is safe", Spotter kept £250.00 of her own money with the sample month counted apart, and the row "Someone said they were Tom. Tom said they didn't send it. Nothing was paid." in big type with nothing to approve](docs/media/spotter-gran-view.gif)
+![Tom taps Not me on the Was it you example and the hold is "Released by PayPal", then Watchtower switches to Gran's view: "Your money is safe" and "Spotter kept £250.00 away from scammers this month.", with "The made up sample month adds £452.98." counted apart, the row "Someone said they were Tom. The real Tom said they never sent it." and "Nothing was paid. Just now." in big type, then "Waiting for Sam" ("One payment is waiting. You don't need to do anything.") and "If anyone asks you for money: Don't pay."](docs/media/spotter-gran-view.gif)
 
-<sub>Live site, real time, fresh demo family. Tom's Not me released the £250 sandbox hold in 1.4 s, and Gran's view tells it in her words.</sub>
+<sub>Live site, fresh demo family, the steps before Gran's view sped up a little. Tom's Not me released the £250 sandbox hold in 2.1 s, and Gran's view tells it in her words.</sub>
 
 What can never happen:
 
@@ -169,7 +169,7 @@ What took me a while to see: the toolkit is built for sellers. Refunds, invoices
 
 ![The agent lab: a scripted naive agent reads a hidden line, calls create_refund, Spotter freezes it, PayPal voids the hold and its webhook confirms it](docs/media/spotter-agent-lab.gif)
 
-<sub>The agent lab on the live site, the run sped up 1.6x. It's labelled what it is: a scripted naive test agent. Real Claude refused the same bait twice, which is good for Claude and annoying for my demo. Spotter doesn't rely on the model being careful. The void lands about 5 s after the start and the PayPal webhook confirms it about 11 s in.</sub>
+<sub>The agent lab on the live site, the run sped up 1.6x. It's labelled what it is: a scripted naive test agent. Real Claude refused the same bait twice, which is good for Claude and annoying for my demo. Spotter doesn't rely on the model being careful. The void lands about 5 s after the start and the PayPal webhook confirms it within about 15 s.</sub>
 
 - `create_order` becomes a Spotter payment. Spotter adds up the items itself, because the agent's own `itemTotal` could say anything.
 - `pay_order` never captures for a shopping agent. It tells the agent what Spotter decided.
@@ -226,7 +226,7 @@ Guide: [Price checks that change the decision, with Channel3](docs/guides/channe
 
 ![Asking the suggested "What did Leo spend on games?" in Watchtower: "Building your chart" holds the new tile, the Widget and Data agents build a one bar chart on a £ axis, and the answer card says £9.98, all of it BlockWorld, with a receipt of 14 calls, Money actions 0 and Ask next buttons](docs/media/spotter-ag-studio.gif)
 
-<sub>Live Watchtower, fresh demo family, the wait sped up 3x. In real time this answer takes under 20 s and 14 tool calls (runs on 12 October took 15.8 to 18.1 s).</sub>
+<sub>Live Watchtower, fresh demo family, the wait sped up 3x. In real time this answer takes about 20 s and 14 tool calls (runs on 12 October took 15.8 to 18.1 s).</sub>
 
 - My own agent, "spotter", opens the chat. It has read only tools (`open_case_file`, `watch_alerts`, `scam_radar`, `paypal_status`, `real_price`, `fair_prices`, `add_page`) and one that places an empty tile (`place_widget`). It never configures a widget itself. It hands that to the built in AG Studio planning, page, widget and data agents through `delegate_to`, so in the clip the Widget agent builds the chart while the Data agent works out the £9.98 total. A second agent of mine, "brief", writes the weekly page the same way.
 - The receipt. The assistant reads words scammers wrote, so I don't take its word for what it did. The AG Studio telemetry records each tool call, and the receipt under the board says how many calls ran, money actions (always 0, and any tool not on Spotter's list turns that line red) and board changes. **Undo what Spotter changed** reverses exactly those changes using the Studio history.
@@ -306,10 +306,10 @@ Timed on the live site with a fresh demo family on 12 October 2026. Where each n
 | --- | --- |
 | Try it on fake money to a ready dashboard with a real sandbox hold | the held card is there within 1.0 s |
 | The four tour scenarios, Send it to the verdict | 4.3 to 8.3 s (11 October). The £4.99 skillet took 6.3 s, with "Checking" 250 ms after the click |
-| Was it you?, Tom's Not me to "Your money is safe" | 1.4 s |
+| Was it you?, Tom's Not me to "Your money is safe" | 1.0 to 2.1 s |
 | Case files written by the case agent | settled 2.3 s after opening the dashboard |
 | Approve with the PIN to paid | 1.9 s |
-| Watchtower, "What did Leo spend on games?" (builds a chart) | under 20 s, 14 tool calls (runs vary from 15.8 to 18.1 s) |
+| Watchtower, "What did Leo spend on games?" (builds a chart) | about 20 s, 14 tool calls (runs vary from 15.8 to 18.1 s) |
 | Watchtower, "Did we pay fair prices this month?" | 6.0 s, 2 tool calls |
 | Agent lab, hijacked agent frozen and its hold voided at PayPal | 5.3 s. The PayPal webhook confirmed it at 11.3 s |
 
