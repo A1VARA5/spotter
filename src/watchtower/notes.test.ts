@@ -145,12 +145,12 @@ describe("a chat cut off mid run", () => {
 // the answer card and the receipt had all finished.
 describe("a run that built its tile and kept its receipt", () => {
   const NO_SUMMARY = "(the delegate finished without a summary)";
-  const call = (id: string, name: string, result?: unknown): AgAiChatMessage => ({ id, role: "assistant", parts: [{ type: "tool_call", toolCall: { toolCallId: id, name, status: "complete", args: {}, result } }], createdAt: 0 });
+  const call = (id: string, name: string, result?: unknown, args: Record<string, unknown> = {}): AgAiChatMessage => ({ id, role: "assistant", parts: [{ type: "tool_call", toolCall: { toolCallId: id, name, status: "complete", args, result } }], createdAt: 0 });
   const leoRun = (push: (m: AgAiChatMessage) => void) => {
     push(msg("u1", "user", "Show me what Leo spent on games this month, as a chart by shop."));
     push(call("a1", "place_widget", { success: true, data: { widgetId: "answer-1" } }));
-    push(call("a2", "delegate_to", { success: true, response: NO_SUMMARY }));
-    push(call("a3", "delegate_to", { success: true, response: "Leo has £9.98 in paid games payments." }));
+    push(call("a2", "delegate_to", { success: true, response: NO_SUMMARY }, { type: { id: "widget" } }));
+    push(call("a3", "delegate_to", { success: true, response: "Leo has £9.98 in paid games payments." }, { type: { id: "data" } }));
   };
   const LINE = "Chart added: What Leo spent on games, £9.98.";
   const resultOf = (s: AgAiChatSession, id: string) => (s.messages.find((m) => m.id === id)!.parts[0] as { toolCall: { result: { response: string } } }).toolCall.result.response;
@@ -180,7 +180,23 @@ describe("a run that built its tile and kept its receipt", () => {
     const s = await n.openThread("t1");
     leoRun((m) => sessions.get("t1")!.push(m));
     expect(s.messages.at(-1)!.parts[0]).toEqual({ type: "text", text: UNFINISHED_NOTE });
-    expect(resultOf(s, "a2")).toBe("It finished without writing what it did.");
+    expect(resultOf(s, "a2")).toBe("The helper stopped without reporting back.");
+  });
+
+  it("names the chart only on this run's widget delegate: a data delegate or an earlier run's row stays plain", async () => {
+    const { h, sessions } = fakeHarness();
+    const n = notable(h, { answered: () => LINE });
+    const s = await n.openThread("t1");
+    const push = (m: AgAiChatMessage) => sessions.get("t1")!.push(m);
+    push(msg("u0", "user", "An earlier question"));
+    push(call("b1", "delegate_to", { success: true, response: NO_SUMMARY }, { type: { id: "widget" } }));
+    push(msg("b2", "assistant", "Earlier reply."));
+    push(msg("u1", "user", "Show me Leo's games"));
+    push(call("a2", "delegate_to", { success: true, response: NO_SUMMARY }, { type: { id: "widget" } }));
+    push(call("a3", "delegate_to", { success: true, response: NO_SUMMARY }, { type: { id: "data" } }));
+    expect(resultOf(s, "b1")).toBe("The helper stopped without reporting back.");
+    expect(resultOf(s, "a2")).toBe(LINE);
+    expect(resultOf(s, "a3")).toBe("The helper stopped without reporting back.");
   });
 
   it("swaps the didn't finish line for the plain line when the receipt lands after the chat settled", async () => {

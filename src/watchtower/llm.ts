@@ -47,7 +47,8 @@ export const defaultCallModel: CallModel = async (turn, model, signal) => {
   );
 };
 
-const RETRY_WITHIN_MS = 20_000;
+/** Only when the first try was quick, so both fit well inside the route's 60 s limit. */
+const RETRY_WITHIN_MS = 10_000;
 const EMPTY_NUDGE = "Write your reply now, in plain words.";
 /** Finished on its own with no text and no tool call (thinking blocks don't reach the chat). */
 function isEmptyTurn(m: Anthropic.Message): boolean {
@@ -114,13 +115,14 @@ export function makeLlmTurn(opts: { db: Db; callModel?: CallModel; perHousehold?
     // on tool rows with no reply. Seen on 12 Oct after two delegations. Ask once more, in words, on the same
     // slot, while there's time left in the route's limit. If that fails too, the empty turn goes back as it was.
     if (isEmptyTurn(msg) && Date.now() - started < RETRY_WITHIN_MS) {
-      console.warn(`[spotter] watchtower turn for ${householdId} on ${model} came back empty; asking once more`);
+      console.warn(`[spotter] watchtower turn for ${householdId} on ${model} came back empty (out ${msg.usage.output_tokens}); asking once more`);
       try {
         const again = await callModel({ ...turn, messages: [...turn.messages, { role: "user", content: [{ type: "text", text: EMPTY_NUDGE }] }] }, model, signal);
         if (isEmptyTurn(again)) console.warn(`[spotter] watchtower turn for ${householdId} came back empty twice`);
         else msg = again;
       } catch (e) {
-        console.error(`[spotter] watchtower second try failed for ${householdId}:`, e instanceof Error ? e.message : e);
+        if (signal?.aborted) console.info(`[spotter] watchtower second try for ${householdId} stopped: the page went away`);
+        else console.error(`[spotter] watchtower second try failed for ${householdId}:`, e instanceof Error ? e.message : e);
       }
     }
     const u = msg.usage;

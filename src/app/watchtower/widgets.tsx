@@ -13,6 +13,7 @@ import type { AiChecksDef } from "./AiChecks";
 import type { AnswerFeed, AnswerSummaryDef } from "./AnswerCard";
 import type { ReceiptBook } from "./ReceiptBar";
 import { noteAnswerLine } from "./chartPolish";
+import { FAIR_FAILED } from "@/watchtower/answers";
 import { countdown, fairPrice, fairRows, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -628,7 +629,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
     new Date(now),
   ) : null;
   // On the Answers page the card beside this tile says the same words, from these same (filtered) rows.
-  const said = failed ? "The price checks didn't load. Reload the page." : f ? (f.checked ? f.headline : "No price checks this month yet") : null;
+  const said = failed ? FAIR_FAILED : f ? (f.checked ? f.headline : "No price checks this month yet") : null;
   // The items behind the headline, for the card's list (a string key, so the effect runs only when they change).
   const behind = f && !failed ? fairRows(f.items, CARD_ROWS) : [];
   const behindKey = JSON.stringify(behind);

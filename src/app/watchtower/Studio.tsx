@@ -147,7 +147,7 @@ function lookIntoPrompt(a: WatchAlert): string {
  * are noted (synchronously, before any tool runs) so the run's changes can be counted and undone. If that
  * snapshot is missing, the board count is marked unknown rather than shown as 0.
  */
-function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[], beforeEnd?: (threadId: string) => void): Recorder {
+function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[], beforeEnd?: (threadId: string) => void, started?: (run: { runId: string; threadId: string }) => void): Recorder {
   const starts = new Map<string, RunStartSnapshot | null>();
   const recorder = createRecorder({
     onStart: (run) => {
@@ -159,6 +159,7 @@ function receiptRecorder(api: AgStudioApi, book: ReceiptBook, live: Recorder[], 
       }
       book.setRunning(true);
       keepStart(run);
+      started?.(run);
     },
     onFinish: (receipt) => {
       const start = starts.get(receipt.runId);
@@ -945,7 +946,10 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       // A tile the widget agent never set up (it failed, or did nothing) comes off the Answers page when the
       // run ends, and the chat says so in plain words, rather than an empty box staying until Undo.
       let noted: NotableHarness | null = null;
+      // Per chat: the tile its current run placed and that run's id, both reset when a run starts, so a later
+      // run that fails before placing anything is never named by the earlier run's chart.
       const placedBy = new Map<string, string>();
+      const runOf = new Map<string, string>();
       const tidy = (threadId: string) => {
         const { state, removed } = dropEmptyAnswers(api.getState());
         if (!removed.length) return;
@@ -953,7 +957,10 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         console.warn("[watchtower] took off answer tiles that were never set up:", removed);
         noted?.addNote(threadId, removed.length === 1 ? EMPTY_TILE_NOTE : EMPTY_TILES_NOTE);
       };
-      const recorder = receiptRecorder(api, book, recorders.current, tidy);
+      const recorder = receiptRecorder(api, book, recorders.current, tidy, (run) => {
+        placedBy.delete(run.threadId);
+        runOf.set(run.threadId, run.runId);
+      });
 
       const inner = createAiHarness(api, ({ builtIn }) => {
         // Our own "spotter" agent leads (its own tools.delegateTo reaches "brief" and Studio's built ins),
@@ -977,7 +984,9 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         answered: (threadId) => {
           const latest = newestAnswer(api.getState());
           const receipt = book.get().entries.find((e) => e.receipt.threadId === threadId)?.receipt ?? null;
-          return answeredLine({ placed: placedBy.get(threadId), latest, total: latest ? answerTotalFor(latest.widgetId) : undefined, receipt });
+          const runId = runOf.get(threadId);
+          if (!runId) return null;
+          return answeredLine({ placed: placedBy.get(threadId), latest, total: latest ? answerTotalFor(latest.widgetId) : undefined, line: latest ? answerLineFor(latest.widgetId) : null, receipt, runId });
         },
       });
       // The receipt is kept, and the chart's total drawn, a moment after the chat settles: redraw the chat then.

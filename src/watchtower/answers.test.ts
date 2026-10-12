@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_COLOURS, answerLine, answerReceipt, answeredLine, receiptSteps, answerTotal, builtBy, dropEmptyAnswers, followUps, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
+import { ANSWER_COLOURS, answerLine, answerReceipt, answeredLine, receiptSteps, FAIR_FAILED, answerTotal, builtBy, dropEmptyAnswers, followUps, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
 import { SUMMARY_ID, SUMMARY_TYPE, newestAnswer } from "./pages";
 import { startedReceipt, type Receipt } from "./receipt";
 
@@ -233,7 +233,7 @@ describe("the summary card beside the newest answer", () => {
       expect(answeredLine({ placed: "answer-1", latest: leo, total: "£9.98", receipt: done })).toBe("Chart added: What Leo spent on games, £9.98.");
       expect(answeredLine({ placed: "answer-1", latest: leo, receipt: done })).toBe("Chart added: What Leo spent on games.");
       expect(answeredLine({ placed: "answer-1", latest: { ...leo, type: "grid" }, total: "£9.98", receipt: done })).toBe("Table added: What Leo spent on games.");
-      expect(answeredLine({ placed: "answer-1", latest: { ...leo, type: "fair-price", title: "Did we pay fair prices this month?" }, receipt: done })).toBe("Fair price tile added: Did we pay fair prices this month.");
+      expect(answeredLine({ placed: "answer-1", latest: { ...leo, type: "fair-price", title: "Did we pay fair prices this month?" }, line: "Your agent paid £8.50 more", receipt: done })).toBe("Fair price tile added: Did we pay fair prices this month.");
     });
     it("says nothing unless this run's own tile is built and its receipt says it finished", () => {
       expect(answeredLine({ placed: undefined, latest: leo, total: "£9.98", receipt: done })).toBeNull();
@@ -243,6 +243,14 @@ describe("the summary card beside the newest answer", () => {
       expect(answeredLine({ placed: "answer-1", latest: leo, receipt: null })).toBeNull();
       expect(answeredLine({ placed: "answer-1", latest: leo, receipt: r("r2", ["place_widget"], { status: "cancelled" }) })).toBeNull();
       expect(answeredLine({ placed: "answer-1", latest: leo, receipt: startedReceipt({ runId: "r3", threadId: "t1", agentId: "spotter", startedAt: 2 }) })).toBeNull();
+      // a receipt from an earlier run in the chat isn't this run's
+      expect(answeredLine({ placed: "answer-1", latest: leo, total: "£9.98", receipt: done, runId: "r9" })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: leo, total: "£9.98", receipt: done, runId: "r1" })).toBe("Chart added: What Leo spent on games, £9.98.");
+    });
+    it("never says the Fair price tile was added when its price checks didn't load", () => {
+      const fair = { ...leo, type: "fair-price", title: "Fair prices" };
+      expect(answeredLine({ placed: "answer-1", latest: fair, line: FAIR_FAILED, receipt: done })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: fair, line: null, receipt: done })).toBeNull();
     });
   });
 

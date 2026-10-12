@@ -26,18 +26,27 @@ export function cutOff(messages: readonly AgAiChatMessage[], status: AgAiRunStat
 /** AG's own words on a delegate's row when the delegate ended without calling complete_task. */
 export const NO_SUMMARY = "(the delegate finished without a summary)";
 /** What a delegate's row says instead when the run built nothing we can name. */
-export const NO_SUMMARY_PLAIN = "It finished without writing what it did.";
+export const NO_SUMMARY_PLAIN = "The helper stopped without reporting back.";
 
 const noSummary = (r: unknown) => r === NO_SUMMARY || (!!r && typeof r === "object" && (r as { response?: unknown }).response === NO_SUMMARY);
 const hasNoSummary = (m: AgAiChatMessage) => m.parts.some((p) => p.type === "tool_call" && p.toolCall.name === "delegate_to" && noSummary(p.toolCall.result));
 
-/** The delegate's row with a plain line in place of AG's words (shown only: the saved chat keeps AG's). */
-function plainDelegate(m: AgAiChatMessage, line: string): AgAiChatMessage {
+const toWidget = (args: unknown) => {
+  const t = args && typeof args === "object" ? (args as { type?: unknown }).type : undefined;
+  return !!t && typeof t === "object" && (t as { id?: unknown }).id === "widget";
+};
+
+/**
+ * The delegate's row with a plain line in place of AG's words (shown only: the saved chat keeps AG's). Only the
+ * current run's Widget delegate can say what was built (`built`); every other row just says it stopped.
+ */
+function plainDelegate(m: AgAiChatMessage, built: string | null): AgAiChatMessage {
   if (!hasNoSummary(m)) return m;
   return {
     ...m,
     parts: m.parts.map((p) => {
       if (p.type !== "tool_call" || p.toolCall.name !== "delegate_to" || !noSummary(p.toolCall.result)) return p;
+      const line = built && toWidget(p.toolCall.args) ? built : NO_SUMMARY_PLAIN;
       const r = p.toolCall.result;
       return { ...p, toolCall: { ...p.toolCall, result: typeof r === "string" ? line : { ...(r as object), response: line } } };
     }),
@@ -82,7 +91,8 @@ export function notable(inner: AgAiHarness, opts: NotableOptions = {}): NotableH
     const done = (cut || rewrite) && s.status !== "running" ? answeredFor(s.threadId) : null;
     const hit = merged.get(s.threadId);
     if (hit && hit.from === base && hit.count === own.length && hit.cut === cut && hit.done === done) return hit.list;
-    const list = rewrite ? base.map((m) => plainDelegate(m, done ?? NO_SUMMARY_PLAIN)) : [...base];
+    const lastUser = base.findLastIndex((m) => m.role === "user");
+    const list = rewrite ? base.map((m, i) => plainDelegate(m, i > lastUser ? done : null)) : [...base];
     for (const n of own) {
       const found = n.after ? list.findIndex((m) => m.id === n.after) + 1 : 0;
       list.splice(n.after === null ? 0 : found > 0 ? found : list.length, 0, n.message);

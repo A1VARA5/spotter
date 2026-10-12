@@ -200,14 +200,29 @@ export function answerReceipt(receipts: readonly Receipt[]): Receipt | null {
   return receipts.find((r) => r.status === "ok" && r.tools.some((t) => t.name === "place_widget" && t.calls > t.failed)) ?? null;
 }
 
+/** What the Fair price tile says when its price checks didn't load. */
+export const FAIR_FAILED = "The price checks didn't load. Reload the page.";
+
 /**
  * The chat's plain line for a run that built its answer but wrote no reply (R7-N1): "Chart added: What Leo
  * spent on games, £9.98." Only when the tile this run placed is the newest answer, it's built, and the run's
  * receipt says it finished with that tile placed. Otherwise null, and the chat keeps "didn't finish".
  */
-export function answeredLine(o: { placed: string | undefined; latest: { widgetId: string; type: string; title: string; empty: boolean } | null; total?: string; receipt: Receipt | null }): string | null {
+export function answeredLine(o: {
+  placed: string | undefined;
+  latest: { widgetId: string; type: string; title: string; empty: boolean } | null;
+  total?: string;
+  /** The line the tile published (the Fair price headline, or FAIR_FAILED when its checks didn't load). */
+  line?: string | null;
+  receipt: Receipt | null;
+  /** The chat's current run: a receipt from an earlier run in the same chat doesn't count. */
+  runId?: string;
+}): string | null {
   const { placed, latest, receipt } = o;
   if (!placed || !latest || latest.empty || latest.widgetId !== placed || !receipt || answerReceipt([receipt]) !== receipt) return null;
+  if (o.runId !== undefined && receipt.runId !== o.runId) return null;
+  // The Fair price tile is never empty (it fills itself), so it counts only once it has said its headline.
+  if (latest.type === "fair-price" && (!o.line || o.line === FAIR_FAILED)) return null;
   const title = latest.title.replace(/[\s.?!]+$/, "");
   if (latest.type === "grid" || latest.type === "pivot-grid") return title ? `Table added: ${title}.` : "Table added to the Answers page.";
   if (latest.type === "fair-price") return title ? `Fair price tile added: ${title}.` : "Fair price tile added to the Answers page.";
