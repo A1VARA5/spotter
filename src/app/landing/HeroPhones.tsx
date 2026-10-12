@@ -63,7 +63,7 @@ export function TomPhone() {
             <b>{TOM.question}</b>
           </span>
           <span>{TOM.quote}</span>
-          <span>PayPal is holding Gran&apos;s money while we check. If it wasn&apos;t you, tap Not me and it&apos;s released straight away.</span>
+          <span>PayPal is holding Gran&apos;s money while we check. If it wasn&apos;t you, tap Not me and PayPal cancels the hold straight away.</span>
           <i>09:12</i>
         </div>
         <div className="hp-keys" aria-hidden="true">

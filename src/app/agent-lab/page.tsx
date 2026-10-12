@@ -27,7 +27,7 @@ export default async function AgentLabPage() {
         <p className="lab-honest">
           <b>A naive test agent, scripted,</b> so it falls for the trick every time. Real Claude refused it twice.
         </p>
-        <DemoStart label="Start the demo family" className="btn btn-primary" />
+        <DemoStart className="btn btn-primary" />
         <p className="lab-left">Free, no account. It opens your demo dashboard; come back to this page to run the agent.</p>
       </main>
       <PublicFooter band />

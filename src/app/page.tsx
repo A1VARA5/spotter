@@ -4,14 +4,12 @@ import { HeroScenes } from "./landing/HeroScenes";
 import { NetworkField } from "./landing/NetworkField";
 import { Problem } from "./landing/Problem";
 import { Walkthrough } from "./landing/Walkthrough";
-import { AgentToolkit } from "./landing/AgentToolkit";
 import { WatchtowerPeek } from "./landing/WatchtowerPeek";
 import { Final } from "./landing/Sections";
 import { FAQ } from "./how/faq";
 import { LoopPauser } from "@/ui/LoopPauser";
 import { DemoStart } from "@/ui/DemoStart";
 import { getDb } from "@/db";
-import { listSpenders } from "@/core/households";
 import { pageSession } from "@/server/page-session";
 import "./landing/hero.css";
 import "./landing/motion.css";
@@ -19,10 +17,10 @@ import "./landing/story.css";
 import "./landing/scenes.css";
 import "./landing/moments.css";
 
-type Who = { name: string; demo: boolean; agentId: string | null } | null;
+type Who = { name: string; demo: boolean } | null;
 
 /** Signed in: one way back in. Signed out: the demo first, then PayPal. */
-function StartButtons({ onDark = false, who, label = "Try the demo family" }: { onDark?: boolean; who: Who; label?: string }) {
+function StartButtons({ onDark = false, who }: { onDark?: boolean; who: Who }) {
   if (who)
     return (
       <div className="start">
@@ -36,7 +34,7 @@ function StartButtons({ onDark = false, who, label = "Try the demo family" }: { 
     );
   return (
     <div className="start">
-      <DemoStart label={label} />
+      <DemoStart />
       <a className={onDark ? "btn btn-ghost" : "btn btn-quiet"} href="/api/auth/paypal/start">
         Log in with PayPal
       </a>
@@ -45,14 +43,14 @@ function StartButtons({ onDark = false, who, label = "Try the demo family" }: { 
 }
 
 /** The one next step at the end of a section: into the demo, or back to it. */
-function DemoButton({ who, label = "Try the demo family" }: { who: Who; label?: string }) {
+function DemoButton({ who }: { who: Who }) {
   if (who)
     return (
       <Link className="btn btn-hold" href="/dashboard">
         {who.demo ? "Back to your demo family" : "Open your dashboard"}
       </Link>
     );
-  return <DemoStart label={label} />;
+  return <DemoStart />;
 }
 
 export const dynamic = "force-dynamic";
@@ -60,9 +58,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const db = await getDb().catch(() => null);
   const session = db ? await pageSession(db).catch(() => null) : null;
-  const agent = session && db ? (await listSpenders(db, session.household.id).catch(() => [])).find((s) => s.kind === "agent") : undefined;
-  const who: Who = session ? { name: session.household.spotter_name, demo: session.household.demo, agentId: agent?.id ?? null } : null;
-  const connectHref = who?.agentId ? `/people/${who.agentId}` : "/how#channels";
+  const who: Who = session ? { name: session.household.spotter_name, demo: session.household.demo } : null;
 
   return (
     <main>
@@ -77,11 +73,10 @@ export default async function Home() {
               {/* Leads with what only Spotter does (asking the person the text pretends to be); the PayPal hold is how. */}
               <h1 className="hero-h1">Banks ask the person paying. Spotter asks the person the text pretends to be.</h1>
               <p className="hero-p">
-                A text says it&apos;s Tom and asks Gran for &pound;250. PayPal holds it, Spotter asks the real Tom, and his Not me releases it.
-                It also catches a shop page that shows phones a card form and security scanners nothing, and an AI agent reaching for a PayPal tool its job
-                never needs.
+                A text says it&apos;s Tom and asks Gran for &pound;250. PayPal holds it, Spotter asks the real Tom, and when he taps Not me, PayPal cancels
+                the hold and Gran keeps her &pound;250.
               </p>
-              <StartButtons onDark who={who} label="Try it on fake money" />
+              <StartButtons onDark who={who} />
               {!who && (
                 <p className="hero-fine">
                   No sign up. You get a family with Gran, Leo and a shopping agent on the PayPal sandbox, with one payment already waiting for you, so
@@ -97,16 +92,7 @@ export default async function Home() {
 
       <Problem />
 
-      <Walkthrough cta={<DemoButton who={who} label="Try it on the demo family" />} />
-
-      <AgentToolkit
-        connectHref={connectHref}
-        cta={
-          <a className="next-link" href="/how#limits">
-            What Spotter can and can&apos;t do
-          </a>
-        }
-      />
+      <Walkthrough cta={<DemoButton who={who} />} />
 
       <WatchtowerPeek
         cta={
@@ -115,7 +101,7 @@ export default async function Home() {
               Open Watchtower
             </Link>
           ) : (
-            <DemoButton who={who} label="Try the demo family, Watchtower included" />
+            <DemoButton who={who} />
           )
         }
       />
@@ -142,7 +128,7 @@ export default async function Home() {
         </p>
       </section>
       <Final footer={<PublicFooter />}>
-        <StartButtons onDark who={who} label="Try it on fake money" />
+        <StartButtons onDark who={who} />
       </Final>
     </main>
   );

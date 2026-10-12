@@ -69,7 +69,7 @@ export function Hub() {
           </svg>
           <div className="hub-out">
             <span className="hub-pp">PayPal</span>
-            <span>holds, pays or releases the money</span>
+            <span>holds the money, then pays or cancels</span>
           </div>
         </div>
       </div>

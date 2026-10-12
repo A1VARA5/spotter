@@ -38,7 +38,7 @@ export default async function ChecksPage() {
           <li key={e.id} className="ck-row" aria-labelledby={`ck-${e.id}`}>
             <div className="ck-what">
               <h2 id={`ck-${e.id}`} className="ck-name">
-                {e.name} <span className="ck-by">{e.by}</span>
+                {e.name} <span className="ck-by by-tag" translate="no">{e.by}</span>
               </h2>
               <p className="ck-does">{e.does}</p>
             </div>

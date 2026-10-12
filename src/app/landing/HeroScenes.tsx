@@ -30,7 +30,7 @@ const SCENES: Scene[] = [
     key: "wiy",
     tab: "Was it you?",
     short: "Was it you",
-    caption: "Gran forwards the text and PayPal holds her £250. Tom's phone gets the question, and one tap on Not me releases it.",
+    caption: "Gran forwards the text and PayPal holds her £250. Tom's phone gets the question, and one tap on Not me cancels the hold. Gran keeps her £250.",
     ms: 7600,
     Back: TomPhone,
     backKind: "phone",
@@ -174,7 +174,7 @@ export function HeroScenes() {
               {s.key === "wiy" && (
                 <span className="hs-tag hs-tag-hold">
                   <span className="hs-tag-a">£250 on hold at PayPal</span>
-                  <span className="hs-tag-b">Released, nothing paid</span>
+                  <span className="hs-tag-b">Hold cancelled, nothing paid</span>
                 </span>
               )}
             </div>

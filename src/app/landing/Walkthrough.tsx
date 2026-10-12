@@ -1,7 +1,7 @@
 "use client";
 // Gran's £250, start to finish: the hero's "it's Tom, new number" text (copy.ts, same amount, payee and words),
 // followed along the hold track through the five stops it takes: forwarded, checked, held at PayPal, the real Tom
-// asked, released with the record kept. Each stop shows a small piece of the real product. The other checks (two
+// asked, the hold cancelled with the record kept. Each stop shows a small piece of the real product. The other checks (two
 // faces, real prices) sit as tabs inside the Checked stop, for texts that carry a link or a shop.
 // Desktop: the steps scroll past a pinned stage whose track carries the money. Phones: the stops stack, each with its
 // own picture, joined by the same track turned upright.
@@ -50,9 +50,9 @@ const STOPS = [
   },
   {
     key: "done",
-    title: "Released",
-    head: "Tom taps Not me. PayPal lets the £250 go.",
-    body: "Saying no needs no PIN. PayPal releases the hold and confirms it back to Spotter, Gran is told to ring Tom on the number she already has, and Watchtower keeps the record.",
+    title: "Cancelled",
+    head: "Tom taps Not me. PayPal cancels the hold. Gran keeps her £250.",
+    body: "Saying no needs no PIN. PayPal confirms the cancelled hold back to Spotter, Gran is told to ring Tom on the number she already has, and Watchtower keeps the record.",
   },
 ] as const;
 
@@ -237,7 +237,7 @@ function DecideArt() {
                 <b>{TOM.question}</b>
               </span>
               <span>{TOM.quote}</span>
-              <span>PayPal is holding Gran&apos;s money while we check. If it wasn&apos;t you, tap Not me and it&apos;s released straight away.</span>
+              <span>PayPal is holding Gran&apos;s money while we check. If it wasn&apos;t you, tap Not me and PayPal cancels the hold straight away.</span>
               <i>09:12</i>
             </div>
             <div className="hp-keys" aria-hidden="true">
@@ -277,7 +277,7 @@ function DoneArt() {
           <b className="num">£250.00</b>
           <span className="wk-record-to">{GRAN.payee}</span>
         </div>
-        <p className="wk-record-meta">Not me: Tom didn&apos;t send it. PayPal released the hold.</p>
+        <p className="wk-record-meta">Not me: Tom didn&apos;t send it. PayPal cancelled the hold.</p>
         <p className="wk-record-ask">&quot;How much did Spotter keep this month?&quot;</p>
       </div>
     </div>
@@ -299,7 +299,7 @@ const TRACK: Record<Key, { x: number; label: string }> = {
   checked: { x: 0.5, label: "Checking" },
   held: { x: 0.5, label: "On hold at PayPal" },
   decide: { x: 0.5, label: "Asking Tom" },
-  done: { x: 0, label: "Released back to Gran" },
+  done: { x: 0, label: "Hold cancelled, Gran keeps £250" },
 };
 
 function Track({ k }: { k: Key }) {

@@ -43,7 +43,7 @@ const SHOT = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
 
 const EVENT_WORDS: Record<string, string> = {
   "PAYMENT.AUTHORIZATION.CREATED": "PayPal confirmed the hold",
-  "PAYMENT.AUTHORIZATION.VOIDED": "PayPal confirmed it released the hold, nothing was paid",
+  "PAYMENT.AUTHORIZATION.VOIDED": "PayPal confirmed it cancelled the hold, nothing was paid",
   "PAYMENT.CAPTURE.COMPLETED": "PayPal confirmed it paid",
   "PAYMENT.CAPTURE.DECLINED": "PayPal said it declined the payment",
   "PAYMENT.CAPTURE.REFUNDED": "PayPal confirmed a refund",
@@ -151,7 +151,7 @@ export function engines(payments: CheckPayment[], names: Record<string, string>,
       id: "paypal",
       name: "PayPal holds and webhooks",
       by: "PayPal",
-      does: "Spotter asks PayPal to hold the money instead of taking it. Approve and PayPal pays it, deny and PayPal releases it. Signed webhooks from PayPal confirm what really happened.",
+      does: "Spotter asks PayPal to hold the money instead of taking it. Approve and PayPal pays it, deny and PayPal cancels the hold. Signed webhooks from PayPal confirm what really happened.",
       example: held
         ? {
             text: `${what(held)}: ${OUTCOME_WORDS[trackState(held.status)].long.toLowerCase()}.${event ? ` ${EVENT_WORDS[event.type] ?? "PayPal sent an update"}.` : ""}`,

@@ -10,9 +10,9 @@ import { COVERAGE, GROUPS, TOOLKIT_VERSION, type Group, type Job, type Treatment
 import "./toolkit.css";
 
 const LABEL: Record<Treatment, string> = {
-  guarded: "Guarded",
+  guarded: "Checked first",
   passthrough: "Passed through",
-  bait: "Tripwire",
+  bait: "Decoy",
   hidden: "Not offered",
 };
 
