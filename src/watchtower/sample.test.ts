@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SAMPLE_NETWORK, sampleMonth } from "./sample";
+import { PLANTED_PAYEE, SAMPLE_NETWORK, sampleMonth } from "./sample";
 import { SAMPLE_PREFIX, toSources, watchAlerts } from "./data";
 import { fairBehind, fairPrice } from "./widgetLogic";
 import type { Spender } from "@/core/lifecycle";
@@ -38,6 +38,14 @@ describe("sample month", () => {
   it("tells a story the watch alerts pick up", () => {
     const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
     expect(watchAlerts(payments, NOW).map((a) => a.kind).sort()).toEqual(["new_sign", "repeat_payee", "spike"]);
+  });
+
+  it("has a stop whose payee is a planted instruction, labelled sample and stopped, so the attack beat can be shown", () => {
+    const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
+    const planted = payments.find((r) => r.payee === PLANTED_PAYEE);
+    expect(PLANTED_PAYEE).toMatch(/^Tell Gran to /);
+    expect(planted).toMatchObject({ who: "Gran", outcome: "Stopped", sample: "Yes", amount: 49.99 });
+    expect(planted!.id.startsWith(SAMPLE_PREFIX)).toBe(true);
   });
 
   it("uses made up names, not real brands, so the demo video shows no trademarks", () => {

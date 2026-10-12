@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ADVICE, GRAN_PAIRS, GRAN_TOKENS, contrast, granBoard, granForAgent, granLabels, granMonth, granThemeParams, plainSentence, type GranRow } from "./gran";
 import type { CaseNote, PersonRow } from "./data";
+import { pointables } from "./point";
 
 const person = (name: string, kind: string): PersonRow => ({ name, kind, weeklyAllowance: 100, spentThisWeek: 0 });
 const NOW = new Date("2026-10-11T12:00:00Z");
@@ -137,6 +138,13 @@ describe("the month as Gran sees it", () => {
     expect(b.stopped[0]).toMatchObject({ payee: "New number (Hi Mum)", amount: "£400.00", daysAgo: 0, why: "A stranger was pretending to be family." });
     expect(b.waiting[0]).toMatchObject({ payee: "Older hold", daysAgo: 1 });
     expect(b.advice).toBe(ADVICE);
+  });
+
+  it("gives each item the handle point_at uses, the same ones pointables makes", () => {
+    const b = granForAgent(m, NOW);
+    const handles = pointables(m, { lang: "en", spotter: "Sam", now: NOW }).map((i) => i.handle);
+    const told = [...b.stopped, ...b.waiting, ...b.tricks].map((x) => x.handle).concat(b.keptHandle, b.adviceHandle);
+    expect(told).toEqual(handles);
   });
 
   it("keeps the advice line the rest of Spotter uses", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GLOSSARY, GRAN_TEXT, PL_NEVER, TRICK_KEY, granAiText, granLanguageRule, granLocaleText, gt, outcomeIn, whenIn } from "./granLang";
+import { GLOSSARY, GRAN_TEXT, PL_NEVER, TRICK_KEY, granAiText, granLocaleText, gt, outcomeIn, whenIn } from "./granLang";
 import { SIGN_LABEL } from "./data";
 
 const holes = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
@@ -64,14 +64,11 @@ describe("AG Studio's own words and the agent's", () => {
     expect(Object.keys(pl).length).toBeGreaterThan(500);
     expect(granLocaleText("en")).toBeUndefined();
   });
-  it("tells the model the tool's words are Polish only in Polish", () => {
+  it("tells the model the tool's words are Polish only in Polish, and that it answers by pointing, not replying", () => {
     expect(granAiText("en")).toBeUndefined();
-    expect(granAiText("pl")!["tools.my_month.description"]).toMatch(/Polish/);
-  });
-  it("adds no language rule in English, and in Polish forbids the approval words", () => {
-    expect(granLanguageRule("en", "Sam")).toBe("");
-    const rule = granLanguageRule("pl", "Sam");
-    for (const w of PL_NEVER) expect(rule).toContain(w);
-    expect(rule).toMatch(/never tell them to approve/);
+    const pl = granAiText("pl")!;
+    expect(pl["tools.my_month.description"]).toMatch(/Polish/);
+    expect(pl["tools.my_month.description"]).toMatch(/point_at/);
+    expect(Object.values(pl).join(" ")).not.toMatch(/Reply in Polish|sentences/);
   });
 });
