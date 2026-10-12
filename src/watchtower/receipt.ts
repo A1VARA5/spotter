@@ -120,7 +120,14 @@ export type Receipt = {
   /** False when the page couldn't compare the board before and after the run: the count is then unknown. */
   boardKnown: boolean;
   flagged: boolean;
+  /**
+   * Board changes the assistant tried (src/watchtower/hold.ts): authorised ran straight away (no scammer's words in
+   * them), allowed and refused waited for the spotter. Absent on receipts kept before held calls existed, and
+   * on a run that hasn't finished.
+   */
+  held?: Held;
 };
+export type Held = { authorised: number; allowed: number; refused: number };
 
 type Run = {
   runId: string;
@@ -135,6 +142,7 @@ type Run = {
   helpers: string[];
   unknown: string[];
   unknownCalls: number;
+  held: Held;
 };
 
 export type RunStart = { runId: string; threadId: string; agentId: string; startedAt: number };
@@ -143,6 +151,8 @@ export type Recorder = AgAiTelemetryObserver & {
   callMs(toolCallId: string): number | undefined;
   /** The harness is going away: every run still in flight gets a receipt now, marked as stopped. */
   abandon(): void;
+  /** A gated board change's outcome, by the run (or delegated sub-run) it belongs to. */
+  noteHold(runId: string, outcome: keyof Held): void;
 };
 
 const MAX_TIMES = 500;
@@ -209,11 +219,18 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
       boardChanges: 0,
       boardKnown: true,
       flagged: run.unknownCalls > 0,
+      held: { ...run.held },
     });
   };
 
   return {
     callMs: (id) => times.get(id),
+    noteHold(runId, outcome) {
+      const rootId = rootOf.get(runId);
+      const run = rootId ? runs.get(rootId) : undefined;
+      if (!run) return void console.warn(`[watchtower] a held call for a run the receipt never saw start (${outcome}); it isn't on any receipt.`);
+      run.held[outcome]++;
+    },
     abandon() {
       for (const run of [...runs.values()]) finish(run, Date.now(), "cancelled");
     },
@@ -229,7 +246,7 @@ export function createRecorder(o: { onStart?: (run: RunStart) => void; onFinish:
         }
         if (t.parentRunId) return; // a sub-run of a run we never saw start
         rootOf.set(t.runId, t.runId);
-        runs.set(t.runId, { runId: t.runId, threadId: t.threadId, agentId: t.agentId, startedAt: e.timestamp, turns: 0, tokens: { input: 0, output: 0 }, tools: new Map(), seenCalls: new Set(), helpers: [], unknown: [], unknownCalls: 0 });
+        runs.set(t.runId, { runId: t.runId, threadId: t.threadId, agentId: t.agentId, startedAt: e.timestamp, turns: 0, tokens: { input: 0, output: 0 }, tools: new Map(), seenCalls: new Set(), helpers: [], unknown: [], unknownCalls: 0, held: { authorised: 0, allowed: 0, refused: 0 } });
         o.onStart?.({ runId: t.runId, threadId: t.threadId, agentId: t.agentId, startedAt: e.timestamp });
         return;
       }
@@ -312,18 +329,23 @@ export function redoTarget(runIds: readonly string[], history: { redo: readonly 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-export function receiptLines(r: Receipt): { summary: string; money: string; board: string } {
-  if (r.status === "unfinished") return { summary: "This question didn't finish, so there's no receipt for it.", money: "", board: "" };
+export function receiptLines(r: Receipt): { summary: string; money: string; board: string; held: string } {
+  if (r.status === "unfinished") return { summary: "This question didn't finish, so there's no receipt for it.", money: "", board: "", held: "" };
   const calls = r.tools.reduce((t, l) => t + l.calls, 0);
   const money = r.flagged
     ? `Money actions: ${r.moneyActions} unchecked. Spotter saw a tool it doesn't know (${r.unknown.join(", ")}). This run is flagged.`
     : "Money actions: 0. Every call was a tool that can't move money.";
   return {
-    summary: `${plural(calls, "tool call")} in ${secs(r.ms)}. Money actions: ${r.flagged ? `${r.moneyActions} unchecked` : 0}. ${boardWords(r)}`,
+    summary: `${plural(calls, "tool call")} in ${secs(r.ms)}. Money actions: ${r.flagged ? `${r.moneyActions} unchecked` : 0}. ${boardWords(r)}${heldTotal(r) ? ` ${heldWords(r)}` : ""}`,
     money,
     board: boardWords(r),
+    held: heldWords(r),
   };
 }
+
+export const heldTotal = (r: Pick<Receipt, "held">) => (r.held ? r.held.authorised + r.held.allowed + r.held.refused : 0);
+/** Every board change the assistant tried, and who let it through. Empty for a receipt kept before held calls existed. */
+export const heldWords = (r: Pick<Receipt, "held">) => (r.held ? `AI actions: authorised ${r.held.authorised}, allowed ${r.held.allowed}, refused ${r.held.refused}.` : "");
 
 export const boardWords = (r: Pick<Receipt, "boardChanges" | "boardKnown">) => (r.boardKnown ? `Board changes: ${r.boardChanges}.` : "Board changes: couldn't be checked.");
 
@@ -359,6 +381,7 @@ export function forServer(r: Receipt): Receipt {
     moneyActions: flagged ? Math.max(1, cap(r.moneyActions, 1000)) : 0,
     boardChanges: cap(r.boardChanges, 1000),
     flagged,
+    ...(r.held ? { held: { authorised: cap(r.held.authorised, 1000), allowed: cap(r.held.allowed, 1000), refused: cap(r.held.refused, 1000) } } : {}),
   };
 }
 
@@ -373,7 +396,15 @@ const count = (v: unknown, max = 1e9) => typeof v === "number" && Number.isInteg
 export function isReceipt(v: unknown): v is Receipt {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   const r = v as Record<string, unknown>;
-  if (Object.keys(r).length !== KEYS.length || !KEYS.every((k) => k in r)) return false;
+  // held is optional: receipts kept before held calls existed don't have it.
+  const hasHeld = Object.prototype.hasOwnProperty.call(r, "held");
+  if (Object.keys(r).length !== KEYS.length + (hasHeld ? 1 : 0) || !KEYS.every((k) => k in r)) return false;
+  if (hasHeld) {
+    const h = r.held as Record<string, unknown> | null;
+    if (!h || typeof h !== "object" || Array.isArray(h) || Object.keys(h).length !== 3 || !count(h.authorised, 1000) || !count(h.allowed, 1000) || !count(h.refused, 1000)) return false;
+    // A run that hasn't finished can't claim anything yet.
+    if (r.status === "unfinished") return false;
+  }
   if (![r.runId, r.threadId].every((x) => typeof x === "string" && ID.test(x))) return false;
   if (typeof r.agentId !== "string" || !NAME.test(r.agentId)) return false;
   if (!count(r.startedAt, 1e13) || !count(r.ms, 3_600_000) || !count(r.turns, 1000) || !count(r.moneyActions, 1000) || !count(r.boardChanges, 1000)) return false;

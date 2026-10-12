@@ -12,6 +12,25 @@
 .wt-card-mark[data-access="board"] { color: var(--protect); }
 .wt-card-mark[data-access="unknown"] { color: #fff; background: var(--stop); border-color: var(--stop); }
 
+/* held for the spotter (src/watchtower/hold.ts): in the tool card, and the bar above the board. The scammer's
+   words sit in a quiet quote box; Allow is plain and Refuse is the filled, safer choice. */
+.wt-held-title { margin: 0; font-weight: 700; color: var(--stop); }
+.wt-held-what { font-weight: 500; color: var(--ink); margin-left: 6px; }
+.wt-held-ask { display: grid; gap: 8px; }
+.wt-held-why { margin: 0; color: var(--ink); text-wrap: pretty; }
+.wt-held-quote { display: block; margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--stop); background: var(--stop-soft); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; quotes: "\"" "\""; }
+.wt-held-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.wt-held-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border-radius: 9px; font-size: 14px; font-weight: 650; color: var(--ink); background: var(--chalk); border: 1px solid var(--line); transition: transform 160ms var(--ease-out); }
+.wt-held-btn[data-kind="refuse"] { background: var(--ink); color: var(--chalk); border-color: var(--ink); }
+.wt-held-btn:active { transform: scale(0.97); }
+.wt-held-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+@media (pointer: coarse) { .wt-held-btn { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .wt-held-btn { transition: none; } }
+.wt-held-said { margin: 0; font-weight: 650; }
+.wt-frame > .wt-held { flex: none; display: grid; gap: 10px; padding: 10px 14px; background: linear-gradient(var(--stop-soft), var(--stop-soft)), var(--paper); border-bottom: 1px solid var(--line); font-size: 14px; color: var(--ink); }
+.wt-held-row { display: grid; gap: 6px; max-width: 760px; }
+.wt-rc-fact[data-refused] { color: var(--stop); font-weight: 650; }
+
 /* the receipt strip */
 .wt-frame > .wt-rc { flex: none; position: relative; background: var(--paper); color: var(--ink); font-size: 14px; font-variant-numeric: lining-nums proportional-nums; }
 /* perforated edge: the board above tears off along it */
