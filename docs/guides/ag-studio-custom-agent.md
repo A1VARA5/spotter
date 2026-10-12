@@ -1,6 +1,6 @@
 # A custom AG Studio agent that lets the built in agents do the building
 
-On the live site, typing "What did Leo spend on games?" into Watchtower put a chart on the board in 19.5 s with 14 tool calls (11 October). My own agent configured none of it. It placed one empty tile, then handed the chart to the Widget agent and the sum to the Data agent that ship with AG Studio 3.0. Here's how, and what broke on the way.
+On the live site, typing "What did Leo spend on games?" into Watchtower put a chart on the board in about 18 s with 13 tool calls (12 October). My own agent configured none of it. It placed one empty tile, then handed the chart to the Widget agent and the sum to the Data agent that ship with AG Studio 3.0. Here's how, and what broke on the way.
 
 <img src="../media/spotter-ag-studio.gif" alt="Typing the Leo question: Spotter places a tile, the Widget and Data agents build it, and the receipt shows 0 money actions with an Undo button">
 
@@ -29,7 +29,7 @@ The thing that took me longest to see: the built in lead delegates to a fixed se
 - `delegate_to` widget, with the ids and a one sentence brief naming the fields and filters
 - `delegate_to` data, for the total with the same filters, so the chart and the sentence in chat agree
 
-The same question again brings back the same tile. Locally the tile then appeared in 1.5 to 2.5 s, and the full answer took 13.7 to 16.2 s.
+The same question again brings back the same tile. The empty tile shows up within a couple of seconds, long before the chart is built.
 
 ## The receipt comes from telemetry
 
@@ -59,14 +59,30 @@ AG Studio 3.0 reads `data` once, and new rows don't redraw the board. Until the 
 
 | What happened | What I changed | Where |
 | --- | --- | --- |
-| My own test round typed the Leo question and got a paragraph in chat, "Board changes: 0", after 16.4 s | `place_widget`, then widget and data delegations in the same turn | `6fee7e7` |
-| "Did we pay fair prices?" called a £6.99 skillet from a suspected fake shop "a good price" | `fair_prices` hands over `too_cheap_to_be_real` as data, and the role says it's never a saving | `6fee7e7` |
-| The fair price answer took about 20.7 s (5 Opus turns and a hop to the Data agent) | One `fair_prices` tool and Sonnet for `spotter`: 5 to 8 s locally, 5.0 s live with 1 tool call | `ddddcdb` |
-| New payments never appeared on an open board | Remount with a new key, waiting while anyone is busy | `4b3bc3a` |
-| The receipt could say 0 board changes when the snapshot was missing | It says "couldn't be checked", and an unknown tool seen only at the end still flags the run | `fe945da` |
-| The assistant answered from the sample month without saying so | Its role makes it say "From the sample month" | `5d4e790` |
-| A chart with one shop drew its bar as a block across the whole tile | Slim bars when there are fewer than 8 | `cf31082` |
-| Outcome colours followed the order rows arrived in, not the outcome | Rows sorted worst first, the palette built from the outcomes present, then the polish hook | `7f9fbea`, `d12d488` |
+| My own test round typed the Leo question and got a paragraph in chat, "Board changes: 0", after 16.4 s | `place_widget`, then widget and data delegations in the same turn | [`6fee7e7`](https://github.com/A1VARA5/spotter/commit/6fee7e7) |
+| "Did we pay fair prices?" called a £6.99 skillet from a suspected fake shop "a good price" | `fair_prices` hands over `too_cheap_to_be_real` as data, and the role says it's never a saving | [`6fee7e7`](https://github.com/A1VARA5/spotter/commit/6fee7e7) |
+| The fair price answer took about 20.7 s (5 Opus turns and a hop to the Data agent) | One `fair_prices` tool and Sonnet for `spotter`: about 6 s live with 2 tool calls | [`ddddcdb`](https://github.com/A1VARA5/spotter/commit/ddddcdb) |
+| New payments never appeared on an open board | Remount with a new key, waiting while anyone is busy | [`4b3bc3a`](https://github.com/A1VARA5/spotter/commit/4b3bc3a) |
+| The receipt could say 0 board changes when the snapshot was missing | It says "couldn't be checked", and an unknown tool seen only at the end still flags the run | [`fe945da`](https://github.com/A1VARA5/spotter/commit/fe945da) |
+| The assistant answered from the sample month without saying so | Its role makes it say "From the sample month" | [`5d4e790`](https://github.com/A1VARA5/spotter/commit/5d4e790) |
+| A chart with one shop drew its bar as a block across the whole tile | Slim bars when there are fewer than 8 | [`cf31082`](https://github.com/A1VARA5/spotter/commit/cf31082) |
+| Outcome colours followed the order rows arrived in, not the outcome | Rows sorted worst first, the palette built from the outcomes present, then the polish hook | [`7f9fbea`](https://github.com/A1VARA5/spotter/commit/7f9fbea), [`d12d488`](https://github.com/A1VARA5/spotter/commit/d12d488) |
+
+## What it costs
+
+- AG Studio runs on a trial licence here, and AG Grid Community is free (MIT).
+- Claude is the real cost. The route logs token counts for every turn, and the Leo question on a fresh demo family on 12 October was 6 turns on `claude-opus-5-5` and 4 on `claude-sonnet-5-5`: about $0.37 at list prices, most of it writing the prompt cache the first time. Another question within 5 minutes reads that cache at a tenth of the price.
+- That's about 4 cents a turn, so the 600 turns a day cap keeps a bad day under about $22.
+
+## If it doesn't work
+
+| What you see | What to check |
+| --- | --- |
+| A watermark on the board | `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` isn't set. On localhost Studio works without it. |
+| "The assistant couldn't answer just now" | The model call failed. The server log line starts `[spotter] watchtower turn failed`, with the Anthropic error after it. A missing or out of credit `ANTHROPIC_API_KEY` ends up here too. |
+| "Watchtower's assistant has done all it can for your family today" | The 60 turns per family cap. `WATCHTOWER_TURNS_PER_FAMILY` and `WATCHTOWER_TURNS_PER_DAY` change the caps on your own copy. |
+| "This answer didn't finish" next to an empty tile | The run stopped before the Widget agent set the tile up: a reload, Stop, a closed tab or a remount. **Ask again** reuses the same tile. |
+| A new payment isn't on the board | The remount waits while a run is going or a message is half typed. Finish or clear the message. |
 
 ## Run it
 

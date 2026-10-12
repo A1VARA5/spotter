@@ -115,7 +115,7 @@ The coverage table in `src/core/toolkit-coverage.ts` drives both the server and 
 
 ## Watchtower
 
-AG Studio 3.0 renders the board in the browser. Its model calls go to `/api/watchtower/llm`, which runs Claude on the server (the key never reaches the browser), logs usage per turn, and caps turns at 60 per family and 600 a day. Spotter's own agent and the weekly brief agent read through tools defined in `src/app/watchtower/Studio.tsx` and hand building work to AG's built in agents. The board's data comes from `src/watchtower/data.ts`, and watch alerts are made by code, not the model.
+AG Studio 3.0 renders the board in the browser. Its model calls go to `/api/watchtower/llm`, which runs Claude on the server (the key never reaches the browser), logs usage per turn, and caps turns at 60 per family and 600 a day. Spotter's own agent and the weekly brief agent read through tools defined in `src/app/watchtower/Studio.tsx` and hand building work to the built in AG Studio agents. The board's data comes from `src/watchtower/data.ts`, and watch alerts are made by code, not the model.
 
 ## Services and what happens without them
 
@@ -127,4 +127,4 @@ AG Studio 3.0 renders the board in the browser. Its model calls go to `/api/watc
 | KERNEL | Cloud browser visits, two faces, telemetry, peek | Links are checked without being opened |
 | Agentboxd | Email forwarding and alerts | Email channel switches off |
 | Telegram, Discord | Forwarding, alerts with one tap Deny, "Was it you?" | Those channels switch off |
-| AG Studio licence | Watchtower without a watermark | Works, shows AG's watermark |
+| AG Studio licence | Watchtower without a watermark | Works, shows the AG Studio watermark |

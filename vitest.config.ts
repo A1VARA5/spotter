@@ -3,5 +3,6 @@ import path from "node:path";
 
 export default defineConfig({
   resolve: { alias: { "@": path.join(import.meta.dirname, "src") } },
-  test: { include: ["src/**/*.test.ts"], environment: "node" },
+  // PGlite setup can take longer than the defaults when several workers start at once.
+  test: { include: ["src/**/*.test.ts"], environment: "node", testTimeout: 30_000, hookTimeout: 60_000 },
 });

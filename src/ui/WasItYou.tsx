@@ -49,14 +49,14 @@ export function wiyStatus(w: WasItYou, status: string, now = Date.now()): { tone
       }
       // Only "released" when PayPal really released it.
       if (status === "voided" || status === "voiding")
-        return { tone: "safe", state: `${example}${w.who}: not me`, detail: `The message wasn't from ${w.who}, so Spotter released the hold. Nothing was paid.` };
+        return { tone: "safe", state: `${example}${w.who} said not me`, detail: `The message wasn't from ${w.who}, so Spotter released the hold. Nothing was paid.` };
       if (status === "captured" || status === "capturing")
-        return { tone: "ring", state: `${example}${w.who}: not me`, detail: `${w.who} says it wasn't them, but it was already approved and paid. Ring the person who paid and report it to PayPal now.` };
-      if (waiting) return { tone: "ring", state: `${example}${w.who}: not me`, detail: `${w.who} says it wasn't them, but the hold wasn't released. Deny it now.` };
-      return { tone: "ring", state: `${example}${w.who}: not me`, detail: `${w.who} says it wasn't them. Spotter won't pay this, but PayPal didn't confirm releasing the hold.` };
+        return { tone: "ring", state: `${example}${w.who} said not me`, detail: `${w.who} says it wasn't them, but it was already approved and paid. Ring the person who paid and report it to PayPal now.` };
+      if (waiting) return { tone: "ring", state: `${example}${w.who} said not me`, detail: `${w.who} says it wasn't them, but the hold wasn't released. Deny it now.` };
+      return { tone: "ring", state: `${example}${w.who} said not me`, detail: `${w.who} says it wasn't them. Spotter won't pay this, but PayPal didn't confirm releasing the hold.` };
     case "it_was_me":
       if (w.channel === "alert") return { tone: "claimed", state: "You said it was you", detail: "Nothing is paid until you approve it with your PIN." };
-      return { tone: "claimed", state: `${example}${w.who}: it was me`, detail: `${w.who} says they sent it. Nothing is paid until you approve it with your PIN.` };
+      return { tone: "claimed", state: `${example}${w.who} said yes, it's me`, detail: `${w.who} says they sent it. Nothing is paid until you approve it with your PIN.` };
     case "no_channel":
       return { tone: "ring", state: `Says it's ${w.who}`, detail: `${w.who} has nothing linked to Spotter, so nobody was asked. Ring ${w.who} on the number you already have.` };
     case "send_failed":
@@ -113,10 +113,10 @@ export function WasItYouLine({ w, status, paymentId, now }: { w: WasItYou | null
         {s.answer && !done && (
           <div className="wiy-line-answer" role="group" aria-label={s.answer === "as" ? `Answer as ${w.who}` : "Was it you?"}>
             <button type="button" className="btn btn-quiet wiy-line-btn" onClick={(e) => answer("not_me", e.currentTarget)} aria-disabled={busy || undefined}>
-              {s.answer === "as" ? `${w.who}: not me` : "Not me"}
+              Not me
             </button>
             <button type="button" className="btn btn-quiet wiy-line-btn" onClick={(e) => answer("it_was_me", e.currentTarget)} aria-disabled={busy || undefined}>
-              {s.answer === "as" ? `${w.who}: it was me` : "Yes, it was me"}
+              Yes, it&apos;s me
             </button>
             <span className="wiy-line-note">{busy ? "Sending" : "Not me releases the hold. Yes never pays: approving still needs your PIN."}</span>
           </div>

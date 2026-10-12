@@ -20,7 +20,7 @@ const w = (over: Partial<WasItYou>): WasItYou =>
 
 describe("wiyStatus", () => {
   it("only says released when PayPal really released it", () => {
-    expect(wiyStatus(w({ state: "not_me" }), "voided", NOW)).toMatchObject({ tone: "safe", state: "Tom: not me" });
+    expect(wiyStatus(w({ state: "not_me" }), "voided", NOW)).toMatchObject({ tone: "safe", state: "Tom said not me" });
     expect(wiyStatus(w({ state: "not_me" }), "captured", NOW).detail).toMatch(/already approved and paid/);
     expect(wiyStatus(w({ state: "not_me" }), "failed", NOW).detail).not.toMatch(/released the hold/);
   });
@@ -31,7 +31,8 @@ describe("wiyStatus", () => {
   });
 
   it("labels the demo's asks as examples", () => {
-    expect(wiyStatus(w({ channel: "example", state: "it_was_me" }), "needs_approval", NOW).state).toBe("Example: Tom: it was me");
+    expect(wiyStatus(w({ channel: "example", state: "it_was_me" }), "needs_approval", NOW).state).toBe("Example: Tom said yes, it's me");
+    expect(wiyStatus(w({ channel: "example", state: "not_me" }), "voided", NOW).state).toBe("Example: Tom said not me");
   });
 
   const mine = w({ who: "Sam", channel: "alert", target: { kind: "spotter", name: "Sam" }, claim: { name: null, relation: "child", quote: "Hi mum its me" } });
@@ -68,6 +69,18 @@ describe("wiyStatus", () => {
 });
 
 describe("WasItYouLine", () => {
+  it("the answer buttons use the same words as the live Was it you? buttons", () => {
+    const html = (x: WasItYou) => renderToStaticMarkup(createElement(WasItYouLine, { w: x, status: "needs_approval", now: NOW }));
+    const own = w({ who: "Sam", channel: "alert", target: { kind: "spotter", name: "Sam" }, claim: { name: null, relation: "child", quote: "Hi mum its me" } });
+    const asTom = w({ channel: "example", target: { kind: "example", name: "Tom" } });
+    for (const x of [own, asTom]) {
+      const h = html(x);
+      expect(h).toContain(">Not me<");
+      expect(h).toContain(">Yes, it&#x27;s me<");
+      expect(h).not.toMatch(/it was me/i);
+    }
+  });
+
   it("uses the clock it is given, not the browser's, so the server HTML and first render agree", () => {
     const line = (now: number) =>
       renderToStaticMarkup(createElement(WasItYouLine, { w: w({ expiresAt: "2099-01-01T00:00:00Z" }), status: "needs_approval", now }));

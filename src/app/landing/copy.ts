@@ -43,7 +43,7 @@ export const AGENT = {
 /** Two faces and where the money goes, for a made up redelivery page that only shows phones its card form. */
 export const FACES = {
   verdict: "This page shows something different to phones in the UK than to security scanners: only the phone was asked for card details.",
-  trail: "On the phone version, card details would go to collect-pay.example, not to the shop (parcel-redelivery.example).",
+  trail: "On the phone version, card details would go to collect-x.example, not to the shop (parcel-redelivery.example).",
 };
 
 /** The AI's receipt in Watchtower. */

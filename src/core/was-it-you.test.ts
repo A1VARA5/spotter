@@ -10,6 +10,7 @@ import {
   matchClaim,
   planWasItYou,
   tokenFor,
+  wasItYouLine,
   type Claim,
   type WasItYou,
 } from "./was-it-you";
@@ -204,6 +205,8 @@ describe("asking the real person, and their answer", () => {
     expect(note).toHaveBeenCalledTimes(1);
     expect(note.mock.calls[0]![2]).toMatch(/Tom says .*didn't send/);
     expect((await listEvents(db, p.id)).map((e) => e.type)).toEqual(expect.arrayContaining(["was_it_you_answered", "denied", "voided"]));
+    const again = await answerWasItYou(deps, { token, answer: "it_was_me", as: { channel: "telegram", id: "777" } });
+    expect(again).toMatchObject({ ok: false, code: "answered", reply: 'You already answered "Not me". Nothing else changed.' });
   });
 
   it("refuses a forged token, a replayed one, a token for another payment and the wrong chat", async () => {
@@ -335,5 +338,13 @@ describe("asking the real person, and their answer", () => {
     expect((await getPayment(db, p.id))!.was_it_you).toBeNull();
     const again = await planWasItYou(db, (await getPayment(db, p.id))!, { id: "agent", kind: "agent" } as Spender);
     expect(again).toBeNull();
+  });
+});
+
+describe("wasItYouLine", () => {
+  it("uses the answer buttons' own words, never a second colon", () => {
+    const w = { who: "Tom", channel: "telegram", claim: { name: "Tom", relation: null, quote: "it's Tom" } } as unknown as WasItYou;
+    expect(wasItYouLine({ ...w, state: "not_me" })).toBe("Tom said not me. The message wasn't from Tom.");
+    expect(wasItYouLine({ ...w, state: "it_was_me" })).toBe("Tom said yes, it's me. Tom says they sent it. It still needs your PIN to pay.");
   });
 });

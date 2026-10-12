@@ -1,6 +1,6 @@
 # Guides
 
-Four write ups from building Spotter, one per tool I leaned on hardest. Each one is from my own runs: the code it links is the code on the live site, the numbers come from logs and test rounds between 9 and 12 October 2026, and every row in its "What went wrong" table points at the commit that fixed it.
+Four write ups from building Spotter, one per tool I leaned on hardest. Each one is from my own runs: the code it links is the code on the live site, the numbers come from logs and test rounds between 9 and 12 October 2026, and every row in its "What went wrong" table links to the commit that fixed it. Each one also says what it costs to run and what to check when it doesn't work. The exact numbers and their dates are in [docs/numbers.md](../numbers.md).
 
 | Guide | For | What's in it |
 | --- | --- | --- |

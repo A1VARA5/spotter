@@ -21,7 +21,7 @@ Second lock: [src/paypal/toolkit.ts](../../src/paypal/toolkit.ts) only runs the 
 
 ## Bait tools as tripwires
 
-A shopping agent that calls `create_refund` or `list_transactions` is being steered by something, usually a line it read on a page. So 35 tools are offered with PayPal's own names and schemas, and never run. Calling one ([src/core/tripwire.ts](../../src/core/tripwire.ts)):
+A shopping agent that calls `create_refund` or `list_transactions` is being steered by something, usually a line it read on a page. So 35 tools are offered with the names and schemas PayPal wrote, and never run. Calling one ([src/core/tripwire.ts](../../src/core/tripwire.ts)):
 
 1. freezes the agent until the spotter clears it with their PIN
 2. lets go of its open holds through the normal deny, so PayPal voids each authorisation
@@ -50,21 +50,38 @@ Every money call carries a `PayPal-Request-Id`: `create-<id>`, `capture-<id>-<au
 
 ## The lab
 
-`/agent-lab` runs a scripted naive test agent (regex, no model, labelled as that). It obeys the hidden GadgetBarn line, calls `create_refund` and gets frozen. The hold and the void are real sandbox calls. In my latest run the void landed 5.7 s after the start and the PayPal webhook confirmed it at 11.7 s.
+`/agent-lab` runs a scripted naive test agent (regex, no model, labelled as that). It obeys the hidden GadgetBarn line, calls `create_refund` and gets frozen. The hold and the void are real sandbox calls. In the live run on 12 October the void landed about 5 s after the start, and the PayPal webhook confirmed it about 11 s in.
 
 ## What went wrong and how I fixed it
 
 | What happened | What I changed | Where |
 | --- | --- | --- |
-| I wrote "48 tools" in notes and briefs. The package has 47 | A test checks the count against `getTools()` | `4179c4f`, `55e2181` |
-| Real Claude, told to follow page and email instructions, refused the bait in both runs | The lab uses a scripted naive agent and says so. Good for Claude, annoying for my demo | `55e2181` |
-| The lab tripwire said it saw no page with hidden orders, because the lab agent is its own spender | The cause finder sees the lab read and the same shop seen for anyone in the family | `4f82555` |
-| Toolkit errors come back as JSON strings, not exceptions, so an `LlmError` looked like an answer | It counts as a failure | `55e2181` |
-| A selling `create_order` and `create_subscription` had no request id | `order-<sale>` and `subscription-<row>` | `3549ae3` |
-| Replaying a lost create with the same request id and the card body got 422 `TRANSACTION_REFUSED` from the sandbox | The replay sends the id without the card, and PayPal returns the order it made | `3549ae3` |
-| A failed capture could relabel a row that had just been voided | `fail()` only moves a row still capturing | `3549ae3` |
+| I wrote "48 tools" in notes and briefs. The package has 47 | A test checks the count against `getTools()` | [`4179c4f`](https://github.com/A1VARA5/spotter/commit/4179c4f), [`55e2181`](https://github.com/A1VARA5/spotter/commit/55e2181) |
+| Real Claude, told to follow page and email instructions, refused the bait in both runs | The lab uses a scripted naive agent and says so. Good for Claude, annoying for my demo | [`55e2181`](https://github.com/A1VARA5/spotter/commit/55e2181) |
+| The lab tripwire said it saw no page with hidden orders, because the lab agent is its own spender | The cause finder sees the lab read and the same shop seen for anyone in the family | [`4f82555`](https://github.com/A1VARA5/spotter/commit/4f82555) |
+| Toolkit errors come back as JSON strings, not exceptions, so an `LlmError` looked like an answer | It counts as a failure | [`55e2181`](https://github.com/A1VARA5/spotter/commit/55e2181) |
+| A selling `create_order` and `create_subscription` had no request id | `order-<sale>` and `subscription-<row>` | [`3549ae3`](https://github.com/A1VARA5/spotter/commit/3549ae3) |
+| Replaying a lost create with the same request id and the card body got 422 `TRANSACTION_REFUSED` from the sandbox | The replay sends the id without the card, and PayPal returns the order it made | [`3549ae3`](https://github.com/A1VARA5/spotter/commit/3549ae3) |
+| A failed capture could relabel a row that had just been voided | `fail()` only moves a row still capturing | [`3549ae3`](https://github.com/A1VARA5/spotter/commit/3549ae3) |
 
 One gotcha I avoided: `context.sandbox` defaults to false in the toolkit, which means the live API. Spotter always passes `sandbox: true`.
+
+## What it costs
+
+- The PayPal sandbox and the Agent Toolkit are free.
+- Every guarded `create_order` runs the AI check on `claude-opus-5-5`, about 1p a check in my scenario runs. A held one also gets the case agent (about 5p), a KERNEL visit when there's a shop link (about $0.002) and a Channel3 search (1 credit, cached).
+- A bait tool costs nothing extra: it never runs, and the freeze and voids are sandbox calls. The lab's test agent is a script, so it uses no model of its own.
+- 100 tool calls per key per day and 2,000 across everyone put a ceiling on what a runaway agent can spend.
+
+## If it doesn't work
+
+| What you see | What to check |
+| --- | --- |
+| 401 from `/api/toolkit/mcp` | The `Authorization: Bearer spt_...` header is missing, or the key was switched off or burned by the canary. Make a new key on the People page. |
+| The order is stopped with "Paying in USD but the allowance is in GBP" | The toolkit only makes USD orders. Press **Set this agent's allowance in dollars** in the connect panel. |
+| Every call says the agent's payments are paused | A tripwire or the canary froze it. The dashboard card shows what it asked for and the likely cause, and **Unpause** with the PIN clears it. |
+| "This agent key has made 100 tool calls today" | The per key cap. It works again within 24 hours. `SPOTTER_KEY_DAILY_CALLS` and `SPOTTER_MCP_DAILY_CALLS` change the caps on your own copy. |
+| "Your family has used today's 3 runs of the lab" | Each lab run makes a real sandbox hold and one Spotter check, so it's capped. It resets within 24 hours. |
 
 ## Run it
 

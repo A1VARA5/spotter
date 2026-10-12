@@ -11,7 +11,7 @@ export const metadata = { title: "Was it you? | Spotter", referrer: "no-referrer
 
 /** Why there are no buttons: answered already, the payment is settled, or the question ran out. */
 function closedLine(state: string, status: string): string {
-  const answered = state === "not_me" ? "You answered: not me. " : state === "it_was_me" ? "You answered: it was me. " : "";
+  const answered = state === "not_me" ? 'You answered "Not me". ' : state === "it_was_me" ? `You answered "Yes, it's me". ` : "";
   const what =
     status === "captured" || status === "capturing"
       ? "The payment was approved and paid."

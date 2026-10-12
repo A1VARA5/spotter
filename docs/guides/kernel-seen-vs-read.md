@@ -50,17 +50,30 @@ The browser only opens http or https links from the payment's own message. Link 
 
 | What happened | What I changed | Where |
 | --- | --- | --- |
-| After two faces went in, case files stopped finishing in time | The visit starts with turn 1, and a model that files before seeing the page gets it and files again | `c65881d` |
-| I planned to embed the KERNEL live view. Two probe sessions showed `readOnly=true` is only a query parameter on a bearer link | Server relayed screenshots about once a second, with scroll buttons and no click or key call anywhere | `8b32c6c` |
-| The WebMCP docs show `input_schema`. The live answer nests `inputSchema` under `tool` | The parser reads the live shape | `221a051` |
-| A zero width space in a tool description came back untouched | Invisible characters are stripped before the text is judged | `221a051` |
-| A case file headline read "KERNELoud browser (KERNEL)" | The lead line keeps its first words | `e0fd65b` |
-| A security review found the peek trusted the first hop of a redirect | Every hop is checked again before a browser exists | `8b027ce` |
-| A seen vs read or tool check that only partly ran could read as clean | Partial means failed, and the case file says so | `6d54b69`, `e6450c5` |
+| After two faces went in, case files stopped finishing in time | The visit starts with turn 1, and a model that files before seeing the page gets it and files again | [`c65881d`](https://github.com/A1VARA5/spotter/commit/c65881d) |
+| I planned to embed the KERNEL live view. Two probe sessions showed `readOnly=true` is only a query parameter on a bearer link | Server relayed screenshots about once a second, with scroll buttons and no click or key call anywhere | [`8b32c6c`](https://github.com/A1VARA5/spotter/commit/8b32c6c) |
+| The WebMCP docs show `input_schema`. The live answer nests `inputSchema` under `tool` | The parser reads the live shape | [`221a051`](https://github.com/A1VARA5/spotter/commit/221a051) |
+| A zero width space in a tool description came back untouched | Invisible characters are stripped before the text is judged | [`221a051`](https://github.com/A1VARA5/spotter/commit/221a051) |
+| A case file headline read "KERNELoud browser (KERNEL)" | The lead line keeps its first words | [`e0fd65b`](https://github.com/A1VARA5/spotter/commit/e0fd65b) |
+| A security review found the peek trusted the first hop of a redirect | Every hop is checked again before a browser exists | [`8b027ce`](https://github.com/A1VARA5/spotter/commit/8b027ce) |
+| A seen vs read or tool check that only partly ran could read as clean | Partial means failed, and the case file says so | [`6d54b69`](https://github.com/A1VARA5/spotter/commit/6d54b69), [`e6450c5`](https://github.com/A1VARA5/spotter/commit/e6450c5) |
 
-## Cost
+## What it costs
 
-Headful is about $0.008 a minute, and two faces is two browsers for about 8 s each, side by side: about $0.002 a case.
+- Headful KERNEL browsers are about $0.008 a minute ($0.0001333 a second), and the pricing page lists no separate charge for the UK proxy.
+- A visit with two faces is two browsers for about 8 s each, side by side: about $0.002 a case, and at most about $0.005 if both deletes fail and the 20 s backstop ends them. A payment with no link opens no browser.
+- **Look at it safely** runs 90 s, so about $0.012 a look. With 3 a day per family and 30 a day overall, that's at most about $0.45 a day.
+- The case agent that reads the visit runs on Claude (`claude-opus-5-5`) at about 5p a case in my smoke runs.
+
+## If it doesn't work
+
+| What you see | What to check |
+| --- | --- |
+| No page visit on any case file | `KERNEL_API_KEY` isn't set, so the visits switch off. The AI check still runs. |
+| The phone face says "set to UK English and time (not on a UK network)" | KERNEL refused the proxy or the region, so the phone opened without it. `KERNEL_PHONE_PROXY` names another proxy, or `off` skips it on purpose. |
+| Counts read "Not recorded" | Telemetry wasn't confirmed on, couldn't be read, or was cut off at 1,000 events. That's on purpose: a count Spotter can't prove is never shown as 0. |
+| "That's all the safe looks for today" | The daily cap: 3 a day per family, 30 overall. They come back the next day. |
+| A case file without the visit | The 45 s hard cap ended the case first. The payment still waits for a person. |
 
 ## Run it
 

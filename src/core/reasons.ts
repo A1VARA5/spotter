@@ -72,7 +72,7 @@ export function topReason(p: ReasonInput): string | null {
 // ---------- the why after the decision, in the past tense ----------
 // A paid skillet next to "Prices this low are a fake shop tell" reads as if it's still being decided. Reasons code
 // writes itself are turned into a past tense clause; anything else (the AI check's own words) keeps its words after
-// a "Held:" or "Stopped:" label, so the line never pretends the AI's sentence was rewritten.
+// a "Held." or "Stopped." label, so the line never pretends the AI's sentence was rewritten.
 const PAST: Array<[RegExp, (m: RegExpExecArray) => string]> = [
   [/^(.+?) is far below what real shops charge \((.+?)\)\. Prices this low are a fake shop tell\.$/, (m) => `${m[1]} was far below what real shops charge (${m[2]})`],
   [/^The shop page hides orders for AI agents\.$/, () => "the shop page hid orders for AI agents"],
@@ -110,10 +110,10 @@ export function decidedReason(p: DecidedInput): string | null {
   if (!s || !top || s === "paused" || s === "failed") return top && oneStop(top);
   const verb = s === "stopped" ? "Stopped" : s === "not_sent" ? "Not sent" : "Held";
   const clause = pastClause(top);
-  // The AI's own sentence keeps its words after a short label: "Stopped: It hides text from people ...". A Not me
+  // The AI's own sentence keeps its words after a short label: "Stopped. It hides text from people ...". A Not me
   // says why it was held in its own words instead, since the person the message named has already answered.
   const w = p.was_it_you;
-  const why = clause ? oneStop(`${verb} because ${clause}.`) : s === "not_me" && w ? notMeWhy(w) : `${verb}: ${oneStop(top)}`;
+  const why = clause ? oneStop(`${verb} because ${clause}.`) : s === "not_me" && w ? notMeWhy(w) : `${verb}. ${oneStop(top)}`;
   // Endings where money moved after the hold say so, so "Held because" never sits alone next to a payment.
   if (s === "paid") return `${why} Paid after ${p.decided_by} approved.`;
   if (s === "paying") return `${why} ${p.decided_by && p.decided_by !== "Spotter" ? `${p.decided_by} approved it` : "It was approved"} and PayPal is paying it.`;

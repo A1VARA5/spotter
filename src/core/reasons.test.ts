@@ -123,9 +123,9 @@ describe("decidedReason: once decided, the why is in the past tense", () => {
         expect(r, `${e.status} / ${t}`).not.toMatch(/\.\s*["”']?\.$/);
       }
   });
-  it("stopped: stopped because; an AI sign it can't rewrite keeps its words after a short 'Stopped:' label", () => {
+  it("stopped: stopped because; an AI sign it can't rewrite keeps its words after a short 'Stopped.' label, never a capital after a colon", () => {
     const d = decision([INJECTION], [flag("prompt_injection", "high", INJECTION)]);
-    expect(decidedReason({ ...base, status: "blocked", decision: d })).toBe(`Stopped: ${INJECTION}`);
+    expect(decidedReason({ ...base, status: "blocked", decision: d })).toBe(`Stopped. ${INJECTION}`);
     expect(decidedReason({ ...base, status: "blocked", decision: decision([LIMIT]) })).toBe('Stopped because it was over the £5.00 "ask me first" limit.');
   });
   it("a decided payment with no reason at all gets its ending in the past tense, never \"Within the rules.\"", () => {

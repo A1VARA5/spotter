@@ -43,7 +43,7 @@ The full threat model, including the gaps I know about, is in [docs/threat-model
 
 ## Known `npm audit` warnings
 
-`npm audit --omit=dev` (checked 12 Oct 2026) reports 10: 5 high, 2 moderate, 3 low. Every one of them comes through `@paypal/agent-toolkit` 1.11.0, PayPal's own Agent Toolkit, which pins old versions of its dependencies:
+`npm audit --omit=dev` (checked 12 Oct 2026) reports 10: 5 high, 2 moderate, 3 low. Every one of them comes through `@paypal/agent-toolkit` 1.11.0, the official PayPal Agent Toolkit, which pins old versions of its dependencies:
 
 - `@langchain/core` 0.3.6 and `langsmith` 0.1.68 (high: serialization injection, prototype pollution, redaction bypass) and the `uuid` 10 inside them (moderate). They're used by the toolkit's LangChain entry. Spotter only imports `@paypal/agent-toolkit/mcp`, which doesn't load LangChain.
 - `ai` 4.3.19, `@ai-sdk/*` and `jsondiffpatch` 0.6.0 (high: XSS in its HTML formatter, prototype pollution; low and moderate in the AI SDK). They're used by the toolkit's AI SDK entry. Spotter doesn't import it, and never renders a JSON diff.
