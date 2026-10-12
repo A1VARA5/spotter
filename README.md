@@ -9,13 +9,12 @@ In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't
 **Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything runs on the PayPal sandbox with fake money)
 
 [![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
-![Tests](docs/badges/tests.svg)
-[![MIT](docs/badges/licence.svg)](LICENSE)
+[![Live checks](https://img.shields.io/endpoint?url=https%3A%2F%2Fspotter-pay.vercel.app%2Fapi%2Fbadge)](https://spotter-pay.vercel.app/status)
 [![Live demo](docs/badges/live-demo.svg)](https://spotter-pay.vercel.app)
 ![PayPal sandbox](docs/badges/paypal-sandbox.svg)
-![Next.js 16](docs/badges/nextjs.svg)
-![TypeScript](docs/badges/typescript.svg)
 ![PayPal Agent Toolkit: all 47 tools mapped](docs/badges/toolkit-47.svg)
+![TypeScript](docs/badges/typescript.svg)
+[![MIT](docs/badges/licence.svg)](LICENSE)
 
 ![Gran's phone gets the text, Spotter holds £250 at PayPal and asks Tom on his phone, Tom taps Not me and PayPal releases the hold](docs/media/spotter-was-it-you.gif)
 
@@ -24,6 +23,7 @@ In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't
 ## Contents
 
 - [Try it in 5 minutes](#try-it-in-5-minutes)
+- [What's real](#whats-real)
 - [How I thought about it](#how-i-thought-about-it)
 - [Who it's for, and what each person sees](#who-its-for-and-what-each-person-sees)
 - [PayPal](#paypal)
@@ -39,6 +39,7 @@ In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't
 - [Honest limits](#honest-limits)
 - [Run it locally](#run-it-locally)
 - [Where to look in the code](#where-to-look-in-the-code)
+- [Guides](docs/guides/README.md)
 - [Credits](#credits)
 
 ## Try it in 5 minutes
@@ -66,6 +67,27 @@ What's an example and what's live: the £250 you start with, the price watch you
 Open People, Shopping agent. In the connect panel pick **The PayPal Agent Toolkit**, press **Set this agent's allowance in dollars** (the toolkit only makes USD orders), then **Make a key**. The panel gives a one line `claude mcp add` command for Claude Code and an `npx mcp-remote` config for Claude Desktop. Ask the agent to order something with PayPal: its `create_order` becomes a Spotter payment, and anything over the ask me amount waits on your dashboard.
 
 **Log in with PayPal** uses the sandbox, so a real PayPal login won't work there. Make a sandbox personal account at developer.paypal.com (Testing tools, Sandbox accounts) to try it.
+
+## What's real
+
+| Feature | What it runs on | Where to see it |
+| --- | --- | --- |
+| Payments you send on the Try page | Live: a live Claude check, then a PayPal sandbox hold | Try a payment, then the dashboard |
+| The £250 held for Gran when you start | PayPal sandbox hold made when you start, with a check written earlier (labelled Example) | Dashboard |
+| Was it you? and Not me | Live, and the void is a PayPal sandbox call | Try a payment, Was it you? |
+| Case files (case agent, KERNEL visit, two faces) | Live, on made up demo pages hosted by Spotter | Any held card, See the evidence |
+| Real shop prices and spot the difference | Live Channel3 search, cached for up to 7 days | The £4.99 skillet card, Activity |
+| Price watch you start with | Sample data (labelled Example) | Dashboard, Price watches |
+| Shared price watch | Live Channel3 tracking, and its history only shows points Channel3 has recorded | Dashboard, Price watches |
+| Channel3 price webhook | Built and tested, but refused in production (503) until its signing secret is set. The daily job finds drops | `src/market/webhook.ts` |
+| Agent lab hijack | Scripted test agent (no model), with a real PayPal sandbox hold, void and webhook | `/agent-lab` |
+| Your own agent through the Agent Toolkit | Live, PayPal sandbox | People, Shopping agent |
+| Selling agent refunds and subscriptions | PayPal sandbox, run from local dev on 11 October | [Toolkit guide](docs/guides/paypal-agent-toolkit-tripwires.md) |
+| Watchtower assistant and receipt | Live Claude | `/watchtower` |
+| Watchtower month of payments | Sample data (labelled Sample) next to your own | `/watchtower` |
+| Telegram and email alerts | Live | `/account` |
+| Discord DM alerts | Built, never seen one land | `/account` |
+| Gran's view in Polish | Live, not yet checked by a native speaker | `/watchtower`, simple view |
 
 ## How I thought about it
 
@@ -154,6 +176,8 @@ What took me a while to see: the toolkit is built for sellers. Refunds, invoices
 - A selling agent's refund is held for the PIN, only goes back to the original capture, and is checked against what PayPal says the buyer paid. Tracking is refused until PayPal shows a completed capture, so a fake "payment received" email doesn't count.
 - A second lock: [src/paypal/toolkit.ts](src/paypal/toolkit.ts) only runs the 10 methods in `SPOTTER_RUNS`, so a bait or hidden tool can't reach PayPal even through a bug in the server.
 
+The whole thing, step by step with real runs: [The PayPal Agent Toolkit with tripwires in it](docs/guides/paypal-agent-toolkit-tripwires.md).
+
 ### Agent keys
 
 Each key is `spt_` plus 32 random bytes, shown once, stored as a SHA-256 hash and the last 4 characters. Every agent order carries `custom_id` `spt-abcd:<payment>`, so the order record at PayPal says which key asked, and the key card reads the newest order back from PayPal to compare. A canary key (`SPOTTER_KEY_BACKUP`) is issued with every real key. Nothing legitimate sends it, so if it shows up Spotter freezes the agent, burns every key and voids its holds at PayPal. 100 tool calls per key per day and 2,000 across everyone.
@@ -173,6 +197,8 @@ A held payment with a link, or an agent payment with a shop page, gets one throw
 - Proof it touched nothing. From the same telemetry the case file shows 0 clicks and 0 keys typed. A count Spotter can't back with telemetry says "not recorded", never 0.
 - Look at it safely. The spotter can watch the page without opening it: the server relays a screenshot about once a second and offers scroll up and scroll down. 90 seconds, 3 a day per family, and the KERNEL live view link never leaves the server. [src/server/peek.ts](src/server/peek.ts)
 
+Guide: [What a person sees vs what an agent reads, with KERNEL](docs/guides/kernel-seen-vs-read.md).
+
 ## Channel3
 
 Price tracking first. When a payment is too dear, the spotter can start a price watch on the real product (Channel3 tracking and price history). Spotter only offers it where it makes sense, the target is never above what was asked, Channel3 webhooks are signature checked and treated as hints, a daily job polls as well, and Spotter never buys anything. It tells you a real shop has it for less, and you decide.
@@ -190,6 +216,8 @@ Then the part that changes a decision. Real shop prices are code made evidence, 
 
 Getting one honest price took work. At one point Channel3 priced a plain kettle like a designer one, and an Australian shop's converted price landed in a UK going rate. Now there's one going rate per card: UK shops only for pounds, one price per shop, the same department, and the card, the reasons list and spot the difference all read it. Searches are cached in Postgres and capped per family and per day.
 
+Guide: [Price checks that change the decision, with Channel3](docs/guides/channel3-price-checks-that-change-decisions.md).
+
 ## AG Studio
 
 **Watchtower** (`/watchtower`) is the family's board on AG Studio 3.0. Type a question and the board builds the answer.
@@ -204,6 +232,8 @@ Getting one honest price took work. At one point Channel3 priced a plain kettle 
 - Two themes: the family's, where the chart palette follows the outcomes present (Stopped red through Paid green), and Gran's, in big type with the official AG Studio Polish locale and Spotter's own words translated by hand ([src/watchtower/granLang.ts](src/watchtower/granLang.ts)).
 - The fair price question treats a price far below real shops as a fake shop sign, never a saving. The tool hands the assistant that verdict as data, so it can't decide a suspected fake was a bargain. In my run it answered in 5.0 s with one tool call.
 - Every agent runs on Claude through my own adapter in place of the AG Studio model layer, so the key stays on the server. 60 turns per family and 600 a day. Image and free text widgets are switched off, so a scammer's payee name can't turn into a picture or a paragraph on the board.
+
+Guide: [A custom AG Studio agent that lets the built in agents do the building](docs/guides/ag-studio-custom-agent.md).
 
 ## AG Grid
 
