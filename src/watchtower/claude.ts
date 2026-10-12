@@ -98,14 +98,76 @@ export function plainText(s: string): string {
     .replace(/^(\s*)\*\s+/gm, "$1- ");
 }
 
+// How the board works is never the family's business. Round 9: the Data agent's summary ended "One note on "shop": I
+// split the total by who was paid. The separate cheapest-shop price-check field wasn't used." A sentence about fields,
+// columns, field ids, tool names or Studio's agents is taken out (the roles say so too: agents.ts NO_INTERNALS_RULE).
+// Lower case on purpose, so a payee called "Field Kitchen" stays. AG's own chips (@field[payments.amount]) render
+// as the field's name, so they are left alone.
+const INTERNAL = [
+  // "column chart" is a kind of chart, not a column.
+  /\bfield\b|\bcolumn\b(?! chart)/,
+  /\b(the|these|those|which|other|both|two|separate)\s+(fields|columns)\b/,
+  // Real field ids only, never a shop's web address ("cheap-watches.shop", "people.co.uk").
+  /(?<![\w.-])(payments|signs|people|watches|paypal)\.(id|when|who|kind|payee|category|method|amount|outcome|moneyKept|heldAtPayPal|paypalExpires|paypalId|marketCheapest|marketMedian|priceGap|marketShop|marketItem|wasItYou|signs|topSign|verdict|newPayee|sample|sign|status|saving|nearlyPaid|target|bestPrice|paymentId|label)\b/,
+  /\b(priceGap|marketCheapest|marketMedian|marketShop|marketItem|moneyKept|heldAtPayPal|paypalExpires|paypalId|wasItYou|topSign|newPayee)\b/,
+  /\b(fair_prices|real_price|execute_query|delegate_to|place_widget|complete_task|open_case_file|watch_alerts|scam_radar|paypal_status|add_page|my_month)\b/,
+  /\b(data|widget|page|planning|lead|Data|Widget|Page|Planning|Lead) agent\b/,
+];
+/** A sentence saying something broke or is missing always stays, even when it names a tool or agent. */
+const FAILURE = /couldn'?t|could not|can'?t|cannot|failed|error|not available|unavailable|missing|didn'?t (finish|work)|timed out|\bdown\b/i;
+/** A bare "One note on "shop":" lead in, with no numbers of its own, goes with the note it introduces. */
+const NOTE_LEAD = /^(one|a|just a)?\s*(quick |small |short )?note\b/i;
+const isNoteLead = (s: string) => NOTE_LEAD.test(s) && !/[\d£$]/.test(s);
+const isInternal = (sentence: string) => {
+  const s = sentence.replace(/@field\[[^\]]*\]/g, "");
+  return !FAILURE.test(s) && INTERNAL.some((re) => re.test(s));
+};
+
+/**
+ * Sentences about fields, tools or agents taken out; a "One note on ..." lead in to one goes with it. Never empties a
+ * reply, and never drops a sentence that says something failed. `onDrop` hears what went, so the server can log it.
+ */
+export function withoutInternalNotes(text: string, onDrop?: (dropped: string[], keptOriginal: boolean) => void): string {
+  const gone: string[] = [];
+  const lines = text.split("\n").flatMap((line) => {
+    const parts = line.split(/(?<=[.!?])\s+/);
+    if (!parts.some(isInternal)) return [line];
+    const kept: string[] = [];
+    for (const p of parts) {
+      if (!isInternal(p)) {
+        kept.push(p);
+        continue;
+      }
+      gone.push(p);
+      if (kept.length && isNoteLead(kept[kept.length - 1]!)) gone.push(kept.pop()!);
+    }
+    // A line that was only notes goes, rather than leaving a gap.
+    return kept.length ? [kept.join(" ")] : [];
+  });
+  if (!gone.length) return text;
+  const out = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  onDrop?.(gone, !out);
+  return out ? out : text;
+}
+
+/** Logged on the server (fromClaude runs in the route), so a filter that drops too much, or a prompt rule that stopped working, shows up. */
+const logDrop = (where: string) => (dropped: string[], keptOriginal: boolean) =>
+  console.warn(`[spotter] watchtower ${where}: ${keptOriginal ? "every sentence looked internal, kept the original" : `took out ${dropped.length} internal sentence(s)`}: ${dropped.join(" | ").slice(0, 300)}`);
+
 const plainDeep = (v: unknown): unknown =>
-  typeof v === "string" ? plainText(v) : Array.isArray(v) ? v.map(plainDeep) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, plainDeep(x)])) : v;
+  typeof v === "string"
+    ? withoutInternalNotes(plainText(v), logDrop("complete_task"))
+    : Array.isArray(v)
+      ? v.map(plainDeep)
+      : v && typeof v === "object"
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, plainDeep(x)]))
+        : v;
 
 export function fromClaude(msg: Anthropic.Message): AgLlmResponse {
   const output: AgAiOutputItem[] = [];
   msg.content.forEach((block, i) => {
     if (block.type === "text" && block.text) {
-      output.push({ id: `${msg.id}_${i}`, kind: "output", type: "message", role: "assistant", status: "completed", content: [{ type: "text", text: block.text, annotations: [] }] });
+      output.push({ id: `${msg.id}_${i}`, kind: "output", type: "message", role: "assistant", status: "completed", content: [{ type: "text", text: withoutInternalNotes(block.text, logDrop("reply")), annotations: [] }] });
     } else if (block.type === "tool_use") {
       const input = block.name === "complete_task" ? plainDeep(block.input ?? {}) : (block.input ?? {});
       output.push({ id: `${msg.id}_${i}`, kind: "output", type: "function_call", callId: block.id, name: block.name, arguments: JSON.stringify(input), status: "completed" });

@@ -26,7 +26,7 @@ export function answerLineFor(widgetId: string): string | null {
 export function answerTopFor(widgetId: string): readonly TopRow[] | undefined {
   return totals.get(widgetId)?.top;
 }
-const sameRows = (a: readonly TopRow[] | undefined, b: readonly TopRow[]) => !!a && a.length === b.length && a.every((r, i) => r.label === b[i]!.label && r.value === b[i]!.value);
+const sameRows = (a: readonly TopRow[] | undefined, b: readonly TopRow[]) => !!a && a.length === b.length && a.every((r, i) => r.label === b[i]!.label && r.value === b[i]!.value && r.group === b[i]!.group);
 export function onAnswerTotals(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);

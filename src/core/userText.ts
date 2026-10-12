@@ -36,3 +36,15 @@ export function messageSays(quote: string): string {
   const q = quote.trim();
   return `The message says "${q.replace(/\.+$/, "") || q}".`;
 }
+
+/**
+ * An item name that starts a row or a sentence, with a capital first letter ("cast iron skillet" beside "LED desk
+ * lamp"). Names that already mix cases ("iPhone case") and web addresses ("earbuds-outlet.shop") stay as written.
+ */
+export function leadCap(name: string): string {
+  const m = /^(\s*)(\S+)/.exec(name);
+  if (!m) return name;
+  const [, space, word] = m as unknown as [string, string, string];
+  if (word.includes(".") || /\p{Lu}/u.test(word.slice(1)) || !/^\p{Ll}/u.test(word)) return name;
+  return space + word[0]!.toUpperCase() + name.slice(space.length + 1);
+}

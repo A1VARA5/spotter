@@ -103,7 +103,8 @@ export function polishChart<T extends object>(options: T, money: MoneyFields): T
  * What an answer chart adds up to, from the very rows it draws, for the line above the Answers page
  * ("£9.98"). Money in the board's currency, counts as whole numbers. Null for other charts or no rows.
  */
-export type TopRow = { label: string; value: string };
+/** group "too-cheap": a fair price row the card lists under its own "Too cheap to be real" line. */
+export type TopRow = { label: string; value: string; group?: "too-cheap" };
 export function answerTotal(options: object, money: MoneyFields): { widgetId: string; text: string; line: string | null; top: TopRow[] } | null {
   const o = options as ChartOptions & { data?: unknown; series?: unknown };
   const params = o.context?.params;

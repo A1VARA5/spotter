@@ -14,7 +14,8 @@ import type { AnswerFeed, AnswerSummaryDef } from "./AnswerCard";
 import type { ReceiptBook } from "./ReceiptBar";
 import { noteAnswerLine } from "./chartPolish";
 import { FAIR_FAILED } from "@/watchtower/answers";
-import { countdown, fairPrice, fairRows, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
+import { leadCap } from "@/core/userText";
+import { countdown, fairBehind, fairPrice, fairRows, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -453,8 +454,6 @@ const RADAR_FIELDS = ["payee", "outcome"] as const;
 // How many rows a tile shows before "N more": enough to read, few enough to fit the tile at laptop width.
 const RADAR_SHOWN = 3;
 const FAIR_SHOWN = 1;
-/** Items the answer card lists beside a Fair price answer. */
-const CARD_ROWS = 3;
 const ALERTS_SHOWN = 2;
 
 export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
@@ -631,7 +630,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   // On the Answers page the card beside this tile says the same words, from these same (filtered) rows.
   const said = failed ? FAIR_FAILED : f ? (f.checked ? f.headline : "No price checks this month yet") : null;
   // The items behind the headline, for the card's list (a string key, so the effect runs only when they change).
-  const behind = f && !failed ? fairRows(f.items, CARD_ROWS) : [];
+  const behind = f && !failed ? fairBehind(f) : [];
   const behindKey = JSON.stringify(behind);
   useEffect(() => {
     if (said) noteAnswerLine(p.widgetId, said, JSON.parse(behindKey));
@@ -657,7 +656,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
         {firstFew(f.items, FAIR_SHOWN).shown.map((i) => (
           <li key={i.id} className="wt-fair-item">
             <p className="wt-fair-what">
-              <span className="wt-fair-item-name">{i.marketItem || i.payee}</span>
+              <span className="wt-fair-item-name">{leadCap(i.marketItem || i.payee)}</span>
               <span className="wt-fair-verdict" data-verdict={i.verdict}>
                 {VERDICT_TEXT[i.verdict]}
               </span>
@@ -677,7 +676,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
           <ul className="wt-fair-rest-list">
             {f.items.slice(FAIR_SHOWN).map((i) => (
               <li key={i.id} className="wt-fair-rest-item">
-                <span className="wt-fair-rest-name">{i.marketItem || i.payee}</span>
+                <span className="wt-fair-rest-name">{leadCap(i.marketItem || i.payee)}</span>
                 <span className="wt-fair-verdict" data-verdict={i.verdict}>
                   {VERDICT_TEXT[i.verdict]}
                 </span>
@@ -739,7 +738,7 @@ export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
         {list.map((w) => (
           <li key={w.id} className="wt-fair-item">
             <p className="wt-fair-what">
-              <span className="wt-fair-item-name">{w.item}</span>
+              <span className="wt-fair-item-name">{leadCap(w.item)}</span>
               <span className="wt-fair-verdict" data-verdict={w.status === "Dropped" ? "fair" : w.status === "Watching" ? "over" : undefined}>
                 {w.status === "Dropped" ? "Price dropped" : w.status}
               </span>

@@ -1,5 +1,6 @@
 // The sums and words behind Spotter's signature widgets, kept out of React so they can be tested.
 import { networkLine } from "@/core/networkLine";
+import { leadCap } from "@/core/userText";
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -123,6 +124,11 @@ export type FairPrice = {
   /** A paid price far below real shops (a fake shop sign), said on its own line. */
   warning: string | null;
   items: PriceItem[];
+  /**
+   * Every item each headline sentence counts, uncapped: `headline` is what the first sentence adds up (the items paid
+   * more, or the fairly paid ones when nothing was), `tooCheap` the prices the second sentence calls too cheap to be real.
+   */
+  behind: { headline: PriceItem[]; tooCheap: PriceItem[] };
 };
 
 /** Under 40% of the going rate is a fake shop tell, the same line the payment check uses. */
@@ -189,7 +195,7 @@ export function fairHeadline(c: FairCounts): string {
  */
 export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): FairPrice {
   const checked = rows.filter((r) => r.marketCheapest !== null && r.marketMedian !== null && now.getTime() - r.when.getTime() <= 30 * DAY);
-  if (!checked.length) return { checked: 0, overpaid: 0, saved: 0, headline: "", caught: null, warning: null, items: [] };
+  if (!checked.length) return { checked: 0, overpaid: 0, saved: 0, headline: "", caught: null, warning: null, items: [], behind: { headline: [], tooCheap: [] } };
   const items: PriceItem[] = checked.map(({ when: _w, kind: _k, marketCheapest, marketMedian, priceGap, ...rest }) => {
     const cheapest = marketCheapest!;
     const gap = priceGap ?? round(rest.amount - cheapest);
@@ -213,14 +219,21 @@ export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): Fa
   const warning = fake0
     ? `${whoOf(fake0)} paid ${poundsShort(fake0.amount)} for "${fake0.marketItem || fake0.payee}" that real shops sell for around ${poundsShort(fake0.median)}: far too cheap, a common sign of a fake shop`
     : null;
+  const fakeUnpaid = items.filter((i) => i.verdict === "fake" && STOPPED_IN.has(i.outcome));
   const headline = fairHeadline({
     label,
     overpaid,
     overCount: over.length,
     fairPaid: paid.length,
     fakePaid: paidFake.length,
-    fakeUnpaid: items.filter((i) => i.verdict === "fake" && STOPPED_IN.has(i.outcome)).length,
+    fakeUnpaid: fakeUnpaid.length,
   });
+  const byGap = (a: PriceItem, b: PriceItem) => b.gap - a.gap;
+  const belowRate = (a: PriceItem, b: PriceItem) => b.median - b.amount - (a.median - a.amount);
+  const behind = {
+    headline: over.length ? [...over].sort(byGap) : [...paid].sort(byGap),
+    tooCheap: [...paidFake, ...fakeUnpaid].sort(belowRate),
+  };
 
   const stopped = items.filter((i) => STOPPED_IN.has(i.outcome)).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
   const fake = stopped.find((i) => i.verdict === "fake");
@@ -232,7 +245,7 @@ export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): Fa
       ? `Spotter stopped ${poundsShort(dear.amount)} for ${name(dear)} that the cheapest real shop sells for ${poundsShort(dear.cheapest)}`
       : null;
 
-  return { checked: checked.length, overpaid, saved, headline, caught, warning, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, maxItems) };
+  return { checked: checked.length, overpaid, saved, headline, caught, warning, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, maxItems), behind };
 }
 
 /**
@@ -243,8 +256,27 @@ export function fairRows(items: readonly PriceItem[], max: number): Array<{ labe
   return items.slice(0, max).map((i) => {
     const how = i.outcome === "Paid" ? "Paid" : `${i.outcome} at`;
     const against = i.verdict === "fake" ? `real shops around ${poundsShort(i.median)}` : `cheapest real shop ${poundsShort(i.cheapest)}`;
-    return { label: i.marketItem || i.payee, value: `${how} ${poundsShort(i.amount)}, ${against}` };
+    return { label: leadCap(i.marketItem || i.payee), value: `${how} ${poundsShort(i.amount)}, ${against}` };
   });
+}
+
+/** A row on the answer card; `group: "too-cheap"` rows sit under their own "Too cheap to be real" line. */
+export type BehindRow = { label: string; value: string; group?: "too-cheap" };
+const MAX_FAIR_ROWS = 3;
+const MAX_CHEAP_ROWS = 3;
+
+/**
+ * The answer card's "Behind the headline": exactly the items the first sentence adds up (every item paid more, so
+ * the rows add up to the headline's sum, or a few fairly paid ones when nothing was), then the prices the second
+ * sentence calls too cheap to be real, labelled as such. A stopped item that was dear is in neither sentence.
+ */
+export function fairBehind(f: FairPrice): BehindRow[] {
+  const over = f.behind.headline.filter((i) => i.verdict === "over");
+  const lead: BehindRow[] = over.length
+    ? over.map((i) => ({ label: leadCap(i.marketItem || i.payee), value: `Paid ${poundsShort(i.amount)}, ${poundsShort(i.gap)} more than the cheapest real shop (${poundsShort(i.cheapest)})` }))
+    : fairRows(f.behind.headline, MAX_FAIR_ROWS);
+  const cheap = fairRows(f.behind.tooCheap, MAX_CHEAP_ROWS).map((r) => ({ ...r, group: "too-cheap" as const }));
+  return [...lead, ...cheap];
 }
 
 export type WatchSummaryRow = { status: string; saving: number };

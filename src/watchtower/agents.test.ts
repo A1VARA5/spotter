@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PL_NEVER } from "./granLang";
-import { BRIEF_ID, GRAN_ID, SPOTTER_ID, buildGranRoster, buildRoster, catalogueText, paypalStatus, weekOf, type SpotterTools } from "./agents";
+import { BRIEF_ID, GRAN_ID, NO_INTERNALS_RULE, SPOTTER_ID, buildGranRoster, buildRoster, catalogueText, paypalStatus, weekOf, type SpotterTools } from "./agents";
 import type { PaymentRow, PaypalRow } from "./data";
 
 type T = { name: string; ids?: readonly string[] };
@@ -80,10 +80,18 @@ describe("Watchtower's agent roster", () => {
   });
 
   it("still extends AG's built in agents with Spotter's context, and the lead and data agents with the case file and alerts", () => {
-    expect(agent("lead").instructions!(ctx, undefined as never)).toBe("built in lead\n\nSPOTTER CONTEXT");
+    expect(agent("lead").instructions!(ctx, undefined as never)).toBe(`built in lead\n\nSPOTTER CONTEXT\n\n${NO_INTERNALS_RULE}`);
     expect(names("lead")).toEqual(["own_lead", "open_case_file", "watch_alerts"]);
     expect(names("data")).toEqual(["own_data", "open_case_file", "watch_alerts"]);
     expect(names("page")).toEqual(["own_page"]);
+  });
+
+  // Round 9: the Data agent told the family "The separate cheapest-shop price-check field wasn't used."
+  it("tells every agent that talks or reports back never to explain fields, tools or how it worked", () => {
+    expect(NO_INTERNALS_RULE).toMatch(/never mention fields, columns, tables, queries, tools or other agents/i);
+    for (const id of [SPOTTER_ID, BRIEF_ID, "data", "widget", "lead"]) expect(agent(id).instructions!(ctx, undefined as never)).toContain(NO_INTERNALS_RULE);
+    // Spotter's brief to the data agent asks for the answer, not a note on which field was used.
+    expect(agent(SPOTTER_ID).instructions!(ctx, undefined as never)).not.toMatch(/brief naming the fields/);
   });
 
   it("answers the fair price question in one tool call: fair_prices, with no data agent hop", () => {

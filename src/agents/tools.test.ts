@@ -3,7 +3,7 @@ import { pgliteDb, type Db } from "@/db";
 import { createHousehold } from "@/core/households";
 import { createSpender, getPayment, submitPayment, type Deps, type Payment } from "@/core/lifecycle";
 import { fileReport } from "@/core/network";
-import type { LinkReport } from "./links";
+import { hostingAddress, hostingLine, type LinkReport } from "./links";
 import { REPLAY_SEAL, runTool, toolDefinitions, type CaseCtx } from "./tools";
 import { open } from "@/core/seal";
 import type { PageVisit } from "./kernel";
@@ -81,6 +81,19 @@ describe("check_links", () => {
     expect(inspect).toHaveBeenCalledWith("https://bargainpods.shop/airpods");
     expect(out.summary).toContain("not in the message");
     expect(out.summary).toContain("6 days");
+  });
+
+  // Round 9: the parcel scam card said "registered 2449 days ago and the link check found no problems" because the
+  // page sits on vercel.app. On a general hosting address the age is the host's, so the check can't vouch for the page.
+  it("never reads as reassuring for a link on a general hosting address", async () => {
+    const now = await pay("gran", "Parcel Desk", 199, "Your parcel is waiting: https://spotter-pay.vercel.app/demo-shop/parcel pay now");
+    const hosted = (url: string): LinkReport => ({
+      input: url, url, host: "spotter-pay.vercel.app", domain: "vercel.app", hostedOn: "vercel.app", finalUrl: url, hops: [], ageDays: null, registered: null,
+      brand: null, official: false, flags: [{ code: "general-host", severity: "low", detail: hostingLine("spotter-pay.vercel.app", "vercel.app") }],
+    });
+    const out = await runTool("check_links", { urls: ["https://spotter-pay.vercel.app/demo-shop/parcel"] }, ctx(now, { inspect: vi.fn(async (u: string) => hosted(u)) }));
+    expect(out.summary).toContain("spotter-pay.vercel.app is on vercel.app, a general hosting address, so its age says nothing about who made this page.");
+    expect(out.summary).not.toMatch(/nothing wrong|no problems|registered/i);
   });
 
   it("refuses when no link from the message is asked for", async () => {
@@ -415,5 +428,19 @@ describe("runTool", () => {
     const now = await pay("gran", "x@y.com", 100);
     expect((await runTool("payee_history", { payee: 5 }, ctx(now))).ok).toBe(false);
     expect((await runTool("send_money", {}, ctx(now))).ok).toBe(false);
+  });
+});
+
+describe("general hosting addresses", () => {
+  it("knows a page on a shared host from a site with its own domain", () => {
+    expect(hostingAddress("spotter-pay.vercel.app")).toBe("vercel.app");
+    expect(hostingAddress("someone.github.io")).toBe("github.io");
+    expect(hostingAddress("parcel-redelivery.netlify.app")).toBe("netlify.app");
+    expect(hostingAddress("pay-now.pages.dev")).toBe("pages.dev");
+    expect(hostingAddress("bargainpods.shop")).toBeNull();
+    expect(hostingAddress("www.johnlewis.com")).toBeNull();
+    expect(hostingAddress("royalmail.co.uk")).toBeNull();
+    // The host's own front page isn't someone else's page on it.
+    expect(hostingAddress("vercel.app")).toBeNull();
   });
 });

@@ -8,6 +8,7 @@ import type { Job } from "@/core/toolkit-coverage";
 import { formatMoney, type Currency } from "@/core/types";
 import { CAUSE_LABEL } from "@/core/tripped";
 import { timeAgo } from "./format";
+import { leadCap } from "@/core/userText";
 import "./toolkit.css";
 
 const money = (amount: number, currency: string) => formatMoney({ amount, currency: currency as Currency });
@@ -249,7 +250,7 @@ export function AgentHolds({ initial }: { initial: Holds }) {
               .filter((s) => s.agent === a.name)
               .map((s) => (
                 <li key={s.id}>
-                  {s.item}: {money(s.amount, s.currency)} {s.capture_id ? "paid" : "not paid yet"}
+                  {leadCap(s.item)}: {money(s.amount, s.currency)} {s.capture_id ? "paid" : "not paid yet"}
                 </li>
               ))}
           </ul>

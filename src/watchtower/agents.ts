@@ -10,6 +10,12 @@ import type { PaymentRow, PaypalRow } from "./data";
 import { granLanguageRule, type GranLang } from "./granLang";
 
 export const SPOTTER_ID = "spotter";
+/**
+ * Round 9: the Data agent told the family "The separate cheapest-shop price-check field wasn't used." Every agent whose
+ * words reach the chat gets this, and src/watchtower/claude.ts withoutInternalNotes takes out what slips through.
+ */
+export const NO_INTERNALS_RULE =
+  "In replies and complete_task summaries, never mention fields, columns, tables, queries, tools or other agents, and never add notes on which ones you used or left out. Say what the numbers are, not how you got them.";
 export const BRIEF_ID = "brief";
 const BUILT_IN: AgBuiltInAgentId[] = ["lead", "data", "page", "planning", "widget"];
 /** Who Spotter may hand work to: our brief writer, then Studio's own builders. */
@@ -92,7 +98,7 @@ Who you delegate to (delegate_to). Give each a clear brief of one or two sentenc
 - widget: configures one placed widget (pass widgetType and widgetId). Send several at once when you can.
 
 How to answer:
-- Breakdowns and show me questions (how much someone spent, what on, by shop, by person, over time, "show me", "chart", "break down", "what did Leo spend on games"): always build a tile, never answer in chat only. First turn: call place_widget with the best type (bar-chart-grouped for a total split by shop or category, column-chart-grouped for spend over time, donut-chart for shares of a whole, grid for a list of payments) and a short title for the question, like "What Leo spent on games". Keep the same title when the same question comes again. Second turn, both calls in the same turn, side by side: delegate_to widget with the widgetType, widgetId and pageId place_widget returned and a one sentence brief naming the fields, filters and title (for example: sum of payments.amount by payments.payee, widget filters payments.who equals Leo, payments.category equals games, payments.outcome equals Paid and payments.when this month, title "What Leo spent on games"; one measure and no legend split, unless the question is about outcomes), and delegate_to data for the total with exactly the same filters and time window, so the chart and the total match. If place_widget says reused, that tile already shows this answer with live numbers: skip widget and only ask data for the total. "This month" means the calendar month so far. Spent means payments.outcome Paid only: stopped, denied and waiting payments were never spent. Then answer in two or three sentences with the total, and say the chart is on the Answers page.
+- Breakdowns and show me questions (how much someone spent, what on, by shop, by person, over time, "show me", "chart", "break down", "what did Leo spend on games"): always build a tile, never answer in chat only. First turn: call place_widget with the best type (bar-chart-grouped for a total split by shop or category, column-chart-grouped for spend over time, donut-chart for shares of a whole, grid for a list of payments) and a short title for the question, like "What Leo spent on games". Keep the same title when the same question comes again. Second turn, both calls in the same turn, side by side: delegate_to widget with the widgetType, widgetId and pageId place_widget returned and a one sentence brief with the measure, grouping, filters and title (for example: sum of payments.amount by payments.payee, widget filters payments.who equals Leo, payments.category equals games, payments.outcome equals Paid and payments.when this month, title "What Leo spent on games"; one measure and no legend split, unless the question is about outcomes), and delegate_to data for the total with exactly the same filters and time window, so the chart and the total match (ask for the numbers only, with no notes on how it got them). If place_widget says reused, that tile already shows this answer with live numbers: skip widget and only ask data for the total. "This month" means the calendar month so far. Spent means payments.outcome Paid only: stopped, denied and waiting payments were never spent. Then answer in two or three sentences with the total, and say the chart is on the Answers page.
 - "Did we pay fair prices?": call fair_prices on its own and answer straight away in chat. fair_prices already has the numbers and today's prices, so this needs no delegation, no real_price and no look at the board. Answer with the numbers (overpaid or saved, the cheapest real shop then and today) and say the Fair price tile on the This month page has the details. Add a tile only when they ask to see or show it: then call place_widget with widgetType fair-price (it is ready the moment it's placed, so no widget agent).
 - Only items with wasPaid true were paid. A stopped, denied or waiting payment was not paid: never say "paid" for it.
 - A price far below what real shops charge (priceSign too_cheap_to_be_real, or anything in tooCheap) is a common sign of a fake shop. Say that plainly, and suggest checking the item arrives and is genuine. It is never a good price, a bargain or a saving, and never "less than real shops" as praise.
@@ -166,7 +172,7 @@ export function buildRoster(o: { builtIn: Record<AgBuiltInAgentId, Def>; extra: 
   const now = o.now ?? (() => new Date());
   const extend = (d: Def, more: AgAiTool[]): Def => ({
     ...d,
-    instructions: (c, p) => [d.instructions?.(c, p), context].filter(Boolean).join("\n\n"),
+    instructions: (c, p) => [d.instructions?.(c, p), context, NO_INTERNALS_RULE].filter(Boolean).join("\n\n"),
     tools: (c, p) => [...(d.tools?.(c, p) ?? []), ...more],
   });
 
@@ -175,7 +181,7 @@ export function buildRoster(o: { builtIn: Record<AgBuiltInAgentId, Def>; extra: 
     name: "Spotter",
     description: "Spotter's own lookout: explains holds and scams, checks prices against real shops and what PayPal said, and asks Studio's agents to build what the family needs to see.",
     schema: (s) => s.undefined(),
-    instructions: (c) => [role, context, `Widget types the page and widget agents can use:\n${catalogueOf(c)}`].join("\n\n"),
+    instructions: (c) => [role, context, NO_INTERNALS_RULE, `Widget types the page and widget agents can use:\n${catalogueOf(c)}`].join("\n\n"),
     tools: ({ studio, tools }) => [
       studio.viewSchema(),
       studio.viewReport(),
@@ -202,7 +208,7 @@ export function buildRoster(o: { builtIn: Record<AgBuiltInAgentId, Def>; extra: 
     description: 'Writes the family\'s weekly brief: gathers this week\'s money kept, holds, scam signs and fair price, then has the page and widget agents build a page titled "Week of <date>". Delegate to it for any weekly brief or "this week" summary.',
     schema: (s) => s.undefined(),
     maxTurns: 30,
-    instructions: (c) => [briefRole(weekOf(now())), context, `Widget types:\n${catalogueOf(c)}`].join("\n\n"),
+    instructions: (c) => [briefRole(weekOf(now())), context, NO_INTERNALS_RULE, `Widget types:\n${catalogueOf(c)}`].join("\n\n"),
     tools: ({ studio, tools }) => [studio.viewSchema(), studio.viewReport(), studio.executeQuery(), extra.alerts, extra.radar, extra.addPage, tools.delegateTo(BRIEF_DELEGATES)],
   };
 

@@ -9,7 +9,7 @@ import { normName } from "@/core/rules";
 import { NOT_LAB_SQL } from "@/core/tripped";
 import { formatMoney, type Currency } from "@/core/types";
 import { offersFor, type Product } from "@/market/channel3";
-import { extractUrls, inspectWithBudget, levenshtein, type LinkReport } from "./links";
+import { extractUrls, hostingLine, inspectWithBudget, levenshtein, type LinkReport } from "./links";
 import type { Box, PageAsks, PageSeen, PageVisit, PhoneFace } from "./kernel";
 import type { FacesResult } from "./twofaces";
 import type { MoneyTrail, Proof } from "./trail";
@@ -186,13 +186,18 @@ const checkLinks = tool({
     const reports = await Promise.all(allowed.map((u) => inspect(u)));
     const lines = reports.map((r) => {
       const worrying = r.flags.filter((f) => f.severity !== "info");
-      const age = r.ageDays !== null ? ` Registered ${r.ageDays} days ago.` : "";
-      return `${r.host || r.url}:${age} ${worrying.length ? worrying.map((f) => f.detail).join(" ") : "Nothing wrong found."}`;
+      // On a general hosting address the age is the host's, so it is left out and the line can't read as an all clear.
+      const age = r.ageDays !== null && !r.hostedOn ? ` Registered ${r.ageDays} days ago.` : "";
+      const hosted = r.hostedOn && !worrying.some((f) => f.code === "general-host") ? ` ${hostingLine(r.host, r.hostedOn)}` : "";
+      const found = worrying.length ? ` ${worrying.map((f) => f.detail).join(" ")}` : r.hostedOn ? "" : " Nothing wrong found.";
+      const said = `${age}${hosted}${found}`.trim();
+      // The hosting line already starts with the host, so it isn't said twice.
+      return r.host && said.startsWith(r.host) ? said : `${r.host || r.url}: ${said}`;
     });
     return {
       ok: true,
       summary: lines.join("\n") + note,
-      data: reports.map((r) => ({ url: r.url, host: r.host, ageDays: r.ageDays, official: r.official, brand: r.brand, flags: r.flags })),
+      data: reports.map((r) => ({ url: r.url, host: r.host, ageDays: r.ageDays, official: r.official, brand: r.brand, flags: r.flags, hostedOn: r.hostedOn ?? null })),
     };
   },
 });

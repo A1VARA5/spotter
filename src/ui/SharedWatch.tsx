@@ -8,6 +8,7 @@ import type { SharedWatchView } from "@/core/shared-watch";
 import { HistoryChart } from "./PriceWatch";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
+import { leadCap } from "@/core/userText";
 import "./pricewatch.css";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -69,7 +70,7 @@ export function SharedWatchPanel({ view: v, error }: { view: SharedWatchView | n
     <article className="pw pw-shared" data-state={tracked ? "watching" : "starting"} aria-labelledby="pw-shared-title">
       <header className="pw-head">
         <h3 id="pw-shared-title" className="pw-item">
-          {v.item}
+          {leadCap(v.item)}
         </h3>
         {tracked ? (
           <span className="pw-badge" data-tone="live">

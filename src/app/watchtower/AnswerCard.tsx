@@ -52,6 +52,19 @@ function AnswerLine({ text }: { text: string }) {
   );
 }
 
+function RowList({ rows }: { rows: readonly TopRow[] }) {
+  return (
+    <ul className="wt-ans-rowlist">
+      {rows.map((r, i) => (
+        <li key={i}>
+          <span className="wt-ans-row-label">{r.label}</span>
+          <span className="wt-ans-row-value">{r.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
   const ctx = p.context as WatchContext | undefined;
   const feed = ctx?.answers;
@@ -68,6 +81,9 @@ export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
   // A chart with one bar already says it in the line above ("All of it: BlockWorld"), so its list starts at two.
   const fair = a.type === "fair-price";
   const rows = !a.empty && a.top && a.top.length >= (fair ? 1 : 2) ? a.top : [];
+  // A fair price answer's rows: what its first sentence adds up, then the too cheap ones under their own line.
+  const lead = rows.filter((r) => r.group !== "too-cheap");
+  const cheap = rows.filter((r) => r.group === "too-cheap");
   const steps = receipt ? receiptSteps(receipt) : [];
   return (
     <section className="wt-ans" aria-labelledby="wt-ans-q" {...scroll}>
@@ -85,17 +101,16 @@ export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
           {a.line && <AnswerLine text={a.line} />}
         </div>
       )}
-      {rows.length > 0 && (
+      {lead.length > 0 && (
         <div className="wt-ans-rows">
-          <h3 className="wt-ans-next-h">{fair ? "Behind the headline" : `The biggest ${rows.length === 1 ? "row" : `${rows.length} rows`} in the chart`}</h3>
-          <ul className="wt-ans-rowlist">
-            {rows.map((r, i) => (
-              <li key={i}>
-                <span className="wt-ans-row-label">{r.label}</span>
-                <span className="wt-ans-row-value">{r.value}</span>
-              </li>
-            ))}
-          </ul>
+          <h3 className="wt-ans-next-h">{fair ? "Behind the headline" : `The biggest ${lead.length === 1 ? "row" : `${lead.length} rows`} in the chart`}</h3>
+          <RowList rows={lead} />
+        </div>
+      )}
+      {cheap.length > 0 && (
+        <div className="wt-ans-rows">
+          <h3 className="wt-ans-next-h">Too cheap to be real</h3>
+          <RowList rows={cheap} />
         </div>
       )}
       {receipt && (

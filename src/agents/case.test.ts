@@ -801,3 +801,27 @@ describe("shop names come from tool results only", () => {
     expect(c.headline).not.toMatch(/Argos/);
   });
 });
+
+// Round 9: on the parcel scam card the model wrote "registered 2449 days ago and the link check found no problems"
+// for a page on vercel.app. On a general hosting address that line can't stand: the tool's own words replace it.
+describe("links on a general hosting address", () => {
+  it("swaps a reassuring link finding for what the check can and can't tell", async () => {
+    const line = "parcel-desk.vercel.app is on vercel.app, a general hosting address, so its age says nothing about who made this page.";
+    const inspect = vi.fn(async (url: string) => ({ url, host: "parcel-desk.vercel.app", hostedOn: "vercel.app", ageDays: null, official: false, brand: null, flags: [{ code: "general-host", severity: "low", detail: line }] }) as never);
+    const model = scripted(
+      turn(use("t1", "check_links", { urls: ["https://bargainpods.shop"] })),
+      turn(use("f", "file_case", { verdict: "likely_scam", headline: "This looks like a parcel scam.", findings: [
+        { text: "The link's domain was registered 2449 days ago and the link check found no problems.", source: "t1" },
+      ], ask: [] })),
+    );
+    const c = await buildCase(ctx({ inspect }), { model });
+    const link = c.findings.find((f) => f.tool === "check_links")!;
+    expect(link.text).toContain("a general hosting address, so its age says nothing about who made this page");
+    expect(link.text).not.toMatch(/no problems|2449/);
+  });
+
+  it("tells the case worker never to call such a link fine", async () => {
+    const { CASE_SYSTEM } = await import("./case");
+    expect(CASE_SYSTEM).toMatch(/general hosting address/);
+  });
+});

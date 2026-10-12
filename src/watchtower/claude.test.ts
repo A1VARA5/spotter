@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { AgLlmRequest } from "ag-studio";
-import { fromClaude, toClaude } from "./claude";
+import { fromClaude, toClaude, withoutInternalNotes } from "./claude";
 
 const user = (id: string, text: string) => ({ id, kind: "input" as const, type: "message" as const, role: "user" as const, status: "completed" as const, content: [{ type: "text" as const, text }] });
 
@@ -142,10 +142,47 @@ describe("Claude reply to AG response", () => {
 
   it("hands back a sub agent's complete_task summary as plain text (AG shows it raw in the step)", () => {
     const r = fromClaude(
-      msg([{ type: "tool_use", id: "toolu_1", name: "complete_task", input: { summary: "## This month\n**2 paid** payments, `priceGap` £8.50\n* Kettle: __£3__ over", ok: true } }], "tool_use"),
+      msg([{ type: "tool_use", id: "toolu_1", name: "complete_task", input: { summary: "## This month\n**2 paid** payments, `overpaid` £8.50\n* Kettle: __£3__ over", ok: true } }], "tool_use"),
     );
     const args = JSON.parse((r.output[0] as { arguments: string }).arguments);
-    expect(args).toEqual({ summary: "This month\n2 paid payments, priceGap £8.50\n- Kettle: £3 over", ok: true });
+    expect(args).toEqual({ summary: "This month\n2 paid payments, overpaid £8.50\n- Kettle: £3 over", ok: true });
+  });
+
+  // Round 9: the Data agent's summary in the Leo chat ended "One note on "shop": I split the total by who was paid.
+  // The separate cheapest-shop price-check field wasn't used." Notes about fields, tools and agents never reach the family.
+  it("takes notes about fields, columns, tools and agents out of replies and complete_task summaries", () => {
+    const leo =
+      `Leo's paid games payments this month come to £9.98 in total. By shop: there is only one shop, BlockWorld, with 2 payments adding up to £9.98. One note on "shop": I split the total by who was paid. The separate cheapest-shop price-check field wasn't used.`;
+    const r = fromClaude(
+      msg([
+        { type: "text", text: "Done. I used the payments.priceGap column to work it out. You paid £8.50 more on 2 items." },
+        { type: "tool_use", id: "toolu_1", name: "complete_task", input: { summary: leo, ok: true } },
+      ], "tool_use"),
+    );
+    expect((r.output[0] as { content: Array<{ text: string }> }).content[0]!.text).toBe("Done. You paid £8.50 more on 2 items.");
+    expect(JSON.parse((r.output[1] as { arguments: string }).arguments).summary).toBe(
+      "Leo's paid games payments this month come to £9.98 in total. By shop: there is only one shop, BlockWorld, with 2 payments adding up to £9.98.",
+    );
+  });
+
+  it("leaves ordinary sentences, AG's own field chips and line breaks alone", () => {
+    const t = "The chart shows the total of @field[payments.amount] for each payee.\nFrom the sample month: £9.98 at BlockWorld.";
+    expect(withoutInternalNotes(t)).toBe(t);
+    expect(withoutInternalNotes("The farm shop fields questions every day.")).toBe("The farm shop fields questions every day.");
+    expect(withoutInternalNotes("I called fair_prices and delegate_to data. Your agent paid £8.50 more.")).toBe("Your agent paid £8.50 more.");
+    // Shop addresses, column charts, failure notices and a warning after "Note:" all stay (silent failure review).
+    for (const keep of [
+      "The £24.99 at cheap-watches.shop was too cheap to be real.",
+      "I added a column chart on the Answers page.",
+      "The widget agent couldn't build the chart.",
+      "real_price failed, so today's prices are missing.",
+    ])
+      expect(withoutInternalNotes(keep)).toBe(keep);
+    const dropped: string[][] = [];
+    expect(withoutInternalNotes("Note: 2 prices were too cheap to be real. I used the priceGap field.", (d) => dropped.push(d))).toBe("Note: 2 prices were too cheap to be real.");
+    expect(dropped).toEqual([["I used the priceGap field."]]);
+    // Never empties a reply: if every sentence is a note, the text stays as it was.
+    expect(withoutInternalNotes("The priceGap field wasn't used.")).toBe("The priceGap field wasn't used.");
   });
 
   it("leaves other tools' arguments alone", () => {

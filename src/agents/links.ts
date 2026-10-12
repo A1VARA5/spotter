@@ -24,7 +24,26 @@ export type LinkReport = {
   brand: string | null;
   official: boolean;
   flags: LinkFlag[];
+  /** The general hosting address the page sits on (vercel.app, github.io): anyone can put a page there. */
+  hostedOn?: string | null;
 };
+
+/** A site, counting a page on a shared host (a.vercel.app) as its own site. */
+const siteOf = (host: string) => parse(host, { allowPrivateDomains: true }).domain ?? host;
+
+/**
+ * The shared hosting address a page sits on, from the public suffix list's private section (vercel.app, github.io,
+ * netlify.app, pages.dev, blogspot.com and the rest): anyone can make a page there in minutes, so the address's
+ * age is the host's, not the page's. Null for a site with its own domain, and for the host's own front page.
+ */
+export function hostingAddress(host: string): string | null {
+  const p = parse(host, { allowPrivateDomains: true });
+  return p.isPrivate && p.domain && p.publicSuffix ? p.publicSuffix : null;
+}
+
+/** What the link check can and can't tell about a page on a general hosting address. */
+export const hostingLine = (host: string, hostedOn: string) =>
+  `${host} is on ${hostedOn}, a general hosting address, so its age says nothing about who made this page.`;
 
 type Brand = { brand: string; domains: string[]; keywords: string[] };
 const BRANDS = brands as Brand[];
@@ -687,7 +706,9 @@ function addressChecks(url: URL) {
     });
   const brand = brandFor(host, domain);
   flags.push(...brand.flags);
-  return { host, domain, isShort, brand, flags };
+  const hostedOn = brand.official ? null : hostingAddress(host);
+  if (hostedOn) flags.push({ code: "general-host", severity: "low", detail: hostingLine(host, hostedOn) });
+  return { host, domain, isShort, brand, flags, hostedOn };
 }
 
 // A look-alike name on a domain that has existed for years (model.com vs Yodel, post.de vs bpost) is a coincidence,
@@ -751,11 +772,12 @@ export async function inspectUrl(input: string): Promise<LinkReport> {
       ],
     };
   }
-  const { host, domain, isShort, brand: start, flags } = addressChecks(url);
+  const { host, domain, isShort, brand: start, flags, hostedOn } = addressChecks(url);
 
+  // On a general hosting address the registered age is the host's (vercel.app's), never the page's: not looked up.
   const [{ finalUrl, hops, error }, age] = await Promise.all([
     followRedirects(url.toString()),
-    domain ? domainAge(domain) : Promise.resolve(noAge),
+    domain && !hostedOn ? domainAge(domain) : Promise.resolve(noAge),
   ]);
 
   let finalHost = host;
@@ -764,7 +786,8 @@ export async function inspectUrl(input: string): Promise<LinkReport> {
     try {
       finalHost = new URL(finalUrl).hostname.toLowerCase().replace(/\.$/, "");
       finalDomain = parse(finalHost).domain ?? null;
-      if (finalDomain && finalDomain !== domain)
+      // Two pages on one shared host (a.vercel.app to b.vercel.app) are two different sites.
+      if (finalDomain && (finalDomain !== domain || siteOf(finalHost) !== siteOf(host)))
         flags.push({
           code: "redirects-elsewhere",
           severity: isShort ? "info" : "low",
@@ -775,7 +798,7 @@ export async function inspectUrl(input: string): Promise<LinkReport> {
   // A check that couldn't run must say so, or "no flags" would read as "nothing wrong".
   if (error && error !== "host not resolvable")
     flags.push({ code: "unchecked", severity: "low", detail: `Couldn't follow where this link leads (${error}).` });
-  if (domain && age.ageDays === null && !start.official)
+  if (domain && age.ageDays === null && !start.official && !hostedOn)
     flags.push({ code: "age-unknown", severity: "low", detail: `Couldn't check how old ${domain} is.` });
   if (error === "host not resolvable")
     flags.push({
@@ -788,19 +811,22 @@ export async function inspectUrl(input: string): Promise<LinkReport> {
   // Both ends of a redirect are judged. A scam domain that forwards to the real paypal.com (often only for
   // checkers like this one) is still a scam domain, so only a brand's own address, or a shortener that
   // leads to one, counts as official.
-  const moved = finalDomain !== domain && finalDomain !== null;
+  const moved = finalDomain !== null && (finalDomain !== domain || siteOf(finalHost) !== siteOf(host));
   const end = moved ? brandFor(finalHost, finalDomain) : start;
   const official = start.official || (isShort && end.official);
   ageFlags(flags, age, start.official, host, moved);
   if (moved) {
     const endFlags = [...end.flags];
-    ageFlags(
-      endFlags,
-      await domainAge(finalDomain!),
-      end.official,
-      finalHost,
-      true,
-    );
+    const endHosted = end.official ? null : hostingAddress(finalHost);
+    if (endHosted) endFlags.push({ code: "general-host", severity: "low", detail: hostingLine(finalHost, endHosted) });
+    else
+      ageFlags(
+        endFlags,
+        await domainAge(finalDomain!),
+        end.official,
+        finalHost,
+        true,
+      );
     flags.push(...endFlags);
   }
   const b = start.brand ? start : end;
@@ -825,6 +851,7 @@ export async function inspectUrl(input: string): Promise<LinkReport> {
     brand: b.brand?.brand ?? null,
     official,
     flags,
+    hostedOn,
   };
 }
 
@@ -860,7 +887,7 @@ export function inspectWithBudget(u: string): Promise<LinkReport> {
           ],
         });
       }
-      const { host, domain, brand, flags } = addressChecks(url);
+      const { host, domain, brand, flags, hostedOn } = addressChecks(url);
       flags.push({
         code: "slow",
         severity: "low",
@@ -879,6 +906,7 @@ export function inspectWithBudget(u: string): Promise<LinkReport> {
         brand: brand.brand?.brand ?? null,
         official: brand.official,
         flags,
+        hostedOn,
       });
     }, LINK_BUDGET_MS);
   });

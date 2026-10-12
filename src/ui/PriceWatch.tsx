@@ -10,6 +10,7 @@ import type { WatchUpdates, WatchView } from "@/core/watch";
 import { priceWatchFits } from "@/core/market";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
+import { leadCap } from "@/core/userText";
 import "./pricewatch.css";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -217,7 +218,7 @@ function WatchPanel({ w, onStop, busy, lineRef, updates }: LineProps) {
   return (
     <article className="pw" data-state={w.status}>
       <header className="pw-head">
-        <h3 className="pw-item">{w.item}</h3>
+        <h3 className="pw-item">{leadCap(w.item)}</h3>
         <StatusBadge w={w} />
       </header>
       <dl className="pw-compare">

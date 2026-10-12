@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { messageSays, upTo, withoutIds } from "./userText";
+import { leadCap, messageSays, upTo, withoutIds } from "./userText";
 
 describe("upTo", () => {
   it("keeps whole sentences within the limit instead of stopping mid word", () => {
@@ -41,5 +41,17 @@ describe("messageSays", () => {
     expect(messageSays("it's Tom")).toBe(`The message says "it's Tom".`);
     expect(messageSays("Is this Gran?")).toBe('The message says "Is this Gran?".');
     expect(messageSays("...")).toBe('The message says "...".');
+  });
+});
+
+// Round 9: "cast iron skillet" led a row beside "LED desk lamp". A name at the start of a row starts with a capital.
+describe("leadCap", () => {
+  it("capitalises only the first letter and leaves the rest of the name alone", () => {
+    expect(leadCap("cast iron skillet")).toBe("Cast iron skillet");
+    expect(leadCap("LED desk lamp")).toBe("LED desk lamp");
+    expect(leadCap("iPhone case")).toBe("iPhone case");
+    expect(leadCap("earbuds-outlet.shop")).toBe("earbuds-outlet.shop");
+    expect(leadCap("")).toBe("");
+    expect(leadCap("  steel kettle")).toBe("  Steel kettle");
   });
 });
