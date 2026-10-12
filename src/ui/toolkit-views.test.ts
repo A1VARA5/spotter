@@ -15,7 +15,8 @@ describe("the toolkit coverage view", () => {
     // Tool names carry break points after underscores (<wbr>), so read them as text.
     const names = html.replace(/<\/?span>|<wbr\/?>/g, "");
     for (const c of COVERAGE) expect(names).toContain(`>${c.tool}<`);
-    expect(html).toContain("Tripwire");
+    expect(html).toContain("Decoy");
+    expect(html).not.toMatch(/>Guarded<|>Tripwire</);
   });
 
   it("opens on the selling job with the over 18s note", () => {
@@ -30,7 +31,7 @@ describe("the toolkit coverage view", () => {
     const html = renderToStaticMarkup(createElement(ToolkitCoverage));
     const shopping = (t: string) => COVERAGE.filter((c) => c.shopping.treatment === t).length;
     expect(html).toMatch(new RegExp(`aria-pressed="true"[^>]*>.*?All tools.*?${COVERAGE.length}`, "s"));
-    for (const [t, label] of [["guarded", "Guarded"], ["passthrough", "Passed through"], ["bait", "Tripwire"], ["hidden", "Not offered"]] as const) {
+    for (const [t, label] of [["guarded", "Checked first"], ["passthrough", "Passed through"], ["bait", "Decoy"], ["hidden", "Not offered"]] as const) {
       expect(html).toMatch(new RegExp(`aria-pressed="false"[^>]*>.*?${label}.*?>${shopping(t)}<`, "s"));
     }
     expect(html.indexOf("tkc-summary")).toBeLessThan(html.indexOf("tkc-group"));
@@ -42,7 +43,7 @@ describe("the toolkit coverage view", () => {
     expect(groups.length).toBe(7);
     const open = groups.filter((g) => / open=""/.test(g)).length;
     expect(open).toBe(2); // shopping: Orders and payments, Subscriptions
-    expect(html).toMatch(/<summary[^>]*>.*?Invoices.*?22 tools.*?22 tripwire/s);
+    expect(html).toMatch(/<summary[^>]*>.*?Invoices.*?22 tools.*?22 decoy/s);
   });
 });
 

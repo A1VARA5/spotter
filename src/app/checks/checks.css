@@ -21,13 +21,6 @@
 .ck-row + .ck-row { border-top: 1px solid var(--line); }
 .ck-what { display: grid; gap: 6px; align-content: start; }
 .ck-name { font-size: 17px; font-weight: 700; line-height: 1.3; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-.ck-by {
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
 .ck-does { color: var(--ink-2); font-size: 15px; text-wrap: pretty; max-width: 72ch; }
 .ck-live {
   display: grid;

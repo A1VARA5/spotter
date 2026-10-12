@@ -54,7 +54,7 @@ export function askText(p: Payment, payer: Pick<Spender, "name" | "spotter_name"
   return [
     `<b>${esc(q)}</b>`,
     esc(quote),
-    `PayPal is holding ${esc(payer.name)}'s money while we check. If it wasn't you, tap Not me and it's released straight away. Yes, it's me doesn't pay anything: ${esc(payer.spotter_name)} still decides.`,
+    `PayPal is holding ${esc(payer.name)}'s money while we check. If it wasn't you, tap Not me and PayPal cancels the hold straight away. Yes, it's me doesn't pay anything: ${esc(payer.spotter_name)} still decides.`,
   ].join("\n\n");
 }
 

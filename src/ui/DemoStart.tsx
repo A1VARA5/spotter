@@ -1,10 +1,13 @@
 "use client";
 // "Try it on fake money": a plain form post (works without JavaScript), that says it's busy the moment it's clicked.
 // Making the demo family takes about 3 seconds (it puts a real sandbox hold in place), and a button that sits still
-// for that long gets clicked again.
+// for that long gets clicked again. Every way into the demo uses this one label, so there is one name for it site wide.
 import { useEffect, useState } from "react";
 
-export function DemoStart({ label, className = "btn btn-hold" }: { label: string; className?: string }) {
+export const DEMO_CTA = "Try it on fake money";
+
+export function DemoStart({ className = "btn btn-hold" }: { className?: string }) {
+  const label = DEMO_CTA;
   const [busy, setBusy] = useState(false);
   // Coming back with the browser's Back button restores the page from cache: the button works again.
   useEffect(() => {

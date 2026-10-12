@@ -8,10 +8,10 @@ import { useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { AGENT, FACES } from "./copy";
 
-const KERNEL = "Runs in a KERNEL cloud browser that is thrown away after each visit, so nothing on the page reaches Gran's phone or your laptop.";
-const CHANNEL3 = "Real shop prices from Channel3, live. Spotter never buys anything.";
+const KERNEL = { by: "KERNEL", text: "Runs in a cloud browser that is thrown away after each visit, so nothing on the page reaches Gran's phone or your laptop." };
+const CHANNEL3 = { by: "Channel3", text: "Real shop prices, live. Spotter never buys anything." };
 
-const VIEWS: ReadonlyArray<{ key: "peek" | "tools" | "faces" | "spot" | "watch"; tab: string; head: string; credit: string }> = [
+const VIEWS: ReadonlyArray<{ key: "peek" | "tools" | "faces" | "spot" | "watch"; tab: string; head: string; credit: { by: string; text: string } }> = [
   { key: "faces", tab: "Two faces", head: "Some scam pages show scanners a harmless page and Gran's phone a card form. Spotter opens it both ways.", credit: KERNEL },
   { key: "peek", tab: "Opens the link", head: "Spotter opens the link so nobody in the family clicks it.", credit: KERNEL },
   { key: "tools", tab: "Agent tools", head: "Shops can now hand AI agents tools. Spotter reads every word of them first.", credit: KERNEL },
@@ -262,7 +262,9 @@ export function CheckViews() {
           {k === "spot" && <SpotView />}
           {k === "watch" && <WatchView />}
         </div>
-        <p className="ck2-credit">{v.credit}</p>
+        <p className="ck2-credit">
+          {v.credit.text} <span className="by-tag" translate="no">{v.credit.by}</span>
+        </p>
       </div>
     </div>
   );

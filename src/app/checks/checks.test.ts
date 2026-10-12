@@ -104,7 +104,7 @@ describe("How Spotter checked it", () => {
     const p = pay({ id: "p_hold", paypal_authorization_id: "AUTH123" });
     const row = byId(engines([p], names, { demo: false, lastEvent: { type: "PAYMENT.AUTHORIZATION.VOIDED", paymentId: "p_hold" } }), "paypal").example!;
     expect(row.text).toContain("Gran");
-    expect(row.text).toMatch(/released the hold/);
+    expect(row.text).toMatch(/cancelled the hold, nothing was paid/);
     expect(row.evidence).toBe("/api/payments/p_hold/evidence");
   });
 

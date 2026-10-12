@@ -8222,3 +8222,124 @@ h3 {
 
 .canc-more { margin: 24px 0 0; max-width: 70ch; }
 .canc-more a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+/* A sponsor or tool name after a plain label: "Real shop prices  Channel3". Small, grey, sentence case, never the
+   thing you read first. Grey on light pages; on a dark band it keeps the line colour. */
+.by-tag {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  vertical-align: 0.1em;
+  color: var(--ink-2);
+}
+
+/* On a dark band the tag keeps the grey of the line it sits in. */
+.ck2-credit .by-tag {
+  color: inherit;
+}
+
+/* Not found (not-found.tsx): one line of what happened, two ways on. */
+/* Tall enough that the footer sits at the bottom of a desktop window (header about 84 px, footer band about 230 px). */
+.nf {
+  min-height: calc(100dvh - 290px);
+}
+.nf-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--ink-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.nf-lede {
+  max-width: 52ch;
+}
+.nf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.nf-more {
+  margin-top: 28px;
+  color: var(--ink-2);
+}
+.nf-more a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Phones: a thin night strip above the page (AppShell .mbar). Brand home, a sandbox marker, How it checked. Not
+   sticky, so it never covers focus; the sidebar replaces it from 900 px. */
+.mbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px clamp(16px, 4vw, 48px);
+  background: #0d141c;
+  color: #c9d1d9;
+  border-bottom: 1px solid #1c2631;
+}
+.mbar :focus-visible {
+  outline-color: #fff;
+}
+.mbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.mbar-brand .brand-mark {
+  width: 22px;
+  height: 22px;
+}
+.mbar-pill {
+  padding: 2px 9px;
+  border: 1px solid #2c3a49;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9d1d9;
+  white-space: nowrap;
+}
+.mbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-left: auto;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 0.35);
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+.mbar-link[aria-current="page"] {
+  text-decoration-color: var(--hold);
+}
+@media (min-width: 900px) {
+  .mbar {
+    display: none;
+  }
+}
+@media (max-width: 899.98px) {
+  .app {
+    align-content: start;
+  }
+}

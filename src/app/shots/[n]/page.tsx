@@ -202,7 +202,7 @@ export default async function ShotPage({ params }: { params: Promise<{ n: string
       );
     case "3":
       return (
-        <Shot dark title="Held at PayPal, decided by you." sub="The money is authorised, not taken. Real shop prices from Channel3 sit next to it. Approve captures it, deny releases it.">
+        <Shot dark title="Held at PayPal, decided by you." sub="The money is authorised, not taken. Real shop prices from Channel3 sit next to it. Approve captures it, deny cancels the hold.">
           <HeldOnPhone />
         </Shot>
       );

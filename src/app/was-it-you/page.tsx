@@ -47,7 +47,7 @@ export default async function WasItYouPage({ searchParams }: { searchParams: Pro
           {found.w.state === "asked" && found.p.status === "needs_approval" && new Date(found.w.expiresAt).getTime() > Date.now() ? (
             <>
               <p>
-                PayPal is holding {payer.name}&apos;s money while we check. If it wasn&apos;t you, Not me releases it straight away. Yes, it&apos;s me doesn&apos;t pay
+                PayPal is holding {payer.name}&apos;s money while we check. If it wasn&apos;t you, Not me cancels the hold straight away. Yes, it&apos;s me doesn&apos;t pay
                 anything: {payer.spotter_name} still decides with their PIN.
               </p>
               <AnswerButtons token={t!} answered={null} />

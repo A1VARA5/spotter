@@ -105,6 +105,18 @@ export async function AppShell({
           <SignOut demo={household.demo} className="side-signout" />
         </div>
       </aside>
+      {/* Phones have no sidebar: this strip says it's the sandbox and reaches How it checked, which the five tabs can't hold. */}
+      <header className="mbar">
+        <Link href="/" className="mbar-brand" aria-label="Spotter home">
+          <BrandMark />
+          <span>Spotter</span>
+        </Link>
+        <span className="mbar-pill">{household.demo ? "Demo, sandbox" : "Sandbox"}</span>
+        <Link href="/checks" className="mbar-link" aria-current={current === "checks" ? "page" : undefined}>
+          <ShieldCheck size={16} strokeWidth={1.9} aria-hidden="true" />
+          How it checked
+        </Link>
+      </header>
       <main className="app-main" id="main" tabIndex={-1}>
         <RecProvider on={await recOn()}>
           <div className="page-frame" data-layout={layout} data-rail={(layout === "rail" && rail != null) || undefined}>

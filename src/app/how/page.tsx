@@ -9,7 +9,10 @@ import { pageSession } from "@/server/page-session";
 import { NewDemo } from "./NewDemo";
 import { DemoStart } from "@/ui/DemoStart";
 import { PublicFooter, PublicHeader } from "@/ui/PublicChrome";
+import { AgentToolkit } from "@/app/landing/AgentToolkit";
+import { listSpenders } from "@/core/households";
 import "@/app/landing/motion.css";
+import "@/app/landing/agent.css";
 import "./how.css";
 
 export const metadata = {
@@ -47,6 +50,8 @@ export default async function HowPage() {
   const db = await getDb().catch(() => null);
   const session = db ? await pageSession(db).catch(() => null) : null;
   const who = session ? { name: session.household.spotter_name, demo: session.household.demo } : null;
+  const agent = session && db ? (await listSpenders(db, session.household.id).catch(() => [])).find((s) => s.kind === "agent") : undefined;
+  const connectHref = agent ? `/people/${agent.id}` : "#channels";
   return (
     <main className="how">
       <section className="how-hero net-host">
@@ -67,7 +72,7 @@ export default async function HowPage() {
             </div>
             <div className="role">
               <p className="role-who">PayPal</p>
-              <p>Holds the money while Spotter checks and you decide. Then pays it, or releases it.</p>
+              <p>Holds the money while Spotter checks and you decide. Then pays it, or cancels the hold.</p>
             </div>
           </div>
           <div className="how-track">
@@ -109,6 +114,15 @@ export default async function HowPage() {
         </div>
       </section>
 
+      <AgentToolkit
+        connectHref={connectHref}
+        cta={
+          <a className="next-link" href="#limits">
+            What Spotter can and can&apos;t do
+          </a>
+        }
+      />
+
       <section className="shell how-sec" aria-labelledby="waits-title">
         <div className="waits">
           <div>
@@ -118,7 +132,7 @@ export default async function HowPage() {
             <p className="sec-lede">A held payment isn&apos;t just parked. Spotter&apos;s case agent looks into it, usually before you&apos;ve opened the alert.</p>
             <p className="waits-kernel">
               When a message has a link that wants card details or a login, I don&apos;t want Gran clicking it to find out. So the case agent opens that one link in a
-              throwaway KERNEL cloud browser, notes where it really ends up and what the page asks for, takes a small screenshot, and the browser gets deleted. It
+              throwaway cloud browser (KERNEL), notes where it really ends up and what the page asks for, takes a small screenshot, and the browser gets deleted. It
               only looks. It never types, clicks or submits anything.
             </p>
             <p className="waits-kernel">
@@ -145,7 +159,12 @@ export default async function HowPage() {
           </ul>
         </div>
         <div className="how-wt">
-          <h3>Watchtower, the family&apos;s board (built on AG Studio)</h3>
+          <h3>
+            Watchtower, the family&apos;s board{" "}
+            <span className="by-tag" translate="no">
+              AG Studio
+            </span>
+          </h3>
           <p>
             Every payment, hold and scam sign in one place, and you can just ask it things. &quot;What did Leo try to spend on games?&quot; and Claude builds the chart
             for you. It can read and rearrange the board, nothing else, and it never sees the scam messages themselves.
@@ -163,19 +182,32 @@ export default async function HowPage() {
             <ul>
               {[
                 "Check anything sent to it: a forwarded email, a forwarded Telegram message, a Discord message (right click, Apps, Check with Spotter), an agent's request.",
-                "Hold a payment at PayPal while you decide, then pay or release it.",
+                "Hold a payment at PayPal while you decide, then pay it or cancel the hold.",
                 "Show you why, quoting the exact words that worried it.",
                 "Refuse payments with no way back if it's a scam: gift cards, crypto and Friends and Family.",
                 "Make AI agents pay only through it, with no way to approve themselves.",
                 "Look into a held payment for you and offer a safer shop when there is one.",
-                "Read a screenshot of a message and check its words, or price each thing in a photo of an ad or a quote at real shops (Channel3).",
-                "Watch a price for you at real shops (Channel3) and tell you when it drops. It never buys on its own.",
-              ].map((t) => (
-                <li key={t}>
-                  <Check size={17} strokeWidth={2.4} aria-hidden="true" />
-                  {t}
-                </li>
-              ))}
+                ["Read a screenshot of a message and check its words, or price each thing in a photo of an ad or a quote at real shops.", "Channel3"],
+                ["Watch a price for you at real shops and tell you when it drops. It never buys on its own.", "Channel3"],
+              ].map((item) => {
+                const [t, by] = typeof item === "string" ? [item, null] : item;
+                return (
+                  <li key={t}>
+                    <Check size={17} strokeWidth={2.4} aria-hidden="true" />
+                    <span>
+                      {t}
+                      {by && (
+                        <>
+                          {" "}
+                          <span className="by-tag" translate="no">
+                            {by}
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
           <div className="canc-col canc-not">
@@ -233,7 +265,7 @@ export default async function HowPage() {
               <h2 className="final-title">See it with the demo family.</h2>
               <p className="final-lede">Gran, Leo and a shopping agent, already set up. No sign up, fake money.</p>
               <div className="start">
-                <DemoStart label="Try the demo family" />
+                <DemoStart />
                 <a className="btn btn-ghost" href="/api/auth/paypal/start">
                   Log in with PayPal
                 </a>

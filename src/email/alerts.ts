@@ -76,7 +76,7 @@ const answerLink = (site: string, w: WasItYou, paymentId: string) => `${site}/wa
 export function askEmail(p: Payment, payer: Spender, w: WasItYou, site: string): { subject: string; text: string; html: string } {
   const [q, quote] = askLines(p, payer, w);
   const link = answerLink(site, w, p.id);
-  const why = `PayPal is holding ${payer.name}'s money while we check. If it wasn't you, Not me releases it straight away. Yes, it's me doesn't pay anything: ${payer.spotter_name} still decides.`;
+  const why = `PayPal is holding ${payer.name}'s money while we check. If it wasn't you, Not me cancels the hold straight away. Yes, it's me doesn't pay anything: ${payer.spotter_name} still decides.`;
   const html = layout({
     site,
     preheader: q,

@@ -58,7 +58,7 @@ export function makeDiscordAsk(dm: Dm) {
     const content = [
       `**${q}**`,
       quote,
-      `PayPal is holding ${payer.name}'s money while we check. If it wasn't you, press Not me and it's released straight away. Yes, it's me doesn't pay anything: ${payer.spotter_name} still decides.`,
+      `PayPal is holding ${payer.name}'s money while we check. If it wasn't you, press Not me and PayPal cancels the hold straight away. Yes, it's me doesn't pay anything: ${payer.spotter_name} still decides.`,
     ].join("\n\n");
     await dm(to.discord_user_id, content.slice(0, 1900), [{ type: 1, components: answerButtons(w, p.id) }]);
   };
