@@ -119,9 +119,9 @@ The PayPal Agent Toolkit has 47 tools. A shopping agent needs six of them. Refun
 | Leo, a kid | A "Check with Spotter" right click on Discord messages | Ask before paying a stranger in a game chat |
 | An AI shopping agent | Spotter's tools, or the PayPal Agent Toolkit tools pointed at Spotter. A held order comes back as `HELD_FOR_APPROVAL` | Ask to pay. Never approve |
 
-![Tom taps Not me on the Was it you example, then Watchtower switches to Gran's view: "Your money is safe", Spotter kept £250.00 of her own money with the sample month counted apart, and the row "Someone said they were Tom. Tom said they didn't send it. Nothing was paid." in big type with nothing to approve](docs/media/spotter-gran-view.gif)
+![Tom taps Not me on the Was it you example and the hold is "Released by PayPal", then Watchtower switches to Gran's view: "Your money is safe" and "Spotter kept £250.00 away from scammers this month.", with "The made up sample month adds £452.98." counted apart, the row "Someone said they were Tom. The real Tom said they never sent it." and "Nothing was paid. Just now." in big type, then "Waiting for Sam" ("One payment is waiting. You don't need to do anything.") and "If anyone asks you for money: Don't pay."](docs/media/spotter-gran-view.gif)
 
-<sub>Live site, real time, fresh demo family. Tom's Not me released the £250 sandbox hold in 1.4 s, and Gran's view tells it in her words.</sub>
+<sub>Live site, fresh demo family, the steps before Gran's view sped up a little. Tom's Not me released the £250 sandbox hold in 2.1 s, and Gran's view tells it in her words.</sub>
 
 What can never happen:
 
