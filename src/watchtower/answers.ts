@@ -123,7 +123,8 @@ export function answerTotal(options: object, money: MoneyFields): { widgetId: st
   const labelKey = [series[0]?.xKey, series[0]?.calloutLabelKey, series[0]?.sectorLabelKey, series[0]?.legendItemKey].find((k): k is string => typeof k === "string");
   const labelOf = (row: Record<string, unknown>) => {
     const v = labelKey ? row[labelKey] : undefined;
-    return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 60) : typeof v === "number" ? String(v) : "";
+    // A number on the label axis (an amount the model put there) is not a name: printing it gave "Biggest: 217.25".
+    return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 60) : "";
   };
   const top = rows.reduce((best, row) => (rowSum(row) > rowSum(best) ? row : best), rows[0]!);
   const name = labelOf(top);

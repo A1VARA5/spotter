@@ -88,6 +88,13 @@ describe("an answer's total", () => {
     expect(t).toMatchObject({ widgetId: "answer-2", text: "6" });
   });
 
+  it("never names a bar by a raw number (no 'Biggest: 217.25' or 23.740000000000002 rows)", () => {
+    const t = answerTotal(withData("answer-4", [{ x: 217.25, v: 217.25 }, { x: 23.740000000000002, v: 23.74 }], [{ type: "bar", xKey: "x", yKey: "v" }]), money);
+    expect(t?.text).toBe("£240.99");
+    expect(t?.line).toBeNull();
+    expect(t?.top).toEqual([]);
+  });
+
   it("reads a donut's slices", () => {
     const t = answerTotal(withData("answer-3", [{ v: 10 }, { v: 5.5 }], [{ type: "donut", angleKey: "v" }]), money);
     expect(t?.text).toBe("£15.50");
