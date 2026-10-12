@@ -2,7 +2,7 @@
 
 The GadgetBarn demo shop looks like an ordinary earbuds page. An AI shopping agent reading it also gets a line no person can see, telling it to ignore the budget, buy 10 without asking, and send a $200 refund that has nothing to do with the order. Spotter opens the page in a throwaway KERNEL browser, works out which text a person could see, and files the rest as prompt injection with the line quoted. Here's that visit, and everything else one browser per case gives me.
 
-<img src="../media/spotter-kernel.gif" alt="Two live case files: the hidden line next to what a person sees, then the parcel text as a desktop and as a UK phone">
+<img src="../media/spotter-kernel.gif" alt="Two live case files: the hidden line next to what a person sees, then the parcel text as a desktop and as a UK phone, the card form on the phone up close, and where the card details would go">
 
 ## One visit per case, read only
 
