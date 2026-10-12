@@ -26,7 +26,7 @@ function record(events: Ev[]) {
 
 describe("tool access list", () => {
   it("knows every tool Spotter gives its agents and none of them moves money", () => {
-    for (const name of ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "add_page", "my_month"]) expect(accessOf(name)).not.toBe("unknown");
+    for (const name of ["open_case_file", "watch_alerts", "scam_radar", "paypal_status", "real_price", "add_page", "my_month", "point_at"]) expect(accessOf(name)).not.toBe("unknown");
     expect(Object.values(TOOL_ACCESS)).not.toContain("money");
   });
   it("knows Studio's own tools, and splits reading from changing the board", () => {
