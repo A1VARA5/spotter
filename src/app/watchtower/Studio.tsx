@@ -14,7 +14,7 @@ import { promptStarters, startingBoard } from "@/watchtower/initial";
 import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
-import { ANSWER_TOP, READY_TILES, addPage, answerRows, arrangeAnswersIn, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
+import { ANSWER_TOP, READY_TILES, addPage, answerRows, arrangeAnswersIn, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, splitTabs, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
 import { answerLine, answeredLine, cardLine, dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
 import { answerLineFor, answerTopFor, answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
 import { notable, type NotableHarness } from "@/watchtower/notes";
@@ -32,6 +32,7 @@ import { createGate, gated, holdingHarness, scammerTexts, taintIndex, type Taint
 import { captureEnd, captureStart, type RunStartSnapshot } from "@/watchtower/runUndo";
 import { HeldBar, spotterToolDisplay } from "./ToolCards";
 import { JarMenu } from "./Jar";
+import { IncidentsMenu } from "./IncidentsMenu";
 import { HELD_PROMPT } from "@/watchtower/jar";
 import { ReceiptBar, createReceiptBook, keepStart, record, useBook, type ReceiptBook } from "./ReceiptBar";
 import { AiChecksWidget } from "./AiChecks";
@@ -113,6 +114,10 @@ function langFromUrl(): GranLang {
   }
 }
 const PANELS: AgPanelConfig = { edit: { left: ["data"], right: ["ai", "edit", "filters"] }, view: { right: ["filters"] } };
+// Demo families open with only the AI Assistant rail: Data, Compose and Filters are for building boards, and a
+// first visit reads better without them. AG's panel config can only list panels, not hide one by default, so
+// "Board tools" swaps between the two configs (a remount, like the view switch).
+const DEMO_PANELS: AgPanelConfig = { edit: { right: ["ai"] }, view: { right: [] } };
 
 const SPOTTER_CONTEXT = `You work inside Watchtower, the dashboard of Spotter. Spotter is a checkpoint between the people a family looks out for (an older relative, a kid, an AI shopping agent) and PayPal: it pays what's fine, holds what looks off for the family's spotter to approve or deny, stops scams, and refuses unsafe payment methods (Friends and Family, gift cards, crypto), telling the person to pay with a protected PayPal payment instead.
 Data: "payments" has one row per payment (amount and moneyKept in pounds; outcome is Paid, Protected, Waiting, Denied, Stopped, Checking, Paying or Failed; moneyKept is the amount of a stopped or denied payment; heldAtPayPal is money sitting in a PayPal authorisation right now, paypalExpires is when PayPal lets it go; for products Spotter price checked with Channel3, marketCheapest and marketMedian are real retailer prices, marketShop the cheapest retailer, and priceGap is amount minus marketCheapest, empty when there was no price check; sample = Yes marks the labelled sample month that demo families get). "signs" has one row per scam sign Spotter found. "people" has each person's weekly allowance and what they paid in the last 7 days. "watches" has one row per price Spotter is watching at real shops after a payment was too dear, held or denied (status Watching, Dropped, Stopped or Expired; nearlyPaid, target, bestPrice and saving in pounds; saving is what a drop comes to against what they nearly paid). Spotter never buys when a price drops: it tells the spotter, who decides. "paypal", when present, has one row per thing PayPal confirmed (captured, released, refunded) with the payment it belongs to.
@@ -1128,6 +1133,20 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
     [labels, saveNow],
   );
   const gran = audience === "gran";
+  const split = splitTabs(tabs.tabs, tabs.selected);
+  // Demo families start without the building rails; "Board tools" brings them back. Not while the assistant is
+  // answering: the swap remounts the board, which would stop the answer.
+  const [tools, setTools] = useState(!demo);
+  const toggleTools = useCallback(() => {
+    const api = apiRef.current;
+    if (!api || running || audienceRef.current !== "spotter") return;
+    const now = withNames(api.getState(), names.current);
+    if (saveTimer.current) saveNow();
+    apiRef.current = null;
+    abandonRuns();
+    setMount((m) => ({ key: m.key + 1, state: now }));
+    setTools((t) => !t);
+  }, [running, saveNow, abandonRuns]);
   const granInitial = useMemo(() => granBoard(labels.who, phone, granLang), [labels, phone, granLang]);
   // The simple view's data: the same rows, with the table's column names and each outcome in Gran's language.
   const granData = useMemo(() => {
@@ -1185,7 +1204,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           aiToolDisplay={toolDisplay as never}
           onApiReady={onApiReady}
           onStateUpdated={onStateUpdated}
-          panels={gran ? GRAN_PANELS : phone ? PHONE_PANELS : PANELS}
+          panels={gran ? GRAN_PANELS : phone ? PHONE_PANELS : tools ? PANELS : DEMO_PANELS}
         />
       </AgStudioProvider>
     </div>
@@ -1217,12 +1236,14 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
         )}
         {gran ? (
           <p className="wt-view-note" id="wt-view-wait">
-            {granAsking ? "Spotter is answering. You can switch views when it's done." : `What ${labels.who ?? "the person you look out for"} sees: large type, plain words, nothing to approve.`}
+            {granAsking
+              ? "Spotter is answering. You can switch views when it's done."
+              : `What ${labels.who ?? "the person you look out for"} sees: large type, plain words, nothing to approve. Totals here count only ${labels.who ? `${labels.who}'s` : "their"} own payments, so they're smaller than on Your view, which counts everyone.`}
           </p>
         ) : (
           <>
             <nav className="wt-pages" aria-label="Board pages">
-              {tabs.tabs.map((t) => (
+              {split.shown.map((t) => (
                 <span key={t.id} className="wt-page" data-current={t.id === tabs.selected || undefined}>
                   <button type="button" className="wt-page-btn" aria-current={t.id === tabs.selected ? "page" : undefined} onClick={() => showPage(t.id)}>
                     {t.name}
@@ -1241,12 +1262,20 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
                 </span>
               ))}
             </nav>
+            {/* Outside the tab strip, which scrolls sideways and would clip the open menu. */}
+            <IncidentsMenu incidents={split.incidents} open={split.openIncident} onShow={showPage} onRemove={dropPage} canRemove={!phone} />
+            <span className="wt-tools-gap" aria-hidden="true" />
             {demo && (
               <JarMenu
                 granLabel={labels.viewLabel}
                 onGran={() => switchTo("gran")}
                 onAskHeld={!phone && kind === "family" ? () => void askInChat("Test: copy a scammer's words", HELD_PROMPT, "The assistant didn't open. Try again.") : undefined}
               />
+            )}
+            {demo && !phone && (
+              <button type="button" className="wt-reset wt-tools-toggle" aria-pressed={tools} disabled={running} title="Show or hide Data, Compose and Filters" onClick={toggleTools}>
+                Board tools
+              </button>
             )}
             {!phone && (
               <Confirm

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createGate } from "./hold";
-import { HELD_PROMPT, JAR_PAYEE, JAR_SCAM, runJar } from "./jar";
+import { HELD_PROMPT, JAR_PAYEE, JAR_SCAM, JAR_STARTS_ON, TRICK_COST, jarNext, runJar } from "./jar";
 import { PLANTED_PAYEE } from "./sample";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -88,5 +88,29 @@ describe("glass jar: a scripted test agent with fake tools", () => {
   it("the held call test asks about the planted £49.99 stop, so the assistant has scammer words to copy", () => {
     expect(HELD_PROMPT).toContain("£49.99");
     expect(PLANTED_PAYEE.length).toBeGreaterThanOrEqual(12);
+  });
+
+  it("opens with the harness off, so the first thing seen is what the agent does on its own", () => {
+    expect(JAR_STARTS_ON).toBe(false);
+  });
+
+  it("after the harness off run, the next step says to turn Spotter's harness on", () => {
+    const ran = [
+      { tool: "place_widget", args: {}, outcome: "ran (fake)" as const },
+      { tool: "send_money", args: {}, outcome: "ran (fake)" as const },
+    ];
+    expect(jarNext(false, ran, false)).toBeNull();
+    expect(jarNext(false, ran, true)).toMatch(/^Now turn Spotter's harness on/);
+    // harness on: the held calls ask for an answer themselves, there is no next step line
+    expect(jarNext(true, [{ tool: "place_widget", args: {}, outcome: "held" }], false)).toBeNull();
+  });
+
+  it("each Try to trick it item says whether it is free or uses the real AI", () => {
+    expect(TRICK_COST.jar).toMatch(/^Free/);
+    expect(TRICK_COST.held).toMatch(/real AI/);
+    expect(TRICK_COST.held).toMatch(/one question/);
+    expect(TRICK_COST.gran).toMatch(/^Free to open/);
+    expect(TRICK_COST.gran).toMatch(/real AI/);
+    for (const t of Object.values(TRICK_COST)) expect(t).not.toMatch(/[–—‘’“”]/);
   });
 });

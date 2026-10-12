@@ -18,6 +18,7 @@ export default async function LedgerPage() {
       <h1 className="page-title">Activity</h1>
       <p className="lede" style={{ margin: "8px 0 20px" }}>
         Every payment Spotter has seen: who asked, what happened, why, what real shops charge, and the PayPal id.
+        {household.demo && " The made up Sample month on Watchtower isn't listed here."}
       </p>
       <Ledger names={names} payments={JSON.parse(JSON.stringify(payments))} />
     </AppShell>

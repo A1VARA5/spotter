@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_SPAN, ANSWER_TOP, SUMMARY_ID, SUMMARY_TYPE, addPage, answerRows, arrangeAnswersIn, newestAnswer, fitWide, namesOf, pageTabs, placeAnswer, removePage, unfitWide, withNames } from "./pages";
+import { ANSWER_SPAN, ANSWER_TOP, SUMMARY_ID, SUMMARY_TYPE, addPage, answerRows, arrangeAnswersIn, newestAnswer, fitWide, namesOf, pageTabs, placeAnswer, splitTabs, removePage, unfitWide, withNames } from "./pages";
 import { INITIAL } from "./initial";
 
 const state = (pages: Array<{ id: string; name?: string }>, selectedPageId = pages[0]!.id) => ({ pages: pages.map((p) => ({ ...p, widgets: {} })), selectedPageId }) as never;
@@ -9,9 +9,9 @@ describe("page tabs", () => {
     const names = { "incident-a": "Incident: Gran £400" };
     expect(pageTabs(state([{ id: "month", name: "This month" }, { id: "incident-a" }, { id: "p3" }], "incident-a"), names)).toEqual({
       tabs: [
-        { id: "month", name: "This month", removable: false },
-        { id: "incident-a", name: "Incident: Gran £400", removable: true },
-        { id: "p3", name: "Page 3", removable: true },
+        { id: "month", name: "This month", removable: false, incident: false },
+        { id: "incident-a", name: "Incident: Gran £400", removable: true, incident: true },
+        { id: "p3", name: "Page 3", removable: true, incident: false },
       ],
       selected: "incident-a",
     });
@@ -30,6 +30,28 @@ describe("page tabs", () => {
     expect(s.selectedPageId).toBe("month");
     const only = state([{ id: "month" }]);
     expect(removePage(only, "month")).toBe(only);
+  });
+});
+
+describe("incident pages sit behind one menu", () => {
+  const tabs = pageTabs(
+    state([{ id: "month", name: "This month" }, { id: "answers", name: "Answers" }, { id: "incident-a", name: "Incident: Gran £250" }, { id: "incident-b", name: "Incident: Gran £400" }, { id: "look", name: "Look into: Gran" }]),
+    {},
+  ).tabs;
+
+  it("keeps This month, Answers and other pages as tabs and moves incidents into the menu, in order", () => {
+    const s = splitTabs(tabs, "month");
+    expect(s.shown.map((t) => t.name)).toEqual(["This month", "Answers", "Look into: Gran"]);
+    expect(s.incidents.map((t) => t.name)).toEqual(["Incident: Gran £250", "Incident: Gran £400"]);
+    expect(s.openIncident).toBeNull();
+  });
+
+  it("knows when the open page is an incident, so the menu button can show it is current", () => {
+    expect(splitTabs(tabs, "incident-b").openIncident?.name).toBe("Incident: Gran £400");
+  });
+
+  it("no incidents: an empty menu list", () => {
+    expect(splitTabs(tabs.filter((t) => !t.incident), "month").incidents).toEqual([]);
   });
 });
 

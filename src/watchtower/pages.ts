@@ -4,7 +4,7 @@
 import type { AgReportState } from "ag-studio";
 
 type Page = { id: string; name?: string };
-export type PageTab = { id: string; name: string; removable: boolean };
+export type PageTab = { id: string; name: string; removable: boolean; incident: boolean };
 
 const pagesIn = (s: AgReportState) => (s.pages as unknown as Page[]) ?? [];
 
@@ -15,9 +15,18 @@ export function namesOf(s: AgReportState): Record<string, string> {
 export function pageTabs(s: AgReportState, names: Record<string, string>): { tabs: PageTab[]; selected: string } {
   const pages = pagesIn(s);
   return {
-    tabs: pages.map((p, i) => ({ id: p.id, name: p.name || names[p.id] || `Page ${i + 1}`, removable: i > 0 })),
+    tabs: pages.map((p, i) => ({ id: p.id, name: p.name || names[p.id] || `Page ${i + 1}`, removable: i > 0, incident: i > 0 && p.id.startsWith("incident-") })),
     selected: s.selectedPageId,
   };
+}
+
+/**
+ * The tab row stays short: incident pages (code opens up to three, src/watchtower/incidents.ts) go behind one
+ * "Incidents (N)" menu, while This month, Answers and any page someone added stay as tabs.
+ */
+export function splitTabs(tabs: readonly PageTab[], selected: string): { shown: PageTab[]; incidents: PageTab[]; openIncident: PageTab | null } {
+  const incidents = tabs.filter((t) => t.incident);
+  return { shown: tabs.filter((t) => !t.incident), incidents, openIncident: incidents.find((t) => t.id === selected) ?? null };
 }
 
 export function withNames(s: AgReportState, names: Record<string, string>): AgReportState {

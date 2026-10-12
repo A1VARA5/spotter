@@ -295,3 +295,18 @@ export function watchSummary(rows: WatchSummaryRow[]): { watching: number; dropp
         : "No price watches yet";
   return { watching, dropped: drops.length, saved, headline };
 }
+
+// ---------- the sample month and Activity ----------
+
+/** Under a headline number that adds in the labelled sample month demo families get. */
+export const SAMPLE_INCLUDED = "Includes the Sample month";
+
+/** Does a headline built from these rows include the sample month? `counts` picks the rows behind the number. */
+export function includesSample<R extends { sample?: unknown }>(rows: readonly R[], counts: (r: R) => boolean = () => true): boolean {
+  return rows.some((r) => (r.sample === "Yes" || r.sample === true) && counts(r));
+}
+
+/** The line that sends people to Activity, which lists only the family's own payments, never the sample month. */
+export function activityNote(hasSample: boolean): { lead: string; tail: string } {
+  return hasSample ? { lead: "Your own payments are in ", tail: ". The Sample month is only on this board." } : { lead: "Every payment is in ", tail: "." };
+}

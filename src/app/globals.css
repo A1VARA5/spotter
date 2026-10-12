@@ -7244,7 +7244,6 @@ h3 {
 /* ---------- watchtower (AG Studio) ---------- */
 .wt-head { display: grid; gap: 6px; margin-bottom: 12px; max-width: 80ch; }
 .wt-head .lede { margin: 0; }
-.wt-banner { font-size: 14px; color: var(--ink); background: var(--hold-soft); border-radius: 10px; padding: 10px 14px; justify-self: start; }
 .wt-frame { height: calc(100dvh - 200px); min-height: 680px; border-radius: 14px; overflow: hidden; box-shadow: var(--raise); background: var(--chalk); }
 /* Loading: the board's shape (tabs, tiles) under a note that says what is happening. Static, no shimmer. */
 .wt-loading { position: relative; height: 100%; min-height: 420px; display: grid; grid-template-rows: auto 1fr; gap: 12px; padding: 10px; color: var(--ink-2); font-size: 15px; }

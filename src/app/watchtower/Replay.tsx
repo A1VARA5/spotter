@@ -6,10 +6,10 @@
 // travel: the end state shows, with a day by day step control.
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgWidgetParams } from "ag-studio";
-import { replayDays, type ReplayRow } from "@/watchtower/widgetLogic";
-import { usePaymentRows, useScrollBox, useWatch, type ReplayDef } from "./widgets";
+import { includesSample, replayDays, type ReplayRow } from "@/watchtower/widgetLogic";
+import { SampleIncluded, usePaymentRows, useScrollBox, useWatch, type ReplayDef } from "./widgets";
 
-const FIELDS = ["when", "amount", "outcome", "who", "payee"] as const;
+const FIELDS = ["when", "amount", "outcome", "who", "payee", "sample"] as const;
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const BUSY_DAY_MS = 900;
@@ -135,6 +135,7 @@ export function ReplayWidget(p: AgWidgetParams<ReplayDef>) {
           <span className="wt-rp-num">{gbp.format(today.gone)}</span>
           <span className="wt-rp-cap">would have gone</span>
         </p>
+        <SampleIncluded on={includesSample(rows)} />
       </div>
       {done && (
         <p className="wt-rp-note">

@@ -16,7 +16,7 @@ import { noteAnswerLine } from "./chartPolish";
 import { FAIR_FAILED } from "@/watchtower/answers";
 import { leadCap } from "@/core/userText";
 import { useRec } from "@/ui/rec";
-import { countdown, fairBehind, fairPrice, fairRows, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
+import { SAMPLE_INCLUDED, activityNote, countdown, fairBehind, fairPrice, fairRows, firstFew, includesSample, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -95,11 +95,63 @@ const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" 
 
 type Field = { key: string };
 
+/** Under a headline number that adds in the sample month (see includesSample). */
+export function SampleIncluded({ on }: { on: boolean }) {
+  return on ? <span className="wt-sample-tag wt-sample-incl">{SAMPLE_INCLUDED}</span> : null;
+}
+
+/** Sends people to Activity honestly: Activity lists the family's own payments, never the sample month. */
+function ActivityNote({ sample }: { sample: boolean }) {
+  const n = activityNote(sample);
+  return (
+    <>
+      {n.lead}
+      <a href="/ledger">Activity</a>
+      {n.tail}
+    </>
+  );
+}
+
+/**
+ * Does this mapped number add in the sample month? The same query split by the sample field (Studio applies the
+ * same filters). If that can't be read, a family with a sample month gets the label anyway: a sample number is
+ * never passed off as real. `counts` picks the split rows that add to the number.
+ */
+function useSampleSplit(widgetApi: AgWidgetApi, measures: readonly (AgWidgetFieldReference | undefined)[], version: number, fallback: boolean, counts: (row: Row) => boolean): boolean {
+  const [on, setOn] = useState(false);
+  const key = measures.map((m) => (m as (AgWidgetFieldReference & Field) | undefined)?.key ?? "").join(",");
+  useEffect(() => {
+    let live = true;
+    const sample = fieldsOf(widgetApi, "payments", ["sample"])?.sample;
+    if (!sample || measures.some((m) => !m)) return;
+    widgetApi
+      .getData({ fields: [sample, ...measures] as never })
+      .then((res) => {
+        if (!live) return;
+        const rows = res.results.rows as Row[];
+        setOn(rows.length ? rows.some((r) => r[sample.key] === "Yes" && counts(r)) : fallback);
+      })
+      .catch((e: unknown) => {
+        if (!live) return;
+        console.warn("[watchtower] couldn't split a headline by the sample month, so it's labelled to be safe:", e);
+        setOn(fallback);
+      });
+    return () => {
+      live = false;
+    };
+    // measures and counts are read through `key`; a new array each render must not query again
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetApi, key, version, fallback]);
+  return on;
+}
+
 export function MoneyKeptWidget({ dataMapping, widgetApi, context }: AgWidgetParams<MoneyKeptDef>) {
   const [value, setValue] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const loaded = useRef(false);
-  const { version } = useWatch(context);
+  const { version, sampleIds } = useWatch(context);
+  const keptField = dataMapping.value?.at(0) as (AgWidgetFieldReference & Field) | undefined;
+  const sample = useSampleSplit(widgetApi, [keptField], version, sampleIds.size > 0, (r) => Number(r[keptField?.key ?? ""]) > 0);
   useEffect(() => {
     let live = true;
     const field = dataMapping.value?.at(0) as (AgWidgetFieldReference & Field) | undefined;
@@ -135,7 +187,9 @@ export function MoneyKeptWidget({ dataMapping, widgetApi, context }: AgWidgetPar
 
   return (
     <div className="wt-kept">
-      <p className="wt-kept-label">Money Spotter kept</p>
+      <p className="wt-kept-label">
+        Money Spotter kept <SampleIncluded on={sample} />
+      </p>
       {failed ? <p className="wt-widget-error">Couldn&apos;t add this up. Reload the page.</p> : <p className="wt-kept-amount">{value === null ? "" : gbp.format(value)}</p>}
       <div className="wt-kept-track" aria-hidden="true">
         <span className="wt-kept-line" />
@@ -161,8 +215,10 @@ const KNOWN = new Set(STOPS.map((s) => s.outcome));
 export function HoldTrackWidget({ dataMapping, widgetApi, context }: AgWidgetParams<HoldTrackDef>) {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [failed, setFailed] = useState(false);
-  const { version } = useWatch(context);
+  const { version, sampleIds } = useWatch(context);
   const cat = dataMapping.category?.at(0) as (AgWidgetFieldReference & Field) | undefined;
+  const countField = dataMapping.value?.at(0) as (AgWidgetFieldReference & Field) | undefined;
+  const sample = useSampleSplit(widgetApi, [countField], version, sampleIds.size > 0, (r) => Number(r[countField?.key ?? ""]) > 0);
   useEffect(() => {
     let live = true;
     const val = dataMapping.value?.at(0) as (AgWidgetFieldReference & Field) | undefined;
@@ -211,7 +267,10 @@ export function HoldTrackWidget({ dataMapping, widgetApi, context }: AgWidgetPar
     <div className="wt-track">
       <div className="wt-track-ends">
         <span>Asked to pay</span>
-        <span>{total === 1 ? "1 payment" : `${total} payments`}</span>
+        <span>
+          {total === 1 ? "1 payment" : `${total} payments`}
+          <SampleIncluded on={sample} />
+        </span>
       </div>
       <ol className="wt-track-stops">
         {STOPS.map((s) => (
@@ -277,7 +336,7 @@ export function WatchAlertsWidget({ context, widgetApi }: AgWidgetParams<WatchAl
       ))}
       {more > 0 && (
         <li className="wt-more">
-          {more === 1 ? "1 more alert" : `${more} more alerts`} this month. Every payment is in <a href="/ledger">Activity</a>.
+          {more === 1 ? "1 more alert" : `${more} more alerts`} this month. <ActivityNote sample={sampleIds.size > 0} />
         </li>
       )}
     </ul>
@@ -459,7 +518,7 @@ const ALERTS_SHOWN = 2;
 
 export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
   const { context } = p;
-  const { version, radar } = useWatch(context);
+  const { version, radar, sampleIds } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, RADAR_FIELDS, version);
   const scroll = useScrollBox<HTMLUListElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t load the scam radar. Reload the page.</p>;
@@ -496,7 +555,7 @@ export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
       ))}
       {more > 0 && (
         <li className="wt-more">
-          {more === 1 ? "1 more payee" : `${more} more payees`} Spotter stopped this month, in <a href="/ledger">Activity</a>.
+          {more === 1 ? "1 more payee" : `${more} more payees`} Spotter stopped this month. <ActivityNote sample={sampleIds.size > 0} />
         </li>
       )}
     </ul>
@@ -608,9 +667,11 @@ function FairHeadline({ text }: { text: string }) {
 
 export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   const { context } = p;
-  const { version } = useWatch(context);
+  const { version, sampleIds } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, PRICE_FIELDS, version);
   const now = useTick(60_000);
+  // The headline adds up every price checked payment, so it says when any of them is from the sample month.
+  const sample = includesSample(rows ?? [], (r) => asNumOrNull(r.marketCheapest) !== null);
   const rec = useRec();
   const scroll = useScrollBox<HTMLDivElement>();
   const f = rows ? fairPrice(
@@ -652,7 +713,9 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   }
   return (
     <div className="wt-fair" role="region" aria-label="Fair price" {...scroll}>
-      <p className="wt-fair-label">Fair price</p>
+      <p className="wt-fair-label">
+        Fair price <SampleIncluded on={sample} />
+      </p>
       <FairHeadline text={f.headline} />
       {f.warning && <p className="wt-fair-caught">{rec.text(f.warning)}</p>}
       {f.caught && <p className="wt-fair-caught">{rec.text(f.caught)}</p>}
@@ -693,7 +756,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
       )}
       {f.checked > FAIR_SHOWN && (
         <p className="wt-more">
-          {f.checked > f.items.length ? `The biggest ${f.items.length} of ${f.checked} price checks this month.` : `All ${f.checked} price checks this month.`} Every one is in <a href="/ledger">Activity</a>.
+          {f.checked > f.items.length ? `The biggest ${f.items.length} of ${f.checked} price checks this month.` : `All ${f.checked} price checks this month.`} <ActivityNote sample={sampleIds.size > 0} />
         </p>
       )}
       <p className="wt-fair-source">Real shop prices from Channel3, checked when each payment was made.</p>
@@ -737,7 +800,9 @@ export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
   }
   return (
     <div className="wt-fair" role="region" aria-label="Price watches" {...scroll}>
-      <p className="wt-fair-label">Price watches</p>
+      <p className="wt-fair-label">
+        Price watches <SampleIncluded on={includesSample(rows)} />
+      </p>
       <p className="wt-fair-headline">{s.headline}</p>
       <ul className="wt-fair-list">
         {list.map((w) => (
