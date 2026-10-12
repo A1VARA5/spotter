@@ -1,7 +1,8 @@
 // The demo family's example hold: so a judge sees a real hold straight away without spending a send.
 // The money part is real (a PayPal sandbox authorisation, free to make, and approve or deny capture or void
-// it for real). The check and the case file were written earlier and are labelled that way, never passed off
-// as a live check. If PayPal is down or slow, the family starts without it.
+// it for real). The check and the case file were written earlier, so it is labelled a sample message on a live
+// PayPal hold, never passed off as a live check. Its text is the landing page's "it's Tom, new number" story, word for
+// word. If PayPal is down or slow, the family starts without it.
 import type { Db } from "@/db";
 import type { AiCheckResult } from "@/ai/check";
 import { decide } from "@/core/decide";
@@ -11,24 +12,16 @@ import type { Deps } from "@/core/lifecycle";
 import { checkRules } from "@/core/rules";
 import type { PaymentRequest } from "@/core/types";
 import type { Case } from "@/agents/case";
-import { SCENARIOS } from "@/ui/scenarios";
 import { randomBytes } from "node:crypto";
 import { ANSWER_MINUTES, claimFromText, type WasItYou } from "@/core/was-it-you";
 
-export const EXAMPLE_LABEL = "Example, checked earlier";
+import { EXAMPLE_LABEL } from "@/ui/labels";
+export { EXAMPLE_LABEL };
 // A cold start (OAuth token, then the order) took about 3.5 s against the sandbox on 2026-10-10.
 const PAYPAL_WAIT_MS = 8000;
 
-const hiMum = SCENARIOS.find((s) => s.id === "gran-hi-mum")!;
-
-const FLAGS: Flag[] = [
-  { kind: "impersonation", severity: "high", quote: "Hi mum its me, new number", why: "Someone texting from a new number says they're family. That's how the Hi Mum scam starts." },
-  { kind: "pressure", severity: "medium", quote: "has to be paid today", why: "It has to be paid today, so there's no time to check." },
-  { kind: "other", severity: "medium", quote: "send £250 to my mate Jamie's PayPal", why: "The money goes to a friend's account, not to the person asking." },
-];
-
 /**
- * The case file. The seeded hold is labelled "Example, checked earlier". The Was it you run is the visitor's own (they
+ * The case file. The seeded hold is labelled a sample (EXAMPLE_LABEL). The Was it you run is the visitor's own (they
  * start it on Try and answer as Tom), so it carries no example label; its warning signs each quote the message.
  */
 function exampleCase(payee: string, authorizationId: string, live?: { headline: string }): Case {
@@ -39,12 +32,12 @@ function exampleCase(payee: string, authorizationId: string, live?: { headline: 
   return {
     status: "done",
     verdict: "likely_scam",
-    headline: live?.headline ?? `${EXAMPLE_LABEL}: this looks like the Hi Mum scam. Someone says they're family on a new number and wants £250 sent to a friend's account today.`,
+    headline: live?.headline ?? `${EXAMPLE_LABEL}: this looks like the Hi Mum scam. Someone on a new number says they're Tom and wants £250 sent to a friend's account today.`,
     findings: [
       { text: `Gran has never paid ${payee} before.`, tool: "payee_history", source: "example_history" },
       { text: "PayPal is holding the £250 in the sandbox. Deny releases it, approve pays it.", tool: "paypal_hold", source: "example_hold" },
     ],
-    ask: ["Ring your son or daughter on the number you already have for them and ask if they sent this.", "Don't reply to the new number or call it back."],
+    ask: ["Ring Tom on the number you already have for him and ask if he sent this.", "Don't reply to the new number or call it back."],
     calls,
     dropped: 0,
     model: "example",
@@ -63,21 +56,10 @@ export async function createExampleHold(
   const gran = (await listSpenders(db, householdId)).find((s) => s.kind === "person");
   if (!gran) return "no_relative";
   const id = `pay_${Date.now().toString(36)}${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
-  const b = hiMum.body;
-  const req: PaymentRequest = {
-    id,
-    spenderId: gran.id,
-    money: { amount: b.amount, currency: b.currency },
-    payee: { name: b.payee, isNew: true },
-    category: b.category,
-    method: b.method,
-    context: b.context,
-    createdAt: new Date().toISOString(),
-  };
-
+  const req = tomRequest(id, gran.id);
   const hold = await holdAtPayPal(deps, req, waitMs);
   if (!hold) return "paypal_unavailable";
-  await insertExample(db, gran, req, hold, FLAGS, `${EXAMPLE_LABEL}. Someone pretending to be family on a new number, in a hurry, asking for money for a friend's account.`);
+  await insertExample(db, gran, req, hold, TOM_FLAGS, `${EXAMPLE_LABEL}. Someone on a new number says they're Tom, in a hurry, asking for £250 for a friend's account.`);
   return "created";
 }
 
@@ -165,6 +147,20 @@ const TOM_FLAGS: Flag[] = [
   { kind: "other", severity: "medium", quote: "send £250 to my mate's account", why: "The money goes to a friend's account, not to Tom." },
 ];
 
+/** Gran's £250 for "Tom": the request behind both the seeded sample hold and the Was it you run. */
+function tomRequest(id: string, spenderId: string): PaymentRequest {
+  return {
+    id,
+    spenderId,
+    money: { amount: WAS_IT_YOU_EXAMPLE.amount, currency: "GBP" },
+    payee: { name: WAS_IT_YOU_EXAMPLE.payee, isNew: true },
+    category: "family",
+    method: "paypal_order",
+    context: WAS_IT_YOU_EXAMPLE.context,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 /** Most example holds one demo family can make in a day (each is a real sandbox authorisation). */
 export const EXAMPLE_ASKS_PER_DAY = 12;
 
@@ -184,16 +180,7 @@ export async function createWasItYouExample(
   const claim = claimFromText(WAS_IT_YOU_EXAMPLE.context);
   if (!claim?.name) return "no_claim";
   const id = `pay_${Date.now().toString(36)}${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
-  const req: PaymentRequest = {
-    id,
-    spenderId: gran.id,
-    money: { amount: WAS_IT_YOU_EXAMPLE.amount, currency: "GBP" },
-    payee: { name: WAS_IT_YOU_EXAMPLE.payee, isNew: true },
-    category: "family",
-    method: "paypal_order",
-    context: WAS_IT_YOU_EXAMPLE.context,
-    createdAt: new Date().toISOString(),
-  };
+  const req = tomRequest(id, gran.id);
   const hold = await holdAtPayPal(deps, req, waitMs);
   if (!hold) return "paypal_unavailable";
   const now = Date.now();

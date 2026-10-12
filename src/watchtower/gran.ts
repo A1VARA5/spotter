@@ -7,8 +7,8 @@ import type { HouseholdKind } from "@/core/households";
 import type { CaseNote, PaymentRow, PersonRow } from "./data";
 import { TRICK_KEY, gt, whenIn, type GranLang } from "./granLang";
 
-/** The demo's example hold was checked before the visit and says so ("Example, checked earlier: ..."). */
-const EXAMPLE_PREFIX = /^\s*Example, checked earlier\s*[:.]?\s*/i;
+/** The demo's sample hold was written before the visit and says so ("Sample message, live PayPal hold: ...", older rows "Example, checked earlier: ..."). */
+const EXAMPLE_PREFIX = /^\s*(?:Sample message, live PayPal hold|Example, checked earlier)\s*[:.]?\s*/i;
 
 export type GranLabels = { who: string | null; viewLabel: string; waitingTitle: string; spotter: string };
 

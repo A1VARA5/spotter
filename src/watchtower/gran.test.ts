@@ -242,6 +242,14 @@ describe("who decided, and why, in Gran's words", () => {
     expect(live.stopped[0]!.example).toBe(false);
   });
 
+  // UX audit 12 Oct #6: the seeded hold's label is now "Sample message, live PayPal hold".
+  it("tags the sample hold under its new label the same way", () => {
+    const ex: CaseNote = { id: "ex", reasons: ["Sample message, live PayPal hold. Someone on a new number says they're Tom."], signs: [], caseHeadline: "Sample message, live PayPal hold: this looks like the Hi Mum scam. Someone on a new number says they're Tom." };
+    const m = granMonth([row({ id: "ex", outcome: "Denied", amount: 250 })], new Map([["ex", ex]]), { who: null, spotter: "Sam", now: NOW });
+    expect(m.stopped[0]!.sentence).not.toMatch(/Sample message/);
+    expect(m.stopped[0]!.example).toBe(true);
+  });
+
   it("shows one row for repeats of the same payment (same payee and amount), newest first, with how many times", () => {
     const rows = [
       row({ id: "a", outcome: "Denied", payee: "jamie.k1994@mail.example", amount: 250, when: ago(1), wasItYou: "Tom: not me" }),

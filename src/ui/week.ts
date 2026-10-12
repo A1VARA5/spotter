@@ -18,8 +18,9 @@ const STOPPED = new Set(["blocked", "protected", "voided", "voiding"]);
 type Row = Pick<Payment, "status" | "amount" | "currency" | "created_at"> & { case_file?: { example?: boolean } | null };
 
 export function weekSummary(payments: Row[], now: number): WeekSummary {
-  // The demo's example hold is labelled "checked earlier", not something Spotter did this week.
-  const week = payments.filter((p) => !p.case_file?.example && now - new Date(p.created_at).getTime() <= WEEK_MS);
+  // The demo's sample hold isn't something Spotter checked this week while it waits. Once the spotter decides it,
+  // the capture or void at PayPal is real and counts like any other payment.
+  const week = payments.filter((p) => !(p.case_file?.example && p.status === "needs_approval") && now - new Date(p.created_at).getTime() <= WEEK_MS);
   const kept = new Map<string, number>();
   for (const p of week) if (STOPPED.has(p.status)) kept.set(p.currency, (kept.get(p.currency) ?? 0) + Number(p.amount));
   return {

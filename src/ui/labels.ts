@@ -66,3 +66,9 @@ export function approveWarning(verdict: string | undefined, highFlag: boolean): 
   if (highFlag) return `Spotter found serious warning signs. ${after}`;
   return null;
 }
+
+/**
+ * The demo family's seeded hold: its message and case file were written before the visit, the PayPal hold is real.
+ * Leads the case file headline ("<label>: this looks like ...") and the verdict line.
+ */
+export const EXAMPLE_LABEL = "Sample message, live PayPal hold";

@@ -127,6 +127,12 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
   }, [rows, filter]);
   const open = openId ? (payments.find((p) => p.id === openId) ?? null) : null;
 
+  // A link to one payment (/ledger#pay-..., from a decided card on the dashboard) opens its row's drawer.
+  useEffect(() => {
+    const id = location.hash.startsWith("#pay-") ? decodeURIComponent(location.hash.slice(5)) : null;
+    if (id && payments.some((p) => p.id === id)) setOpenId(id);
+  }, [payments]);
+
   const columns = useMemo<ColDef<Row>[]>(
     () => [
       { field: "when", headerName: "When", width: 108, valueFormatter: (p) => timeAgo(p.value), sort: "desc" },
