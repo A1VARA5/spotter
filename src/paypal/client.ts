@@ -64,19 +64,28 @@ export async function token(): Promise<string> {
 }
 
 async function call<T>(method: string, path: string, body?: unknown, requestId?: string): Promise<T> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${await token()}`,
-    "Content-Type": "application/json",
-    Prefer: "return=representation",
+  const send = async () => {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${await token()}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    };
+    if (requestId) headers["PayPal-Request-Id"] = requestId;
+    return fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      // A string body is already JSON (the webhook check must pass PayPal's event bytes through untouched).
+      body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
   };
-  if (requestId) headers["PayPal-Request-Id"] = requestId;
-  const r = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    // A string body is already JSON (the webhook check must pass PayPal's event bytes through untouched).
-    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  let r = await send();
+  // A token can stop working before its expires_in (PayPal: "If you get a 401, don't panic"). Get a new
+  // one and ask once more. The request id is the same, so a money call can't happen twice.
+  if (r.status === 401) {
+    cached = null;
+    r = await send();
+  }
   const j = parseBody(await r.text());
   if (!r.ok) {
     throw new PayPalError(j.message ?? `PayPal ${method} ${path} failed`, r.status, j.details?.[0]?.issue ?? j.name, j.debug_id);

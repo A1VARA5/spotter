@@ -128,6 +128,30 @@ describe("paypal client", () => {
     expect(err.message).toContain("Non JSON reply");
   });
 
+  it("drops the token and retries once with a fresh one after a 401", async () => {
+    mockFetch([
+      { status: 200, body: { access_token: "tokA", expires_in: 32000 } },
+      { status: 401, body: { error: "invalid_token" } },
+      { status: 200, body: { access_token: "tokB", expires_in: 32000 } },
+      { status: 201, body: { id: "C1", status: "COMPLETED" } },
+    ]);
+    const r = await captureAuthorization("A1", "k");
+    expect(r).toMatchObject({ captureId: "C1" });
+    expect(calls).toHaveLength(4);
+    expect(header(calls[1]!, "Authorization")).toBe("Bearer tokA");
+    expect(header(calls[3]!, "Authorization")).toBe("Bearer tokB");
+    // Same request id both times, so PayPal can never do the capture twice.
+    expect(header(calls[3]!, "PayPal-Request-Id")).toBe(header(calls[1]!, "PayPal-Request-Id"));
+  });
+
+  it("throws a second 401 instead of retrying again", async () => {
+    mockFetch([TOKEN, { status: 401, body: {} }, TOKEN, { status: 401, body: {} }]);
+    const err = await captureAuthorization("A1", "k").catch((e) => e);
+    expect(err).toBeInstanceOf(PayPalError);
+    expect(err.status).toBe(401);
+    expect(calls).toHaveLength(4);
+  });
+
   it("voids an authorisation", async () => {
     mockFetch([TOKEN, { status: 200, body: { id: "A1", status: "VOIDED" } }]);
     expect(await voidAuthorization("A1")).toEqual({ status: "VOIDED" });
