@@ -4,7 +4,7 @@
 // keeps it in step through an AnswerFeed; the answer's title is the family's own question, shown as text.
 import { useEffect, useSyncExternalStore } from "react";
 import type { AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
-import { answerReceipt, builtBy, followUps } from "@/watchtower/answers";
+import { answerReceipt, builtBy, followUps, receiptSteps, type TopRow } from "@/watchtower/answers";
 import { boardWords } from "@/watchtower/receipt";
 import { useBook } from "./ReceiptBar";
 import { useScrollBox, type WatchContext } from "./widgets";
@@ -14,7 +14,8 @@ export type AnswerSummaryDef = { type: "answer-summary"; dataMapping: Record<str
 export type Starter = { label: string; prompt: string };
 /** What Studio knows about the newest answer, for the card. */
 /** line: the one line answer (src/watchtower/answers.ts cardLine), on every finished answer. */
-export type AnswerSnap = { title: string; empty: boolean; running: boolean; total?: string; line?: string; starters: Starter[]; canAsk: boolean; asking: boolean };
+/** top: the biggest rows behind the answer (a chart's bars, or the Fair price tile's items); type: the answer tile's type. */
+export type AnswerSnap = { title: string; empty: boolean; running: boolean; total?: string; line?: string; top?: readonly TopRow[]; type?: string; starters: Starter[]; canAsk: boolean; asking: boolean };
 export type AnswerFeed = { get(): AnswerSnap; subscribe(fn: () => void): () => void; ask(s: Starter): void };
 
 const NONE: AnswerSnap = { title: "", empty: true, running: false, starters: [], canAsk: false, asking: false };
@@ -64,6 +65,10 @@ export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
   const receipt = a.empty ? null : answerReceipt(entries.map((e) => e.receipt));
   const calls = receipt?.tools.reduce((t, l) => t + l.calls, 0) ?? 0;
   const next = followUps(a.starters, a.title);
+  // A chart with one bar already says it in the line above ("All of it: BlockWorld"), so its list starts at two.
+  const fair = a.type === "fair-price";
+  const rows = !a.empty && a.top && a.top.length >= (fair ? 1 : 2) ? a.top : [];
+  const steps = receipt ? receiptSteps(receipt) : [];
   return (
     <section className="wt-ans" aria-labelledby="wt-ans-q" {...scroll}>
       <p className="wt-ans-kicker">{a.empty ? (a.running ? "Building your answer" : "This answer didn't finish") : "Latest answer"}</p>
@@ -78,6 +83,19 @@ export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
             </p>
           )}
           {a.line && <AnswerLine text={a.line} />}
+        </div>
+      )}
+      {rows.length > 0 && (
+        <div className="wt-ans-rows">
+          <h3 className="wt-ans-next-h">{fair ? "Behind the headline" : `The biggest ${rows.length === 1 ? "row" : `${rows.length} rows`} in the chart`}</h3>
+          <ul className="wt-ans-rowlist">
+            {rows.map((r, i) => (
+              <li key={i}>
+                <span className="wt-ans-row-label">{r.label}</span>
+                <span className="wt-ans-row-value">{r.value}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {receipt && (
@@ -96,6 +114,21 @@ export function AnswerSummaryWidget(p: AgWidgetParams<AnswerSummaryDef>) {
               {boardWords(receipt).replace(/\.$/, "")}
             </dd>
           </div>
+          {steps.length > 0 && (
+            <div className="wt-ans-steps">
+              <dt>What Spotter did</dt>
+              <dd>
+                <ul className="wt-ans-steplist">
+                  {steps.map((s) => (
+                    <li key={s.what}>
+                      {s.what}
+                      {s.times > 1 && <span className="wt-ans-times">, {s.times} times</span>}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          )}
         </dl>
       )}
       {next.length > 0 && (

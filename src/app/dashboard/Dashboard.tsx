@@ -266,7 +266,7 @@ export function DashboardMain() {
           )}
         </p>
       )}
-      <div className="stack">
+      <div className="stack" data-beside={waiting.length === 1 || undefined}>
         {waiting.length === 0 && <AllClear />}
         {waiting.map((p) => (
           <HeldCard
@@ -286,6 +286,12 @@ export function DashboardMain() {
             onDecided={(text, real) => setNotice((n) => ({ text, real, n: (n?.n ?? 0) + 1 }))}
           />
         ))}
+        {/* One card on a very wide screen (2200 px and up): the week and the Try scenarios sit beside it (wide.css). */}
+        {waiting.length === 1 && (
+          <aside className="allclear dash-beside" aria-label="While you decide">
+            <AllClearCols />
+          </aside>
+        )}
       </div>
       {error && (
         <p className="error-line" role="alert">
@@ -305,6 +311,21 @@ const TRY_BUSINESS = ["biz-invoice", "biz-paper"];
  * catch something.
  */
 function AllClear() {
+  return (
+    <div className="allclear">
+      <div className="allclear-head">
+        <ShieldCheck size={22} strokeWidth={2} aria-hidden="true" />
+        <p>
+          <strong>All clear.</strong> Nothing needs you right now. Anything risky is held at PayPal and lands here first.
+        </p>
+      </div>
+      <AllClearCols />
+    </div>
+  );
+}
+
+/** Your last 7 days and Watch it catch something: under All clear, or beside a lone card on a very wide screen. */
+function AllClearCols() {
   const { payments, business, now } = useDash();
   const w = weekSummary(payments, now);
   const tries = (business ? TRY_BUSINESS : TRY_FAMILY).map((id) => [...SCENARIOS, ...BUSINESS_SCENARIOS].find((s) => s.id === id)).filter((s): s is Scenario => !!s);
@@ -316,77 +337,69 @@ function AllClear() {
   ].filter((x) => x.n > 0);
 
   return (
-    <div className="allclear">
-      <div className="allclear-head">
-        <ShieldCheck size={22} strokeWidth={2} aria-hidden="true" />
-        <p>
-          <strong>All clear.</strong> Nothing needs you right now. Anything risky is held at PayPal and lands here first.
+    <div className="allclear-cols">
+      <section className="allclear-week" aria-labelledby="allclear-week">
+        <h2 id="allclear-week" className="allclear-title">
+          Your last 7 days
+        </h2>
+        {w.checked === 0 ? (
+          <>
+            <p className="allclear-text">No payments went through Spotter this week yet. Try one with fake money and it shows up here.</p>
+            <ul className="allclear-checks" aria-label="What Spotter checks on every payment">
+              <li>Your rules first: the allowance, blocked shops and who needs asking.</li>
+              <li>The message behind it, read by AI that has to quote its evidence.</li>
+              <li>Links opened in a throwaway cloud browser, so nobody clicks them.</li>
+              <li>Real shop prices, so a fake bargain or an overcharge shows.</li>
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="allclear-text">
+              Spotter checked {w.checked} payment{w.checked === 1 ? "" : "s"}.{" "}
+              {w.stopped > 0 ? (
+                <>
+                  {w.stopped} {w.stopped === 1 ? "was" : "were"} stopped or denied before any money moved, keeping <b>{kept}</b> with you.
+                </>
+              ) : (
+                "None needed stopping."
+              )}
+            </p>
+            <div className="allclear-bar" aria-hidden="true">
+              {parts.map((x) => (
+                <span key={x.key} data-part={x.key} style={{ flexGrow: x.n }} />
+              ))}
+            </div>
+            <ul className="allclear-legend">
+              {parts.map((x) => (
+                <li key={x.key} data-part={x.key}>
+                  <b>{x.n}</b> {x.label}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p className="allclear-links">
+          <Link href="/ledger">Every payment in Activity</Link>
+          <Link href="/watchtower">Ask Watchtower about your month</Link>
         </p>
-      </div>
-      <div className="allclear-cols">
-        <section className="allclear-week" aria-labelledby="allclear-week">
-          <h2 id="allclear-week" className="allclear-title">
-            Your last 7 days
-          </h2>
-          {w.checked === 0 ? (
-            <>
-              <p className="allclear-text">No payments went through Spotter this week yet. Try one with fake money and it shows up here.</p>
-              <ul className="allclear-checks" aria-label="What Spotter checks on every payment">
-                <li>Your rules first: the allowance, blocked shops and who needs asking.</li>
-                <li>The message behind it, read by AI that has to quote its evidence.</li>
-                <li>Links opened in a throwaway cloud browser, so nobody clicks them.</li>
-                <li>Real shop prices, so a fake bargain or an overcharge shows.</li>
-              </ul>
-            </>
-          ) : (
-            <>
-              <p className="allclear-text">
-                Spotter checked {w.checked} payment{w.checked === 1 ? "" : "s"}.{" "}
-                {w.stopped > 0 ? (
-                  <>
-                    {w.stopped} {w.stopped === 1 ? "was" : "were"} stopped or denied before any money moved, keeping <b>{kept}</b> with you.
-                  </>
-                ) : (
-                  "None needed stopping."
-                )}
-              </p>
-              <div className="allclear-bar" aria-hidden="true">
-                {parts.map((x) => (
-                  <span key={x.key} data-part={x.key} style={{ flexGrow: x.n }} />
-                ))}
-              </div>
-              <ul className="allclear-legend">
-                {parts.map((x) => (
-                  <li key={x.key} data-part={x.key}>
-                    <b>{x.n}</b> {x.label}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          <p className="allclear-links">
-            <Link href="/ledger">Every payment in Activity</Link>
-            <Link href="/watchtower">Ask Watchtower about your month</Link>
-          </p>
-        </section>
-        <section className="allclear-try" aria-labelledby="allclear-try">
-          <h2 id="allclear-try" className="allclear-title">
-            Watch it catch something
-          </h2>
-          <ul className="allclear-tries">
-            {tries.map((s) => (
-              <li key={s.id}>
-                <Link href={`/demo#s-${s.id}`} className="allclear-tryrow">
-                  <span className="allclear-trytitle">{s.title}</span>
-                  <span className="allclear-trywho">{s.blurb}</span>
-                  <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="allclear-note">Fake money in the PayPal sandbox. Each one lands here to decide.</p>
-        </section>
-      </div>
+      </section>
+      <section className="allclear-try" aria-labelledby="allclear-try">
+        <h2 id="allclear-try" className="allclear-title">
+          Watch it catch something
+        </h2>
+        <ul className="allclear-tries">
+          {tries.map((s) => (
+            <li key={s.id}>
+              <Link href={`/demo#s-${s.id}`} className="allclear-tryrow">
+                <span className="allclear-trytitle">{s.title}</span>
+                <span className="allclear-trywho">{s.blurb}</span>
+                <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <p className="allclear-note">Fake money in the PayPal sandbox. Each one lands here to decide.</p>
+      </section>
     </div>
   );
 }

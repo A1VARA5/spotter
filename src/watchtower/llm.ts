@@ -47,6 +47,13 @@ export const defaultCallModel: CallModel = async (turn, model, signal) => {
   );
 };
 
+const RETRY_WITHIN_MS = 20_000;
+const EMPTY_NUDGE = "Write your reply now, in plain words.";
+/** Finished on its own with no text and no tool call (thinking blocks don't reach the chat). */
+function isEmptyTurn(m: Anthropic.Message): boolean {
+  return m.stop_reason === "end_turn" && !m.content.some((b) => b.type === "tool_use" || (b.type === "text" && b.text.trim() !== ""));
+}
+
 function isAgRequest(v: unknown): v is AgLlmRequest {
   if (!v || typeof v !== "object") return false;
   const r = v as Record<string, unknown>;
@@ -102,6 +109,19 @@ export function makeLlmTurn(opts: { db: Db; callModel?: CallModel; perHousehold?
     } catch (e) {
       console.error(`[spotter] watchtower turn failed for ${householdId}:`, e instanceof Error ? e.message : e);
       return json({ error: "The assistant couldn't answer just now. Try again in a minute." }, 502);
+    }
+    // A turn that ends with nothing to show (no text, no tool call: only thinking, or nothing) leaves the chat
+    // on tool rows with no reply. Seen on 12 Oct after two delegations. Ask once more, in words, on the same
+    // slot, while there's time left in the route's limit. If that fails too, the empty turn goes back as it was.
+    if (isEmptyTurn(msg) && Date.now() - started < RETRY_WITHIN_MS) {
+      console.warn(`[spotter] watchtower turn for ${householdId} on ${model} came back empty; asking once more`);
+      try {
+        const again = await callModel({ ...turn, messages: [...turn.messages, { role: "user", content: [{ type: "text", text: EMPTY_NUDGE }] }] }, model, signal);
+        if (isEmptyTurn(again)) console.warn(`[spotter] watchtower turn for ${householdId} came back empty twice`);
+        else msg = again;
+      } catch (e) {
+        console.error(`[spotter] watchtower second try failed for ${householdId}:`, e instanceof Error ? e.message : e);
+      }
     }
     const u = msg.usage;
     console.info(`[spotter] watchtower turn ${householdId} on ${model}, ${Date.now() - started} ms: in ${u.input_tokens} (cache read ${u.cache_read_input_tokens ?? 0}, write ${u.cache_creation_input_tokens ?? 0}) out ${u.output_tokens}`);

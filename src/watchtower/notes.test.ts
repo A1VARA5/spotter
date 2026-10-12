@@ -139,3 +139,62 @@ describe("a chat cut off mid run", () => {
     expect(UNFINISHED_NOTE).toBe("This answer didn't finish. Ask again.");
   });
 });
+
+// R7-N1: the Widget delegate came back without a summary and the lead never wrote a reply, so the chat said
+// "(the delegate finished without a summary)" and "This answer didn't finish. Ask again." while the chart,
+// the answer card and the receipt had all finished.
+describe("a run that built its tile and kept its receipt", () => {
+  const NO_SUMMARY = "(the delegate finished without a summary)";
+  const call = (id: string, name: string, result?: unknown): AgAiChatMessage => ({ id, role: "assistant", parts: [{ type: "tool_call", toolCall: { toolCallId: id, name, status: "complete", args: {}, result } }], createdAt: 0 });
+  const leoRun = (push: (m: AgAiChatMessage) => void) => {
+    push(msg("u1", "user", "Show me what Leo spent on games this month, as a chart by shop."));
+    push(call("a1", "place_widget", { success: true, data: { widgetId: "answer-1" } }));
+    push(call("a2", "delegate_to", { success: true, response: NO_SUMMARY }));
+    push(call("a3", "delegate_to", { success: true, response: "Leo has £9.98 in paid games payments." }));
+  };
+  const LINE = "Chart added: What Leo spent on games, £9.98.";
+  const resultOf = (s: AgAiChatSession, id: string) => (s.messages.find((m) => m.id === id)!.parts[0] as { toolCall: { result: { response: string } } }).toolCall.result.response;
+
+  it("is never called unfinished: the chat ends with a plain line from the result", async () => {
+    const { h, sessions } = fakeHarness();
+    const n = notable(h, { answered: (t) => (t === "t1" ? LINE : null) });
+    const s = await n.openThread("t1");
+    leoRun((m) => sessions.get("t1")!.push(m));
+    expect(texts(s).includes(UNFINISHED_NOTE)).toBe(false);
+    expect(s.messages.at(-1)!.parts[0]).toEqual({ type: "text", text: LINE });
+  });
+
+  it("shows a plain line instead of AG's no summary words on the delegate's row", async () => {
+    const { h, sessions } = fakeHarness();
+    const n = notable(h, { answered: () => LINE });
+    const s = await n.openThread("t1");
+    leoRun((m) => sessions.get("t1")!.push(m));
+    expect(resultOf(s, "a2")).toBe(LINE);
+    expect(resultOf(s, "a3")).toBe("Leo has £9.98 in paid games payments.");
+    expect(JSON.stringify(s.messages)).not.toContain(NO_SUMMARY);
+  });
+
+  it("still says it didn't finish when nothing was built, and the delegate row never shows AG's words", async () => {
+    const { h, sessions } = fakeHarness();
+    const n = notable(h, { answered: () => null });
+    const s = await n.openThread("t1");
+    leoRun((m) => sessions.get("t1")!.push(m));
+    expect(s.messages.at(-1)!.parts[0]).toEqual({ type: "text", text: UNFINISHED_NOTE });
+    expect(resultOf(s, "a2")).toBe("It finished without writing what it did.");
+  });
+
+  it("swaps the didn't finish line for the plain line when the receipt lands after the chat settled", async () => {
+    const { h, sessions } = fakeHarness();
+    let line: string | null = null;
+    const n = notable(h, { answered: () => line });
+    const s = await n.openThread("t1");
+    leoRun((m) => sessions.get("t1")!.push(m));
+    expect(s.messages.at(-1)!.parts[0]).toEqual({ type: "text", text: UNFINISHED_NOTE });
+    let redraws = 0;
+    s.addEventListener("changed", () => redraws++);
+    line = LINE;
+    n.refresh();
+    expect(redraws).toBe(1);
+    expect(s.messages.at(-1)!.parts[0]).toEqual({ type: "text", text: LINE });
+  });
+});

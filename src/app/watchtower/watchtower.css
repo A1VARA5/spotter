@@ -185,7 +185,7 @@
 .wt-notice[data-tone="problem"] .wt-notice-dot { background: var(--hold); box-shadow: 0 0 0 3px rgb(242 183 5 / 0.35); }
 
 /* fair price */
-.wt-fair { height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; }
+.wt-fair { container-type: size; box-sizing: border-box; height: 100%; overflow: auto; padding: 4px 6px; display: grid; align-content: start; gap: 8px; font-variant-numeric: lining-nums proportional-nums; }
 .wt-fair-empty { align-content: center; }
 .wt-fair-label { font-size: 13px; font-weight: 650; color: var(--ink-2); }
 .wt-fair-headline { font-size: 18px; line-height: 1.3; font-weight: 650; color: var(--ink); text-wrap: pretty; }
@@ -210,6 +210,14 @@
 .wt-fair-note { font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
 .wt-fair-payee { overflow-wrap: anywhere; color: var(--ink); }
 .wt-fair-source { font-size: 12px; color: var(--ink-2); }
+/* The rest of the items behind the headline, one line each, when the tile has room (not on a short tile). */
+.wt-fair-rest { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.wt-fair-rest-h { font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.wt-fair-rest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wt-fair-rest-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.wt-fair-rest-name { font-size: 14px; font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.wt-fair-rest-note { flex-basis: 100%; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+@container (max-height: 380px) { .wt-fair-rest { display: none; } }
 
 /* Tiles whose text is longer than the tile scroll (useScrollBox in widgets.tsx). They are a tab stop then,
    so they need a visible focus ring, and a soft edge shows there is more below or above. */
@@ -265,7 +273,7 @@
 .wt-ans { container-type: size; height: 100%; overflow: auto; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; gap: 14px; color: var(--ink); font-variant-numeric: lining-nums proportional-nums; }
 .wt-ans-kicker { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink-2); }
 .wt-ans-q { margin: -8px 0 0; font-size: 22px; line-height: 1.25; font-weight: 700; text-wrap: balance; overflow-wrap: anywhere; }
-.wt-ans-answer { flex: 1 0 auto; max-height: 340px; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 16px 18px; border-radius: 12px; background: var(--chalk); border: 1px solid var(--line); }
+.wt-ans-answer { flex: none; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 16px 18px; border-radius: 12px; background: var(--chalk); border: 1px solid var(--line); }
 .wt-ans-total { margin: 0; font-size: 15px; color: var(--ink-2); }
 .wt-ans-line { margin: 0; font-size: 19px; line-height: 1.35; font-weight: 600; color: var(--ink); text-wrap: pretty; overflow-wrap: anywhere; }
 .wt-ans-line-more { display: block; margin-top: 8px; font-size: 0.75em; font-weight: 550; }
@@ -285,6 +293,15 @@
 .wt-ans-btn:active:not(:disabled) { transform: scale(0.98); }
 .wt-ans-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .wt-ans-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+/* The rows behind the answer and what the run did: real content where the grey box used to stretch. */
+.wt-ans-rows { display: grid; gap: 8px; }
+.wt-ans-rowlist { list-style: none; margin: 0; padding: 0; display: grid; }
+.wt-ans-rowlist > li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.wt-ans-rowlist > li:first-child { border-top: 0; padding-top: 0; }
+.wt-ans-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+.wt-ans-row-value { font-weight: 650; color: var(--ink); }
+.wt-ans-steplist { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 14px; color: var(--ink); }
+.wt-ans-times { color: var(--ink-2); }
 .wt-ans-plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink); }
 .wt-ans-hint { margin: 0; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
 /* A short card (a laptop around 1440 px): a compact answer panel and no Built by row, so Ask next fits. */
@@ -292,8 +309,15 @@
   .wt-ans-answer { flex-grow: 0; padding: 10px 14px; gap: 4px; }
   .wt-ans-sum { font-size: 30px; }
   .wt-ans-line { font-size: 17px; }
-  .wt-ans-facts > div:first-child { display: none; }
+  .wt-ans-facts > div:first-child, .wt-ans-steps { display: none; }
   .wt-ans-list > li:nth-child(n + 3) { display: none; }
+}
+@container (max-height: 460px) {
+  .wt-ans-rows { display: none; }
+}
+/* A narrow card (the chat panel open on a laptop): the chart beside it already shows the rows. */
+@container (max-width: 300px) {
+  .wt-ans-rows { display: none; }
 }
 @container (min-height: 640px) and (min-width: 300px) {
   .wt-ans-answer { padding: 22px 24px; }

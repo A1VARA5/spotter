@@ -16,11 +16,22 @@
   }
 }
 
-/* Very wide screens (2200 px and up): the rail takes more of the spare width, so its rows read as sentences. */
+/* Very wide screens (2200 px and up): the rail takes more of the spare width, so its rows read as sentences, and
+   the queue and rail stop at about 2100 px together, centred, so a lone card isn't a strip across a 2560 screen
+   with half of it empty (round 7 m7). */
 @media (min-width: 2200px) {
   .page-frame[data-layout="rail"][data-rail]:has(.dash) {
-    grid-template-columns: minmax(0, 1fr) clamp(460px, 24vw, 640px);
+    max-width: 2100px;
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 1fr) clamp(460px, 24vw, 560px);
   }
+}
+
+/* The week and the Try scenarios beside a lone held card, only where there's room for both (round 7 m7). */
+.dash-beside { display: none; }
+@media (min-width: 2200px) {
+  .stack[data-beside] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 440px); align-items: start; gap: 24px; }
+  .stack[data-beside] > .dash-beside { display: block; }
 }
 
 /* The decision under the facts (or under the card while Spotter is still looking). */

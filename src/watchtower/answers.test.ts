@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_COLOURS, answerLine, answerReceipt, answerTotal, builtBy, dropEmptyAnswers, followUps, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
+import { ANSWER_COLOURS, answerLine, answerReceipt, answeredLine, receiptSteps, answerTotal, builtBy, dropEmptyAnswers, followUps, isEmptyAnswer, moneyFieldsOf, polishChart } from "./answers";
 import { SUMMARY_ID, SUMMARY_TYPE, newestAnswer } from "./pages";
 import { startedReceipt, type Receipt } from "./receipt";
 
@@ -91,6 +91,19 @@ describe("an answer's total", () => {
   it("reads a donut's slices", () => {
     const t = answerTotal(withData("answer-3", [{ v: 10 }, { v: 5.5 }], [{ type: "donut", angleKey: "v" }]), money);
     expect(t?.text).toBe("£15.50");
+  });
+
+  // R7 m1: the card shows the rows behind the chart instead of an empty grey box.
+  it("names the biggest three rows behind the chart with their amounts, biggest first", () => {
+    const rows = [{ p: "TuneBox", v: 6 }, { p: "BlockWorld", v: 4.99 }, { p: "PixelPals", v: 12.5 }, { p: "Arcadia", v: 1 }];
+    const t = answerTotal(withData("answer-1", rows, [{ type: "bar", xKey: "p", yKey: "v" }]), money);
+    expect(t?.top).toEqual([
+      { label: "PixelPals", value: "£12.50" },
+      { label: "TuneBox", value: "£6.00" },
+      { label: "BlockWorld", value: "£4.99" },
+    ]);
+    // rows without a plain label aren't listed (no guessing), so the list can be shorter
+    expect(answerTotal(withData("answer-1", [{ v: 2 }, { v: 3 }], [{ type: "bar", yKey: "v" }]), money)?.top).toEqual([]);
   });
 
   it("has nothing to say about the board's own charts or a chart with no rows", () => {
@@ -210,6 +223,48 @@ describe("the summary card beside the newest answer", () => {
     const failed = r("r5", ["place_widget"]);
     failed.tools[0]!.failed = 1;
     expect(answerReceipt([failed, placed])).toBe(placed);
+  });
+
+  // R7-N1: what the chat says for a run that built its tile and kept its receipt but wrote no reply.
+  describe("the chat's plain line for a finished answer", () => {
+    const leo = { widgetId: "answer-1", type: "bar-chart-grouped", title: "What Leo spent on games", empty: false };
+    const done = r("r1", ["place_widget", "delegate_to"]);
+    it("names the chart and its total", () => {
+      expect(answeredLine({ placed: "answer-1", latest: leo, total: "£9.98", receipt: done })).toBe("Chart added: What Leo spent on games, £9.98.");
+      expect(answeredLine({ placed: "answer-1", latest: leo, receipt: done })).toBe("Chart added: What Leo spent on games.");
+      expect(answeredLine({ placed: "answer-1", latest: { ...leo, type: "grid" }, total: "£9.98", receipt: done })).toBe("Table added: What Leo spent on games.");
+      expect(answeredLine({ placed: "answer-1", latest: { ...leo, type: "fair-price", title: "Did we pay fair prices this month?" }, receipt: done })).toBe("Fair price tile added: Did we pay fair prices this month.");
+    });
+    it("says nothing unless this run's own tile is built and its receipt says it finished", () => {
+      expect(answeredLine({ placed: undefined, latest: leo, total: "£9.98", receipt: done })).toBeNull();
+      expect(answeredLine({ placed: "answer-2", latest: leo, total: "£9.98", receipt: done })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: { ...leo, empty: true }, receipt: done })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: null, receipt: done })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: leo, receipt: null })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: leo, receipt: r("r2", ["place_widget"], { status: "cancelled" }) })).toBeNull();
+      expect(answeredLine({ placed: "answer-1", latest: leo, receipt: startedReceipt({ runId: "r3", threadId: "t1", agentId: "spotter", startedAt: 2 }) })).toBeNull();
+    });
+  });
+
+  it("lists what the run did from its receipt, most calls first, in plain words, at most four", () => {
+    const rc = r("r1", []);
+    rc.tools = [
+      { name: "place_widget", calls: 1, ms: 1, failed: 0, access: "board" },
+      { name: "delegate_to", calls: 2, ms: 1, failed: 0, access: "chat" },
+      { name: "configure_widget", calls: 3, ms: 1, failed: 1, access: "board" },
+      { name: "execute_query", calls: 1, ms: 1, failed: 0, access: "read" },
+      { name: "view_schema", calls: 1, ms: 1, failed: 0, access: "read" },
+      { name: "mystery", calls: 5, ms: 1, failed: 0, access: "unknown" },
+      { name: "complete_task", calls: 6, ms: 1, failed: 0, access: "chat" },
+      { name: "rename_thread", calls: 6, ms: 1, failed: 0, access: "chat" },
+    ];
+    expect(receiptSteps(rc)).toEqual([
+      { what: "Set up a widget", times: 3 },
+      { what: "Handed work to a helper", times: 2 },
+      { what: "Placed an empty tile", times: 1 },
+      { what: "Counted up the payments", times: 1 },
+    ]);
+    expect(receiptSteps(r("r2", []))).toEqual([]);
   });
 
   it("names who built it: Spotter, then each helper once", () => {

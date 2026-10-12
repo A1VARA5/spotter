@@ -85,6 +85,25 @@ describe("AG request to Claude", () => {
     expect(toClaude({ ...base, toolChoice: "none" }).tool_choice).toEqual({ type: "none" });
   });
 
+  // R7-N1: AG forces a delegate to call complete_task after a turn that ended in text, so the history ends
+  // on the assistant. This model refuses that ("does not support assistant message prefill"), the delegate
+  // ends with no summary, and the chat showed "(the delegate finished without a summary)".
+  it("always ends on a user message, so a forced complete_task turn isn't refused as a prefill", () => {
+    const p = toClaude({
+      ...base,
+      toolChoice: { name: "complete_task" },
+      input: [
+        user("m1", "Configure the Leo chart"),
+        { id: "c1", kind: "output", type: "function_call", callId: "toolu_1", name: "execute_query", arguments: "{}" },
+        { kind: "input", type: "function_call_output", callId: "toolu_1", output: "ok", status: "completed" },
+        { id: "o1", kind: "output", type: "message", role: "assistant", status: "completed", content: [{ type: "text", text: "The chart is set up.", annotations: [] }] },
+      ],
+    });
+    expect(p.messages.at(-1)!.role).toBe("user");
+    expect(p.messages.at(-2)).toEqual({ role: "assistant", content: [{ type: "text", text: "The chart is set up." }] });
+    expect(p.system).toContain("Call the complete_task tool now");
+  });
+
   it("folds system messages into the system prompt and gives no-argument tools an object schema", () => {
     const p = toClaude({
       ...base,

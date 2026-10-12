@@ -235,6 +235,18 @@ export function fairPrice(rows: PriceRow[], now: Date, maxItems = MAX_ITEMS): Fa
   return { checked: checked.length, overpaid, saved, headline, caught, warning, items: [...items].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, maxItems) };
 }
 
+/**
+ * The items behind the fair price headline, one short line each (biggest gap first, as fairPrice sorts them).
+ * Only a paid item says "Paid"; a fake shop price is set against what real shops charge, never the cheapest.
+ */
+export function fairRows(items: readonly PriceItem[], max: number): Array<{ label: string; value: string }> {
+  return items.slice(0, max).map((i) => {
+    const how = i.outcome === "Paid" ? "Paid" : `${i.outcome} at`;
+    const against = i.verdict === "fake" ? `real shops around ${poundsShort(i.median)}` : `cheapest real shop ${poundsShort(i.cheapest)}`;
+    return { label: i.marketItem || i.payee, value: `${how} ${poundsShort(i.amount)}, ${against}` };
+  });
+}
+
 export type WatchSummaryRow = { status: string; saving: number };
 
 /** The price watches widget's headline: what the drops come to against what was nearly paid, or what is being watched. */

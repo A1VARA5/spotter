@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, fairPrice, firstFew, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
+import { countdown, fairPrice, fairRows, firstFew, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
 const h = (hours: number) => new Date(NOW.getTime() + hours * 3600_000);
@@ -116,6 +116,24 @@ describe("fair price", () => {
     expect(f.headline).toBe("Your agent paid £18 more than the cheapest real shops on 2 items this month");
     expect(f.items.map((i) => i.id)).toEqual(["b", "a", "c"]);
     expect(f.items[0]!.verdict).toBe("over");
+  });
+
+  // R7 m1: the items behind the headline, one short line each, for the tile's lower half and the answer card.
+  it("lists the items behind the headline in plain words, never calling a stopped one paid", () => {
+    const f = fairPrice(
+      [
+        pr({ id: "a", amount: 38, marketCheapest: 30, priceGap: 8, marketItem: "Desk lamp" }),
+        pr({ id: "fake", amount: 24.99, outcome: "Stopped", marketCheapest: 159, marketMedian: 169, priceGap: -134.01, marketItem: "Pro wireless earbuds" }),
+        pr({ id: "w", amount: 219, outcome: "Denied", marketCheapest: 199, marketMedian: 210, priceGap: 20, marketItem: "" , payee: "Sound Hub" }),
+      ],
+      NOW,
+    );
+    expect(fairRows(f.items, 3)).toEqual([
+      { label: "Pro wireless earbuds", value: "Stopped at £24.99, real shops around £169" },
+      { label: "Sound Hub", value: "Denied at £219, cheapest real shop £199" },
+      { label: "Desk lamp", value: "Paid £38, cheapest real shop £30" },
+    ]);
+    expect(fairRows(f.items, 1)).toHaveLength(1);
   });
 
   it("calls out a fake shop price Spotter caught against what real shops charge", () => {

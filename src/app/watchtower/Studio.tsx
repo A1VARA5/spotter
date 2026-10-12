@@ -15,8 +15,8 @@ import type { HouseholdKind } from "@/core/households";
 import { serverHistory } from "@/watchtower/history";
 import { focusable, type FocusableHarness } from "@/watchtower/focus";
 import { ANSWER_TOP, READY_TILES, addPage, answerRows, arrangeAnswersIn, fitWide, namesOf, newestAnswer, pageTabs, placeAnswer, removePage, stackForPhone, unfitWide, withNames, type Fitted } from "@/watchtower/pages";
-import { answerLine, cardLine, dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
-import { answerLineFor, answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
+import { answerLine, answeredLine, cardLine, dropEmptyAnswers, moneyFieldsOf } from "@/watchtower/answers";
+import { answerLineFor, answerTopFor, answerTotalFor, installChartPolish, onAnswerTotals, setChartMoney } from "./chartPolish";
 import { notable, type NotableHarness } from "@/watchtower/notes";
 import { SPOTTER_ID, buildGranRoster, buildRoster, paypalStatus } from "@/watchtower/agents";
 import { granBoard, granForAgent, granLabels, granMonth, granThemeParams } from "@/watchtower/gran";
@@ -35,7 +35,7 @@ import { AnswerSummaryWidget, createAnswerFeed, type Starter } from "./AnswerCar
 
 type Shape = { object(p: Record<string, unknown>): unknown; string(o?: { description?: string }): unknown };
 type FormParams = { createDefaults(o: { dataMappingItems: Array<{ key: string; label: string }> }): unknown };
-type ToolCtx = { success(r: string, d?: unknown): unknown; error(m: string): unknown };
+type ToolCtx = { success(r: string, d?: unknown): unknown; error(m: string): unknown; run?: { threadId?: string } };
 
 const FONT = "var(--font-sans), system-ui, sans-serif";
 const BASE = {
@@ -396,6 +396,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   const [, setTotalsSeen] = useState(0);
   useEffect(() => onAnswerTotals(() => setTotalsSeen((n) => n + 1)), []);
   const latestTotal = latest && !latest.empty ? answerTotalFor(latest.widgetId) : undefined;
+  const latestTop = latest && !latest.empty ? answerTopFor(latest.widgetId) : undefined;
   // The card's one line answer: the line the tile published from the rows it shows (filters applied).
   const latestLine = latest && !latest.empty ? cardLine({ type: latest.type, line: answerLineFor(latest.widgetId) }) : undefined;
 
@@ -604,8 +605,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
   const [answerFeed] = useState(() => createAnswerFeed((st) => askNext.current(st)));
   const starters = useMemo(() => promptStarters(sources.people, kind), [sources.people, kind]);
   useEffect(() => {
-    answerFeed.set({ title: latest?.title ?? "", empty: latest?.empty ?? true, running, total: latestTotal, line: latestLine, starters, canAsk: !phone, asking });
-  }, [answerFeed, latest, running, latestTotal, latestLine, starters, phone, asking]);
+    answerFeed.set({ title: latest?.title ?? "", empty: latest?.empty ?? true, running, total: latestTotal, line: latestLine, top: latestTop, type: latest?.type, starters, canAsk: !phone, asking });
+  }, [answerFeed, latest, running, latestTotal, latestLine, latestTop, starters, phone, asking]);
 
   // A new context per language: Studio reads it once, and a language change remounts Studio anyway.
   const context = useMemo<WatchContext>(() => ({ store, lookInto: (a) => lookIntoRef.current(a), gran: labels, receipts: book, granLang, answers: answerFeed }), [store, labels, book, granLang, answerFeed]);
@@ -790,6 +791,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
 
   const ai = useMemo<AgAiHarnessSetup>(() => {
     const history = serverHistory({ onProblem: (m) => notifyRef.current(m) });
+    // A remount builds a new harness: the old one's chat redraws stop listening.
+    let stopRefresh: Array<() => void> = [];
     return ({ api }) => {
       const caseTool = api.defineAiTool({
         name: "open_case_file",
@@ -926,6 +929,8 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
             const title = typeof args.title === "string" ? args.title : undefined;
             const { state, pageId, widgetId, reused } = placeAnswer(api.getState(), names.current, type, answerTypes(), title, rowsOnScreen());
             api.setState(state);
+            // Which tile this chat's run placed, so a run that built it is never called unfinished (answeredLine).
+            if (ctx.run?.threadId) placedBy.set(ctx.run.threadId, widgetId);
             const out = { widgetType: type, widgetId, pageId, reused };
             if (READY_TILES.has(type)) return ctx.success(`The ${type} tile is at the top of the Answers page and fills itself in. No widget agent needed.`, out);
             if (reused) return ctx.success(`reused: this question's ${type} tile is back at the top of the Answers page and its numbers are live. Don't delegate to widget; only ask data for the total.`, out);
@@ -940,6 +945,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
       // A tile the widget agent never set up (it failed, or did nothing) comes off the Answers page when the
       // run ends, and the chat says so in plain words, rather than an empty box staying until Undo.
       let noted: NotableHarness | null = null;
+      const placedBy = new Map<string, string>();
       const tidy = (threadId: string) => {
         const { state, removed } = dropEmptyAnswers(api.getState());
         if (!removed.length) return;
@@ -967,7 +973,17 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           promptStarters: promptStarters(sources.people, kind),
         };
       });
-      noted = notable(inner);
+      noted = notable(inner, {
+        answered: (threadId) => {
+          const latest = newestAnswer(api.getState());
+          const receipt = book.get().entries.find((e) => e.receipt.threadId === threadId)?.receipt ?? null;
+          return answeredLine({ placed: placedBy.get(threadId), latest, total: latest ? answerTotalFor(latest.widgetId) : undefined, receipt });
+        },
+      });
+      // The receipt is kept, and the chart's total drawn, a moment after the chat settles: redraw the chat then.
+      const n = noted;
+      for (const stop of stopRefresh) stop();
+      stopRefresh = [book.subscribe(() => n.refresh()), onAnswerTotals(() => n.refresh())];
       const h = focusable(noted);
       harness.current = h;
       for (const w of harnessWaiters.current.splice(0)) w(h);

@@ -84,6 +84,47 @@ describe("watchtower llm turn", () => {
     expect(WATCHTOWER_MODEL).toBe("claude-opus-5-5");
   });
 
+  // R7-N1: the lead's last turn came back with nothing to show (no text, no tool call), so the chat ended on
+  // tool rows with no reply. One more try, asked for the reply in words, on the same slot.
+  it("asks once more when a turn comes back empty, and returns the reply", async () => {
+    const empty = { ...reply, content: [{ type: "thinking", thinking: "", signature: "s" }] } as unknown as Anthropic.Message;
+    const seen: ClaudeTurn[] = [];
+    const turn = makeLlmTurn({ db, callModel: async (t) => (seen.push(t), seen.length === 1 ? empty : reply) });
+    const res = await turn(hh, body());
+    expect(seen).toHaveLength(2);
+    expect(seen[1]!.messages.at(-1)).toEqual({ role: "user", content: [{ type: "text", text: expect.stringMatching(/reply/i) }] });
+    expect((await res.json()).response.output[0].content[0].text).toBe("Hi");
+    const [n] = await db.query<{ n: string }>("select count(*)::text as n from llm_turns where household_id = $1", [hh]);
+    expect(n!.n).toBe("1");
+  });
+
+  it("doesn't ask again when the turn had a tool call or text, or stopped for another reason", async () => {
+    for (const r of [
+      { ...reply, stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "x", input: {} }] },
+      reply,
+      { ...reply, stop_reason: "max_tokens", content: [] },
+    ]) {
+      let calls = 0;
+      const turn = makeLlmTurn({ db, callModel: async () => (calls++, r as unknown as Anthropic.Message), perHousehold: 100 });
+      await turn(hh, body());
+      expect(calls).toBe(1);
+    }
+  });
+
+  it("returns the empty turn as it was when the second try is empty too or fails", async () => {
+    const empty = { ...reply, content: [] } as unknown as Anthropic.Message;
+    let calls = 0;
+    const turn = makeLlmTurn({ db, callModel: async () => (calls++, empty), perHousehold: 100 });
+    const res = await turn(hh, body());
+    expect(calls).toBe(2);
+    expect(res.status).toBe(200);
+    expect((await res.json()).response.output).toEqual([]);
+    let tries = 0;
+    const failing = makeLlmTurn({ db, perHousehold: 100, callModel: async () => { if (tries++) throw new Error("overloaded"); return empty; } });
+    const r2 = await failing(hh, body());
+    expect(r2.status).toBe(200);
+  });
+
   it("reports a model failure as a JSON error instead of throwing", async () => {
     const turn = makeLlmTurn({ db, callModel: async () => { throw new Error("overloaded"); } });
     const res = await turn(hh, body());

@@ -23,33 +23,74 @@ export function cutOff(messages: readonly AgAiChatMessage[], status: AgAiRunStat
   return !parts.some((p) => p.type === "text" && p.text.trim() !== "");
 }
 
-export type NotableHarness = AgAiHarness & { addNote(threadId: string, text: string): void };
+/** AG's own words on a delegate's row when the delegate ended without calling complete_task. */
+export const NO_SUMMARY = "(the delegate finished without a summary)";
+/** What a delegate's row says instead when the run built nothing we can name. */
+export const NO_SUMMARY_PLAIN = "It finished without writing what it did.";
+
+const noSummary = (r: unknown) => r === NO_SUMMARY || (!!r && typeof r === "object" && (r as { response?: unknown }).response === NO_SUMMARY);
+const hasNoSummary = (m: AgAiChatMessage) => m.parts.some((p) => p.type === "tool_call" && p.toolCall.name === "delegate_to" && noSummary(p.toolCall.result));
+
+/** The delegate's row with a plain line in place of AG's words (shown only: the saved chat keeps AG's). */
+function plainDelegate(m: AgAiChatMessage, line: string): AgAiChatMessage {
+  if (!hasNoSummary(m)) return m;
+  return {
+    ...m,
+    parts: m.parts.map((p) => {
+      if (p.type !== "tool_call" || p.toolCall.name !== "delegate_to" || !noSummary(p.toolCall.result)) return p;
+      const r = p.toolCall.result;
+      return { ...p, toolCall: { ...p.toolCall, result: typeof r === "string" ? line : { ...(r as object), response: line } } };
+    }),
+  };
+}
+
+export type NotableHarness = AgAiHarness & {
+  addNote(threadId: string, text: string): void;
+  /** Something `answered` reads changed (a receipt landed, a tile filled in): every open chat redraws. */
+  refresh(): void;
+};
+/**
+ * answered: the plain line for a thread whose last run built its answer tile and kept its receipt
+ * ("Chart added: What Leo spent on games, £9.98."), or null. Such a run is never called unfinished.
+ */
+export type NotableOptions = { answered?: (threadId: string) => string | null };
 type Note = { after: string | null | undefined; message: AgAiChatMessage };
 type Listener = (e: { type: "changed" }) => void;
 
-export function notable(inner: AgAiHarness): NotableHarness {
+export function notable(inner: AgAiHarness, opts: NotableOptions = {}): NotableHarness {
   const notes = new Map<string, Note[]>();
   const listeners = new Map<string, Set<Listener>>();
   const wrapped = new WeakMap<AgAiChatSession, AgAiChatSession>();
   // The merged list is rebuilt only when AG's list or our notes change, so it keeps its identity otherwise.
-  const merged = new Map<string, { from: readonly AgAiChatMessage[]; count: number; cut: boolean; list: AgAiChatMessage[] }>();
+  const merged = new Map<string, { from: readonly AgAiChatMessage[]; count: number; cut: boolean; done: string | null; list: AgAiChatMessage[] }>();
   let seq = 0;
+  const answeredFor = (threadId: string): string | null => {
+    try {
+      return opts.answered?.(threadId) ?? null;
+    } catch (e) {
+      console.error("[watchtower] couldn't work out whether the last answer finished:", e);
+      return null;
+    }
+  };
 
   const messagesOf = (s: AgAiChatSession): readonly AgAiChatMessage[] => {
     const own = notes.get(s.threadId) ?? [];
     const base = s.messages;
     const cut = cutOff(base, s.status);
-    if (!own.length && !cut) return base;
+    const rewrite = base.some(hasNoSummary);
+    if (!own.length && !cut && !rewrite) return base;
+    const done = (cut || rewrite) && s.status !== "running" ? answeredFor(s.threadId) : null;
     const hit = merged.get(s.threadId);
-    if (hit && hit.from === base && hit.count === own.length && hit.cut === cut) return hit.list;
-    const list = [...base];
+    if (hit && hit.from === base && hit.count === own.length && hit.cut === cut && hit.done === done) return hit.list;
+    const list = rewrite ? base.map((m) => plainDelegate(m, done ?? NO_SUMMARY_PLAIN)) : [...base];
     for (const n of own) {
       const found = n.after ? list.findIndex((m) => m.id === n.after) + 1 : 0;
       list.splice(n.after === null ? 0 : found > 0 ? found : list.length, 0, n.message);
     }
     // Shown, never saved: the saved chat keeps AG's own messages, and this line goes once an answer arrives.
-    if (cut) list.push({ id: `spotter-unfinished-${base.at(-1)?.id ?? "start"}`, role: "assistant", parts: [{ type: "text", text: UNFINISHED_NOTE }], createdAt: base.at(-1)?.createdAt ?? 0 });
-    merged.set(s.threadId, { from: base, count: own.length, cut, list });
+    // A run that built its tile and kept its receipt finished: its line says what it built, never "didn't finish".
+    if (cut) list.push({ id: `spotter-${done ? "answered" : "unfinished"}-${base.at(-1)?.id ?? "start"}`, role: "assistant", parts: [{ type: "text", text: done ?? UNFINISHED_NOTE }], createdAt: base.at(-1)?.createdAt ?? 0 });
+    merged.set(s.threadId, { from: base, count: own.length, cut, done, list });
     return list;
   };
 
@@ -87,6 +128,11 @@ export function notable(inner: AgAiHarness): NotableHarness {
         return (id: string) => {
           const s = target.getSession?.(id);
           return s ? wrap(s) : undefined;
+        };
+      }
+      if (prop === "refresh") {
+        return () => {
+          for (const ls of listeners.values()) for (const l of ls) l({ type: "changed" });
         };
       }
       if (prop === "addNote") {

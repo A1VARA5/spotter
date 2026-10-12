@@ -15,12 +15,12 @@ const chart = (widgetId: string, rows: Array<Record<string, unknown>>, series: A
 
 describe("an answer chart's one line answer", () => {
   it("names the one bar when there is only one", () => {
-    expect(answerTotal(chart("answer-1", [{ p: "BlockWorld", v: 9.98 }]), money)).toEqual({ widgetId: "answer-1", text: "£9.98", line: "All of it: BlockWorld" });
+    expect(answerTotal(chart("answer-1", [{ p: "BlockWorld", v: 9.98 }]), money)).toMatchObject({ widgetId: "answer-1", text: "£9.98", line: "All of it: BlockWorld" });
   });
 
   it("names the biggest bar and its share when there are several", () => {
     const t = answerTotal(chart("answer-1", [{ p: "BlockWorld", v: 3.99 }, { p: "TuneBox", v: 6 }]), money);
-    expect(t).toEqual({ widgetId: "answer-1", text: "£9.99", line: "Biggest: TuneBox, £6.00 of £9.99" });
+    expect(t).toMatchObject({ widgetId: "answer-1", text: "£9.99", line: "Biggest: TuneBox, £6.00 of £9.99" });
   });
 
   it("counts plainly when the chart counts, and reads a donut's labels", () => {
@@ -55,18 +55,32 @@ describe("the card's one line, for every kind of answer", () => {
 
 describe("bar thickness on answer charts", () => {
   const bars = (o: object) => (o as { series: Array<{ widthRatio?: number }> }).series.map((s) => s.widthRatio);
-  it("keeps one or a few bars slim instead of one block across the board", () => {
-    const one = bars(polishChart(chart("answer-1", [{ p: "BlockWorld", v: 9.98 }]), money))[0]!;
-    expect(one).toBeLessThanOrEqual(0.2);
-    const two = bars(polishChart(chart("answer-1", [{ p: "a", v: 1 }, { p: "b", v: 2 }]), money))[0]!;
-    expect(two).toBeGreaterThan(one);
-    expect(two).toBeLessThanOrEqual(0.4);
+  it("keeps five to seven bars slimmer than Studio's full band, growing as bars add up", () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ p: `s${i}`, v: i + 1 }));
+    const five = bars(polishChart(chart("answer-1", rows(5)), money))[0]!;
+    const six = bars(polishChart(chart("answer-1", rows(6)), money))[0]!;
+    expect(six).toBeGreaterThan(five);
+    expect(six).toBeLessThanOrEqual(0.84);
+    // a fixed width and a ratio would multiply, so a few bars get the width only
+    expect(bars(polishChart(chart("answer-1", rows(1)), money))[0]).toBeUndefined();
+  });
+
+  // R7 m8: a ratio of the band still drew a 53 px bar on a tall 1920 tile; a few bars get a fixed slim width.
+  const px = (o: object) => (o as { series: Array<{ width?: number }> }).series.map((s) => s.width);
+  it("draws up to four bars at a fixed slim width, whatever the tile's size, legend split or not", () => {
+    expect(px(polishChart(chart("answer-1", [{ p: "BlockWorld", v: 9.98 }]), money))).toEqual([28]);
+    expect(px(polishChart(chart("answer-1", [{ p: "a", v: 1 }, { p: "b", v: 2 }, { p: "c", v: 3 }, { p: "d", v: 4 }]), money))).toEqual([28]);
+    // the widget agent split one shop by a legend: one row, two series, still slim
+    expect(px(polishChart(chart("answer-1", [{ p: "a", v: 1, w: 2 }], [{ type: "bar", xKey: "p", yKey: "v" }, { type: "bar", xKey: "p", yKey: "w" }]), money))).toEqual([28, 28]);
+    expect(px(polishChart(chart("answer-1", Array.from({ length: 5 }, (_, i) => ({ p: `s${i}`, v: i + 1 }))), money))).toEqual([undefined]);
   });
 
   it("leaves many bars, grouped bars and the board's own charts as Studio drew them", () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ p: `s${i}`, v: i + 1 }));
     expect(bars(polishChart(chart("answer-1", many), money))[0]).toBeUndefined();
-    expect(bars(polishChart(chart("answer-1", [{ p: "a", v: 1, w: 2 }], [{ type: "bar", xKey: "p", yKey: "v" }, { type: "bar", xKey: "p", yKey: "w" }]), money))).toEqual([undefined, undefined]);
+    const grouped = Array.from({ length: 3 }, (_, i) => ({ p: `s${i}`, v: i + 1, w: 2 }));
+    expect(bars(polishChart(chart("answer-1", grouped, [{ type: "bar", xKey: "p", yKey: "v" }, { type: "bar", xKey: "p", yKey: "w" }]), money))).toEqual([undefined, undefined]);
+    expect(px(polishChart(chart("answer-1", grouped, [{ type: "bar", xKey: "p", yKey: "v" }, { type: "bar", xKey: "p", yKey: "w" }]), money))).toEqual([undefined, undefined]);
     expect(bars(polishChart(chart("people", [{ p: "a", v: 1 }]), money))[0]).toBeUndefined();
   });
 });

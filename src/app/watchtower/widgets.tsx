@@ -13,7 +13,7 @@ import type { AiChecksDef } from "./AiChecks";
 import type { AnswerFeed, AnswerSummaryDef } from "./AnswerCard";
 import type { ReceiptBook } from "./ReceiptBar";
 import { noteAnswerLine } from "./chartPolish";
-import { countdown, fairPrice, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
+import { countdown, fairPrice, fairRows, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
 export type HoldTrackDef = { type: "hold-track"; dataMapping: { category: AgWidgetFieldReference[]; value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -452,6 +452,8 @@ const RADAR_FIELDS = ["payee", "outcome"] as const;
 // How many rows a tile shows before "N more": enough to read, few enough to fit the tile at laptop width.
 const RADAR_SHOWN = 3;
 const FAIR_SHOWN = 1;
+/** Items the answer card lists beside a Fair price answer. */
+const CARD_ROWS = 3;
 const ALERTS_SHOWN = 2;
 
 export function ScamRadarWidget(p: AgWidgetParams<ScamRadarDef>) {
@@ -627,9 +629,12 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   ) : null;
   // On the Answers page the card beside this tile says the same words, from these same (filtered) rows.
   const said = failed ? "The price checks didn't load. Reload the page." : f ? (f.checked ? f.headline : "No price checks this month yet") : null;
+  // The items behind the headline, for the card's list (a string key, so the effect runs only when they change).
+  const behind = f && !failed ? fairRows(f.items, CARD_ROWS) : [];
+  const behindKey = JSON.stringify(behind);
   useEffect(() => {
-    if (said) noteAnswerLine(p.widgetId, said);
-  }, [p.widgetId, said]);
+    if (said) noteAnswerLine(p.widgetId, said, JSON.parse(behindKey));
+  }, [p.widgetId, said, behindKey]);
   if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price checks. Reload the page.</p>;
   if (!f) return null;
   if (!f.checked) {
@@ -665,9 +670,26 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
           </li>
         ))}
       </ul>
+      {f.items.length > FAIR_SHOWN && (
+        <div className="wt-fair-rest">
+          <p className="wt-fair-rest-h">{f.items.length - FAIR_SHOWN === 1 ? "The other price check" : `The next ${f.items.length - FAIR_SHOWN} price checks`}</p>
+          <ul className="wt-fair-rest-list">
+            {f.items.slice(FAIR_SHOWN).map((i) => (
+              <li key={i.id} className="wt-fair-rest-item">
+                <span className="wt-fair-rest-name">{i.marketItem || i.payee}</span>
+                <span className="wt-fair-verdict" data-verdict={i.verdict}>
+                  {VERDICT_TEXT[i.verdict]}
+                </span>
+                {i.sample && <span className="wt-sample-tag">Sample</span>}
+                <span className="wt-fair-rest-note">{fairRows([i], 1)[0]!.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {f.checked > FAIR_SHOWN && (
         <p className="wt-more">
-          {FAIR_SHOWN === 1 ? "The biggest" : `The biggest ${FAIR_SHOWN}`} of {f.checked} price checks this month. Every one is in <a href="/ledger">Activity</a>.
+          {f.checked > f.items.length ? `The biggest ${f.items.length} of ${f.checked} price checks this month.` : `All ${f.checked} price checks this month.`} Every one is in <a href="/ledger">Activity</a>.
         </p>
       )}
       <p className="wt-fair-source">Real shop prices from Channel3, checked when each payment was made.</p>

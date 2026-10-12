@@ -8,7 +8,7 @@
 // and every chart that adds up money gets its value axis in pounds.
 import type { AgReportState } from "ag-studio";
 import { ANSWERS_PAGE, arrangeAnswersIn, isEmptyAnswer } from "./pages";
-import { helperName, type Receipt } from "./receipt";
+import { TOOL_WORDS, helperName, toolWords, type Receipt } from "./receipt";
 
 /**
  * Neutral answer colours from the design tokens: a tint of the protect blue (3.3:1 on white, ink text on it
@@ -20,6 +20,10 @@ const INK = "#17212B";
 const OUTCOME_FIELDS = new Set(["payments.outcome", "payments.outcomeText"]);
 const SLIM_UNDER = 8;
 const SLIM_PER_BAR = 0.12;
+/** Up to this many bars in all are drawn SLIM_PX wide, whatever the tile size. */
+const SLIM_FIXED_UPTO = 4;
+const SLIM_PX = 28;
+const TOP_ROWS = 3;
 
 /** A field in a data mapping: saved boards say `id`, the hydrated fields Studio hands a chart say `fieldId`. */
 type Ref = { id?: string; fieldId?: string; aggregation?: string };
@@ -73,14 +77,18 @@ export function polishChart<T extends object>(options: T, money: MoneyFields): T
   // Answers show their numbers at the end of each bar: inside it, or just past it when the bar is too short.
   // Ink reads on the first answer colour and on the page. Studio formats series labels with the field's format (£).
   // One or a few bars would each fill their whole band (one bar for one shop was a block across the board),
-  // so a single series answer with under 8 bars draws them slim: 12% of the band per bar, more as bars add up.
+  // so up to four bars in all (one shop, or one shop split by a legend) are drawn at a fixed slim width on
+  // any tile size (a share of the band still came out 53 px thick on a tall 1920 tile), and a single series
+  // of five to seven bars at 12% of the band per bar, more as bars add up. Never both: a ratio scales the width.
   if (params.widgetId.startsWith("answer-") && Array.isArray(o.series)) {
     const series = o.series as Array<Record<string, unknown>>;
     const rows = Array.isArray(o.data) ? o.data.length : 0;
-    const slim = series.length === 1 && rows > 0 && rows < SLIM_UNDER ? Math.round(SLIM_PER_BAR * rows * 100) / 100 : undefined;
+    const barSeries = series.filter((s) => s?.type === "bar").length;
+    const fixed = rows > 0 && barSeries > 0 && rows * barSeries <= SLIM_FIXED_UPTO;
+    const slim = !fixed && series.length === 1 && rows > 0 && rows < SLIM_UNDER ? Math.round(SLIM_PER_BAR * rows * 100) / 100 : undefined;
     next.series = series.map((s) =>
       s?.type === "bar"
-        ? { ...s, label: { ...(s.label as object | undefined), enabled: true, color: INK, placement: ["inside-end", "outside-end"] }, ...(slim ? { widthRatio: slim } : {}) }
+        ? { ...s, label: { ...(s.label as object | undefined), enabled: true, color: INK, placement: ["inside-end", "outside-end"] }, ...(fixed ? { width: SLIM_PX } : slim ? { widthRatio: slim } : {}) }
         : s,
     );
   }
@@ -95,7 +103,8 @@ export function polishChart<T extends object>(options: T, money: MoneyFields): T
  * What an answer chart adds up to, from the very rows it draws, for the line above the Answers page
  * ("£9.98"). Money in the board's currency, counts as whole numbers. Null for other charts or no rows.
  */
-export function answerTotal(options: object, money: MoneyFields): { widgetId: string; text: string; line: string | null } | null {
+export type TopRow = { label: string; value: string };
+export function answerTotal(options: object, money: MoneyFields): { widgetId: string; text: string; line: string | null; top: TopRow[] } | null {
   const o = options as ChartOptions & { data?: unknown; series?: unknown };
   const params = o.context?.params;
   if (!params || typeof params.widgetId !== "string" || !params.widgetId.startsWith("answer-")) return null;
@@ -119,7 +128,13 @@ export function answerTotal(options: object, money: MoneyFields): { widgetId: st
   const name = labelOf(top);
   const negative = rows.some((row) => rowSum(row) < 0);
   const line = !name || negative ? null : rows.length === 1 ? `All of it: ${name}` : `Biggest: ${name}, ${fmt(rowSum(top))} of ${text}`;
-  return { widgetId: params.widgetId, text, line };
+  // The biggest rows behind the chart, for the card: only rows with a plain label, never a guessed one.
+  const biggest = [...rows]
+    .sort((x, y) => rowSum(y) - rowSum(x))
+    .filter((row) => labelOf(row) !== "")
+    .slice(0, TOP_ROWS)
+    .map((row) => ({ label: labelOf(row), value: fmt(rowSum(row)) }));
+  return { widgetId: params.widgetId, text, line, top: biggest };
 }
 
 /**
@@ -183,6 +198,33 @@ export function dropEmptyAnswers(state: AgReportState): { state: AgReportState; 
  */
 export function answerReceipt(receipts: readonly Receipt[]): Receipt | null {
   return receipts.find((r) => r.status === "ok" && r.tools.some((t) => t.name === "place_widget" && t.calls > t.failed)) ?? null;
+}
+
+/**
+ * The chat's plain line for a run that built its answer but wrote no reply (R7-N1): "Chart added: What Leo
+ * spent on games, £9.98." Only when the tile this run placed is the newest answer, it's built, and the run's
+ * receipt says it finished with that tile placed. Otherwise null, and the chat keeps "didn't finish".
+ */
+export function answeredLine(o: { placed: string | undefined; latest: { widgetId: string; type: string; title: string; empty: boolean } | null; total?: string; receipt: Receipt | null }): string | null {
+  const { placed, latest, receipt } = o;
+  if (!placed || !latest || latest.empty || latest.widgetId !== placed || !receipt || answerReceipt([receipt]) !== receipt) return null;
+  const title = latest.title.replace(/[\s.?!]+$/, "");
+  if (latest.type === "grid" || latest.type === "pivot-grid") return title ? `Table added: ${title}.` : "Table added to the Answers page.";
+  if (latest.type === "fair-price") return title ? `Fair price tile added: ${title}.` : "Fair price tile added to the Answers page.";
+  if (!title) return "Chart added to the Answers page.";
+  return o.total ? `Chart added: ${title}, ${o.total}.` : `Chart added: ${title}.`;
+}
+
+/** Calls that don't change or read anything the family cares about (a helper reporting back, naming the chat). */
+const BOOKKEEPING = new Set(["complete_task", "rename_thread"]);
+/** What a run did, from its receipt, in the receipt's own plain words: most calls first, tools Spotter knows only, at most four. */
+export function receiptSteps(r: Pick<Receipt, "tools">, max = 4): Array<{ what: string; times: number }> {
+  return r.tools
+    .filter((t) => t.access !== "unknown" && t.calls > 0 && !BOOKKEEPING.has(t.name) && Object.prototype.hasOwnProperty.call(TOOL_WORDS, t.name))
+    .map((t, i) => ({ what: toolWords(t.name), times: t.calls, i }))
+    .sort((a, b) => b.times - a.times || a.i - b.i)
+    .slice(0, max)
+    .map(({ what, times }) => ({ what, times }));
 }
 
 /** Who built an answer, from its receipt: the agent that led, then each helper it handed work to, once. */

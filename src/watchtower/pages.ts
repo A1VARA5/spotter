@@ -275,7 +275,8 @@ export function newestAnswer(s: AgReportState): { pageId: string; widgetId: stri
 }
 
 export const PHONE_BAR_SPAN = 20;
-const PHONE_CARD_SPAN = 30;
+/** Tall enough on a phone for the answer, its receipt, what Spotter did and Ask next without scrolling inside the card. */
+const PHONE_CARD_SPAN = 40;
 
 /** Phones get one widget per row, full width, in the order you'd read the desktop board. Never saved. */
 export function stackForPhone(s: AgReportState): AgReportState {

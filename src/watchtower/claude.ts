@@ -68,6 +68,9 @@ export function toClaude(req: AgLlmRequest): ClaudeTurn {
     // reasoning items are skipped (see the note at the top)
   }
   if (messages[0]?.role !== "user") messages.unshift({ role: "user", content: [{ type: "text", text: "Continue." }] });
+  // The model refuses a history that ends on its own turn ("does not support assistant message prefill").
+  // AG sends one when it makes a delegate call complete_task after a turn that ended in text, so ask in words.
+  if (messages.at(-1)?.role === "assistant") messages.push({ role: "user", content: [{ type: "text", text: "Continue." }] });
 
   const choice = req.toolChoice ?? "auto";
   if (choice === "required") system.push("Call one of your tools now.");
