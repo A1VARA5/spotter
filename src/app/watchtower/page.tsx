@@ -39,16 +39,14 @@ export default async function WatchtowerPage() {
     <AppShell db={db} household={household} current="watchtower" layout="wide">
       <div className="wt-head">
         <h1 className="page-title">Watchtower</h1>
+        {/* One line. A demo family's says the board adds a made up Sample month, so its numbers aren't read as real use. */}
         <p className="lede">
-          {household.kind === "business"
-            ? "Every supplier payment, hold and invoice caught on one board. Ask the assistant a question and it builds the chart."
-            : "Every payment, hold and scam sign on one board. Ask the assistant a question and it builds the chart."}
+          {household.demo
+            ? `Your ${household.kind === "business" ? "payments" : "family's payments"} plus a made up Sample month, marked Sample. Ask the assistant a question and it builds the chart.`
+            : household.kind === "business"
+              ? "Every supplier payment, hold and invoice caught on one board. Ask the assistant a question and it builds the chart."
+              : "Every payment, hold and scam sign on one board. Ask the assistant a question and it builds the chart."}
         </p>
-        {household.demo && (
-          <p className="wt-banner">
-            Demo family: this board includes a sample month, marked Sample. Anything you try on Try a payment shows up here too.
-          </p>
-        )}
       </div>
       <Watchtower board={JSON.parse(JSON.stringify(board))} initialState={state} since={now.toISOString()} kind={household.kind} spotterName={household.spotter_name} demo={household.demo === true} />
     </AppShell>

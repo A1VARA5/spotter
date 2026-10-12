@@ -14,6 +14,26 @@
 .wt-page[data-current] .wt-page-btn, .wt-page[data-current] .wt-page-x { color: var(--chalk); }
 .wt-page-btn:active, .wt-page-x:active { transform: scale(0.97); }
 .wt-page-btn:focus-visible, .wt-page-x:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+/* "Incidents (N)": incident pages behind one menu, so the tab row never grows or cuts names off. */
+.wt-inc { position: relative; flex: none; display: flex; border-radius: 8px; }
+.wt-inc-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--ink-2); white-space: nowrap; transition: transform 160ms var(--ease-out); }
+.wt-inc-btn:hover, .wt-inc-btn[aria-expanded="true"] { color: var(--ink); background: var(--chalk); }
+.wt-inc[data-current] .wt-inc-btn { background: var(--ink); color: var(--chalk); }
+.wt-inc-btn:active { transform: scale(0.97); }
+.wt-inc-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+.wt-inc-list { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: min(320px, calc(100vw - 32px)); margin: 0; padding: 6px; list-style: none; background: var(--paper, #fff); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 0.14); }
+.wt-inc-item { display: flex; align-items: center; gap: 4px; border-radius: 8px; }
+.wt-inc-item[data-current] { background: var(--chalk); }
+.wt-inc-show, .wt-inc-x { all: unset; box-sizing: border-box; cursor: pointer; font-size: 14px; color: var(--ink); border-radius: 8px; }
+.wt-inc-show { flex: 1; min-width: 0; padding: 10px 12px; font-weight: 600; overflow-wrap: anywhere; }
+.wt-inc-item[data-current] .wt-inc-show { font-weight: 700; }
+.wt-inc-x { display: inline-grid; place-items: center; min-width: 36px; min-height: 36px; font-size: 18px; color: var(--ink-2); }
+.wt-inc-show:hover, .wt-inc-x:hover { background: var(--chalk); color: var(--ink); }
+.wt-inc-show:focus-visible, .wt-inc-x:focus-visible { outline: 2px solid var(--protect); outline-offset: -2px; }
+@media (pointer: coarse) { .wt-inc-btn, .wt-inc-x { min-height: 44px; } .wt-inc-x { min-width: 44px; } }
+/* "Board tools": brings back Data, Compose and Filters, hidden by default for demo families. */
+.wt-tools-toggle[aria-pressed="true"] { color: var(--ink); background: var(--chalk); }
+.wt-tools-toggle:disabled { cursor: progress; opacity: 0.6; }
 /* Live update = remount (see Studio.tsx, until AG's real-time API): hide Studio's "Loading..." overlays
    for that moment, as AG suggested, so the board doesn't flash. */
 .wt-studio[data-swapping] .ag-studio-root-loading,
@@ -152,6 +172,14 @@
   to { transform: translateX(var(--to)); }
 }
 .wt-rp-counts { display: flex; flex-wrap: wrap; gap: 6px 28px; }
+/* "Includes the Sample month" beside a headline number: never wraps mid label. */
+.wt-sample-incl { white-space: nowrap; }
+.wt-rp-counts .wt-sample-incl { align-self: center; margin-left: 0; }
+.wt-track-ends { gap: 8px; }
+.wt-track-ends > span:first-child { white-space: nowrap; }
+.wt-track-ends > span:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 8px; text-align: right; }
+.wt-track-ends .wt-sample-incl { margin: 0; }
+.wt-kept-label .wt-sample-incl { display: block; width: fit-content; margin: 2px 0 0; }
 .wt-rp-count { display: grid; }
 .wt-rp-num { font-size: 25px; font-weight: 650; line-height: 1.1; }
 .wt-rp-count[data-kind="kept"] .wt-rp-num { color: var(--ink); }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, fairPrice, fairRows, firstFew, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
+import { SAMPLE_INCLUDED, activityNote, countdown, fairPrice, fairRows, firstFew, includesSample, pickCase, radarLines, replayDays, shortId, type PriceRow } from "./widgetLogic";
 
 const NOW = new Date("2026-10-10T12:00:00Z");
 const h = (hours: number) => new Date(NOW.getTime() + hours * 3600_000);
@@ -182,5 +182,37 @@ describe("tiles show the first few and say how many more", () => {
   it("shows everything when it fits", () => {
     expect(firstFew(["a"], 3)).toEqual({ shown: ["a"], more: 0 });
     expect(firstFew([], 3)).toEqual({ shown: [], more: 0 });
+  });
+});
+
+describe("headline numbers say when they include the sample month", () => {
+  it("any counted row from the sample month makes the headline say so", () => {
+    expect(includesSample([{ sample: "No" }, { sample: "Yes" }])).toBe(true);
+    expect(includesSample([{ sample: "No" }])).toBe(false);
+    expect(includesSample([])).toBe(false);
+  });
+
+  it("only rows that count toward the number matter (money kept counts stopped and denied money only)", () => {
+    const rows = [
+      { sample: "Yes", moneyKept: 0 },
+      { sample: "No", moneyKept: 250 },
+    ];
+    expect(includesSample(rows, (r) => Number(r.moneyKept) > 0)).toBe(false);
+    expect(includesSample([...rows, { sample: "Yes", moneyKept: 49.99 }], (r) => Number(r.moneyKept) > 0)).toBe(true);
+  });
+
+  it("the label names the Sample month in plain words", () => {
+    expect(SAMPLE_INCLUDED).toBe("Includes the Sample month");
+  });
+});
+
+describe("pointing to Activity honestly", () => {
+  it("a family with a sample month is told Activity has only their own payments", () => {
+    const n = activityNote(true);
+    expect(`${n.lead}Activity${n.tail}`).toBe("Your own payments are in Activity. The Sample month is only on this board.");
+  });
+  it("a family without one is told every payment is there", () => {
+    const n = activityNote(false);
+    expect(`${n.lead}Activity${n.tail}`).toBe("Every payment is in Activity.");
   });
 });

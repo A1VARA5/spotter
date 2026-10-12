@@ -15,6 +15,7 @@ import {
 } from "ag-grid-community";
 import { FileText, X } from "lucide-react";
 import { money, STATE_LABEL, timeAgo, trackState, type TrackState } from "@/ui/format";
+import { OUTCOME_WORDS } from "@/ui/labels";
 import { marketCell } from "@/core/market";
 import type { Payment } from "@/core/lifecycle";
 import { CaseFile } from "@/ui/CaseFile";
@@ -92,13 +93,14 @@ function toRow(p: Payment, names: Record<string, string>, rec: Rec): Row {
   };
 }
 
+// The same status words as Watchtower and the rest of the app (src/ui/labels.ts).
 const FILTERS: Array<{ label: string; states: TrackState[] | null }> = [
   { label: "Everything", states: null },
-  { label: "Waiting for you", states: ["held"] },
-  { label: "Stopped", states: ["blocked", "failed"] },
-  { label: "Not sent", states: ["protected"] },
-  { label: "Denied", states: ["returned"] },
-  { label: "Paid", states: ["paid"] },
+  { label: OUTCOME_WORDS.held.long, states: ["held"] },
+  { label: OUTCOME_WORDS.blocked.short, states: ["blocked", "failed"] },
+  { label: OUTCOME_WORDS.protected.short, states: ["protected"] },
+  { label: OUTCOME_WORDS.returned.short, states: ["returned"] },
+  { label: OUTCOME_WORDS.paid.short, states: ["paid"] },
 ];
 
 /** Columns a phone has no room for: the drawer shows all of them for the row that's opened. */

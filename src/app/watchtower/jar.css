@@ -1,6 +1,16 @@
 /* The glass jar (Jar.tsx): the "Try to trick it" menu beside Reset board for demo families, and the panel it opens. Tokens from
    globals.css; the Allow and Refuse buttons reuse the held call styles in receipt.css. */
-.jar-menu { position: relative; }
+.jar-menu { position: relative; flex: none; }
+/* Easy to find, but quieter than the view switch: an outline, no fill. */
+.jar-menu-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--protect); color: var(--protect); font-size: 14px; font-weight: 650; white-space: nowrap; transition: transform 160ms var(--ease-out); }
+.jar-menu-btn:hover, .jar-menu-btn[aria-expanded="true"] { background: var(--chalk); }
+.jar-menu-btn:active { transform: scale(0.97); }
+.jar-menu-btn:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+@media (pointer: coarse) { .jar-menu-btn { min-height: 44px; } }
+.jar-menu-item .jar-cost { justify-self: start; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; border: 1px solid var(--line); background: var(--chalk); color: var(--ink); }
+.jar-menu-item .jar-cost[data-cost="free"] { color: var(--go-text); border-color: var(--go); background: var(--go-soft); }
+.jar-next { padding: 10px 14px; border-radius: 12px; background: var(--hold-soft); border: 1px solid var(--hold); font-weight: 600; text-wrap: pretty; }
+.jar-next-kicker { display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); }
 .jar-menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: min(340px, calc(100vw - 32px)); margin: 0; padding: 6px; list-style: none; background: var(--paper, #fff); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 0.14); }
 .jar-menu-item { all: unset; box-sizing: border-box; display: grid; gap: 2px; width: 100%; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--ink); }
 .jar-menu-item span { font-size: 13px; color: var(--ink-2); }
