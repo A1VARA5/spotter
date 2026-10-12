@@ -88,6 +88,19 @@ describe("only flagged payments count as scammer words", () => {
 describe("gate and gated tools", () => {
   const taint = () => taintIndex([SCAM]);
 
+  it("pending() is the same array until something changes (React's useSyncExternalStore needs that)", async () => {
+    const gate = createGate();
+    expect(gate.pending()).toBe(gate.pending());
+    const asked = gate.ask({ toolCallId: "c1", name: "add_page", quote: "x" });
+    const one = gate.pending();
+    expect(one).toHaveLength(1);
+    expect(gate.pending()).toBe(one);
+    gate.respond("c1", { type: "reject" } as never);
+    await asked;
+    expect(gate.pending()).not.toBe(one);
+    expect(gate.pending()).toBe(gate.pending());
+  });
+
   it("runs a clean call straight away, counted as authorised", async () => {
     const { tool, ran } = fakeTool();
     const outcomes: HoldOutcome[] = [];

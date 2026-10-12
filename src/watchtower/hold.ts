@@ -89,7 +89,10 @@ export type Gate = {
 export function createGate(): Gate {
   const waiting = new Map<string, { call: HeldCall; settle: (a: "approve" | "reject") => void }>();
   const subs = new Set<() => void>();
+  // One array per change: React's useSyncExternalStore loops forever if every read is a new array.
+  let snapshot: HeldCall[] = [];
   const emit = () => {
+    snapshot = [...waiting.values()].map((w) => w.call);
     for (const cb of [...subs]) {
       try {
         cb();
@@ -124,7 +127,7 @@ export function createGate(): Gate {
       });
     },
     respond: (id, response) => answer(id, response.type === "approve" ? "approve" : "reject"),
-    pending: () => [...waiting.values()].map((w) => w.call),
+    pending: () => snapshot,
     cancelAll(where) {
       for (const [id, w] of [...waiting]) if (!where || where(w.call)) answer(id, "reject");
     },
