@@ -145,6 +145,13 @@ describe("create_subscription through Spotter", () => {
     expect(await listHeldSubscriptions(deps.db, hh)).toHaveLength(0);
   });
 
+  it("a plan that isn't ACTIVE at PayPal starts nothing (PayPal's best-practices check)", async () => {
+    run.mockImplementationOnce(async () => JSON.stringify(plan({ status: "INACTIVE" })));
+    const r = JSON.parse(await holdSubscription(deps, run, "agent", { plan_id: "P-5ML4271244454362WXNWU5NQ" }));
+    expect(r.error.message).toMatch(/isn't active/);
+    expect(run).not.toHaveBeenCalledWith("create_subscription", expect.anything());
+  });
+
   it("the toolkit's LlmError on the plan read starts nothing", async () => {
     run.mockImplementationOnce(async () => JSON.stringify({ ok: false, status: 404, code: "PAYPAL_API_HTTP_ERROR", message: "RESOURCE_NOT_FOUND" }));
     expect(JSON.parse(await holdSubscription(deps, run, "agent", { plan_id: "P-NOPE00000000000" })).error).toBeTruthy();

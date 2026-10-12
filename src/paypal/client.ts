@@ -38,6 +38,13 @@ export class PayPalError extends Error {
 export const toDecimal = (minor: number) => (minor / 100).toFixed(2);
 
 let cached: { token: string; expiresAt: number } | null = null;
+// Waiting between retries, swappable so tests don't sleep.
+let sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+export const setSleepForTests = (f: (ms: number) => Promise<void>) => {
+  sleep = f;
+};
+const RETRIES = 2;
+const MAX_WAIT_MS = 4_000;
 export const resetTokenCache = () => {
   cached = null;
 };
@@ -84,6 +91,13 @@ async function call<T>(method: string, path: string, body?: unknown, requestId?:
   // one and ask once more. The request id is the same, so a money call can't happen twice.
   if (r.status === 401) {
     cached = null;
+    r = await send();
+  }
+  // Rate limited (429) or a PayPal server error (5xx): try again with the same request id, waiting as long as
+  // Retry-After says, else 0.5 s then 1 s. Only when a repeat is safe: a GET, or a POST with a PayPal-Request-Id.
+  for (let attempt = 0; attempt < RETRIES && (r.status === 429 || r.status >= 500) && (method === "GET" || requestId); attempt++) {
+    const after = Number(r.headers.get("Retry-After"));
+    await sleep(Number.isFinite(after) && after > 0 ? Math.min(after * 1000, MAX_WAIT_MS) : 500 * 2 ** attempt);
     r = await send();
   }
   const j = parseBody(await r.text());

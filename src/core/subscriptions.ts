@@ -110,6 +110,8 @@ export async function holdSubscription(deps: Deps, run: Run, agentId: string, ar
   if (agent.frozen_at) return err(`Spotter paused this agent, so nothing it asks for goes through. Only ${agent.spotter_name} can unpause it.`);
   const planRead = readRun(await run("show_subscription_plan_details", { plan_id: args.plan_id }));
   if (!planRead.ok) return err(`Spotter couldn't read that plan from PayPal (${planRead.message}), so no subscription was started.`);
+  // PayPal's own best practice: only subscribe to a plan PayPal says is ACTIVE.
+  if (planRead.data?.status !== "ACTIVE") return err("That plan isn't active at PayPal, so no subscription was started.");
   let tail: Tail;
   try {
     tail = subscriptionTail(planRead.data, typeof args.quantity === "number" ? args.quantity : 1);

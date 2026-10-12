@@ -157,6 +157,8 @@ Every checked payment becomes an Orders v2 `AUTHORIZE` order, so the money is re
 
 Events are deduped on their id. If handling fails the row is deleted so the retry from PayPal gets processed, and anything that doesn't match Spotter's own record goes on the payment's timeline instead of changing it.
 
+The token is cached until a minute before it expires, and a 401 gets a fresh one and one more try. A 429 or a PayPal 5xx is tried again with the same `PayPal-Request-Id`, waiting as long as `Retry-After` says, so a retry can never pay twice. I checked all of it against the checks in PayPal's own AI Toolkit: two failed (no backoff on 429, a subscription plan's status wasn't checked) and both are fixed. [docs/paypal-best-practices-audit.md](docs/paypal-best-practices-audit.md)
+
 ### The PayPal Agent Toolkit, with a spotter in the middle
 
 PayPal ships an official Agent Toolkit (`@paypal/agent-toolkit`, pinned at 1.11.0). If an agent calls `pay_order`, the money goes. So Spotter runs a second MCP server at `/api/toolkit/mcp` that speaks the toolkit's language: same tool names, same arguments, and the descriptions and schemas PayPal wrote. An agent built for the toolkit points at Spotter and doesn't change.

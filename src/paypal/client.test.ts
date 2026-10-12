@@ -6,6 +6,7 @@ import {
   PayPalError,
   reauthorizeAuthorization,
   resetTokenCache,
+  setSleepForTests,
   toDecimal,
   verifyWebhookSignature,
   voidAuthorization,
@@ -46,6 +47,7 @@ beforeEach(() => {
   process.env.PAYPAL_CLIENT_ID = "id";
   process.env.PAYPAL_CLIENT_SECRET = "secret";
   resetTokenCache();
+  setSleepForTests(async () => {});
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -142,6 +144,48 @@ describe("paypal client", () => {
     expect(header(calls[3]!, "Authorization")).toBe("Bearer tokB");
     // Same request id both times, so PayPal can never do the capture twice.
     expect(header(calls[3]!, "PayPal-Request-Id")).toBe(header(calls[1]!, "PayPal-Request-Id"));
+  });
+
+  it("retries a 429 with the same request id, waiting as long as Retry-After says", async () => {
+    const waits: number[] = [];
+    setSleepForTests(async (ms) => void waits.push(ms));
+    calls = [];
+    let n = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      if (url.endsWith("/token")) return new Response(JSON.stringify(TOKEN.body), { status: 200 });
+      return n++ === 0
+        ? new Response(JSON.stringify({ name: "RATE_LIMIT_REACHED" }), { status: 429, headers: { "Retry-After": "2" } })
+        : new Response(JSON.stringify({ id: "C1", status: "COMPLETED" }), { status: 201 });
+    }));
+    expect(await captureAuthorization("A1", "k")).toMatchObject({ captureId: "C1" });
+    expect(waits).toEqual([2000]);
+    const api = calls.filter((c) => !c.url.endsWith("/token"));
+    expect(api).toHaveLength(2);
+    expect(header(api[1]!, "PayPal-Request-Id")).toBe("k");
+  });
+
+  it("backs off on a 500 and gives up after two retries", async () => {
+    const waits: number[] = [];
+    setSleepForTests(async (ms) => void waits.push(ms));
+    mockFetch([TOKEN, { status: 500, body: {} }, { status: 500, body: {} }, { status: 500, body: {} }]);
+    const err = await captureAuthorization("A1", "k").catch((e) => e);
+    expect(err).toBeInstanceOf(PayPalError);
+    expect(err.status).toBe(500);
+    expect(waits).toEqual([500, 1000]);
+    expect(calls).toHaveLength(4);
+  });
+
+  it("never retries a POST without a request id (it could happen twice)", async () => {
+    setSleepForTests(async () => {});
+    mockFetch([TOKEN, { status: 500, body: {} }]);
+    const err = await verifyWebhookSignature(
+      { authAlgo: "a", certUrl: "c", transmissionId: "t", transmissionSig: "s", transmissionTime: "x" } as never,
+      "WH",
+      "{}",
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(PayPalError);
+    expect(calls).toHaveLength(2);
   });
 
   it("throws a second 401 instead of retrying again", async () => {
