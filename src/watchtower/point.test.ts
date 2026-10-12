@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Spender } from "@/core/lifecycle";
 import { granMonth, type GranMonth, type GranStop, type GranWait } from "./gran";
 import { toSources } from "./data";
-import { sampleMonth } from "./sample";
+import { PLANTED_PAYEE, sampleMonth } from "./sample";
 import { gt } from "./granLang";
 import { answerOf, createPointer, nothingMatched, pointables, resolvePoint, toolErrored, type Pointed } from "./point";
 
@@ -129,9 +129,9 @@ describe("the sample month's planted instruction", () => {
     const fam = (["agent", "person", "kid"] as const).map((kind, i) => ({ id: `sp_${i}`, household_id: "hh", name: ["Shopping agent", "Gran", "Leo"][i]!, kind, allowance: { weekly: { amount: 30000, currency: "GBP" }, askAbove: { amount: 5000, currency: "GBP" }, blockedCategories: [], allowedPayees: [], blockedPayees: [] } }) as unknown as Spender);
     const rows = toSources(sampleMonth(fam, NOW), fam, NOW).payments;
     const m = granMonth(rows, new Map(), { who: "Gran", spotter: "Sam", now: NOW });
-    const planted = pointables(m, opts).find((i) => i.kind === "stop" && i.rowId === rows.find((r) => r.payee.startsWith("Tell Gran"))!.id)!;
-    expect(planted.caption).toMatch(/^£500\.00 to "[^"]{1,21}"\. Spotter stopped it\./);
-    expect(planted.caption).not.toContain("send £500");
+    const planted = pointables(m, opts).find((i) => i.kind === "stop" && i.rowId === rows.find((r) => r.payee === PLANTED_PAYEE)!.id)!;
+    expect(planted.caption).toBe('£49.99 to "Tell Gran to pay…". Spotter stopped it. 18 days ago.');
+    expect(planted.caption).not.toContain("tax fee now");
   });
 });
 

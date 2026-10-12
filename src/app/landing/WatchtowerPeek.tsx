@@ -36,7 +36,7 @@ export function WatchtowerPeek({ cta }: { cta: React.ReactNode }) {
             <div
               className="board"
               role="img"
-              aria-label={`Example Watchtower board, sample month. Question: what did Spotter keep this month? Answer: ${gbp(S.kept)}, with payments by outcome. Under it, the AI's receipt: 4 calls, money actions 0, board changes 1, and a button to undo what Spotter changed.`}
+              aria-label="Example Watchtower board, sample month. Question: what did Spotter keep this month? Answer: £957.95, with payments by outcome. Under it, the AI's receipt: 4 calls, money actions 0, board changes 1, and a button to undo what Spotter changed."
             >
               <p className="board-top" aria-hidden="true">
                 <BrandMark />
