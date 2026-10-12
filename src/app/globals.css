@@ -1335,7 +1335,7 @@ p {
   border-top: 0;
 }
 
-.pub-band-top + main {
+.pub-band-top ~ main {
   padding-top: clamp(32px, 6vh, 56px);
 }
 
@@ -7615,12 +7615,26 @@ h3 {
 .faces-side { margin: 0; display: grid; gap: 6px; min-width: 0; }
 .faces-side figcaption { font-size: 13.5px; color: var(--ink-2); text-wrap: pretty; }
 .faces-side figcaption b { color: var(--ink); font-weight: 650; }
-.faces-frame { position: relative; overflow: hidden; background: var(--chalk); border: 1px solid var(--line); }
+/* content-box: the screenshot's shape is the picture area inside the device border, so the picture is never cropped
+   and the outline (placed in fractions of the picture) lands where the form is (round 8). */
+.faces-frame { position: relative; overflow: hidden; background: var(--chalk); border: 1px solid var(--line); box-sizing: content-box; }
 .faces-desk .faces-frame { aspect-ratio: 4 / 3; border-radius: 8px; border-top: 10px solid #dfe4df; }
 .faces-phone .faces-frame { aspect-ratio: 390 / 844; border-radius: 18px; border: 6px solid var(--ink); }
+/* The whole face is a button that opens it large (the faces are thumbnails on a phone). */
+.faces-open { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 6px; border: 0; background: transparent; cursor: zoom-in; }
+.faces-open svg { width: 26px; height: 26px; padding: 6px; border-radius: 8px; background: rgb(23 33 43 / 0.78); color: #fff; box-sizing: border-box; }
+.faces-open:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+@media (max-width: 560px) { .faces-open { padding: 4px; } .faces-open svg { width: 22px; height: 22px; padding: 5px; } }
+/* On a phone the large view fills the screen (the .peek dialog's own phone rule); wider, it's a centred box. */
+@media (min-width: 641px) { .faces-zoom[data-face="phone"] { width: min(480px, calc(100vw - 32px)); } }
+.faces-zoom .faces-frame.faces-zoom-frame { justify-self: center; width: min(100%, calc((100dvh - 150px) * 4 / 3)); aspect-ratio: 4 / 3; border: 1px solid var(--line); border-radius: 10px; }
+.faces-zoom[data-face="phone"] .faces-frame.faces-zoom-frame { width: min(100%, calc((100dvh - 150px) * 390 / 844)); aspect-ratio: 390 / 844; border-radius: 14px; }
+.faces-zoom .faces-zoom-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .faces-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .faces-blank { width: 100%; height: 100%; }
-.faces-box { position: absolute; border: 2px solid var(--stop); border-radius: 4px; background: transparent; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.8); pointer-events: none; }
+/* The box is already padded off the form (facesBox.ts); the stroke is drawn outside it with a white gap, so even on
+   a thumbnail it never lands on the form's text. */
+.faces-box { position: absolute; border-radius: 4px; background: transparent; outline: 2px solid var(--stop); outline-offset: 1px; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.85); pointer-events: none; }
 .faces-onion { display: grid; gap: 8px; }
 .faces-stage { position: relative; aspect-ratio: 4 / 3; max-width: 360px; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--chalk); }
 .faces-stage img { position: absolute; inset: 0; height: 100%; transition: opacity 120ms linear; }
@@ -7808,6 +7822,9 @@ h3 {
   transform: translateY(-160%);
 }
 
+/* Where the public header's skip link lands: an empty mark after the header, never a visible box. */
+.skip-target { position: absolute; width: 1px; height: 1px; outline: none; pointer-events: none; }
+
 .skip-link:focus-visible {
   transform: none;
   outline: 3px solid var(--ink);
@@ -7953,6 +7970,14 @@ h3 {
 
 .app-main .dash-rail .section-title {
   margin: 0 0 10px;
+}
+
+/* A long state ("Denied, money released") wraps onto two lines instead of widening its column until the row's
+   title breaks one word per line (round 8, 1440 px). */
+.dash-rail .feed-state {
+  max-width: 9.5em;
+  justify-self: end;
+  text-wrap: balance;
 }
 
 .dash-tools {

@@ -73,6 +73,25 @@ describe("the case file's proof card", () => {
     expect(out).toContain('type="range"');
   });
 
+  // Round 8: the outline covered the first letter of each label, and at 390 px the faces were 163 and 65 px wide.
+  it("pads the outline outward off the form, and lets each face open large", () => {
+    const out = html({
+      ...base,
+      page: {
+        ...base.page!,
+        phone: { finalUrl: "https://parcels.example/t", title: "Fee", asks: { card: true, login: false, giftCard: false }, network: "uk_mobile", screenshot: "data:image/jpeg;base64,BBBB", moneyBox: { x: 0.1, y: 0.4, w: 0.8, h: 0.3 } },
+        faces: { compared: true, differs: true, verdict: "Different.", differences: [], textOverlap: 0.1, lookSimilarity: 0.3 },
+      },
+    });
+    // 8 phone pixels on each side: 0.1 - 8/390 = 7.9%, 0.4 - 8/844 = 39.1%.
+    expect(out).toMatch(/class="faces-box" style="left:7.9%;top:39.1%/);
+    const opens = out.match(/<button[^>]*class="faces-open"[^>]*>/g) ?? [];
+    expect(opens).toHaveLength(2);
+    for (const b of opens) expect(b).toContain('aria-haspopup="dialog"');
+    expect(out).toContain("Open the desktop picture large");
+    expect(out).toContain("Open the phone picture large");
+  });
+
   it("never shows a picture that isn't our own JPEG", () => {
     const out = html({ ...base, page: { ...base.page!, faces: { compared: true, differs: false, verdict: "Same.", differences: [], textOverlap: 1, lookSimilarity: 1 }, phone: { finalUrl: "x", title: "", asks: { card: false, login: false, giftCard: false }, network: "direct", screenshot: "https://evil.example/x.jpg" } } });
     expect(out).not.toContain("evil.example");

@@ -172,6 +172,28 @@ describe("visitTwoFaces", () => {
     expect(v.proof!.hashes.phoneScreenshot).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  // Round 8 R8-N2: the outline sat off the form (over the labels and the line above) because the form was measured
+  // 800 ms after load and the picture taken seconds later, in a page that had reflowed. The box measured at the moment
+  // of the picture wins, and the picture is taken on the same DevTools session, so nothing re-lays the page between.
+  it("outlines the form where it was when the picture was taken", async () => {
+    const early = { x: 0.05, y: 0.3, w: 0.9, h: 0.4 };
+    const atShot = { x: 0.1, y: 0.59, w: 0.77, h: 0.41 };
+    const k = fake(async (_id, body) =>
+      body.code.includes("Emulation.setUserAgentOverride")
+        ? result({ shotBox: atShot }, { card: true, moneyForms: [{ action: "https://collect-x.example/pay", card: true, bank: false, box: early }] })
+        : result(),
+    );
+    const v = await visitTwoFaces("https://parcels.example/track", { client: k, network: { proxyId: "px1", kind: "uk_mobile" } });
+    expect(v.ok && v.phone?.moneyBox).toEqual(atShot);
+    const code: string = k.browsers.playwright.execute.mock.calls[0]![1].code;
+    const measured = code.indexOf("const measured = await factsHandle.evaluate");
+    expect(measured).toBeGreaterThan(-1);
+    expect(code.indexOf('Page.captureScreenshot", { format: "jpeg"')).toBeGreaterThan(measured);
+    // Both faces' scripts are valid JavaScript (a syntax slip here would break every KERNEL visit).
+    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (...a: string[]) => unknown;
+    for (const call of k.browsers.playwright.execute.mock.calls) expect(() => new AsyncFunction("page", call[1].code)).not.toThrow();
+  });
+
   it("keeps the desktop visit and says it couldn't compare when the phone visit fails", async () => {
     const k = fake(async (_id, body) => (body.code.includes("Emulation.setUserAgentOverride") ? { success: false, error: "net::ERR_TUNNEL_CONNECTION_FAILED" } : result()));
     const v = await visitTwoFaces("https://parcels.example/track", { client: k, network: { kind: "direct" } });

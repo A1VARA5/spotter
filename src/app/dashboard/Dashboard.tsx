@@ -701,8 +701,8 @@ function HeldCard({
   const pending = !p.case_file && (tick ?? now) - new Date(p.created_at).getTime() < CASE_WAIT_MS;
   // When Spotter thinks it's a scam, saying no is the main action and saying yes takes a deliberate step.
   const scamLike = p.case_file?.verdict === "likely_scam" || flags.some((f) => f.severity === "high");
-  // Without a finished check, Deny comes first too (Approve keeps its normal look unless it looks like a scam).
-  const denyFirst = scamLike || !checkComplete(p);
+  // On any card that isn't clean, Deny comes first too (Approve keeps its normal look unless it looks like a scam).
+  const denyFirst = scamLike || denyLeads(p);
   const warning = approveWarning(p.case_file?.verdict, flags.some((f) => f.severity === "high"));
   const bodyId = `body-${p.id}`;
   // A genuine listing from Channel3 (the case's own offer, else the market check's cheapest real shop).
@@ -1021,6 +1021,15 @@ export function withoutHoldFinding(c: Case): Case {
 export function checkComplete(p: Pick<Payment, "ai" | "case_file">): boolean {
   const c = p.case_file;
   return p.ai?.ok === true && !!c && c.status !== "failed" && !c.aiDown;
+}
+
+/**
+ * True unless the card is clean: the check finished, the case file says it looks genuine and the message check found no
+ * medium or high warning sign. Every other card (a likely scam, "Worth a closer look", an unfinished check) puts Deny first.
+ */
+export function denyLeads(p: Pick<Payment, "ai" | "case_file">): boolean {
+  const warned = (p.ai?.flags ?? []).some((f) => f.severity === "medium" || f.severity === "high");
+  return !checkComplete(p) || p.case_file?.verdict !== "looks_fine" || warned;
 }
 
 /**

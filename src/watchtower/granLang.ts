@@ -42,7 +42,7 @@ const T = {
   byDenied: { en: "{spotter} said no", pl: "{spotter} powiedział(a) nie" },
   stoppedFallback: { en: "Spotter stopped it before any money left.", pl: "Spotter zatrzymał ją, zanim pieniądze wyszły." },
   byNotMe: { en: "Nothing was paid", pl: "Nic nie zostało zapłacone" },
-  notMeSentence: { en: "Someone said they were {who}. {who} said they didn't send it.", pl: "Ktoś podawał się za osobę: {who}. {who} powiedział(a), że tego nie wysłał(a)." },
+  notMeSentence: { en: "Someone said they were {who}. The real {who} said they never sent it.", pl: "Ktoś podawał się za osobę: {who}. {who} powiedział(a), że tego nie wysłał(a)." },
   // The sample month is made up: its money is never added to the person's own.
   keptBeforeSample: { en: "Spotter kept ", pl: "Spotter uchronił " },
   keptAfterSample: { en: " away from scammers in the sample month.", pl: " przed oszustami w przykładowym miesiącu." },

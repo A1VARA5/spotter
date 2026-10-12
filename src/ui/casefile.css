@@ -105,7 +105,7 @@ a.cf-chip:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px
   background: var(--stop-soft);
   text-wrap: pretty;
 }
-.cf-lead-line b { font-weight: 800; letter-spacing: 0.01em; color: var(--stop); margin-right: 1px; }
+.cf-lead-line b { font-weight: 800; letter-spacing: 0.01em; color: var(--stop-text); margin-right: 1px; }
 .cf-lead .case-seen { margin: 0; }
 .cf-lead .case-seen-side img,
 .cf-lead .case-seen-side .case-page-video { max-height: 220px; object-fit: cover; object-position: top; }

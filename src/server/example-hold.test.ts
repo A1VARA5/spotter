@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pgliteDb, type Db } from "@/db";
 import { createDemoHousehold, listSpenders } from "@/core/households";
 import { approve, deny, listPayments, type Deps } from "@/core/lifecycle";
-import { createExampleHold, EXAMPLE_LABEL } from "./example-hold";
+import { createExampleHold, createWasItYouExample, EXAMPLE_LABEL } from "./example-hold";
 
 let db: Db;
 let hh: string;
@@ -63,5 +63,29 @@ describe("the demo family's example hold", () => {
     const declined = { ...paypal(), createAuthorizeOrder: vi.fn(async () => ({ orderId: "O", authorizationId: undefined })) };
     expect(await createExampleHold({ db, paypal: declined as never }, hh)).toBe("paypal_unavailable");
     expect(await listPayments(db, hh)).toHaveLength(0);
+  });
+});
+
+// Round 8 m2: the Was it you run a visitor starts on Try is their own run, so it never carries the example label.
+// Only the seeded hold the demo family starts with is "Example, checked earlier".
+describe("the Was it you run started on Try", () => {
+  it("is never tagged as an example, in the case file, the AI summary or anything Gran's view reads", async () => {
+    const r = await createWasItYouExample({ db, paypal: paypal() }, hh);
+    expect(typeof r).toBe("object");
+    const [p] = await listPayments(db, hh);
+    expect(p!.case_file!.example).not.toBe(true);
+    expect(p!.case_file!.headline).not.toMatch(/example|checked earlier/i);
+    expect(p!.ai!.summary).not.toMatch(/example|checked earlier/i);
+    expect(p!.case_file!.headline).toMatch(/Tom/);
+    // Still honest about where its warning signs came from: each one quotes the message.
+    for (const f of p!.ai!.flags) expect(p!.request.context.toLowerCase()).toContain(f.quote.toLowerCase());
+  });
+
+  it("leaves the seeded example hold labelled", async () => {
+    await createExampleHold({ db, paypal: paypal() }, hh);
+    await createWasItYouExample({ db, paypal: paypal() }, hh);
+    const rows = await listPayments(db, hh);
+    expect(rows.filter((p) => p.case_file?.example === true)).toHaveLength(1);
+    expect(rows.find((p) => p.case_file?.example === true)!.was_it_you).toBeFalsy();
   });
 });

@@ -16,14 +16,13 @@ export type WiyTone = "waiting" | "safe" | "claimed" | "ring";
  * spotter's own question, "as" for the demo's example (answering as Tom).
  */
 export function wiyStatus(w: WasItYou, status: string, now = Date.now()): { tone: WiyTone; state: string; detail: string; answer?: "here" | "as" } {
-  const example = w.channel === "example" ? "Example: " : "";
   const waiting = status === "needs_approval";
   switch (w.state) {
     case "asked":
       if (new Date(w.expiresAt).getTime() < now) {
         return w.channel === "example"
-          ? { tone: "ring", state: `${example}${w.who} didn't answer`, detail: `The example question ran out, so the money is still on hold. Deny it to release it.` }
-          : { tone: "ring", state: `${example}${w.who} didn't answer`, detail: `The question ran out without an answer. Ring ${w.who} on the number you already have.` };
+          ? { tone: "ring", state: `${w.who} didn't answer`, detail: `The question ran out, so the money is still on hold. Deny it to release it.` }
+          : { tone: "ring", state: `${w.who} didn't answer`, detail: `The question ran out without an answer. Ring ${w.who} on the number you already have.` };
       }
       if (w.channel === "alert") {
         // Why it's the spotter being asked, in the same story as the Try page (where the text names Tom instead).
@@ -33,7 +32,7 @@ export function wiyStatus(w: WasItYou, status: string, now = Date.now()): { tone
       if (w.channel === "example") {
         return {
           tone: "waiting",
-          state: `${example}Asked ${w.who}`,
+          state: `Asked ${w.who}`,
           detail: `On Try a payment, Spotter asked ${w.who} if he sent it. Answer for him here, or deny it.`,
           answer: waiting ? "as" : undefined,
         };
@@ -49,14 +48,14 @@ export function wiyStatus(w: WasItYou, status: string, now = Date.now()): { tone
       }
       // Only "released" when PayPal really released it.
       if (status === "voided" || status === "voiding")
-        return { tone: "safe", state: `${example}${w.who} said not me`, detail: `The message wasn't from ${w.who}, so Spotter released the hold. Nothing was paid.` };
+        return { tone: "safe", state: `${w.who} said not me`, detail: `The message wasn't from ${w.who}, so Spotter released the hold. Nothing was paid.` };
       if (status === "captured" || status === "capturing")
-        return { tone: "ring", state: `${example}${w.who} said not me`, detail: `${w.who} says it wasn't them, but it was already approved and paid. Ring the person who paid and report it to PayPal now.` };
-      if (waiting) return { tone: "ring", state: `${example}${w.who} said not me`, detail: `${w.who} says it wasn't them, but the hold wasn't released. Deny it now.` };
-      return { tone: "ring", state: `${example}${w.who} said not me`, detail: `${w.who} says it wasn't them. Spotter won't pay this, but PayPal didn't confirm releasing the hold.` };
+        return { tone: "ring", state: `${w.who} said not me`, detail: `${w.who} says it wasn't them, but it was already approved and paid. Ring the person who paid and report it to PayPal now.` };
+      if (waiting) return { tone: "ring", state: `${w.who} said not me`, detail: `${w.who} says it wasn't them, but the hold wasn't released. Deny it now.` };
+      return { tone: "ring", state: `${w.who} said not me`, detail: `${w.who} says it wasn't them. Spotter won't pay this, but PayPal didn't confirm releasing the hold.` };
     case "it_was_me":
       if (w.channel === "alert") return { tone: "claimed", state: "You said it was you", detail: "Nothing is paid until you approve it with your PIN." };
-      return { tone: "claimed", state: `${example}${w.who} said yes, it's me`, detail: `${w.who} says they sent it. Nothing is paid until you approve it with your PIN.` };
+      return { tone: "claimed", state: `${w.who} said yes, it's me`, detail: `${w.who} says they sent it. Nothing is paid until you approve it with your PIN.` };
     case "no_channel":
       return { tone: "ring", state: `Says it's ${w.who}`, detail: `${w.who} has nothing linked to Spotter, so nobody was asked. Ring ${w.who} on the number you already have.` };
     case "send_failed":

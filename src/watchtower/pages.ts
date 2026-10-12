@@ -220,7 +220,14 @@ export function isEmptyAnswer(w: { type?: string; dataMapping?: Record<string, u
   if (READY_TILES.has(w.type ?? "")) return false;
   return !Object.values(w.dataMapping ?? {}).some((v) => Array.isArray(v) && v.length > 0);
 }
-const sameTitle = (a: unknown, b: string) => typeof a === "string" && a.replace(/\s+/g, " ").trim().toLowerCase() === b;
+const titleKey = (t: string) => t.replace(/\s+/g, " ").trim().replace(/\?+$/, "").toLowerCase();
+const sameTitle = (a: unknown, b: string) => typeof a === "string" && titleKey(a) === b;
+// A title led by a yes or no verb ("Did we pay fair prices this month") is a question and keeps its "?". One led by
+// "What" or "How" is often a label ("What Leo spent on games"), so it is left as written.
+const ASKS = /^(did|do|does|is|are|was|were|am|can|could|should|would|will|has|have|had)\s/i;
+const MAX_TITLE = 80;
+// A title cut short isn't given a "?": it would run past the limit and end mid word.
+const asQuestion = (t: string, cut: boolean) => (t && !cut && ASKS.test(t) && !/[?.!]$/.test(t) ? `${t}?` : t);
 
 /**
  * A tile of an allowed type for a typed question (the place_widget tool): newest at the top of the Answers
@@ -245,8 +252,9 @@ export function placeAnswer(
   const pages = pagesIn(state) as Pg[];
   const page = pages.find((p) => p.id === pageId)!;
   const widgets = page.widgets ?? {};
-  const name = title?.replace(INVISIBLE, "").replace(/\s+/g, " ").trim().slice(0, 80) ?? "";
-  const key = name.toLowerCase();
+  const full = title?.replace(INVISIBLE, "").replace(/\s+/g, " ").trim() ?? "";
+  const name = asQuestion(full.slice(0, MAX_TITLE), full.length > MAX_TITLE);
+  const key = titleKey(name);
   const old = Object.entries(widgets).find(([id, w]) => id.startsWith("answer-") && (READY_TILES.has(type) ? w.type === type : !!key && sameTitle(w.format?.title?.text, key)))?.[0];
   let widgetId = old;
   if (!widgetId) {

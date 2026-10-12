@@ -33,11 +33,29 @@ export function PublicHeader({ signedIn, current = "other", band = false }: { si
       </nav>
     </header>
   );
-  if (!band) return header;
+  // WCAG 2.4.1: the first Tab stop on every public page skips the header to the content straight after it.
+  const skip = (
+    <a href="#main-content" className="skip-link">
+      Skip to main content
+    </a>
+  );
+  const target = <div id="main-content" className="skip-target" tabIndex={-1} />;
+  if (!band)
+    return (
+      <>
+        {skip}
+        {header}
+        {target}
+      </>
+    );
   return (
-    <div className="pub-band pub-band-top">
-      <div className="shell">{header}</div>
-    </div>
+    <>
+      {skip}
+      <div className="pub-band pub-band-top">
+        <div className="shell">{header}</div>
+      </div>
+      {target}
+    </>
   );
 }
 

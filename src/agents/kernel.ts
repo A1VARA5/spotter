@@ -124,7 +124,7 @@ const pageCode = (url: string, face: Face) => `
 ${face === "phone" ? phonePrelude : "await page.setViewportSize({ width: 800, height: 600 });"}
 await page.goto(${JSON.stringify(url)}, { waitUntil: "domcontentloaded", timeout: 9000 });
 await page.waitForTimeout(800);
-const facts = await page.evaluate(() => {
+const factsHandle = await page.evaluateHandle(() => {
   const inputs = Array.from(document.querySelectorAll("input"));
   const about = (i) => [i.type, i.name, i.id, i.autocomplete, i.placeholder, i.getAttribute("aria-label")].join(" ").toLowerCase();
   const isCard = (i) => /cc-|card.?num|cardnumber|cvv|cvc|security.?code|expir/.test(about(i));
@@ -135,13 +135,15 @@ const facts = await page.evaluate(() => {
   const groups = Array.from(document.forms).slice(0, 10).map((f) => ({ el: f, ins: Array.from(f.querySelectorAll("input")) }));
   const loose = inputs.filter((i) => !i.form && (isCard(i) || isBank(i)));
   if (loose.length) groups.push({ el: loose[0].parentElement || loose[0], ins: loose, loose: true });
+  let moneyEl = null;
   const moneyForms = groups.map((g) => {
     const card = g.ins.some(isCard), bank = g.ins.some(isBank);
+    if ((card || bank) && !moneyEl) moneyEl = g.el;
     let action = "";
     try { action = g.loose ? location.href : new URL(g.el.getAttribute("action") || location.href, location.href).href; } catch (e) { action = ""; }
     return { action: action.slice(0, 500), card, bank, box: card || bank ? box(g.el) : null };
   }).filter((f) => f.card || f.bank);
-  return {
+  return { moneyEl, facts: {
     password: inputs.some((i) => i.type === "password"),
     card: inputs.some(isCard) || /card number|cvv|security code/.test(text),
     bank: inputs.some(isBank) || /sort code|account number|\\biban\\b/.test(text),
@@ -153,8 +155,9 @@ const facts = await page.evaluate(() => {
     // A struck through "was" price, and the product picture the page shares, for "spot the difference".
     was: (() => { const el = document.querySelector("s, del, strike, [class~='was'], [class*='was-price'], [class*='compare-at'], [class*='old-price']"); return el ? (el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 60) : ""; })(),
     image: (() => { const m = document.querySelector('meta[property="og:image"]'); return m ? String(m.getAttribute("content") || "").slice(0, 2000) : ""; })(),
-  };
+  } };
 });
+const facts = await factsHandle.evaluate((o) => o.facts);
 let seen = null;
 let isolated = false;
 let seenError = "";
@@ -171,8 +174,31 @@ try {
   await cdp.detach();
 } catch (e) { seenError = "isolated world: " + String((e && e.message) || e).slice(0, 200); }
 if (!seen) { try { seen = await page.evaluate(${SEEN_VS_READ}); } catch (e) { seenError += " page: " + String((e && e.message) || e).slice(0, 200); } }
-const shot = await page.screenshot({ type: "jpeg", quality: 40 });
-return { finalUrl: page.url(), title: (await page.title()).slice(0, 200), facts, seen, isolated, seenError, shot: shot.toString("base64"), thumb };
+// The card form is measured again just before the picture, and the picture comes straight from a DevTools session, so
+// the outline lands on the form even when the page reflowed after load. A form that can't be measured gets no outline
+// (null), never the stale one from load time, and says why in the log.
+let shotBox = null;
+let shot = "";
+try {
+  const measured = await factsHandle.evaluate((o) => {
+    if (!o.moneyEl) return null;
+    if (!o.moneyEl.isConnected) return "gone";
+    const W = innerWidth || 1, H = innerHeight || 1, r = o.moneyEl.getBoundingClientRect(), c = (v) => Math.max(0, Math.min(1, v));
+    const x = c(r.left / W), y = c(r.top / H);
+    return { x, y, w: c(r.right / W) - x, h: c(r.bottom / H) - y };
+  });
+  if (measured === "gone") seenError += " box: the card form was replaced, so it isn't outlined";
+  else shotBox = measured;
+} catch (e) { seenError += " box: " + String((e && e.message) || e).slice(0, 100); }
+let sc = null;
+try {
+  sc = await page.context().newCDPSession(page);
+  const s = await sc.send("Page.captureScreenshot", { format: "jpeg", quality: 40 });
+  shot = s.data || "";
+} catch (e) { seenError += " picture: " + String((e && e.message) || e).slice(0, 100); }
+finally { if (sc) await sc.detach().catch(() => {}); }
+if (!shot) shot = (await page.screenshot({ type: "jpeg", quality: 40 })).toString("base64");
+return { finalUrl: page.url(), title: (await page.title()).slice(0, 200), facts, seen, isolated, seenError: seenError.slice(0, 500), shot, thumb, shotBox };
 `;
 
 const BoxSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), w: z.number().min(0).max(1), h: z.number().min(0).max(1) });
@@ -207,6 +233,8 @@ const Result = z.object({
   seenError: z.string().max(500).optional(),
   shot: z.string().optional(),
   thumb: z.string().max(40_000).optional(),
+  /** Where the card form was at the moment of the picture (null when it had gone or the picture fell back). */
+  shotBox: BoxSchema.nullable().optional(),
 });
 
 async function defaultClient(apiKey: string): Promise<KernelLike> {
@@ -290,18 +318,21 @@ export async function visitInCloud(url: string, opts: VisitOpts = {}): Promise<P
       const res = await client.browsers.playwright.execute(browser.session_id, { code: pageCode(parsed.toString(), face), timeout_sec: left });
       if (!res.success) return fail(`The page didn't load: ${(res.error ?? "unknown error").slice(0, 200)}`);
       const r = Result.safeParse(res.result);
-      if (!r.success) return fail("The cloud browser sent back something unexpected.");
+      if (!r.success) {
+        console.error(`[spotter] KERNEL result on ${parsed.host} didn't match:`, r.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+        return fail("The cloud browser sent back something unexpected.");
+      }
       // In the same visit, on the page that just loaded: the tools it offers AI agents (desktop face only).
       // Its own short limit, so a slow listing can't cost the page visit that already worked.
       const tools = face === "desktop" ? await listShopTools(client, browser.session_id, Math.max(300, Math.min(5000, limit - (Date.now() - started) - 1500))) : undefined;
       if (tools) calls++;
       // Stopped before the delete in finally, so KERNEL saves the video. A replay that didn't save just isn't shown.
       const replayUrl = replay && (calls++, await stopReplay(client, browser.session_id, replay.id)) ? replay.url : undefined;
-      const { finalUrl, title, facts, seen, isolated, seenError, shot, thumb } = r.data;
+      const { finalUrl, title, facts, seen, isolated, seenError, shot, thumb, shotBox } = r.data;
       const items = await readTelemetry(client, browser.session_id, finalUrl, Math.max(300, Math.min(3000, limit - (Date.now() - started) - 500)));
       if (client.browsers.telemetry) calls++;
       // A check the page broke, or one that had to run where the page could fake it, is logged rather than hidden.
-      if (seenError) console.error(`[spotter] seen vs read on ${parsed.host}:${seenError}`);
+      if (seenError) console.error(`[spotter] page checks on ${parsed.host}:${seenError}`);
       const small = shot && Buffer.byteLength(shot, "base64") <= MAX_SHOT_BYTES ? `data:image/jpeg;base64,${shot}` : undefined;
       const visibleSample = seen ? plainText(seen.visibleSample, 400) : "";
       const moneyForms = facts.moneyForms ?? [];
@@ -324,7 +355,9 @@ export async function visitInCloud(url: string, opts: VisitOpts = {}): Promise<P
         screenshot: small,
         pageText: visibleSample,
       });
-      const box = moneyForms.find((f) => f.box)?.box ?? undefined;
+      // The box measured just before the picture, so the outline sits on the form in that picture. Null means there was
+      // no form or it couldn't be measured, so nothing is outlined; only a result without the field uses the first read.
+      const box = shotBox === undefined ? (moneyForms.find((f) => f.box)?.box ?? undefined) : shotBox && shotBox.w > 0 && shotBox.h > 0 ? shotBox : undefined;
       const asks: PageAsks = { card: facts.card, login: facts.login || facts.password, giftCard: facts.giftCard, ...(facts.bank ? { bank: true } : {}) };
       const thumbBuf = thumb && Buffer.byteLength(thumb, "base64") <= MAX_THUMB_BYTES ? Buffer.from(thumb, "base64") : null;
       const pal = thumbBuf ? palette(thumbBuf) : null;

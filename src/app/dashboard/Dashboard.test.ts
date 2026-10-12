@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
 import type { Payment } from "@/core/lifecycle";
-import { aiFailedLine, checkComplete, feedEmpty, firstToOpen, waitingChanged, withoutHoldFinding } from "./Dashboard";
+import { aiFailedLine, checkComplete, denyLeads, feedEmpty, firstToOpen, waitingChanged, withoutHoldFinding } from "./Dashboard";
 import type { Case } from "@/agents/case";
+
+// Round 8 m5: the "Worth a closer look" earbuds card showed Approve before Deny. Deny leads on every card that isn't clean.
+describe("denyLeads (Deny first unless the check came back clean)", () => {
+  const ok = { ok: true, flags: [] } as unknown as Payment["ai"];
+  const verdict = (v: Case["verdict"]) => ({ status: "done", verdict: v }) as Case;
+  it("Deny leads on a likely scam, a closer look, an unfinished check, or any warning sign", () => {
+    expect(denyLeads({ ai: ok, case_file: verdict("likely_scam") })).toBe(true);
+    expect(denyLeads({ ai: ok, case_file: verdict("unclear") })).toBe(true);
+    expect(denyLeads({ ai: ok, case_file: null })).toBe(true);
+    const medium = { ok: true, flags: [{ kind: "pressure", severity: "medium", quote: "today", why: "" }] } as unknown as Payment["ai"];
+    expect(denyLeads({ ai: medium, case_file: verdict("looks_fine") })).toBe(true);
+  });
+  it("Approve leads only when the finished check says it looks genuine and found nothing", () => {
+    expect(denyLeads({ ai: ok, case_file: verdict("looks_fine") })).toBe(false);
+    const low = { ok: true, flags: [{ kind: "other", severity: "low", quote: "x", why: "" }] } as unknown as Payment["ai"];
+    expect(denyLeads({ ai: low, case_file: verdict("looks_fine") })).toBe(false);
+  });
+});
 
 describe("checkComplete (Deny leads until the AI has looked)", () => {
   const ok = { ok: true } as Payment["ai"];

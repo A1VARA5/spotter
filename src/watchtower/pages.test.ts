@@ -181,6 +181,26 @@ describe("a tile for a typed question (place_widget)", () => {
     expect(page.widgetLayout[one.widgetId]).toEqual({ xTrack: 0, yTrack: ANSWER_TOP, xSpan: 12, ySpan: ANSWER_SPAN });
   });
 
+  // Round 8 m7: the assistant titled the fair price tile "Did we pay fair prices this month", without its "?".
+  it("keeps a question's question mark, and adds it back when the title dropped it", () => {
+    const titleOf = (t: string, type = "fair-price") => {
+      const r = placeAnswer(board(), {}, type, new Set([...allowed, "fair-price"]), t);
+      return (pageOf(r.state, r.pageId).widgets[r.widgetId] as { format?: { title?: { text?: string } } }).format?.title?.text;
+    };
+    expect(titleOf("Did we pay fair prices this month")).toBe("Did we pay fair prices this month?");
+    expect(titleOf("Did we pay fair prices this month?")).toBe("Did we pay fair prices this month?");
+    expect(titleOf("Is the skillet a fair price", "bar-chart-grouped")).toBe("Is the skillet a fair price?");
+    // A label that only starts with a question word is not a question.
+    expect(titleOf("What Leo spent on games", "bar-chart-grouped")).toBe("What Leo spent on games");
+    expect(titleOf("Will's spending this month", "bar-chart-grouped")).toBe("Will's spending this month");
+    // A title cut at 80 characters isn't given a "?" (it would be 81 and end mid word).
+    expect(titleOf(`Did we pay ${"very ".repeat(20)}much`, "bar-chart-grouped")!.endsWith("?")).toBe(false);
+    // Asked again with or without the mark, it's the same question and the same tile.
+    const one = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "Did Leo spend more than last month?");
+    const two = placeAnswer(one.state, {}, "bar-chart-grouped", allowed, "Did Leo spend more than last month");
+    expect(two.widgetId).toBe(one.widgetId);
+  });
+
   it("titles the new tile with the question's title", () => {
     const r = placeAnswer(board(), {}, "bar-chart-grouped", allowed, "What Leo spent on games");
     expect(pageOf(r.state, r.pageId).widgets[r.widgetId]).toEqual({ type: "bar-chart-grouped", format: { title: { enabled: true, text: "What Leo spent on games" } } });

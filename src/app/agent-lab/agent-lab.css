@@ -20,6 +20,8 @@
 .lab-legend li { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start; font-size: 15px; line-height: 1.45; }
 .lab-legend svg { margin-top: 4px; }
 .lab-links { margin: 0; display: grid; gap: 6px; font-size: 15px; }
+/* WCAG 2.5.8: each link is at least 24 px tall (they were 23 px). */
+.lab-links a { display: inline-flex; align-items: center; min-height: 28px; justify-self: start; }
 
 /* Actor colours carry meaning: the agent is plain ink, Spotter is the checkpoint (hold yellow), PayPal is the money (go green). */
 [data-actor="agent"] { --actor: var(--ink); --actor-soft: rgb(23 33 43 / 0.08); }

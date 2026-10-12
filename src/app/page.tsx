@@ -66,10 +66,6 @@ export default async function Home() {
 
   return (
     <main>
-      {/* WCAG 2.4.1: the first Tab stop jumps past the header to the headline. */}
-      <a href="#hero" className="skip-link">
-        Skip to main content
-      </a>
       <LoopPauser />
       <section className="hero-dark net-host" data-loop>
         <NetworkField focus=".hs" avoid=".lap, .hs-phone, .hs-controls, .hs-caption, .hs-chan, .lnav" calm=".hero-copy" />

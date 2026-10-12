@@ -221,7 +221,7 @@ describe("who decided, and why, in Gran's words", () => {
   it("tells a Not me stop by what happened: someone said they were the relative, and the relative said no", () => {
     const notes = new Map([["tom", note("tom", ["Someone on a new number says they're Tom."])]]);
     const m = granMonth([row({ id: "tom", who: "Gran", outcome: "Denied", amount: 250, wasItYou: "Tom: not me" })], notes, { who: null, spotter: "Sam", now: NOW });
-    expect(m.stopped[0]!.sentence).toBe("Someone said they were Tom. Tom said they didn't send it.");
+    expect(m.stopped[0]!.sentence).toBe("Someone said they were Tom. The real Tom said they never sent it.");
     expect(m.stopped[0]!.by).toBe("Nothing was paid");
   });
 
@@ -271,7 +271,7 @@ describe("who decided, and why, in Gran's words", () => {
 
   it("falls back to a calm line that names the relative when there is no reason, in English and Polish", () => {
     const rows = [row({ id: "tom", outcome: "Denied", wasItYou: "Tom: not me" })];
-    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe("Someone said they were Tom. Tom said they didn't send it.");
+    expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW }).stopped[0]!.sentence).toBe("Someone said they were Tom. The real Tom said they never sent it.");
     expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.sentence).toBe("Ktoś podawał się za osobę: Tom. Tom powiedział(a), że tego nie wysłał(a).");
     expect(granMonth(rows, new Map(), { who: null, spotter: "Sam", now: NOW, lang: "pl" }).stopped[0]!.by).toBe("Nic nie zostało zapłacone");
   });
@@ -304,8 +304,8 @@ describe("round 6: who said no, and whose money", () => {
   it("never merges repeats answered by different people, and names who said no on each, in the past tense", () => {
     const m = granMonth([jamie({ id: "tom", when: ago(1), wasItYou: "Tom: not me" }), jamie({ id: "sam", when: ago(2), wasItYou: "Sam: not me" })], new Map(), { who: null, spotter: "Sam", now: NOW });
     expect(m.stopped.map((s) => [s.id, s.times, s.sentence])).toEqual([
-      ["tom", 1, "Someone said they were Tom. Tom said they didn't send it."],
-      ["sam", 1, "Someone said they were Sam. Sam said they didn't send it."],
+      ["tom", 1, "Someone said they were Tom. The real Tom said they never sent it."],
+      ["sam", 1, "Someone said they were Sam. The real Sam said they never sent it."],
     ]);
     expect(m.kept).toBe(500);
   });

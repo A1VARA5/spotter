@@ -27,7 +27,11 @@ const FLAGS: Flag[] = [
   { kind: "other", severity: "medium", quote: "send £250 to my mate Jamie's PayPal", why: "The money goes to a friend's account, not to the person asking." },
 ];
 
-function exampleCase(payee: string, authorizationId: string): Case {
+/**
+ * The case file. The seeded hold is labelled "Example, checked earlier". The Was it you run is the visitor's own (they
+ * start it on Try and answer as Tom), so it carries no example label; its warning signs each quote the message.
+ */
+function exampleCase(payee: string, authorizationId: string, live?: { headline: string }): Case {
   const calls = [
     { id: "example_history", tool: "payee_history", args: { payee }, ok: true, summary: `Gran has never paid ${payee}.` },
     { id: "example_hold", tool: "paypal_hold", args: { authorizationId }, ok: true, summary: "PayPal is holding £250.00. Nothing is paid until you approve." },
@@ -35,7 +39,7 @@ function exampleCase(payee: string, authorizationId: string): Case {
   return {
     status: "done",
     verdict: "likely_scam",
-    headline: `${EXAMPLE_LABEL}: this looks like the Hi Mum scam. Someone says they're family on a new number and wants £250 sent to a friend's account today.`,
+    headline: live?.headline ?? `${EXAMPLE_LABEL}: this looks like the Hi Mum scam. Someone says they're family on a new number and wants £250 sent to a friend's account today.`,
     findings: [
       { text: `Gran has never paid ${payee} before.`, tool: "payee_history", source: "example_history" },
       { text: "PayPal is holding the £250 in the sandbox. Deny releases it, approve pays it.", tool: "paypal_hold", source: "example_hold" },
@@ -45,7 +49,7 @@ function exampleCase(payee: string, authorizationId: string): Case {
     dropped: 0,
     model: "example",
     ms: 0,
-    example: true,
+    ...(live ? {} : { example: true }),
   };
 }
 
@@ -133,7 +137,7 @@ async function insertExample(
       JSON.stringify(req),
       JSON.stringify(decision),
       JSON.stringify(ai),
-      JSON.stringify(exampleCase(req.payee.name, hold.authorizationId)),
+      JSON.stringify(exampleCase(req.payee.name, hold.authorizationId, wasItYou ? { headline: `This looks like the Hi Mum scam. ${summary}` } : undefined)),
       req.money.amount,
       req.money.currency,
       hold.orderId,
@@ -204,7 +208,7 @@ export async function createWasItYouExample(
     expiresAt: new Date(now + ANSWER_MINUTES * 60_000).toISOString(),
   };
   try {
-    await insertExample(db, gran, req, hold, TOM_FLAGS, `${EXAMPLE_LABEL}. Someone on a new number says they're Tom and wants £250 sent to a friend's account today.`, wasItYou);
+    await insertExample(db, gran, req, hold, TOM_FLAGS, "Someone on a new number says they're Tom and wants £250 sent to a friend's account today.", wasItYou);
   } catch (e) {
     // The sandbox hold exists but nothing points at it: name it so it can be found, and say so to the caller.
     console.error(`[spotter] was it you demo: saving failed, sandbox authorisation ${hold.authorizationId} is orphaned (it expires on its own):`, e instanceof Error ? e.message : e);

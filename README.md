@@ -226,7 +226,7 @@ Guide: [Price checks that change the decision, with Channel3](docs/guides/channe
 
 ![Asking the suggested "What did Leo spend on games?" in Watchtower: "Building your chart" holds the new tile, the Widget and Data agents build a one bar chart on a £ axis, and the answer card says £9.98, all of it BlockWorld, with a receipt of 14 calls, Money actions 0 and Ask next buttons](docs/media/spotter-ag-studio.gif)
 
-<sub>Live Watchtower, fresh demo family, the wait sped up 3x. In real time this answer took 15.8 s and 14 tool calls (12 October).</sub>
+<sub>Live Watchtower, fresh demo family, the wait sped up 3x. In real time this answer takes under 20 s and 14 tool calls (runs on 12 October took 15.8 to 18.1 s).</sub>
 
 - My own agent, "spotter", opens the chat. It has read only tools (`open_case_file`, `watch_alerts`, `scam_radar`, `paypal_status`, `real_price`, `fair_prices`, `add_page`) and one that places an empty tile (`place_widget`). It never configures a widget itself. It hands that to the built in AG Studio planning, page, widget and data agents through `delegate_to`, so in the clip the Widget agent builds the chart while the Data agent works out the £9.98 total. A second agent of mine, "brief", writes the weekly page the same way.
 - The receipt. The assistant reads words scammers wrote, so I don't take its word for what it did. The AG Studio telemetry records each tool call, and the receipt under the board says how many calls ran, money actions (always 0, and any tool not on Spotter's list turns that line red) and board changes. **Undo what Spotter changed** reverses exactly those changes using the Studio history.
@@ -282,7 +282,7 @@ The full picture, with the money path, the webhook path and every service, is in
 The person deciding is usually somebody's son or daughter on a phone, with Gran waiting. So the held card leads with one sentence, who and how much, and Deny before Approve. Everything else folds behind **See the evidence (N)**, so Deny and Approve stay on the first screen.
 
 - No sideways scroll at any width from 320 to 2560 px. App pages use wide screens with a side rail instead of a narrow column next to empty space.
-- axe (WCAG 2.2 AA tags) on 16 routes at 390 and 1440 px on the live site, 12 October: 0 violations. "Skip to main content" is the first Tab stop, my last full keyboard walk found visible focus on every stop and no traps, and results are announced in live regions.
+- axe (WCAG 2.2 AA tags) on 16 routes at 390 and 1440 px, 12 October: 0 violations, with a case file open on the dashboard too. "Skip to main content" is the first Tab stop, my last full keyboard walk found visible focus on every stop and no traps, and results are announced in live regions.
 - Gran's view is its own design: big type, plain words, nothing to approve, and a hand written glossary so "held" can never read like "approved" in Polish.
 - Sample shops and people have made up names, and a test keeps real brand names out of the demo data.
 
@@ -309,7 +309,7 @@ Timed on the live site with a fresh demo family on 12 October 2026. Where each n
 | Was it you?, Tom's Not me to "Your money is safe" | 1.4 s |
 | Case files written by the case agent | settled 2.3 s after opening the dashboard |
 | Approve with the PIN to paid | 1.9 s |
-| Watchtower, "What did Leo spend on games?" (builds a chart) | 15.8 s, 14 tool calls |
+| Watchtower, "What did Leo spend on games?" (builds a chart) | under 20 s, 14 tool calls (runs vary from 15.8 to 18.1 s) |
 | Watchtower, "Did we pay fair prices this month?" | 6.0 s, 2 tool calls |
 | Agent lab, hijacked agent frozen and its hold voided at PayPal | 5.3 s. The PayPal webhook confirmed it at 11.3 s |
 

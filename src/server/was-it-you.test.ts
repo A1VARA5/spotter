@@ -26,13 +26,13 @@ beforeEach(async () => {
 const post = (body: unknown) => new Request("http://x/api/was-it-you", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 describe("the side by side demo", () => {
-  it("makes a real sandbox hold for Gran with an example ask to Tom, every part labelled", async () => {
+  it("makes a real sandbox hold for Gran with an ask to Tom, the visitor's own run (not labelled an example, round 8)", async () => {
     const r = await startExampleAsk(deps, demo);
     if (typeof r === "string") throw new Error(r);
     expect(r.payment).toMatchObject({ status: "needs_approval", paypal_authorization_id: "A9" });
     expect(r.payment.was_it_you).toMatchObject({ who: "Tom", channel: "example", state: "asked", target: { kind: "example" }, claim: { name: "Tom", quote: "it's Tom" } });
     expect(r.payment.request.context).toContain(r.payment.was_it_you!.claim.quote);
-    expect(r.payment.case_file).toMatchObject({ example: true });
+    expect(r.payment.case_file!.example).not.toBe(true);
     expect(r.token).toMatch(/^wiy_/);
   });
 

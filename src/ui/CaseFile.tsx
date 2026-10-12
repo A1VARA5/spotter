@@ -1,14 +1,15 @@
 "use client";
 // The case agent's write up on a held payment: what it most likely is, what each check found (every line names
 // the check it came from), what to do before deciding, and a safer way to buy the same thing when there is one.
-import { Fragment, useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { ChevronDown, CircleAlert, ExternalLink, Globe, Hand, Link2, Play, ScanEye, ShoppingBag, Users } from "lucide-react";
+import { ChevronDown, CircleAlert, ExternalLink, Globe, Hand, Link2, Maximize2, Play, ScanEye, ShoppingBag, Users, X } from "lucide-react";
 import type { Case } from "@/agents/case";
 import { WHY_LABEL } from "@/agents/seen";
 import { money } from "./format";
 import { Hint } from "./Hint";
 import { Peek } from "./Peek";
+import { FACE_SIZE, padBox } from "./facesBox";
 import { keyFacts, kernelLead, leadParts, panelShows, type RealOne } from "./caseFold";
 import { withoutIds } from "@/core/userText";
 
@@ -445,9 +446,10 @@ const FACE_DIFF: Record<string, string> = {
   look: "Colours",
 };
 
-/** The card or bank form, outlined on the screenshot it was found in. */
-function Outline({ box }: { box?: CasePageT["moneyBox"] }) {
-  if (!box || box.w <= 0 || box.h <= 0) return null;
+/** The card or bank form, outlined on the screenshot it was found in, with a small gap so it never covers the form's text. */
+function Outline({ box: raw, screen }: { box?: CasePageT["moneyBox"]; screen: { width: number; height: number } }) {
+  if (!raw || raw.w <= 0 || raw.h <= 0) return null;
+  const box = padBox(raw, screen, OUTLINE_GAP_PX);
   const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
   return (
     <span
@@ -460,6 +462,68 @@ function Outline({ box }: { box?: CasePageT["moneyBox"] }) {
       }}
       aria-hidden="true"
     />
+  );
+}
+
+// Screen pixels between the form and its outline (the form's labels start right at its edge).
+const OUTLINE_GAP_PX = 8;
+
+/**
+ * A button over one face that opens it large in a dialog (at 390 px the faces are thumbnails). The native dialog keeps
+ * focus inside and closes on Escape; focus goes back to the button. The large picture is only drawn while open.
+ */
+function FaceZoom({ src, alt, box, face, title }: { src: string; alt: string; box?: CasePageT["moneyBox"]; face: keyof typeof FACE_SIZE; title: string }) {
+  const titleId = useId();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const show = () => {
+    const d = dialog.current;
+    if (!d) return;
+    flushSync(() => setOpen(true));
+    try {
+      d.showModal();
+    } catch (e) {
+      console.error("[spotter] couldn't open the large picture:", e instanceof Error ? e.message : e);
+      setOpen(false);
+    }
+  };
+  return (
+    <>
+      <button ref={trigger} type="button" className="faces-open" onClick={show} aria-haspopup="dialog">
+        <span className="sr-only">Open the {face} picture large</span>
+        <Maximize2 size={14} strokeWidth={2.4} aria-hidden="true" />
+      </button>
+      <dialog
+        ref={dialog}
+        className="peek faces-zoom"
+        data-face={face}
+        aria-labelledby={titleId}
+        onClose={() => {
+          setOpen(false);
+          trigger.current?.focus();
+        }}
+        // A click on the dimmed backdrop (the dialog element itself, outside its box) closes it too.
+        onClick={(e) => e.target === e.currentTarget && dialog.current?.close()}
+      >
+        {open && (
+          <div className="peek-box">
+            <div className="peek-head">
+              <h2 id={titleId} className="peek-title">
+                {title}
+              </h2>
+              <button type="button" className="btn btn-primary peek-close" onClick={() => dialog.current?.close()} autoFocus>
+                <X size={18} strokeWidth={2.4} aria-hidden="true" /> Close
+              </button>
+            </div>
+            <div className="faces-frame faces-zoom-frame">
+              <img src={src} alt={alt} width={FACE_SIZE[face].width} height={FACE_SIZE[face].height} />
+              <Outline box={box} screen={FACE_SIZE[face]} />
+            </div>
+          </div>
+        )}
+      </dialog>
+    </>
   );
 }
 
@@ -492,7 +556,8 @@ function TwoFaces({ page, compact = false }: { page: CasePageT; compact?: boolea
           <figure className="faces-side faces-desk">
             <div className="faces-frame">
               {desk ? <img src={desk} alt={`Desktop view of ${host(page.finalUrl)}`} width={320} height={240} /> : <div className="faces-blank" />}
-              <Outline box={page.moneyBox} />
+              <Outline box={page.moneyBox} screen={FACE_SIZE.desktop} />
+              {desk && <FaceZoom src={desk} alt={`Desktop view of ${host(page.finalUrl)}`} box={page.moneyBox} face="desktop" title="Desktop, the way security scanners see it" />}
             </div>
             <figcaption>
               <b>Desktop</b>, the way security scanners see it
@@ -501,7 +566,8 @@ function TwoFaces({ page, compact = false }: { page: CasePageT; compact?: boolea
           <figure className="faces-side faces-phone">
             <div className="faces-frame">
               {phone ? <img src={phone} alt={`Phone view of ${host(page.phone?.finalUrl ?? page.finalUrl)}`} width={195} height={422} /> : <div className="faces-blank" />}
-              <Outline box={page.phone?.moneyBox} />
+              <Outline box={page.phone?.moneyBox} screen={FACE_SIZE.phone} />
+              {phone && <FaceZoom src={phone} alt={`Phone view of ${host(page.phone?.finalUrl ?? page.finalUrl)}`} box={page.phone?.moneyBox} face="phone" title="A phone, what Gran would see" />}
             </div>
             <figcaption>
               <b>A phone</b>, {uk ? `on a UK ${page.phone?.network === "uk_residential" ? "home" : "mobile"} network` : "set to UK English and time (not on a UK network)"}

@@ -26,7 +26,7 @@ All on https://spotter-pay.vercel.app with a fresh demo family, from the round 7
 | Case files settled after opening the dashboard | 2.3 s | a few seconds |
 | Approve with the PIN (2468) to paid | 1.9 s | about 2 s |
 | Agent lab, Hijack the agent | `create_order` held at +4.4 s, frozen and the hold voided at +5.3 s, verified PayPal webhook at +11.3 s | about 5 s, webhook about 11 s |
-| Watchtower, "What did Leo spend on games?" | receipt "14 calls in 15.8 s, Money actions 0, Board changes 8" (12 October, 02:31 BST, while recording the README clip) | about 16 s, 14 tool calls |
+| Watchtower, "What did Leo spend on games?" | receipt "14 calls in 15.8 s, Money actions 0, Board changes 8" (12 October, 02:31 BST, while recording the README clip) and "14 calls in 18.1 s, Money actions 0, Board changes 6" (round 8 judge pass, 12 October, about 08:40 BST). Runs vary from 15.8 to 18.1 s | under 20 s, 14 tool calls |
 | Watchtower, "Did we pay fair prices this month?" | receipt "2 calls in 6.0 s" | about 6 s, 2 tool calls |
 | Photo price check, the example photo | 0.9 s (probably cached) | under a second |
 
@@ -46,7 +46,7 @@ All on https://spotter-pay.vercel.app with a fresh demo family, from the round 7
 
 | What | Number | Date | Source |
 | --- | --- | --- | --- |
-| axe (WCAG 2.2 AA tags) | 0 violations on 16 routes at 390 and 1440 px | 12 Oct | round 7 judge pass on the live site |
+| axe (WCAG 2.2 AA tags) | 0 violations on 16 routes at 390 and 1440 px, /dashboard with a parcel case file open and with the rail's case file sheet open | 12 Oct | the round 8 judge pass found 1 on /dashboard (the case file's "KERNEL" lead word, 4.4:1); after the fix, axe 4 on a local build of it with a fresh demo family |
 | Shared Channel3 price watch | tracking since 11 Oct 22:17 UTC, 0 points recorded yet, two shop prices £199.00 and £229.00 | 12 Oct, 00:50 UTC | `GET /api/watches/shared` for a fresh demo family |
 
 ## Where they're used

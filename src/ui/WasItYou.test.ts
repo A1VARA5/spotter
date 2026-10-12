@@ -30,9 +30,15 @@ describe("wiyStatus", () => {
     expect(wiyStatus(w({ expiresAt: "2026-10-11T11:59:00Z" }), "needs_approval", NOW)).toMatchObject({ tone: "ring", state: "Tom didn't answer" });
   });
 
-  it("labels the demo's asks as examples", () => {
-    expect(wiyStatus(w({ channel: "example", state: "it_was_me" }), "needs_approval", NOW).state).toBe("Example: Tom said yes, it's me");
-    expect(wiyStatus(w({ channel: "example", state: "not_me" }), "voided", NOW).state).toBe("Example: Tom said not me");
+  // Round 8 m2: a run the visitor just made on Try is theirs, not an example.
+  it("never labels the visitor's own Was it you run as an example", () => {
+    expect(wiyStatus(w({ channel: "example", state: "it_was_me" }), "needs_approval", NOW).state).toBe("Tom said yes, it's me");
+    expect(wiyStatus(w({ channel: "example", state: "not_me" }), "voided", NOW).state).toBe("Tom said not me");
+    for (const state of ["asked", "it_was_me", "not_me"] as const) {
+      const s = wiyStatus(w({ channel: "example", state }), "needs_approval", NOW);
+      expect(`${s.state} ${s.detail}`).not.toMatch(/example/i);
+    }
+    expect(wiyStatus(w({ channel: "example", expiresAt: "2026-10-11T11:59:00Z" }), "needs_approval", NOW).detail).not.toMatch(/example/i);
   });
 
   const mine = w({ who: "Sam", channel: "alert", target: { kind: "spotter", name: "Sam" }, claim: { name: null, relation: "child", quote: "Hi mum its me" } });
@@ -54,9 +60,9 @@ describe("wiyStatus", () => {
 
   it("the Try demo's example left behind can be answered here, as Tom, until it runs out", () => {
     const ex = w({ channel: "example", target: { kind: "example", name: "Tom" } });
-    expect(wiyStatus(ex, "needs_approval", NOW)).toMatchObject({ state: "Example: Asked Tom", answer: "as" });
+    expect(wiyStatus(ex, "needs_approval", NOW)).toMatchObject({ state: "Asked Tom", answer: "as" });
     const late = wiyStatus({ ...ex, expiresAt: "2026-10-11T11:59:00Z" }, "needs_approval", NOW);
-    expect(late.state).toBe("Example: Tom didn't answer");
+    expect(late.state).toBe("Tom didn't answer");
     expect(late.answer).toBeUndefined();
     expect(late.detail).toMatch(/still on hold/);
     expect(late.detail).toMatch(/[Dd]eny/);
