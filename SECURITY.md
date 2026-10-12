@@ -41,6 +41,16 @@ The full threat model, including the gaps I know about, is in [docs/threat-model
 - Secrets live in a git ignored `.env.local` on my machine and in the Vercel project's environment settings. No `.env` file with real values has ever been committed. `.env.example` lists the names, with no secret values.
 - [/status](https://spotter-pay.vercel.app/status) and `/api/health` say what's working without showing any key, id or error text.
 
+## Reviews so far
+
+Every review writes its findings as tests that fail on the code it looked at, so a fix only counts once the test passes in CI.
+
+| Date | Review | What it covered | Findings | Status |
+|---|---|---|---|---|
+| 11 Oct 2026 | Security ([docs/reviews/security-2026-10-11.md](docs/reviews/security-2026-10-11.md)) | Look at it safely, Channel3 price watch and webhook, MCP `watch_price`, Gran view, PayPal declined captures | 6 (3 medium, 3 low) plus 8 notes | All fixed, proof tests in `src/reviews/` pass |
+| 11 Oct 2026 | Correctness ([docs/reviews/code-2026-10-11.md](docs/reviews/code-2026-10-11.md)) | Money paths, races, caps, leaked cloud browsers, silent failures | 10 proof tests, no blockers | All fixed, `*.review.test.ts` pass |
+| 11 Oct 2026 | PayPal depth (money safety, idempotency, agent keys) | Void and capture failure paths, request ids, stale webhooks, the tripwire race, MCP rate limits | 11 risks | All fixed, see `src/core/money-safety.test.ts` |
+
 ## Known `npm audit` warnings
 
 `npm audit --omit=dev` (checked 12 Oct 2026) reports 10: 5 high, 2 moderate, 3 low. Every one of them comes through `@paypal/agent-toolkit` 1.11.0, the official PayPal Agent Toolkit, which pins old versions of its dependencies:

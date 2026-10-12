@@ -25,8 +25,8 @@ All on https://spotter-pay.vercel.app with a fresh demo family, from the round 7
 | Was it you?, Tom's Not me to "Your money is safe" | 1.4 s (12 October, about 02:30 BST, two runs at 1.36 and 1.37 s while recording the Gran clip) | about a second |
 | Case files settled after opening the dashboard | 2.3 s | a few seconds |
 | Approve with the PIN (2468) to paid | 1.9 s | about 2 s |
-| Agent lab, Hijack the agent | `create_order` held at +4.4 s, frozen and the hold voided at +5.3 s, verified PayPal webhook at +11.3 s | about 5 s, webhook about 11 s |
-| Watchtower, "What did Leo spend on games?" | receipt "14 calls in 15.8 s, Money actions 0, Board changes 8" (12 October, 02:31 BST, while recording the README clip) and "14 calls in 18.1 s, Money actions 0, Board changes 6" (round 8 judge pass, 12 October, about 08:40 BST). Runs vary from 15.8 to 18.1 s | under 20 s, 14 tool calls |
+| Agent lab, Hijack the agent | `create_order` held at +4.4 s, frozen and the hold voided at +5.3 s, verified PayPal webhook at +11.3 s | about 5 s, webhook within about 15 s |
+| Watchtower, "What did Leo spend on games?" | receipt "14 calls in 15.8 s, Money actions 0, Board changes 8" (12 October, 02:31 BST, while recording the README clip) and "14 calls in 18.1 s, Money actions 0, Board changes 6" (round 8 judge pass, 12 October, about 08:40 BST). Runs vary from 15.8 to 18.1 s | about 20 s, 14 tool calls |
 | Watchtower, "Did we pay fair prices this month?" | receipt "2 calls in 6.0 s" | about 6 s, 2 tool calls |
 | Photo price check, the example photo | 0.9 s (probably cached) | under a second |
 
