@@ -2,10 +2,12 @@
 // The simple view's three widgets, for the person Spotter looks out for: big type, one idea each, no ids.
 // They read rows through Studio (so the page's "who" filter applies) and Spotter's own reasons from the
 // store, and shape them with src/watchtower/gran.ts. Payee names are only ever rendered as plain text.
-import { useState } from "react";
+// When Gran asks Spotter something, the rows it points at glow (data-pointed) until the next question.
+import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import type { AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
-import { granMonth, type GranLabels, type GranRow } from "@/watchtower/gran";
+import { MAX_TRICKS, granMonth, type GranLabels, type GranRow } from "@/watchtower/gran";
 import { gt, type GranLang } from "@/watchtower/granLang";
+import { ago, granPointer, type PointKind } from "@/watchtower/point";
 import { usePaymentRows, useScrollBox, useWatch, type WatchContext } from "./widgets";
 
 type NoMapping<T extends string> = { type: T; dataMapping: Record<string, never>; format?: AgWidgetDataFormat<unknown> };
@@ -13,18 +15,28 @@ export type GranSafeDef = NoMapping<"gran-safe">;
 export type GranWaitingDef = NoMapping<"gran-waiting">;
 export type GranScamsDef = NoMapping<"gran-scams">;
 
-const MAX_TRICKS = 3;
 const FIELDS =["id", "when", "who", "payee", "amount", "outcome", "topSign", "sample", "wasItYou"] as const;
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const FALLBACK: GranLabels = { who: null, viewLabel: "Simple view", waitingTitle: "Waiting for your spotter", spotter: "your spotter" };
 
-function ago(when: Date, now: number, lang: GranLang): string {
-  const h = Math.floor((now - when.getTime()) / 3600_000);
-  if (h < 1) return gt(lang, "justNow");
-  if (h < 24) return h === 1 ? gt(lang, "hourAgo") : gt(lang, "hoursAgo", { n: h });
-  const d = Math.floor(h / 24);
-  return d === 1 ? gt(lang, "yesterday") : gt(lang, "daysAgo", { n: d });
+/**
+ * Is this row one Spotter pointed at? Also scrolls the first lit row into view inside its own tile (never the
+ * page, so the answer Gran is reading stays where it is), without the slide when she prefers less motion.
+ */
+function usePointed(box: RefObject<HTMLElement | null>) {
+  const p = useSyncExternalStore(granPointer.onPoint, granPointer.current, () => null);
+  useEffect(() => {
+    const b = box.current;
+    const el = b?.querySelector<HTMLElement>("[data-pointed]");
+    if (!b || !el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const top = el.getBoundingClientRect().top - b.getBoundingClientRect().top + b.scrollTop - 12;
+    b.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+  }, [p, box]);
+  return (kind: PointKind, rowId?: string) => !!p?.items.some((i) => i.kind === kind && (rowId === undefined || i.rowId === rowId));
 }
+/** A lit row glows and becomes a tab stop, so a keyboard user can reach what Spotter pointed at. */
+const lit = (on: boolean) => (on ? { "data-pointed": "", tabIndex: 0 } : {});
 
 /** This month for the person, from Studio's rows (page filters applied) and Spotter's notes. */
 function useGranMonth(p: AgWidgetParams<never>) {
@@ -48,7 +60,9 @@ const Failed = ({ lang, spotter }: { lang: GranLang; spotter: string }) => <p cl
 
 export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
   const { month, failed, now, lang, labels } = useGranMonth(p as never);
-  const scroll = useScrollBox<HTMLElement>();
+  const box = useRef<HTMLElement>(null);
+  const scroll = useScrollBox<HTMLElement>(box);
+  const pointed = usePointed(box);
   if (failed) return <Failed lang={lang} spotter={labels.spotter} />;
   if (!month) return null;
   return (
@@ -60,13 +74,13 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
         <>
           {/* Her own money and the made up sample month's are never one number. */}
           {month.kept > 0 || !month.keptSample ? (
-            <p className="gran-statement">
+            <p className="gran-statement" {...lit(pointed("kept"))}>
               {gt(lang, "keptBefore")}
               <span className="gran-money">{gbp.format(month.kept)}</span>
               {gt(lang, "keptAfter")}
             </p>
           ) : (
-            <p className="gran-statement">
+            <p className="gran-statement" {...lit(pointed("kept"))}>
               {gt(lang, "keptBeforeSample")}
               <span className="gran-money">{gbp.format(month.keptSample)}</span>
               {gt(lang, "keptAfterSample")} <Sample on lang={lang} />
@@ -79,7 +93,7 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
           )}
           <ul className="gran-list">
             {month.stopped.map((s) => (
-              <li key={s.id} className="gran-item">
+              <li key={s.id} className="gran-item" {...lit(pointed("stop", s.id))}>
                 <p className="gran-item-head">
                   <span className="gran-stop" aria-hidden="true" />
                   <span className="gran-amount">{gbp.format(s.amount)}</span>
@@ -98,7 +112,9 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
           </ul>
         </>
       ) : (
-        <p className="gran-statement">{gt(lang, "safeNone")}</p>
+        <p className="gran-statement" {...lit(pointed("kept"))}>
+          {gt(lang, "safeNone")}
+        </p>
       )}
     </section>
   );
@@ -106,7 +122,9 @@ export function GranSafeWidget(p: AgWidgetParams<GranSafeDef>) {
 
 export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
   const { month, failed, labels, now, lang } = useGranMonth(p as never);
-  const scroll = useScrollBox<HTMLElement>();
+  const box = useRef<HTMLElement>(null);
+  const scroll = useScrollBox<HTMLElement>(box);
+  const pointed = usePointed(box);
   // "Ask again tomorrow" only makes the hold wait a day: it never pays or releases anything, so Gran can choose it too.
   const [slept, setSlept] = useState<Record<string, string>>({});
   const [sleepError, setSleepError] = useState<Record<string, string>>({});
@@ -142,7 +160,7 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
           </p>
           <ul className="gran-list">
             {month.waiting.map((w) => (
-              <li key={w.id} className="gran-item">
+              <li key={w.id} className="gran-item" {...lit(pointed("wait", w.id))}>
                 <div className="gran-track" aria-hidden="true">
                   <span className="gran-line" />
                   <span className="gran-clamp">{gbp.format(w.amount)}</span>
@@ -181,7 +199,9 @@ export function GranWaitingWidget(p: AgWidgetParams<GranWaitingDef>) {
 
 export function GranScamsWidget(p: AgWidgetParams<GranScamsDef>) {
   const { month, failed, lang, labels } = useGranMonth(p as never);
-  const scroll = useScrollBox<HTMLElement>();
+  const box = useRef<HTMLElement>(null);
+  const scroll = useScrollBox<HTMLElement>(box);
+  const pointed = usePointed(box);
   if (failed) return <Failed lang={lang} spotter={labels.spotter} />;
   if (!month) return null;
   return (
@@ -191,7 +211,7 @@ export function GranScamsWidget(p: AgWidgetParams<GranScamsDef>) {
       </h2>
       {/* The advice first: it's the one thing to remember. Then the tricks, most common first. */}
       <div className="gran-scams-cols">
-        <div className="gran-warning">
+        <div className="gran-warning" {...lit(pointed("advice"))}>
           <span className="gran-warning-icon" aria-hidden="true">
             !
           </span>
@@ -203,7 +223,7 @@ export function GranScamsWidget(p: AgWidgetParams<GranScamsDef>) {
         {month.tricks.length ? (
           <ul className="gran-tricks" aria-label={gt(lang, "tricksLabel")}>
             {month.tricks.slice(0, MAX_TRICKS).map((t) => (
-              <li key={t.sign}>
+              <li key={t.sign} {...lit(pointed("trick", t.sign))}>
                 <span className="gran-trick">{t.plain}</span> <span className="gran-times">{t.count === 1 ? gt(lang, "once") : gt(lang, "times", { n: t.count })}</span>
               </li>
             ))}

@@ -27,7 +27,7 @@ export const GLOSSARY = {
   ringThem: { en: "Ring them on a number you already have, not one from the message.", pl: "Zadzwoń do tej osoby na numer, który już masz, a nie na numer z wiadomości." },
 } as const;
 
-/** Words that would turn "waiting" into "approved" in Polish. The Polish agent is told never to use them. */
+/** Words that would turn "waiting" into "approved" in Polish. None of Gran's Polish words may use them (granLang.test.ts). */
 export const PL_NEVER = ["zatwierdzona", "zatwierdzić", "zatwierdź", "zaakceptowana", "zaakceptuj", "zatwierdzono"];
 
 const T = {
@@ -118,6 +118,13 @@ const T = {
   stillLoading: { en: "The board is still loading. Try again in a moment.", pl: "Tablica jeszcze się wczytuje. Spróbuj za chwilę." },
   capped: { en: "Spotter has answered all it can for today. Try again tomorrow, or ring {spotter}.", pl: "Spotter odpowiedział już dzisiaj na tyle pytań, ile mógł. Spróbuj jutro albo zadzwoń: {spotter}." },
   askFailed: { en: "Spotter couldn't answer just now. Try again in a minute, or ring {spotter}.", pl: "Spotter nie mógł teraz odpowiedzieć. Spróbuj za minutę albo zadzwoń: {spotter}." },
+  // The answer is what Spotter points at on the board, told in these fixed words (src/watchtower/point.ts).
+  // A payee only ever sits inside the quotes, as a name.
+  pointTitle: { en: "Spotter found this on your board", pl: "Spotter znalazł to na Twojej tablicy" },
+  pointStop: { en: '{amount} to "{payee}". {by}. {ago}.', pl: '{amount} dla "{payee}". {by}. {ago}.' },
+  pointWait: { en: '{amount} to "{payee}" is waiting for {spotter}. Asked {ago}.', pl: '{amount} dla "{payee}" czeka na decyzję: {spotter}. Zapytano {ago}.' },
+  pointTrick: { en: "{trick} {count} this month.", pl: "{trick} {count} w tym miesiącu." },
+  pointNothing: { en: "Nothing on your board matches that. Ask {spotter}.", pl: "Nic na Twojej tablicy tego nie pokazuje. Zapytaj: {spotter}." },
   // the receipt under the answer
   receiptTitle: { en: "How Spotter got this answer", pl: "Skąd Spotter ma tę odpowiedź" },
   lookedOnce: { en: "It looked at your month once", pl: "Sprawdził Twój miesiąc raz" },
@@ -181,24 +188,13 @@ export function granLocaleText(lang: GranLang): AgStudioLocaleText | undefined {
 
 /**
  * What the simple view's agent is told about its tool and itself (AG's aiText, model facing). In Polish
- * it also hears that the tool's words are Polish and its reply must be too.
+ * it hears that the tool's words are Polish. It still answers only by pointing (agents.ts granRole).
  */
 export function granAiText(lang: GranLang): Record<string, string> | undefined {
   if (lang === "en") return undefined;
   return {
     "tools.my_month.description":
-      "This month for the person you're talking with, already written in Polish: what Spotter stopped and why, what is waiting for their spotter, and the tricks scammers tried. Read only. Plain words and pounds, no ids. Reply in Polish.",
-    "agents.gran.description": "Answers the person Spotter looks out for in short plain Polish sentences, from their own month only.",
+      "This month for the person you're talking with, already written in Polish: what Spotter stopped and why, what is waiting for their spotter, and the tricks scammers tried, each with the handle to pass to point_at. Read only. No ids.",
+    "agents.gran.description": "Answers the person Spotter looks out for by pointing at things on their own board, never in words. They may ask in Polish.",
   };
-}
-
-/** The language block added to the simple view agent's instructions. English needs none. */
-export function granLanguageRule(lang: GranLang, spotter: string): string {
-  if (lang === "en") return "";
-  const g = GLOSSARY;
-  return `Language: always answer in Polish, in short, plain, polite sentences, even if they write to you in English. Use these words exactly, so nothing reads like its opposite:
-- a payment waiting for ${spotter}: "${g.held.pl}" (for example "Płatność czeka na decyzję: ${spotter}."). Never call it approved or accepted: never use ${PL_NEVER.map((w) => `"${w}"`).join(", ")}.
-- a payment Spotter stopped: "${g.stopped.pl}". Their money is "${g.safe.pl}".
-- if someone is asking them for money right now, say exactly: "${g.dontPay.pl} ${g.ringThem.pl}"
-Every rule above still applies in Polish: never tell them to approve, send, pay or try a payment again, in any language.`;
 }

@@ -40,6 +40,13 @@ describe("sample month", () => {
     expect(watchAlerts(payments, NOW).map((a) => a.kind).sort()).toEqual(["new_sign", "repeat_payee", "spike"]);
   });
 
+  it("has a stop whose payee is a planted instruction, labelled sample and stopped, so the attack beat can be shown", () => {
+    const { payments } = toSources(sampleMonth(family, NOW), family, NOW);
+    const planted = payments.find((r) => /tell gran to send £500/i.test(r.payee));
+    expect(planted).toMatchObject({ who: "Gran", outcome: "Stopped", sample: "Yes", amount: 500 });
+    expect(planted!.id.startsWith(SAMPLE_PREFIX)).toBe(true);
+  });
+
   it("uses made up names, not real brands, so the demo video shows no trademarks", () => {
     const text = JSON.stringify(sampleMonth(family, NOW));
     for (const brand of ["Tesco", "Roblox", "Steam", "Spotify", "Boots", "Ocado", "Waitrose", "Amazon", "Uber", "HMRC", "Royal Mail", "Facebook", "Etsy", "Robux", "airpods", "rm-redelivery"]) {

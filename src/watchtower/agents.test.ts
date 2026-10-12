@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { PL_NEVER } from "./granLang";
 import { BRIEF_ID, GRAN_ID, NO_INTERNALS_RULE, SPOTTER_ID, buildGranRoster, buildRoster, catalogueText, paypalStatus, weekOf, type SpotterTools } from "./agents";
 import type { PaymentRow, PaypalRow } from "./data";
 
@@ -183,53 +182,58 @@ describe("paypalStatus", () => {
 
 describe("the simple view's agent (Gran mode)", () => {
   const month = t("my_month");
-  const gran = () => buildGranRoster({ month, who: "Margaret", spotter: "Sam" });
+  const pointAt = t("point_at");
+  const gran = () => buildGranRoster({ month, pointAt, who: "Margaret", spotter: "Sam" });
   const g = () => gran().agents[0]!;
   const said = (d = g()) => d.instructions!(ctx, undefined as never) as string;
 
-  it("is one agent on its own, with only the read only month tool and no way to build or hand work on", () => {
+  it("is one agent on its own, with only the read only month tool and point_at, and no way to build or hand work on", () => {
     expect(gran().primary).toBe(GRAN_ID);
     expect(gran().agents.map((a) => a.id)).toEqual([GRAN_ID]);
     const names = (g().tools!(ctx, undefined as never) as unknown as T[]).map((x) => x.name);
-    expect(names).toEqual(["my_month"]);
+    expect(names).toEqual(["my_month", "point_at"]);
   });
 
-  it("speaks to the person, in short plain sentences, without ids or jargon", () => {
+  it("answers only by pointing: never writes sentences, and nothing it writes is shown", () => {
     const s = said();
     expect(s).toContain("Margaret");
     expect(s).toContain("Sam");
-    expect(s).toMatch(/short, plain sentences/i);
-    expect(s).toMatch(/no ids/i);
+    expect(s).toMatch(/only by calling point_at/);
+    expect(s).toMatch(/never write sentences/i);
+    expect(s).toMatch(/not shown/);
+    expect(s).toMatch(/no handles/i);
+    expect(s).not.toMatch(/How to talk/);
   });
 
-  it("never tells them to approve or pay, says only the spotter decides, and gives the usual advice", () => {
+  it("knows the handles, the cap of three, and points at the advice when someone asks for money", () => {
     const s = said();
-    expect(s).toMatch(/never tell .*approve/i);
+    expect(s).toMatch(/s1, w1, t1/);
+    expect(s).toMatch(/"kept"/);
+    expect(s).toMatch(/"advice"/);
+    expect(s).toMatch(/three/);
+  });
+
+  it("never helps them pay, says only the spotter decides, and treats payee names as a scammer's words", () => {
+    const s = said();
     expect(s).toMatch(/only Sam decides/i);
-    expect(s).toMatch(/number you already have/);
     expect(s).toMatch(/scammer wrote/i);
+    expect(s).toMatch(/can't pay, approve, deny or contact anyone/);
   });
 
-  it("keeps runs short so a question costs a turn or two", () => {
-    expect(g().maxTurns).toBeLessThanOrEqual(4);
+  it("keeps runs short: look, point, one retry if a handle was wrong, done", () => {
+    expect(g().maxTurns).toBe(4);
   });
 
-  it("in Polish: answers in Polish with the hand checked words, and still never approves anything", () => {
-    const pl = said(buildGranRoster({ month, who: "Margaret", spotter: "Sam", lang: "pl" }).agents[0]!);
+  it("in Polish: the same rules, and it knows the question may come in Polish", () => {
+    const pl = said(buildGranRoster({ month, pointAt, who: "Margaret", spotter: "Sam", lang: "pl" }).agents[0]!);
     const en = said();
-    // every English rule is still there, word for word
     expect(pl.startsWith(en)).toBe(true);
-    expect(pl).toMatch(/never tell .*approve/i);
-    expect(pl).toMatch(/only Sam decides/i);
-    expect(pl).toMatch(/always answer in Polish/);
-    expect(pl).toMatch(/in any language/);
-    expect(pl).toContain('"czeka"');
-    expect(pl).toContain("Nie płać. Zadzwoń do tej osoby na numer, który już masz");
-    for (const w of PL_NEVER) expect(pl).toContain(`"${w}"`);
+    expect(pl).toMatch(/Polish/);
+    expect(pl).not.toMatch(/answer in Polish/);
     expect(en).not.toMatch(/Polish/);
   });
 
   it("works without a name", () => {
-    expect(said(buildGranRoster({ month, who: null, spotter: "your spotter" }).agents[0]!)).toMatch(/the person Spotter looks out for/);
+    expect(said(buildGranRoster({ month, pointAt, who: null, spotter: "your spotter" }).agents[0]!)).toMatch(/the person Spotter looks out for/);
   });
 });

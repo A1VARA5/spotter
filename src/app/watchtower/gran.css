@@ -112,6 +112,21 @@
   .wt-view-btn:active, .gran-starter:active, .gran-ask-btn:active { transform: none; }
 }
 
+/* Spotter's answer is what it points at: the captions here, and the same rows glowing on the board.
+   A warm yellow wash and a thick ink bar on the left, like GOV.UK's inset text, so it reads without colour too. */
+.gran-answer-h { margin: 0; font-weight: 700; }
+.gran-pointed { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.gran-pointed li { padding-left: 12px; border-left: 4px solid var(--g-ink); }
+.gran-answer-box[data-mood="warn"] { border-color: var(--g-stop); }
+.gran-answer-box[data-mood="warn"] .gran-pointed li { border-left-color: var(--g-stop); }
+.gran [data-pointed] {
+  background: #FFF6C2; box-shadow: inset 6px 0 0 var(--g-ink), 0 0 0 3px var(--g-focus); border-radius: 8px;
+  padding-left: 16px; padding-right: 10px; animation: gran-glow 600ms var(--ease-out) both;
+}
+.gran [data-pointed]:focus-visible { outline: 3px solid var(--g-ink); outline-offset: 3px; }
+@keyframes gran-glow { from { box-shadow: inset 6px 0 0 var(--g-ink), 0 0 0 10px rgba(255, 221, 0, 0); } }
+@media (prefers-reduced-motion: reduce) { .gran [data-pointed] { animation: none; } }
+
 /* "Not sure? Ask again tomorrow": the same shape as the starters, the hold just waits a day. */
 .gran-sleep { all: unset; box-sizing: border-box; cursor: pointer; justify-self: start; padding: 10px 18px; min-height: 48px; border-radius: 10px; border: 2px solid var(--g-ink); color: var(--g-ink); background: #fff; font-size: 18px; line-height: 1.35; font-weight: 600; transition: transform 160ms var(--ease-out); }
 .gran-sleep:hover { background: #EEF1ED; }

@@ -1,32 +1,31 @@
 "use client";
-// "Ask Spotter" for the simple view: one question, one plain answer, in big type. AG Studio's chat panel
-// only exists in edit mode, so this drives AG's own agent harness (createAiHarness, built in Studio.tsx)
-// without the panel: a new thread per question, read back from the session's messages. Same Claude
-// proxy and daily caps as the spotter's assistant. Answers are rendered as plain text, never as HTML.
+// "Ask Spotter" for the simple view: one question, one answer, in big type. AG Studio's chat panel only
+// exists in edit mode, so this drives AG's own agent harness (createAiHarness, built in Studio.tsx) without
+// the panel: a new thread per question. Same Claude proxy and daily caps as the spotter's assistant.
+// The answer is what Spotter pointed at on the board (point_at), told in Spotter's own fixed words
+// (src/watchtower/point.ts). Nothing the model writes is ever read or shown here, so a scammer's words in a
+// payee name can never come back as Spotter's sentence. Captions are plain text, never HTML.
 import { useEffect, useRef, useState } from "react";
 import type { AgAiChatSession, AgAiHarness } from "ag-studio";
 import { GRAN_ID } from "@/watchtower/agents";
 import type { Receipt } from "@/watchtower/receipt";
 import { gt, type GranLang } from "@/watchtower/granLang";
+import { answerOf, granPointer, nothingMatched, toolErrored, type Pointable } from "@/watchtower/point";
 import { useBook, type ReceiptBook } from "./ReceiptBar";
 
-type Phase = { kind: "idle" } | { kind: "asking"; question: string } | { kind: "answered"; question: string; answer: string; threadId: string } | { kind: "failed"; question: string; why: string };
+type Phase =
+  | { kind: "idle" }
+  | { kind: "asking"; question: string }
+  | { kind: "answered"; question: string; items: Pointable[]; mood: "warn" | "calm"; threadId: string }
+  | { kind: "failed"; question: string; why: string };
 
 const MAX_QUESTION = 300;
-
-/** The last thing the agent said in this thread, as plain text. */
-function lastAnswer(s: AgAiChatSession): string {
-  const msg = [...s.messages].reverse().find((m) => m.role === "assistant" && m.parts.some((p) => p.type === "text" && p.text.trim()));
-  return msg ? msg.parts.map((p) => (p.type === "text" ? p.text : "")).join("").trim() : "";
-}
-
-/** Markdown the model may still use, taken out so the answer reads as plain sentences. */
-const plain = (t: string) => t.replace(/\*\*|__|`/g, "").replace(/^#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "");
 
 /** Under the answer: what Spotter did to get it, from AG Studio's own record of the run, in Gran's words. */
 function GranReceipt({ r, spotter, lang }: { r: Receipt; spotter: string; lang: GranLang }) {
   const looks = r.tools.find((t) => t.name === "my_month")?.calls ?? 0;
-  const other = r.tools.filter((t) => t.name !== "my_month").reduce((n, t) => n + t.calls, 0);
+  // Pointing is how it answers, not another thing it did.
+  const other = r.tools.filter((t) => t.name !== "my_month" && t.name !== "point_at").reduce((n, t) => n + t.calls, 0);
   const s = Math.max(1, Math.round(r.ms / 1000));
   const looked = looks === 0 ? gt(lang, "lookedNone") : looks === 1 ? gt(lang, "lookedOnce") : looks === 2 ? gt(lang, "lookedTwice") : gt(lang, "lookedTimes", { n: looks });
   return (
@@ -50,7 +49,13 @@ export function GranAsk({ harness, spotter, onBusy, book, lang = "en" }: { harne
   const answerRef = useRef<HTMLDivElement>(null);
   const starters = [gt(lang, "starterStopped"), gt(lang, "starterWaiting", { spotter }), gt(lang, "starterAsking")];
 
-  useEffect(() => () => session.current?.close(), []);
+  useEffect(
+    () => () => {
+      session.current?.close();
+      granPointer.point(null);
+    },
+    [],
+  );
 
   const ask = async (raw: string) => {
     const question = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION);
@@ -61,6 +66,8 @@ export function GranAsk({ harness, spotter, onBusy, book, lang = "en" }: { harne
       return;
     }
     setPhase({ kind: "asking", question });
+    // The last answer's glow clears as the next question goes.
+    granPointer.point(null);
     onBusy(true);
     session.current?.close();
     try {
@@ -94,11 +101,11 @@ export function GranAsk({ harness, spotter, onBusy, book, lang = "en" }: { harne
         throw e;
       }
       const inTime = await done;
-      const answer = plain(lastAnswer(s));
       const error = s.messages.flatMap((m) => m.parts).find((p): p is { type: "error"; message: string } => p.type === "error");
-      // An error part means the run stopped short: any text before it is half an answer, so don't show it.
-      if (!inTime || s.status === "error" || error || !answer) {
+      // An error part means the run stopped short: anything it lit may be half an answer, so it goes dark.
+      if (!inTime || s.status === "error" || error) {
         console.warn("[watchtower] simple view answer failed:", error?.message ?? s.status);
+        granPointer.point(null);
         // The daily cap is the one failure where "try again in a minute" is wrong.
         const capped = !!error && /today|tomorrow/i.test(error.message);
         setPhase({
@@ -107,11 +114,21 @@ export function GranAsk({ harness, spotter, onBusy, book, lang = "en" }: { harne
           why: gt(lang, capped ? "capped" : "askFailed", { spotter }),
         });
       } else {
-        setPhase({ kind: "answered", question, answer, threadId: s.threadId });
-        setText("");
+        // What this run pointed at. Nothing lit is "nothing matched", unless a tool broke on the way.
+        const a = answerOf(granPointer.current(), s.threadId, toolErrored(s.messages));
+        if (a.kind === "failed" || !a.items.length) granPointer.point(null);
+        if (a.kind === "failed") {
+          console.warn("[watchtower] simple view answer failed: a tool call errored and nothing was lit");
+          setPhase({ kind: "failed", question, why: gt(lang, "askFailed", { spotter }) });
+        } else {
+          if (!a.pointed) console.warn("[watchtower] simple view run ended without calling point_at:", s.threadId);
+          setPhase({ kind: "answered", question, items: a.items, mood: a.mood, threadId: s.threadId });
+          setText("");
+        }
       }
     } catch (e) {
       console.warn("[watchtower] simple view question wasn't sent:", e);
+      granPointer.point(null);
       setPhase({ kind: "failed", question, why: gt(lang, "askFailed", { spotter }) });
     } finally {
       onBusy(false);
@@ -170,13 +187,25 @@ export function GranAsk({ harness, spotter, onBusy, book, lang = "en" }: { harne
       <div className="gran-answer" role="status" aria-live="polite">
         {phase.kind === "asking" && <p className="gran-thinking">{gt(lang, "thinking")}</p>}
         {(phase.kind === "answered" || phase.kind === "failed") && (
-          <div ref={answerRef} tabIndex={-1} className="gran-answer-box" data-failed={phase.kind === "failed" || undefined}>
+          <div ref={answerRef} tabIndex={-1} className="gran-answer-box" data-failed={phase.kind === "failed" || undefined} data-mood={phase.kind === "answered" ? phase.mood : undefined}>
             <p className="gran-asked">{gt(lang, "youAsked", { q: phase.question })}</p>
-            {(phase.kind === "answered" ? phase.answer : phase.why).split(/\n{2,}/).map((para, i) => (
-              <p key={i} className="gran-answer-text">
-                {para}
-              </p>
-            ))}
+            {phase.kind === "failed" ? (
+              <p className="gran-answer-text">{phase.why}</p>
+            ) : phase.items.length ? (
+              <>
+                <p className="gran-answer-h">{gt(lang, "pointTitle")}</p>
+                <ul className="gran-pointed">
+                  {phase.items.map((it) => (
+                    <li key={it.handle} className="gran-answer-text" data-kind={it.kind}>
+                      {it.caption}
+                      {it.sample && <> <span className="gran-sample">{gt(lang, "sample")}</span></>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="gran-answer-text">{nothingMatched(lang, spotter)}</p>
+            )}
             {phase.kind === "answered" && (() => {
               const r = entries.find((e) => e.receipt.threadId === phase.threadId)?.receipt;
               // No receipt for a finished answer is itself worth saying: it's the proof that's missing.

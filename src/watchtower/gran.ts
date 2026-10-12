@@ -168,7 +168,8 @@ export function granMonth(rows: GranRow[], notes: Map<string, CaseNote>, o: { wh
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const daysAgo = (when: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - when.getTime()) / (24 * 3600_000)));
 
-const cash = (amount: number, currency: string) => {
+/** Money in its own currency ("£12.50", "$119.00"). */
+export const cash = (amount: number, currency: string) => {
   try {
     return new Intl.NumberFormat(currency === "USD" ? "en-US" : "en-GB", { style: "currency", currency }).format(amount);
   } catch {
@@ -184,17 +185,26 @@ function keptByCurrency(stopped: GranStop[]): string {
   return totals.size ? [...totals].map(([c, n]) => cash(n, c)).join(" and ") : gbp.format(0);
 }
 
-/** What the simple view's agent reads (the my_month tool): the month in words and each payment's own money, no ids at all. */
+/** The scams tile shows the three most common tricks; only those can be pointed at (point.ts). */
+export const MAX_TRICKS = 3;
+
+/**
+ * What the simple view's agent reads (the my_month tool): the month in words and each payment's own money,
+ * no ids at all. Each item carries the handle point_at takes (s1, w1, t1, kept, advice); point.ts makes the
+ * same handles in the same order.
+ */
 export function granForAgent(m: GranMonth, now: Date, lang: GranLang = "en") {
   const sample = m.stopped.filter((s) => s.sample);
   return {
     // Their own money only; the made up sample month's total is told apart, and only when there is one.
     keptThisMonth: keptByCurrency(m.stopped.filter((s) => !s.sample)),
     ...(sample.length ? { keptInSampleMonth: keptByCurrency(sample) } : {}),
-    stopped: m.stopped.map((s) => ({ payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample, ...(s.example ? { example: true } : {}), ...(s.times > 1 ? { times: s.times } : {}) })),
-    waiting: m.waiting.map((w) => ({ payee: w.payee, amount: cash(w.amount, w.currency), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
-    tricks: m.tricks.map((t) => ({ trick: t.plain, times: t.count })),
+    keptHandle: "kept",
+    stopped: m.stopped.map((s, i) => ({ handle: `s${i + 1}`, payee: s.payee, amount: cash(s.amount, s.currency), daysAgo: daysAgo(s.when, now), what: s.by, why: s.sentence, sample: s.sample, ...(s.example ? { example: true } : {}), ...(s.times > 1 ? { times: s.times } : {}) })),
+    waiting: m.waiting.map((w, i) => ({ handle: `w${i + 1}`, payee: w.payee, amount: cash(w.amount, w.currency), daysAgo: daysAgo(w.when, now), status: w.status, ...(w.ends ? { ends: w.ends } : {}), sample: w.sample })),
+    tricks: m.tricks.slice(0, MAX_TRICKS).map((t, i) => ({ handle: `t${i + 1}`, trick: t.plain, times: t.count })),
     advice: gt(lang, "advice"),
+    adviceHandle: "advice",
   };
 }
 
