@@ -396,7 +396,5 @@ More detail: [docs/architecture.md](docs/architecture.md), [docs/threat-model.md
 - KERNEL for the throwaway cloud browsers
 - Agentboxd for the spotter@homingbox.net inbox
 - Neon Postgres and Vercel for hosting
-- The email sender checks and webhook verification come from my earlier project, [Red Flag](https://github.com/A1VARA5/redflag), reused and credited here
-- Claude Code (Anthropic), used as a coding tool
 
 MIT licence, see [LICENSE](LICENSE). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
