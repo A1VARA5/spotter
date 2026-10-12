@@ -4,18 +4,59 @@
 .demo-rail { display: grid; gap: 12px; align-content: start; }
 .demo-rail-text { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
 
-/* The judge's tour: four sends in one row, before the full list. Same card language as the scenarios. */
-.tour { margin: 0 0 28px; display: grid; gap: 10px; }
-.tour-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
-.tour-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
-.tour-stop { display: grid; grid-template-rows: auto 1fr auto; gap: 4px; padding: 12px 14px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--paper); min-width: 0; }
-.tour-stop[data-state="held"] { border-color: rgb(242 183 5 / 0.7); background: var(--hold-soft); }
-.tour-stop[data-state="blocked"], .tour-stop[data-state="returned"] { border-color: rgb(190 51 40 / 0.35); }
-.tour-name { margin: 0; font-size: 15px; font-weight: 650; color: var(--ink); }
-.tour-shows { margin: 0; font-size: 13px; color: var(--ink-2); }
-.tour-out { margin: 0; font-size: 14px; font-weight: 650; color: var(--ink); }
-.tour-btn.tour-btn { justify-self: start; margin-top: 6px; min-height: 40px; padding: 0 16px; font-size: 14px; }
-@media (max-width: 420px) { .tour-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Featured four, then the Start fresh bar, then More scenarios. Same list language as every other card. */
+.scen-featured { margin: 0 0 18px; }
+.app-main .scen-sub { font-size: 15px; margin: 22px 0 10px; }
+
+/* What a card shows, in plain words, with the sponsor as a small grey tag that never wraps inside itself. */
+.scen-sees { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 4px; font-size: 14px; line-height: 1.5; color: var(--ink); font-weight: 550; text-wrap: pretty; }
+.scen-sees-tags { display: inline-flex; gap: 4px; }
+/* Titles inside More are h4s, which the global reset doesn't cover. */
+.app-main .scenario-title { margin: 0; }
+.scen-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* The result spans the whole card, so the seen vs read panes get room (the button column is empty by then). */
+.app-main .scenario > .scen-result { grid-column: 1 / -1; }
+.scen-result .case-seen { margin: 0; }
+.scen-result .case-seen-side img { max-height: 220px; object-fit: cover; object-position: top; }
+.scen-wait { margin: 0; font-size: 14px; color: var(--ink-2); }
+
+/* More scenarios: one native disclosure for everything that isn't featured. */
+.more-scen { margin: 8px 0 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.more-scen-sum {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 12px 18px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 12px;
+}
+.more-scen-sum::-webkit-details-marker { display: none; }
+.more-scen-sum:focus-visible { outline: 2px solid var(--protect); outline-offset: 2px; }
+.more-scen-title { font-size: 15.5px; font-weight: 650; color: var(--ink); }
+.more-scen-count { grid-column: 1; font-size: 14px; color: var(--ink-2); }
+.more-scen-chev { grid-column: 2; grid-row: 1 / span 2; color: var(--ink-2); transition: transform 200ms var(--ease-out); }
+.more-scen[open] > .more-scen-sum .more-scen-chev { transform: rotate(180deg); }
+.more-scen[open] > .more-scen-sum { border-bottom: 1px solid var(--line); border-radius: 12px 12px 0 0; }
+.more-scen-body { padding: 0 18px 20px; }
+.more-scen-body > .scen-group:first-child .scen-sub { margin-top: 16px; }
+@media (hover: hover) and (pointer: fine) { .more-scen-sum:hover { background: #fafbf8; } }
+@media (prefers-reduced-motion: reduce) { .more-scen-chev { transition: none; } }
+@media (max-width: 560px) { .more-scen-body { padding: 0 10px 14px; } .more-scen-sum { padding: 12px 14px; } }
 
 /* Tom's phone before anything happens: an obvious empty chat, not a blank gradient. */
 .wiy-empty.wiy-empty { display: grid; justify-items: center; gap: 8px; padding: 16px 14px; }
@@ -26,20 +67,4 @@
 .wiy-result.wiy-result { border: 1px solid var(--line); border-left-width: 1px; }
 .wiy-result.wiy-result[data-tone="safe"] { border-color: rgb(31 122 85 / 0.35); background: var(--go-soft); }
 .wiy-result.wiy-result[data-tone="hold"] { border-color: rgb(242 183 5 / 0.55); background: var(--hold-soft); }
-
-/* "Shows: ..." tags on scenarios: which engine each one puts on screen. Small and factual. */
-.scen-shows { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.scen-show {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--chalk);
-  color: var(--ink-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-.scen-show b { color: var(--ink); font-weight: 700; }
+.app-main .more-scen-body .scen-business { margin-top: 28px; }

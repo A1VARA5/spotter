@@ -10,6 +10,8 @@ export type Scenario = {
   expect: string;
   /** Which engines this one puts on screen, for the small "Shows:" tags on Try (and the /checks empty states). */
   shows?: Array<{ engine: "KERNEL" | "Channel3"; what: string }>;
+  /** What it puts on screen, in one short plain line for its card on Try (sponsor names go in small tags beside it). */
+  sees?: string;
   /** Which of the household's people sends it: the first one of this kind. */
   spender: "agent" | "person" | "kid";
   body: {
@@ -54,6 +56,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "Over the £30 ask me limit, from a new shop, and pricier than real retailers.",
     expect: "Waiting for you, with the real shop price next to it.",
     shows: [{ engine: "Channel3", what: "real shop prices" }],
+    sees: "The real shop price next to the one asked",
     body: {
       amount: 24900, currency: "GBP", payee: "SoundDepot UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
       item: "noise cancelling wireless earbuds",
@@ -68,6 +71,7 @@ export const SCENARIOS: Scenario[] = [
     blurb: "A shop selling brand new top end earbuds at a price no real retailer does.",
     expect: "Waiting for you: real shops charge many times that.",
     shows: [{ engine: "Channel3", what: "real shop prices" }],
+    sees: "Real shops charge many times this price",
     body: {
       amount: 2499, currency: "GBP", payee: "Earbud Outlet UK", payeeIsNew: true, category: "electronics", method: "paypal_order",
       item: "premium noise cancelling wireless earbuds",
@@ -86,6 +90,7 @@ export const SCENARIOS: Scenario[] = [
       { engine: "KERNEL", what: "tools for AI agents" },
       { engine: "Channel3", what: "real shop prices" },
     ],
+    sees: "What a person sees next to what your agent read",
     body: {
       amount: 1999, currency: "GBP", payee: "GadgetBarn", payeeIsNew: true, category: "electronics", method: "paypal_order",
       item: "Pulse wireless earbuds",
@@ -105,6 +110,7 @@ export const SCENARIOS: Scenario[] = [
       { engine: "KERNEL", what: "seen vs read" },
       { engine: "Channel3", what: "spot the difference" },
     ],
+    sees: "The shop's pan next to the same pan at real shops",
     body: {
       amount: 499, currency: "GBP", payee: "Panmoor Kitchen", payeeIsNew: true, category: "home", method: "paypal_order",
       item: "cast iron skillet",
@@ -118,6 +124,7 @@ export const SCENARIOS: Scenario[] = [
     title: "Gran forwards a \"Hi Mum\" text",
     blurb: "A \"new number\" can't get into their banking and asks for £250 to a mate's PayPal.",
     expect: "Waiting for you, on hold at PayPal, with the warning signs quoted. The text calls her Mum, so it claims to be from you: Spotter asks you \"Was it you?\" on the held payment.",
+    sees: "Spotter asks you: was it you?",
     body: {
       amount: 25000, currency: "GBP", payee: "jamie.k1994@mail.example", payeeIsNew: true, category: "family", method: "paypal_order",
       context: "Forwarded from +44 7700 900461: Hi mum its me, new number. Not really, phones dead and I cant get into my banking on this one. I've got a bill that has to be paid today or I get a late fee. Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow. jamie.k1994@mail.example. Please hurry mum x",
@@ -134,6 +141,7 @@ export const SCENARIOS: Scenario[] = [
       { engine: "KERNEL", what: "two faces" },
       { engine: "KERNEL", what: "where the money goes" },
     ],
+    sees: "The link on a computer next to the link on Gran's phone",
     body: {
       amount: 199, currency: "GBP", payee: "Larkhill Parcels", payeeIsNew: true, category: "delivery", method: "paypal_order",
       context: `Text from LARKHILL: We missed you today. Your parcel LK 4471 0938 GB is waiting. A £1.99 redelivery fee is due within 24 hours or it goes back to the sender. Pay here: ${DEMO_REDELIVERY_URL}`,
@@ -199,6 +207,7 @@ export const BUSINESS_SCENARIOS: Scenario[] = [
     blurb: "40 boxes at three times the usual price, from a shop it has never used.",
     expect: "Waiting for the owner, with the usual price next to it.",
     shows: [{ engine: "Channel3", what: "real shop prices" }],
+    sees: "The usual price next to the one asked",
     body: {
       amount: 35960, currency: "GBP", payee: "Papertrail Office Direct", payeeIsNew: true, category: "office supplies", method: "paypal_order",
       item: "A4 copy paper 80gsm, box of 500 sheets",
@@ -208,17 +217,38 @@ export const BUSINESS_SCENARIOS: Scenario[] = [
 ];
 
 /**
- * The judge's tour at the top of Try a payment: the four scenarios that show the most, each with the one
- * thing it puts on screen. Family households only (a business has its own list).
+ * The judge's tour at the top of Try a payment: the four scenarios that show the most.
+ * Family households only (a business has its own list).
  */
-export const JUDGE_TOUR: Array<{ id: string; short: string; shows: string }> = [
-  { id: "agent-trap", short: "Booby trapped shop", shows: "KERNEL: seen vs read" },
-  { id: "gran-hi-mum", short: "\"Hi Mum\" text", shows: "Was it you?" },
-  { id: "gran-redelivery", short: "£1.99 parcel text", shows: "KERNEL: two faces" },
-  { id: "agent-skillet", short: "£4.99 skillet", shows: "Channel3: spot the difference" },
+export const JUDGE_TOUR: Array<{ id: string; short: string }> = [
+  // The buttons are named from these ("Send it: Booby trapped shop"): the demo video clicks them by name.
+  { id: "agent-trap", short: "Booby trapped shop" },
+  { id: "gran-hi-mum", short: "\"Hi Mum\" text" },
+  { id: "gran-redelivery", short: "£1.99 parcel text" },
+  { id: "agent-skillet", short: "£4.99 skillet" },
 ];
 
 /** What Try a payment shows: a family's own scenarios with the business ones under "Runs a business?", or only the business ones. */
 export function scenariosFor(kind: HouseholdKind): { main: Scenario[]; extra: Scenario[] } {
   return kind === "business" ? { main: BUSINESS_SCENARIOS, extra: [] } : { main: SCENARIOS, extra: BUSINESS_SCENARIOS };
+}
+
+/** The sponsors a scenario puts on screen, each once, for the small grey tags beside its plain line. */
+export function sponsorsOf(s: Scenario): Array<"KERNEL" | "Channel3"> {
+  return [...new Set((s.shows ?? []).map((t) => t.engine))];
+}
+
+/**
+ * Try a payment, in order: the featured four (families only), then every other scenario exactly once. On the page a
+ * family's other scenarios sit behind one "More scenarios" disclosure, the business ones last inside it.
+ */
+export function tryLayout(kind: HouseholdKind): { featured: Array<{ s: Scenario; short: string }>; more: Scenario[]; extra: Scenario[] } {
+  const { main, extra } = scenariosFor(kind);
+  if (kind === "business") return { featured: [], more: main, extra };
+  const featured = JUDGE_TOUR.flatMap((t) => {
+    const s = main.find((x) => x.id === t.id);
+    return s ? [{ s, short: t.short }] : [];
+  });
+  const picked = new Set(featured.map((f) => f.s.id));
+  return { featured, more: main.filter((s) => !picked.has(s.id)), extra };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BUSINESS_SCENARIOS, JUDGE_TOUR, SCENARIOS, scenariosFor } from "./scenarios";
+import { BUSINESS_SCENARIOS, JUDGE_TOUR, SCENARIOS, scenariosFor, sponsorsOf, tryLayout } from "./scenarios";
 import { DEMO_SPENDERS } from "@/server/seed";
 import { PRESETS } from "@/core/presets";
 import { aiCheck } from "@/ai/check";
@@ -122,21 +122,54 @@ describe("scenarios", () => {
 });
 
 describe("the judge's tour", () => {
-  it("has four real family scenarios, each naming what it shows, with no repeats", () => {
+  it("has four real family scenarios with no repeats", () => {
     expect(JUDGE_TOUR).toHaveLength(4);
     expect(new Set(JUDGE_TOUR.map((t) => t.id)).size).toBe(4);
     for (const t of JUDGE_TOUR) {
       expect(SCENARIOS.some((s) => s.id === t.id)).toBe(true);
-      expect(t.shows).toBeTruthy();
       expect(t.short).not.toMatch(BRANDS);
     }
   });
 
-  it("names the engine the scenario's own Shows tags list", () => {
-    for (const t of JUDGE_TOUR) {
-      const s = SCENARIOS.find((x) => x.id === t.id)!;
-      const engine = t.shows.split(":")[0]!;
-      if (engine === "KERNEL" || engine === "Channel3") expect(s.shows?.some((x) => x.engine === engine)).toBe(true);
+  it("keeps the short names the demo video clicks by name", () => {
+    const shorts = JUDGE_TOUR.map((t) => t.short);
+    for (const name of ["Booby trapped shop", "£1.99 parcel text", "£4.99 skillet"]) expect(shorts).toContain(name);
+  });
+});
+
+describe("Try a payment's layout", () => {
+  const all = [...SCENARIOS, ...BUSINESS_SCENARIOS];
+
+  it("a family sees the four featured first and every other scenario once, behind More", () => {
+    const { featured, more, extra } = tryLayout("family");
+    expect(featured.map((f) => f.s.id)).toEqual(JUDGE_TOUR.map((t) => t.id));
+    expect(featured.map((f) => f.short)).toEqual(JUDGE_TOUR.map((t) => t.short));
+    const ids = [...featured.map((f) => f.s.id), ...more.map((s) => s.id), ...extra.map((s) => s.id)];
+    expect(new Set(ids).size).toBe(ids.length);
+    expect([...ids].sort()).toEqual(all.map((s) => s.id).sort());
+    expect(extra).toEqual(BUSINESS_SCENARIOS);
+  });
+
+  it("a business has nothing featured and sees its own two openly", () => {
+    expect(tryLayout("business")).toEqual({ featured: [], more: BUSINESS_SCENARIOS, extra: [] });
+  });
+
+  it("every featured scenario says in plain words what it shows", () => {
+    for (const { s } of tryLayout("family").featured) expect(s.sees).toBeTruthy();
+  });
+
+  it("each scenario that shows something has one short plain line, sponsor names only as tags", () => {
+    for (const s of all) {
+      if (s.shows) expect(s.sees, s.id).toBeTruthy();
+      if (!s.sees) continue;
+      expect(s.sees.length, s.id).toBeLessThanOrEqual(64);
+      expect(s.sees).not.toMatch(/KERNEL|Channel3|–|—|\w-\w/);
     }
+  });
+
+  it("tags each sponsor once, in the order the scenario lists them", () => {
+    expect(sponsorsOf(SCENARIOS.find((s) => s.id === "agent-trap")!)).toEqual(["KERNEL", "Channel3"]);
+    expect(sponsorsOf(SCENARIOS.find((s) => s.id === "gran-redelivery")!)).toEqual(["KERNEL"]);
+    expect(sponsorsOf(SCENARIOS.find((s) => s.id === "gran-chemist")!)).toEqual([]);
   });
 });

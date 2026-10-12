@@ -830,7 +830,7 @@ function ShopToolList({ tools }: { tools: Extract<NonNullable<NonNullable<Case["
  * What Spotter saw when it opened the page in a throwaway cloud browser (KERNEL), so nobody in the family had to.
  * When the page hides text from people that an AI agent reads, the two are shown side by side.
  */
-function OpenedPage({
+export function OpenedPage({
   id,
   page,
   paymentId,
