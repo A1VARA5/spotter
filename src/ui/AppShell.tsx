@@ -19,6 +19,8 @@ import { listSpenders } from "@/core/households";
 import { BrandMark } from "./components";
 import { SignOut } from "./SignOut";
 import { labelsFor } from "@/ui/labels";
+import { recOn } from "@/server/rec";
+import { RecProvider } from "./rec";
 
 export type Section = "waiting" | "watchtower" | "checks" | "activity" | "try" | "account" | `person:${string}`;
 export type Layout = "rail" | "wide" | "narrow";
@@ -104,14 +106,16 @@ export async function AppShell({
         </div>
       </aside>
       <main className="app-main" id="main" tabIndex={-1}>
-        <div className="page-frame" data-layout={layout} data-rail={(layout === "rail" && rail != null) || undefined}>
-          <div className="page-main">{children}</div>
-          {layout === "rail" && rail != null && (
-            <aside className="page-rail" aria-label={railLabel}>
-              {rail}
-            </aside>
-          )}
-        </div>
+        <RecProvider on={await recOn()}>
+          <div className="page-frame" data-layout={layout} data-rail={(layout === "rail" && rail != null) || undefined}>
+            <div className="page-main">{children}</div>
+            {layout === "rail" && rail != null && (
+              <aside className="page-rail" aria-label={railLabel}>
+                {rail}
+              </aside>
+            )}
+          </div>
+        </RecProvider>
       </main>
       <nav className="tabbar" aria-label="Main">
         {nav.filter((n) => n.tab).map((n) => (

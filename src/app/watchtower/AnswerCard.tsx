@@ -8,6 +8,7 @@ import { answerReceipt, builtBy, followUps, receiptSteps, type TopRow } from "@/
 import { boardWords } from "@/watchtower/receipt";
 import { useBook } from "./ReceiptBar";
 import { useScrollBox, type WatchContext } from "./widgets";
+import { useRec } from "@/ui/rec";
 
 export type AnswerSummaryDef = { type: "answer-summary"; dataMapping: Record<string, never>; format?: AgWidgetDataFormat<unknown> };
 
@@ -43,7 +44,8 @@ export function createAnswerFeed(ask: (s: Starter) => void): AnswerFeed & { set(
 
 /** The first sentence leads; a second one (the fair price headline's too cheap part) follows smaller. */
 function AnswerLine({ text }: { text: string }) {
-  const [first, ...rest] = text.split(/(?<=\.) /);
+  const rec = useRec();
+  const [first, ...rest] = rec.text(text).split(/(?<=\.) /);
   return (
     <p className="wt-ans-line">
       {first}
@@ -53,12 +55,13 @@ function AnswerLine({ text }: { text: string }) {
 }
 
 function RowList({ rows }: { rows: readonly TopRow[] }) {
+  const rec = useRec();
   return (
     <ul className="wt-ans-rowlist">
       {rows.map((r, i) => (
         <li key={i}>
-          <span className="wt-ans-row-label">{r.label}</span>
-          <span className="wt-ans-row-value">{r.value}</span>
+          <span className="wt-ans-row-label">{rec.text(r.label)}</span>
+          <span className="wt-ans-row-value">{rec.text(r.value)}</span>
         </li>
       ))}
     </ul>

@@ -9,6 +9,7 @@ import type { RadarCount } from "@/watchtower/widgetLogic";
 import { revive, type WireSources } from "@/watchtower/wire";
 import type { HouseholdKind } from "@/core/households";
 import type { WatchSnapshot, WatchStore } from "./widgets";
+import { useRec } from "@/ui/rec";
 import "./watchtower.css";
 import "./gran.css";
 import "./receipt.css";
@@ -87,10 +88,17 @@ export function Watchtower({ board, initialState, since, kind, spotterName, demo
   const [wire, setWire] = useState(board.sources);
   const [store] = useState(() => makeStore(snapshotOf(board, typeof window !== "undefined" && !window.matchMedia("(max-width: 760px)").matches, 0)));
   const [notices, setNotices] = useState<Array<{ id: number; text: string; tone: "news" | "problem" }>>([]);
+  // Recording mode keeps the board still for the video: news notices ("PayPal confirmed ...", "£24.99 is waiting")
+  // are never added (the board itself still updates and shows the same payments); a problem (signed out, can't reach
+  // Spotter) still shows, since it means the board is stale. Dropped when pushed, so they never take a problem's slot.
+  const quiet = useRec().on;
+  const quietRef = useRef(quiet);
+  quietRef.current = quiet;
   const hadPaypal = useRef(board.sources.paypal !== undefined);
   const sources = useMemo(() => revive(wire), [wire]);
   const nextId = useRef(0);
   const push = useCallback((texts: string[], tone: "news" | "problem") => {
+    if (quietRef.current && tone === "news") return;
     if (texts.length) setNotices((old) => [...old, ...texts.map((text) => ({ id: ++nextId.current, text, tone }))].slice(-3));
   }, []);
   const notify = useCallback((text: string) => push([text], "problem"), [push]);

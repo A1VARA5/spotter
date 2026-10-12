@@ -15,6 +15,7 @@ import type { ReceiptBook } from "./ReceiptBar";
 import { noteAnswerLine } from "./chartPolish";
 import { FAIR_FAILED } from "@/watchtower/answers";
 import { leadCap } from "@/core/userText";
+import { useRec } from "@/ui/rec";
 import { countdown, fairBehind, fairPrice, fairRows, firstFew, pickCase, poundsShort, radarLines, shortId, watchSummary, type PriceItem, type RadarCount } from "@/watchtower/widgetLogic";
 
 export type MoneyKeptDef = { type: "money-kept"; dataMapping: { value: AgWidgetFieldReference[] }; format?: AgWidgetDataFormat<unknown> };
@@ -509,6 +510,7 @@ const CASE_FIELDS = ["id", "when", "who", "payee", "amount", "outcome"] as const
 export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
   const { context } = p;
   const { version, notes, sampleIds } = useWatch(context);
+  const rec = useRec();
   const { rows, failed } = usePaymentRows(p as never, CASE_FIELDS, version);
   const scroll = useScrollBox<HTMLElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t open the case file. Reload the page.</p>;
@@ -530,17 +532,17 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
       <p className="wt-case-meta">
         <span className="wt-case-outcome">{outcome === "Waiting" ? "Waiting for you" : outcome}</span>
         <span>
-          {asText(row.who)} to <span className="wt-case-payee">{asText(row.payee)}</span>, {gbp.format(asNum(row.amount))}
+          {asText(row.who)} to <span className="wt-case-payee">{rec.name(asText(row.payee))}</span>, {gbp.format(asNum(row.amount))}
         </span>
         {sampleIds.has(asText(row.id)) && <span className="wt-sample-tag">Sample</span>}
       </p>
-      <h2 className="wt-case-headline">{note.caseHeadline ?? note.reasons[0] ?? "Spotter checked this payment."}</h2>
+      <h2 className="wt-case-headline">{rec.text(note.caseHeadline ?? note.reasons[0] ?? "Spotter checked this payment.")}</h2>
       {note.reasons.length > 0 && (
         <section className="wt-case-part">
           <h3>Why Spotter stepped in</h3>
           <ul>
             {note.reasons.map((r, i) => (
-              <li key={i}>{r}</li>
+              <li key={i}>{rec.text(r)}</li>
             ))}
           </ul>
         </section>
@@ -551,7 +553,7 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
           <ul className="wt-case-signs">
             {note.signs.map((s, i) => (
               <li key={i} data-severity={s.severity}>
-                <span className="wt-case-sign">{s.sign}</span> {s.why}
+                <span className="wt-case-sign">{s.sign}</span> {rec.text(s.why)}
               </li>
             ))}
           </ul>
@@ -562,7 +564,7 @@ export function CaseFileWidget(p: AgWidgetParams<CaseFileDef>) {
           <h3>What the case worker found</h3>
           <ul>
             {note.caseFindings.map((f, i) => (
-              <li key={i}>{f}</li>
+              <li key={i}>{rec.text(f)}</li>
             ))}
           </ul>
         </section>
@@ -594,7 +596,8 @@ function PriceScale({ item }: { item: PriceItem }) {
 
 /** The headline's overpaying sentence leads; the too cheap to be real sentence (fairHeadline) follows a little quieter. */
 function FairHeadline({ text }: { text: string }) {
-  const [first, ...rest] = text.split(/(?<=\.) /);
+  const rec = useRec();
+  const [first, ...rest] = rec.text(text).split(/(?<=\.) /);
   return (
     <p className="wt-fair-headline">
       {first}
@@ -608,6 +611,7 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
   const { version } = useWatch(context);
   const { rows, failed } = usePaymentRows(p as never, PRICE_FIELDS, version);
   const now = useTick(60_000);
+  const rec = useRec();
   const scroll = useScrollBox<HTMLDivElement>();
   const f = rows ? fairPrice(
     rows.map((r) => ({
@@ -650,13 +654,13 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
     <div className="wt-fair" role="region" aria-label="Fair price" {...scroll}>
       <p className="wt-fair-label">Fair price</p>
       <FairHeadline text={f.headline} />
-      {f.warning && <p className="wt-fair-caught">{f.warning}</p>}
-      {f.caught && <p className="wt-fair-caught">{f.caught}</p>}
+      {f.warning && <p className="wt-fair-caught">{rec.text(f.warning)}</p>}
+      {f.caught && <p className="wt-fair-caught">{rec.text(f.caught)}</p>}
       <ul className="wt-fair-list">
         {firstFew(f.items, FAIR_SHOWN).shown.map((i) => (
           <li key={i.id} className="wt-fair-item">
             <p className="wt-fair-what">
-              <span className="wt-fair-item-name">{leadCap(i.marketItem || i.payee)}</span>
+              <span className="wt-fair-item-name">{leadCap(rec.name(i.marketItem || i.payee))}</span>
               <span className="wt-fair-verdict" data-verdict={i.verdict}>
                 {VERDICT_TEXT[i.verdict]}
               </span>
@@ -664,8 +668,8 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
             </p>
             <PriceScale item={i} />
             <p className="wt-fair-note">
-              {i.outcome === "Paid" ? "Paid" : `${i.outcome}:`} {poundsShort(i.amount)} at <span className="wt-fair-payee">{i.payee}</span>. Cheapest real shop {poundsShort(i.cheapest)} at{" "}
-              <span className="wt-fair-payee">{i.marketShop}</span>
+              {i.outcome === "Paid" ? "Paid" : `${i.outcome}:`} {poundsShort(i.amount)} at <span className="wt-fair-payee">{rec.name(i.payee)}</span>. Cheapest real shop {poundsShort(i.cheapest)} at{" "}
+              <span className="wt-fair-payee">{rec.shop(i.marketShop)}</span>
             </p>
           </li>
         ))}
@@ -676,12 +680,12 @@ export function FairPriceWidget(p: AgWidgetParams<FairPriceDef>) {
           <ul className="wt-fair-rest-list">
             {f.items.slice(FAIR_SHOWN).map((i) => (
               <li key={i.id} className="wt-fair-rest-item">
-                <span className="wt-fair-rest-name">{leadCap(i.marketItem || i.payee)}</span>
+                <span className="wt-fair-rest-name">{leadCap(rec.name(i.marketItem || i.payee))}</span>
                 <span className="wt-fair-verdict" data-verdict={i.verdict}>
                   {VERDICT_TEXT[i.verdict]}
                 </span>
                 {i.sample && <span className="wt-sample-tag">Sample</span>}
-                <span className="wt-fair-rest-note">{fairRows([i], 1)[0]!.value}</span>
+                <span className="wt-fair-rest-note">{rec.text(fairRows([i], 1)[0]!.value)}</span>
               </li>
             ))}
           </ul>
@@ -705,6 +709,7 @@ const WATCH_FIELDS = ["id", "who", "item", "status", "nearlyPaid", "target", "be
 export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
   const { version } = useWatch(p.context);
   const { rows, failed } = useTableRows(p as never, "watches", WATCH_FIELDS, version);
+  const rec = useRec();
   const scroll = useScrollBox<HTMLDivElement>();
   if (failed) return <p className="wt-widget-error">Couldn&apos;t load the price watches. Reload the page.</p>;
   if (!rows) return null;
@@ -738,7 +743,7 @@ export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
         {list.map((w) => (
           <li key={w.id} className="wt-fair-item">
             <p className="wt-fair-what">
-              <span className="wt-fair-item-name">{leadCap(w.item)}</span>
+              <span className="wt-fair-item-name">{leadCap(rec.name(w.item))}</span>
               <span className="wt-fair-verdict" data-verdict={w.status === "Dropped" ? "fair" : w.status === "Watching" ? "over" : undefined}>
                 {w.status === "Dropped" ? "Price dropped" : w.status}
               </span>
@@ -747,7 +752,7 @@ export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
             <p className="wt-fair-note">
               {w.status === "Dropped" && w.bestPrice !== null ? (
                 <>
-                  Now {poundsShort(w.bestPrice)} at <span className="wt-fair-payee">{w.shop}</span>
+                  Now {poundsShort(w.bestPrice)} at <span className="wt-fair-payee">{rec.shop(w.shop)}</span>
                   {w.saving > 0 ? `, ${poundsShort(w.saving)} less than ${w.who} nearly paid.` : "."}
                 </>
               ) : w.status !== "Watching" ? (
@@ -759,7 +764,7 @@ export function PriceWatchesWidget(p: AgWidgetParams<PriceWatchesDef>) {
                   {w.who} nearly paid {poundsShort(w.nearlyPaid)}. Spotter tells you at {poundsShort(w.target)} or less
                   {w.bestPrice !== null && w.shop ? (
                     <>
-                      ; best real price now {poundsShort(w.bestPrice)} at <span className="wt-fair-payee">{w.shop}</span>.
+                      ; best real price now {poundsShort(w.bestPrice)} at <span className="wt-fair-payee">{rec.shop(w.shop)}</span>.
                     </>
                   ) : (
                     "."

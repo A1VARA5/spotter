@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Ban, Hand, ShieldCheck, Check, RotateCcw, CircleAlert, Loader, Store } from "lucide-react";
 import { findQuotes, money, STATE_LABEL, type TrackState } from "./format";
 import type { Flag } from "@/core/grounding";
+import { RecName, ShopName } from "./rec";
 import { marketSummary, type MarketResult } from "@/core/market";
 
 export function BrandMark() {
@@ -114,12 +115,12 @@ export function MarketNote({ market, currency }: { market: (MarketResult & { ite
     <p className="market">
       <Store className="market-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
       <span>
-        Real shops sell {market.item} for around {money(s.median, currency)} across {s.offers} retailers
+        Real shops sell <RecName>{market.item}</RecName> for around {money(s.median, currency)} across {s.offers} retailers
         {shop && (
           <>
             , from{" "}
             <a href={shop.url} target="_blank" rel="noopener noreferrer nofollow">
-              {money(shop.price, currency)} at {shop.domain}
+              {money(shop.price, currency)} at <ShopName name={shop.domain} />
             </a>
           </>
         )}

@@ -24,6 +24,7 @@ import { decidedReason } from "@/core/reasons";
 import { outcomeLine, settledCase, shownOutcome } from "@/core/settled";
 import { tripOutcome } from "@/core/tripped";
 import { TripFound } from "@/ui/TripFound";
+import { useRec, type Rec } from "@/ui/rec";
 import "./ledger.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -71,22 +72,22 @@ function shown(p: Payment): { state: TrackState; label: string } {
   return { state: s, label: STATE_LABEL[s] };
 }
 
-function toRow(p: Payment, names: Record<string, string>): Row {
+function toRow(p: Payment, names: Record<string, string>, rec: Rec): Row {
   const { state: s, label } = shown(p);
   return {
     label,
     id: p.id,
     when: p.created_at,
     who: names[p.spender_id] ?? "Someone",
-    payee: p.request.payee.name,
-    item: p.request.item ?? p.request.category,
+    payee: rec.name(p.request.payee.name),
+    item: rec.name(p.request.item ?? p.request.category),
     amount: Number(p.amount),
     currency: p.currency,
     state: s,
     // The strongest sign, in the past tense once decided (src/core/reasons.ts decidedReason).
-    why: s === "failed" ? (p.error ?? "") : (decidedReason(p) ?? "Within the rules."),
+    why: s === "failed" ? (p.error ?? "") : rec.text(decidedReason(p) ?? "Within the rules."),
     // The same going rate as the card's price note and the reasons line (src/core/market.ts marketSummary).
-    market: marketCell(p.market, p.currency),
+    market: rec.text(marketCell(p.market, p.currency)),
     paypal: p.paypal_capture_id ?? p.paypal_authorization_id ?? "",
   };
 }
@@ -118,7 +119,8 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
   const [filter, setFilter] = useState(0);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const rows = useMemo(() => payments.map((p) => toRow(p, names)), [payments, names]);
+  const rec = useRec();
+  const rows = useMemo(() => payments.map((p) => toRow(p, names, rec)), [payments, names, rec]);
   const shown = useMemo(() => {
     const states = FILTERS[filter]!.states;
     return states ? rows.filter((r) => states.includes(r.state)) : rows;
@@ -237,6 +239,7 @@ export function Ledger({ payments, names }: { payments: Payment[]; names: Record
 /** One payment's case file, in a drawer from the right: what happened, why, real shop prices, and where to go next. */
 function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const rec = useRec();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -267,10 +270,10 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
           <header className="ledger-drawer-head">
             <div>
               <p className="ledger-drawer-kicker">
-                {timeAgo(p.created_at)} · {p.request.item ?? p.request.category}
+                {timeAgo(p.created_at)} · {rec.name(p.request.item ?? p.request.category)}
               </p>
               <h2 id="ledger-drawer-title" className="ledger-drawer-title">
-                {who} to {p.request.payee.name}, <span className="num">{money(p.amount, p.currency)}</span>
+                {who} to {rec.name(p.request.payee.name)}, <span className="num">{money(p.amount, p.currency)}</span>
               </h2>
               <span className="feed-state" data-state={s}>
                 {out?.label}
@@ -281,7 +284,7 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
             </button>
           </header>
 
-          {outcome && <p className="ledger-drawer-outcome">{outcome}</p>}
+          {outcome && <p className="ledger-drawer-outcome">{rec.text(outcome)}</p>}
 
           {reasons.length > 0 && s !== "failed" ? (
             <section aria-labelledby="ledger-why">
@@ -290,7 +293,7 @@ function CaseDrawer({ p, who, onClose }: { p: Payment | null; who: string; onClo
               </h3>
               <ul className="ledger-drawer-reasons">
                 {reasons.map((r) => (
-                  <li key={r}>{r}</li>
+                  <li key={r}>{rec.text(r)}</li>
                 ))}
               </ul>
             </section>

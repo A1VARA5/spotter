@@ -12,6 +12,7 @@ import { Peek } from "./Peek";
 import { FACE_SIZE, padBox } from "./facesBox";
 import { keyFacts, kernelLead, leadParts, panelShows, type RealOne } from "./caseFold";
 import { withoutIds } from "@/core/userText";
+import { useRec } from "./rec";
 
 const TOOL: Record<string, { label: string; Icon: typeof Users }> = {
   payee_history: { label: "Family history", Icon: Users },
@@ -92,6 +93,7 @@ export function CasePending({ createdAt, now }: { createdAt: string; now: number
 type Shown = { f: Case["findings"][number]; id: string };
 
 function FindingList({ items, id, label }: { items: Shown[]; id?: string; label: string }) {
+  const rec = useRec();
   if (!items.length) return null;
   return (
     <ul className="case-findings" id={id} tabIndex={id ? -1 : undefined} aria-label={label}>
@@ -101,7 +103,7 @@ function FindingList({ items, id, label }: { items: Shown[]; id?: string; label:
           <li key={f.source + f.text} id={fid} tabIndex={-1} data-severity={f.severity}>
             <t.Icon size={17} strokeWidth={2} aria-hidden="true" />
             <span>
-              <b>{t.label}</b> {plainWords(f.text)}
+              <b>{t.label}</b> {rec.text(plainWords(f.text))}
             </span>
           </li>
         );
@@ -112,17 +114,18 @@ function FindingList({ items, id, label }: { items: Shown[]; id?: string; label:
 
 /** A genuine listing from Channel3, opened on the shop's own site. Nothing is bought through Spotter here. */
 function RealOneCard({ real, currency }: { real: RealOne; currency: string }) {
+  const rec = useRec();
   return (
     <div className="cf-real">
       <p className="cf-real-label">Buy it from a real shop instead</p>
-      <p className="cf-real-title">{real.title}</p>
+      <p className="cf-real-title">{rec.title(real.title)}</p>
       <p className="cf-real-price">
-        <b className="num">{money(real.price, currency)}</b> at {real.domain}
+        <b className="num">{money(real.price, currency)}</b> at {rec.shop(real.domain)}
       </p>
       <a className="btn btn-quiet cf-real-go" href={real.url} target="_blank" rel="noopener noreferrer nofollow">
-        <span>Open {real.domain}</span>
+        <span>{rec.open(real.domain)}</span>
         <ExternalLink size={15} strokeWidth={2.2} aria-hidden="true" />
-        <span className="sr-only"> ({real.domain}&apos;s own page, opens in a new tab)</span>
+        <span className="sr-only"> ({rec.on ? "the shop" : real.domain}&apos;s own page, opens in a new tab)</span>
       </a>
       <p className="cf-real-note">The shop&apos;s own page, found by Channel3. Nothing is bought unless you buy it there.</p>
     </div>
@@ -173,6 +176,7 @@ export function CaseFile({
   real?: RealOne | null;
 }) {
   const clientNow = useClientNow();
+  const rec = useRec();
   const clock = now ?? clientNow;
   const base = `cf-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
   const [open, setOpen] = useState(false);
@@ -225,7 +229,7 @@ export function CaseFile({
           {c.example && <span className="case-example"> · Example, checked earlier</span>}
         </p>
         <p className="case-headline" id={ids.head} tabIndex={-1}>
-          {withoutIds(c.example ? unlabelled(c.headline) : c.headline)}
+          {rec.text(withoutIds(c.example ? unlabelled(c.headline) : c.headline))}
         </p>
         {chips.length > 0 && <CheckedBy chips={chips} reveal={reveal} />}
       </div>
@@ -261,9 +265,9 @@ export function CaseFile({
       {fold && lead && leadKey && panel[leadKey] && (
         <div className="cf-lead" data-kind={lead.kind}>
           <p className="cf-lead-line">
-            {leadParts(lead.line).before}
-            <b>{leadParts(lead.line).name}</b>
-            {leadParts(lead.line).after}
+            {rec.text(leadParts(lead.line).before)}
+            <b>{rec.text(leadParts(lead.line).name)}</b>
+            {rec.text(leadParts(lead.line).after)}
           </p>
           {panel[leadKey]}
         </div>
@@ -285,7 +289,7 @@ export function CaseFile({
                 <p className="case-ask-title">Before you decide</p>
                 <ul>
                   {c.ask.map((a) => (
-                    <li key={a}>{a}</li>
+                    <li key={a}>{rec.text(a)}</li>
                   ))}
                 </ul>
               </div>
@@ -293,10 +297,10 @@ export function CaseFile({
             {showSwap && c.swap && (
               <div className="case-swap" id={ids.swap} tabIndex={-1}>
                 <p>
-                  Or let Spotter swap it: deny this and pay <b>{money(c.swap.price, currency)}</b> to {c.swap.domain} for {c.swap.title} through PayPal instead.
+                  Or let Spotter swap it: deny this and pay <b>{money(c.swap.price, currency)}</b> to {rec.shop(c.swap.domain)} for {rec.title(c.swap.title)} through PayPal instead.
                 </p>
                 <button className="btn btn-quiet" disabled={busy} onClick={onSwap}>
-                  {busy ? "Swapping" : `Deny this, buy it from ${c.swap.domain}`}
+                  {busy ? "Swapping" : `Deny this, buy it from ${rec.shop(c.swap.domain)}`}
                 </button>
               </div>
             )}
@@ -704,10 +708,11 @@ const HTTPS = /^https:\/\/[^\s"<>]+$/;
  */
 function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spot"]>; shot?: string }) {
   const titleId = useId();
+  const rec = useRec();
   const here = shot && SHOT.test(shot) ? shot : undefined;
   // A picture that fails to load (blocked, gone) falls back to the listing's own words, never an empty box.
   const [imageFailed, setImageFailed] = useState(false);
-  const real = !imageFailed && spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
+  const real = !rec.on && !imageFailed && spot.genuine.image && CDN.test(spot.genuine.image) ? spot.genuine.image : undefined;
   const fromMarket = spot.source === "market";
   return (
     <section className="spot" id={id} tabIndex={-1} data-direction={spot.direction} aria-labelledby={titleId}>
@@ -719,8 +724,8 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
         )}
         <p>A shop that sells it but isn&apos;t listed won&apos;t show up here.</p>
       </PanelHead>
-      <p className="spot-number">{spot.headline}</p>
-      <p className="spot-verdict">{spot.verdict}</p>
+      <p className="spot-number">{rec.text(spot.headline)}</p>
+      <p className="spot-verdict">{rec.text(spot.verdict)}</p>
       <div className="spot-grid">
         <figure className="spot-side spot-here">
           {here ? <img src={here} alt={`The shop Spotter opened: ${spot.here.host}`} width={320} height={240} /> : <div className="spot-blank" aria-hidden="true" />}
@@ -733,13 +738,13 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
             <img src={real} alt={spot.genuine.title} width={320} height={240} referrerPolicy="no-referrer" onError={() => setImageFailed(true)} />
           ) : (
             <div className="spot-listing" aria-hidden="true">
-              <span className="spot-listing-title">{spot.genuine.title}</span>
+              <span className="spot-listing-title">{rec.title(spot.genuine.title)}</span>
               <span className="spot-listing-price">{money(spot.genuine.price, spot.currency)}</span>
-              <span className="spot-listing-shop">{spot.genuine.domain}</span>
+              <span className="spot-listing-shop">{rec.shop(spot.genuine.domain)}</span>
             </div>
           )}
           <figcaption>
-            <b>{spot.genuine.title}</b> {money(spot.genuine.price, spot.currency)} at {spot.genuine.domain}
+            <b>{rec.title(spot.genuine.title)}</b> {money(spot.genuine.price, spot.currency)} at {rec.shop(spot.genuine.domain)}
             {HTTPS.test(spot.genuine.url) && (
               <>
                 {" "}
@@ -758,11 +763,11 @@ function SpotPanel({ id, spot, shot }: { id: string; spot: NonNullable<Case["spo
               <span className="spot-diff-label">{d.label}</span>
               <span className="spot-diff-here">
                 <span className="sr-only">This shop: </span>
-                {d.here}
+                {rec.text(d.here)}
               </span>
               <span className="spot-diff-real">
                 <span className="sr-only">Real shops: </span>
-                {d.real}
+                {rec.text(d.real)}
               </span>
             </li>
           ))}

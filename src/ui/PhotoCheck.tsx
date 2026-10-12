@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Camera, ImageUp } from "lucide-react";
 import type { PhotoItem, PhotoMode, PhotoResult } from "@/market/photo";
 import { money } from "./format";
+import { useRec } from "./rec";
 import { plainError, readJson } from "./http";
 import "./photo.css";
 
@@ -323,6 +324,7 @@ export function photoChip(r: Pick<PhotoResult, "verdictKind" | "fallback">): str
 }
 
 function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: string }) {
+  const rec = useRec();
   if (!i.found) {
     return (
       <span>
@@ -345,10 +347,10 @@ function Item({ i, mode, currency }: { i: PhotoItem; mode: PhotoMode; currency: 
     <span>
       <b>{i.thing}{i.count ? ` (${i.count} in the photo, the price is for one)` : ""}</b> <span className="photo-price">{price}.</span>{" "}
       <span className="photo-match">
-        {i.match === "similar" ? `For example: ${i.title}` : i.title}{" "}
+        {i.match === "similar" ? `For example: ${rec.title(i.title)}` : rec.title(i.title)}{" "}
         {HTTPS.test(i.cheapest.url) && (
           <a href={i.cheapest.url} target="_blank" rel="noopener noreferrer nofollow">
-            {money(i.cheapest.price, currency)} at {i.cheapest.domain}
+            {money(i.cheapest.price, currency)} at {rec.shop(i.cheapest.domain)}
             <span className="sr-only"> (the shop&apos;s own page, opens in a new tab)</span>
           </a>
         )}

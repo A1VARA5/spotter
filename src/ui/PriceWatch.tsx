@@ -11,6 +11,7 @@ import { priceWatchFits } from "@/core/market";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
 import { leadCap } from "@/core/userText";
+import { useRec } from "./rec";
 import "./pricewatch.css";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -165,6 +166,7 @@ function StopButton({ busy, onStop }: { busy: boolean; onStop: () => void }) {
 
 /** On a payment card: one short block. */
 function WatchLine({ w, onStop, busy, lineRef, updates }: LineProps) {
+  const rec = useRec();
   const who = w.who ?? "they";
   if (w.status === "dropped" && w.best) {
     const link = safeLink(w.best.url);
@@ -174,7 +176,7 @@ function WatchLine({ w, onStop, busy, lineRef, updates }: LineProps) {
           <TrendingDown size={16} strokeWidth={2.2} aria-hidden="true" /> Price dropped <StatusBadge w={w} />
         </p>
         <p ref={lineRef} tabIndex={-1} className="watch-line">
-          {w.best.shop} now sells the {w.item} {who} wanted for <b>{money(w.best.price, w.currency)}</b>
+          {leadCap(rec.shop(w.best.shop))} now sells the {rec.name(w.item)} {who} wanted for <b>{money(w.best.price, w.currency)}</b>
           {w.saving ? <>, {money(w.saving, w.currency)} less than {who} nearly paid.</> : "."}{" "}
           {link && (
             <a href={link} target="_blank" rel="noopener noreferrer nofollow">
@@ -195,7 +197,7 @@ function WatchLine({ w, onStop, busy, lineRef, updates }: LineProps) {
         </p>
         <p ref={lineRef} tabIndex={-1} className="watch-line">
           Target <b className="num">{money(w.target, w.currency)}</b> or less at a real shop: Spotter tells you when one sells it for that.
-          {w.best ? ` Best real price now: ${money(w.best.price, w.currency)} at ${w.best.shop}.` : ""}
+          {w.best ? ` Best real price now: ${money(w.best.price, w.currency)} at ${rec.shop(w.best.shop)}.` : ""}
         </p>
         {!w.example && <HowChecked updates={updates} />}
         <Spark w={w} />
@@ -212,20 +214,21 @@ function WatchLine({ w, onStop, busy, lineRef, updates }: LineProps) {
 
 /** In the Price watches dialog: one watch, laid out like a price tracker. */
 function WatchPanel({ w, onStop, busy, lineRef, updates }: LineProps) {
+  const rec = useRec();
   const who = w.who ?? "Someone";
   const link = w.best ? safeLink(w.best.url) : "";
   const dropped = w.status === "dropped" && w.best;
   return (
     <article className="pw" data-state={w.status}>
       <header className="pw-head">
-        <h3 className="pw-item">{leadCap(w.item)}</h3>
+        <h3 className="pw-item">{leadCap(rec.name(w.item))}</h3>
         <StatusBadge w={w} />
       </header>
       <dl className="pw-compare">
         <div className="pw-now">
           <dt>Best price now</dt>
           <dd className="pw-price num">{w.best ? money(w.best.price, w.currency) : "Not found yet"}</dd>
-          {w.best && <dd className="pw-where">at {w.best.shop}</dd>}
+          {w.best && <dd className="pw-where">at {rec.shop(w.best.shop)}</dd>}
         </div>
         <div className="pw-was">
           <dt>{who} nearly paid</dt>

@@ -24,6 +24,7 @@ import { weekSummary } from "@/ui/week";
 import { approveWarning } from "@/ui/labels";
 import { AI_DOWN_LINE, AI_UNFINISHED_LINE, BACKUP_LINE } from "@/core/aiwords";
 import { kernelLead, realOne, unsaidReasons, type RealOne } from "@/ui/caseFold";
+import { useRec } from "@/ui/rec";
 import { decidedReason, topReason } from "@/core/reasons";
 import { outcomeLine, settledCase, shownOutcome } from "@/core/settled";
 import { tripOutcome } from "@/core/tripped";
@@ -168,6 +169,7 @@ export function firstToOpen(waiting: Payment[]): string | null {
 /** Primary column: what is waiting for a decision, one card open at a time. */
 export function DashboardMain() {
   const { payments, names, demo, tz, now, watches, watchUpdates, error, locked, setLocked, refresh } = useDash();
+  const rec = useRec();
   const waiting = payments.filter((p) => p.status === "needs_approval");
   const watchFor = (id: string) => watches.find((w) => w.paymentId === id);
 
@@ -252,15 +254,15 @@ export function DashboardMain() {
       </p>
       {notice && (
         <p ref={noticeRef} tabIndex={-1} className="dash-notice" key={notice.n}>
-          {notice.text}
+          {rec.text(notice.text)}
           {notice.real && (
             <>
               {" "}
-              {notice.real.exact ? "Here's the real one" : "Here's a real listing"} at {notice.real.domain} for {money(notice.real.price, notice.real.currency)}:{" "}
+              {notice.real.exact ? "Here's the real one" : "Here's a real listing"} at {rec.shop(notice.real.domain)} for {money(notice.real.price, notice.real.currency)}:{" "}
               <a href={notice.real.url} target="_blank" rel="noopener noreferrer nofollow" className="dash-notice-real">
-                {notice.real.title}
+                {rec.title(notice.real.title)}
                 <ExternalLink size={14} strokeWidth={2.2} aria-hidden="true" />
-                <span className="sr-only"> (opens {notice.real.domain}&apos;s own page in a new tab)</span>
+                <span className="sr-only"> (opens {rec.on ? "the shop" : notice.real.domain}&apos;s own page in a new tab)</span>
               </a>
             </>
           )}
@@ -697,6 +699,7 @@ function HeldCard({
   const [pin, setPin] = useState("");
   // While the case is being built, tick faster than the shared clock so Approve unlocks on time.
   const [tick, setTick] = useState<number | null>(null);
+  const rec = useRec();
   const flags = p.ai?.flags ?? [];
   const pending = !p.case_file && (tick ?? now) - new Date(p.created_at).getTime() < CASE_WAIT_MS;
   // When Spotter thinks it's a scam, saying no is the main action and saying yes takes a deliberate step.
@@ -881,7 +884,7 @@ function HeldCard({
           It never saw the market listings either, so it is hidden when it argues with them. */}
       {!c && p.ai?.summary && !contradictsPrice(p.ai.summary, priceVerdict(p.market)) && (
         <p className="held-summary">
-          <strong>Scam check:</strong> {p.ai.summary}
+          <strong>Scam check:</strong> {rec.text(p.ai.summary)}
         </p>
       )}
       {!c && aiFailedLine(p) && <p className="held-summary">{aiFailedLine(p)}</p>}
@@ -892,7 +895,7 @@ function HeldCard({
           {reasons.map((r, i) => (
             <li key={i} className="reason">
               <Info className="reason-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
-              <span>{r}</span>
+              <span>{rec.text(r)}</span>
             </li>
           ))}
         </ul>
@@ -1045,18 +1048,19 @@ const VERDICT_LINE = { likely_scam: "Likely a scam", unclear: "Worth a closer lo
 
 /** A closed held card in one line: Spotter's verdict and its headline, or that it is still looking. */
 function HeldSummary({ p, pending }: { p: Payment; pending: boolean }) {
+  const rec = useRec();
   const c = p.case_file;
   if (c) {
     return (
       <p className="held-sum" data-verdict={c.verdict}>
-        <b>{VERDICT_LINE[c.verdict]}.</b> {c.headline}
+        <b>{VERDICT_LINE[c.verdict]}.</b> {rec.text(c.headline)}
       </p>
     );
   }
   const failed = aiFailedLine(p);
   if (failed) return <p className="held-sum">{failed}</p>;
   const reason = topReason(p);
-  return <p className="held-sum">{pending ? "Spotter is still looking into it." : (reason ?? "Open the case file to see why it was held.")}</p>;
+  return <p className="held-sum">{pending ? "Spotter is still looking into it." : (reason ? rec.text(reason) : "Open the case file to see why it was held.")}</p>;
 }
 
 function FeedRow({
@@ -1077,6 +1081,7 @@ function FeedRow({
   onWatchChanged: () => void;
 }) {
   // A hold a tripwire let go, or a Not me released, never reads as a person's deny (src/core/settled.ts shownOutcome).
+  const rec = useRec();
   const trip = tripOutcome(p);
   const own = shownOutcome(p);
   const s = own ? own.state : trackState(p.status);
@@ -1094,7 +1099,7 @@ function FeedRow({
       </span>
       <span className="feed-amount num">{money(p.amount, p.currency)}</span>
       <span className="feed-meta">
-        <span className="feed-why">{s === "failed" && p.error ? p.error : firstReason ? firstReason : `For ${p.request.category}.`}</span>
+        <span className="feed-why">{s === "failed" && p.error ? p.error : firstReason ? rec.text(firstReason) : `For ${p.request.category}.`}</span>
         <span className="feed-time">{timeAgo(p.created_at, now)}</span>
       </span>
       <span className="feed-state" data-state={s}>
@@ -1119,7 +1124,7 @@ function FeedRow({
             <p className="feed-state sheet-state" data-state={s}>
               {label}
             </p>
-            {!trip && outcomeLine(p) && <p className="sheet-outcome">{outcomeLine(p)}</p>}
+            {!trip && outcomeLine(p) && <p className="sheet-outcome">{rec.text(outcomeLine(p)!)}</p>}
             <TripFound p={p} />
             <ReplacedLink p={p} all={all} who={who} />
             <EvidenceLinks p={p} />

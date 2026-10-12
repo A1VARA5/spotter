@@ -9,6 +9,7 @@ import { HistoryChart } from "./PriceWatch";
 import { money } from "./format";
 import { plainError, readJson } from "./http";
 import { leadCap } from "@/core/userText";
+import { useRec } from "./rec";
 import "./pricewatch.css";
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -48,6 +49,7 @@ export function sharedSummary(v: SharedWatchView): string {
 }
 
 export function SharedWatchPanel({ view: v, error }: { view: SharedWatchView | null; error: string | null }) {
+  const rec = useRec();
   if (!v) {
     return error ? (
       <p className="error-line" role="alert">
@@ -70,7 +72,7 @@ export function SharedWatchPanel({ view: v, error }: { view: SharedWatchView | n
     <article className="pw pw-shared" data-state={tracked ? "watching" : "starting"} aria-labelledby="pw-shared-title">
       <header className="pw-head">
         <h3 id="pw-shared-title" className="pw-item">
-          {leadCap(v.item)}
+          {leadCap(rec.on && v.title ? rec.title(v.title) : v.item)}
         </h3>
         {tracked ? (
           <span className="pw-badge" data-tone="live">
@@ -106,7 +108,7 @@ export function SharedWatchPanel({ view: v, error }: { view: SharedWatchView | n
                   <dt>Lowest price at UK shops</dt>
                   <dd className="pw-price num">{money(lowest.price, v.currency)}</dd>
                   <dd className="pw-where">
-                    at {lowest.shop}
+                    at {rec.shop(lowest.shop, v.shops.indexOf(lowest) + 1)}
                     {v.shopsCheckedAt ? `, checked ${day(v.shopsCheckedAt)}` : ""}
                   </dd>
                 </div>
@@ -156,9 +158,9 @@ export function SharedWatchPanel({ view: v, error }: { view: SharedWatchView | n
             <div className="pw-shops">
               <p className="pw-shops-title">UK shops at the last check{v.shopsCheckedAt ? ` (${day(v.shopsCheckedAt)})` : ""}</p>
               <ul>
-                {v.shops.map((s) => (
+                {v.shops.map((s, i) => (
                   <li key={s.shop}>
-                    <span className="pw-shop">{s.shop}</span>
+                    <span className="pw-shop">{leadCap(rec.shop(s.shop, i + 1))}</span>
                     <span className="num">{money(s.price, v.currency)}</span>
                   </li>
                 ))}
