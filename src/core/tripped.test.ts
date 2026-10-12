@@ -32,12 +32,12 @@ describe("a hold a tripwire let go", () => {
     expect(tripOf({ ...base, status: "needs_approval", tripwire: bait })).toBeNull();
   });
 
-  it("says nobody denied it: the tripwire froze the agent and PayPal released the hold", () => {
+  it("says nobody denied it: the tripwire froze the agent and PayPal cancelled the hold", () => {
     const o = tripOutcome({ ...base, tripwire: bait })!;
     expect(o.long).toBe("Stopped by a tripwire");
     expect(o.short).toBe("Stopped");
     expect(o.state).toBe("blocked");
-    expect(o.explain).toBe("The agent reached for a tool it never needs, so Spotter froze it and PayPal released the hold.");
+    expect(o.explain).toBe("The agent reached for a tool it never needs, so Spotter froze it and PayPal cancelled the hold.");
     expect(`${o.long}: ${o.explain}`).not.toMatch(/denied/i);
   });
 
@@ -45,7 +45,7 @@ describe("a hold a tripwire let go", () => {
     const o = tripOutcome({ ...base, tripwire: decoy })!;
     expect(o.long).toBe("Stopped by a decoy key");
     expect(o.explain).toMatch(/decoy key/);
-    expect(o.explain).toMatch(/froze it and PayPal released the hold/);
+    expect(o.explain).toMatch(/froze it and PayPal cancelled the hold/);
   });
 
   it("a person's deny is not a tripwire outcome", () => {

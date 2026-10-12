@@ -250,7 +250,7 @@ export function WasItYouDemo({ spotter, resume }: { spotter: string; resume?: { 
           {(phase === "asked" || phase === "answering") && "PayPal is holding £250 for real (sandbox). Answer as Tom on his phone."}
           {phase === "not_me" &&
             (released
-              ? `Tom said not me, so PayPal released the £250 hold straight away. Nothing was paid, and ${spotter} didn't need the PIN to stop it.`
+              ? `Tom said not me, so PayPal cancelled the £250 hold straight away. Nothing was paid, and ${spotter} didn't need the PIN to stop it.`
               : (reply ?? "Tom said not me."))}
           {phase === "it_was_me" &&
             (status === "needs_approval"

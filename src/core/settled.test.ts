@@ -60,11 +60,11 @@ describe("outcomeLine", () => {
   it("says what happened, in the past tense, with who decided", () => {
     expect(outcomeLine(p())).toBe("Paid. Sam approved it, so PayPal paid £6.99 to Panmoor Kitchen.");
     expect(outcomeLine(p({ decided_by: "Spotter" }))).toBe("Paid. It was within the rules, so PayPal paid £6.99 to Panmoor Kitchen.");
-    expect(outcomeLine(p({ status: "voided" }))).toBe("Denied. Sam said no, so PayPal released the £6.99. Nothing was paid.");
+    expect(outcomeLine(p({ status: "voided" }))).toBe("Denied. Sam said no, so PayPal cancelled the £6.99 hold. Nothing was paid.");
     expect(outcomeLine(p({ status: "voided", decided_by: "Tom", was_it_you: { state: "not_me", who: "Tom" } }))).toBe(
-      "Released. Tom said the message wasn't from them, so PayPal released the £6.99. Nothing was paid.",
+      "Cancelled. Tom said the message wasn't from them, so PayPal cancelled the £6.99 hold. Nothing was paid.",
     );
-    expect(outcomeLine(p({ status: "voided", decided_by: PAUSED_BY }))).toBe("Stopped: agent paused. Spotter had paused this agent, so PayPal released the hold. Nothing was paid.");
+    expect(outcomeLine(p({ status: "voided", decided_by: PAUSED_BY }))).toBe("Stopped: agent paused. Spotter had paused this agent, so PayPal cancelled the hold. Nothing was paid.");
     expect(outcomeLine(p({ status: "voided", decided_by: LATE_BY, error: LATE_HOLD }))).toBe(LATE_HOLD);
     expect(outcomeLine(p({ status: "blocked" }))).toBe("Stopped. Spotter stopped it before anything reached PayPal. Nothing was paid.");
     expect(outcomeLine(p({ status: "protected" }))).toMatch(/^Not sent\..*no buyer protection/);
@@ -106,7 +106,7 @@ describe("holdFact and settledCase", () => {
       expect(out.ask).toEqual([]);
     }
     expect(holdFact(p())).toBe("PayPal paid it: the money went to Panmoor Kitchen.");
-    expect(holdFact(p({ status: "voided" }))).toBe("PayPal released the hold, so nothing was paid.");
+    expect(holdFact(p({ status: "voided" }))).toBe("PayPal cancelled the hold, so nothing was paid.");
     expect(holdFact(p({ status: "voided", error: "PayPal let the hold lapse before the payment went through. Nothing was paid." }))).toBe(
       "The hold ran out before the payment went through, so nothing was paid.",
     );

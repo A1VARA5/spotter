@@ -215,7 +215,7 @@ export async function* runLab(full: Deps, householdId: string, opts: LabOpts): A
     const auth = p?.paypal_authorization_id ?? null;
     yield step(
       "void",
-      p?.status === "voided" ? "PayPal released the hold: Spotter voided the authorisation" : p?.status === "voiding" ? "Spotter asked PayPal to let go of the hold. PayPal didn't confirm yet, retrying" : `The hold is ${p?.status ?? "missing"}`,
+      p?.status === "voided" ? "PayPal cancelled the hold: Spotter voided the authorisation" : p?.status === "voiding" ? "Spotter asked PayPal to cancel the hold. PayPal didn't confirm yet, retrying" : `The hold is ${p?.status ?? "missing"}`,
       { data: { authorizationId: auth, orderId: p?.paypal_order_id ?? null, status: p?.status ?? null } },
     );
 

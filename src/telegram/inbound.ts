@@ -415,10 +415,10 @@ async function handleButton(ctx: TgCtx, q: NonNullable<TgUpdate["callback_query"
     return "refused";
   }
   const after = await deny(ctx.deps, id, own.spotter_name);
-  await answer(after.status === "voided" ? "Denied. PayPal released the hold." : "PayPal couldn't release it. Check the dashboard.");
+  await answer(after.status === "voided" ? "Denied. PayPal cancelled the hold." : "PayPal couldn't cancel it. Check the dashboard.");
   if (after.status === "voided") {
     const spender = await getSpender(db, after.spender_id);
-    await ctx.send(chat, `<b>Denied.</b> PayPal released the hold on ${esc(after.request.payee.name)}. Nothing was paid${spender ? `, and ${esc(spender.name)} has been told` : ""}.`);
+    await ctx.send(chat, `<b>Denied.</b> PayPal cancelled the hold on ${esc(after.request.payee.name)}. Nothing was paid${spender ? `, and ${esc(spender.name)} has been told` : ""}.`);
   }
   return after.status === "voided" ? "denied" : "failed";
 }

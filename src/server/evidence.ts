@@ -162,7 +162,7 @@ function eventWords(type: string, data: Record<string, unknown>, tz: string): st
     case "withdrawn":
       return "The AI agent withdrew it";
     case "voided":
-      return "PayPal released the hold. Nothing was paid";
+      return "PayPal cancelled the hold. Nothing was paid";
     case "swapped":
       return `Replaced with a payment to ${str(data.shop, 80) || "a genuine shop"}`;
     case "paypal_settled":

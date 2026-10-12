@@ -154,7 +154,7 @@ describe("paypal rows", () => {
       { id: "WH-3", payment_id: null, event_type: "SOMETHING.NEW_HAPPENED", created_at: "2026-10-10T09:00:00Z" },
     ]);
     expect(rows[0]).toEqual({ id: "7", when: new Date("2026-10-10T11:00:00Z"), eventType: "PAYMENT.CAPTURE.COMPLETED", label: "PayPal captured", paymentId: "pay_a", amount: 24.99 });
-    expect(rows[1]).toMatchObject({ label: "PayPal released the hold", amount: 400, when: new Date("2026-10-10T10:00:00Z") });
+    expect(rows[1]).toMatchObject({ label: "PayPal cancelled the hold", amount: 400, when: new Date("2026-10-10T10:00:00Z") });
     expect(rows[2]).toMatchObject({ label: "PayPal: something new happened", paymentId: "", amount: 0 });
   });
 

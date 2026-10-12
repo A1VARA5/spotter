@@ -77,8 +77,8 @@ export function shownOutcome(p: SettledInput): { state: "blocked" | "returned"; 
   if (!w || settledAs(p) !== "not_me") return null;
   // "alert": the message said it was from the spotter, and the spotter answered, so talk to them as "you".
   const who = w.channel === "alert" ? "you" : w.who;
-  // Short enough for the rail's pill; the Was it you? line under it says PayPal released the hold.
-  return { state: "returned", short: "Not me", long: `Not me: ${who} didn't send it`, explain: "PayPal released the hold. Nothing was paid." };
+  // Short enough for the rail's pill; the Was it you? line under it says PayPal cancelled the hold.
+  return { state: "returned", short: "Not me", long: `Not me: ${who} didn't send it`, explain: "PayPal cancelled the hold. Nothing was paid." };
 }
 
 const amountOf = (p: SettledInput) => formatMoney({ amount: Number(p.amount), currency: p.currency as Currency });
@@ -100,14 +100,14 @@ export function outcomeLine(p: SettledInput): string | null {
     case "paying":
       return `Approved${p.decided_by && p.decided_by !== "Spotter" ? ` by ${p.decided_by}` : ""}. PayPal is finishing the payment of ${amount} to ${payee}.`;
     case "denied":
-      return `Denied. ${p.decided_by} said no, so PayPal released the ${amount}. Nothing was paid.`;
+      return `Denied. ${p.decided_by} said no, so PayPal cancelled the ${amount} hold. Nothing was paid.`;
     case "not_me":
-      return `Released. ${p.decided_by} said the message wasn't from them, so PayPal released the ${amount}. Nothing was paid.`;
+      return `Cancelled. ${p.decided_by} said the message wasn't from them, so PayPal cancelled the ${amount} hold. Nothing was paid.`;
     case "releasing":
       return `Being released. Spotter asked PayPal to let the ${amount} go. Nothing was paid.`;
     case "paused": {
       const t = tripOutcome(p);
-      return t ? `${t.long}. ${t.explain} Nothing was paid.` : "Stopped by a tripwire. Spotter froze the agent and PayPal released the hold. Nothing was paid.";
+      return t ? `${t.long}. ${t.explain} Nothing was paid.` : "Stopped by a tripwire. Spotter froze the agent and PayPal cancelled the hold. Nothing was paid.";
     }
     case "late":
       return LATE_HOLD;
@@ -140,7 +140,7 @@ export function holdFact(p: SettledInput): string | null {
     case "not_me":
     case "paused":
     case "released":
-      return "PayPal released the hold, so nothing was paid.";
+      return "PayPal cancelled the hold, so nothing was paid.";
     case "releasing":
       return "Spotter asked PayPal to release the hold. Nothing was paid.";
     case "late":

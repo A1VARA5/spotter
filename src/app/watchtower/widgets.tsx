@@ -499,7 +499,7 @@ export function MoneyMidAirWidget(p: AgWidgetParams<MoneyMidAirDef>) {
               <span className="wt-air-line wt-air-line-dead" />
             </div>
             <p className="wt-air-note">
-              {gbp.format(asNum(r.amount))} {r.outcome === "Denied" ? "denied. PayPal released the hold, nothing was paid." : "stopped by Spotter before any money moved."}
+              {gbp.format(asNum(r.amount))} {r.outcome === "Denied" ? "denied. PayPal cancelled the hold, nothing was paid." : "stopped by Spotter before any money moved."}
             </p>
           </li>
         ))}

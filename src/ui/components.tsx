@@ -47,7 +47,7 @@ export const STATE_HELP: Record<TrackState, string> = {
   blocked: "Stopped by a rule or a scam warning. Nothing was paid.",
   failed: "PayPal couldn't complete it. Nothing was paid.",
   protected: "Asked for in a way with no buyer protection, so not sent.",
-  returned: "Denied. PayPal released the hold.",
+  returned: "Denied. PayPal cancelled the hold.",
 };
 
 const GATE_ICON: Record<TrackState, React.ReactNode> = {

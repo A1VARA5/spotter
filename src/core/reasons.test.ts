@@ -130,7 +130,7 @@ describe("decidedReason: once decided, the why is in the past tense", () => {
   });
   it("a decided payment with no reason at all gets its ending in the past tense, never \"Within the rules.\"", () => {
     const none = { outcome: "ask" as const, reasons: [], flags: [] };
-    expect(decidedReason({ ...base, status: "voided", decided_by: "Sam", decision: none })).toBe("Denied. Sam said no, so PayPal released the £4.99. Nothing was paid.");
+    expect(decidedReason({ ...base, status: "voided", decided_by: "Sam", decision: none })).toBe("Denied. Sam said no, so PayPal cancelled the £4.99 hold. Nothing was paid.");
     expect(decidedReason({ ...base, status: "blocked", decision: null })).toBe("Stopped. Spotter stopped it before anything reached PayPal. Nothing was paid.");
     expect(decidedReason({ ...base, status: "captured", decided_by: "Sam", decision: none })).toBe("Paid. Sam approved it, so PayPal paid £4.99 to Panmoor Kitchen.");
     // Still waiting with nothing to say: nothing to say.

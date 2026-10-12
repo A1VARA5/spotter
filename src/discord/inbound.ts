@@ -96,7 +96,7 @@ async function denyButton(ctx: DcCtx, userId: string, paymentId: string): Promis
   return {
     content:
       after.status === "voided"
-        ? `**Denied.** PayPal released the hold, nothing was paid${spender ? `, and ${spender.name} has been told` : ""}.`
+        ? `**Denied.** PayPal cancelled the hold, nothing was paid${spender ? `, and ${spender.name} has been told` : ""}.`
         : "PayPal couldn't release the hold. Check the dashboard.",
   };
 }

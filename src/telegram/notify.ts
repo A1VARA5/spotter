@@ -115,7 +115,7 @@ export function makeTelegramDecided(send: Send) {
         ? `<b>${esc(notMeText(w, p))}</b>`
         : p.status === "captured"
         ? `<b>${who} said yes.</b> ${esc(amountOf(p))} to ${to} has been paid.`
-        : `<b>${who} said no.</b> ${esc(amountOf(p))} to ${to} was not paid, and PayPal released the hold.\n\nIf this was someone you know, call them on the number you already have for them.`;
+        : `<b>${who} said no.</b> ${esc(amountOf(p))} to ${to} was not paid, and PayPal cancelled the hold.\n\nIf this was someone you know, call them on the number you already have for them.`;
     await send(spender.telegram_chat_id, text);
   };
 }

@@ -8,7 +8,7 @@ export const maxDuration = 30;
 const Body = z.object({ answer: z.enum(["not_me", "it_was_me"]) });
 
 // "Was it you?" answered on the dashboard: the spotter's own question (no alert channel needed) or the Try demo's
-// example ask left behind. Unlocked like Deny, because Not me releases the hold.
+// example ask left behind. Unlocked like Deny, because Not me cancels the hold.
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const s = requireSpotter(request);
   if (s instanceof Response) return s;

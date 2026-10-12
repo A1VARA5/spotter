@@ -285,7 +285,7 @@ export function LabLine({ lab }: { lab: Holds["lab"] }) {
       <span className="ah-lab-tag">Test agent</span>
       <p className="ah-lab-text">
         The agent lab&apos;s naive test agent is paused: it reached for <code>{lab.tool}</code>, so Spotter froze it
-        {lab.voided ? " and PayPal released its hold" : ""}. Nothing real was touched.{" "}
+        {lab.voided ? " and PayPal cancelled its hold" : ""}. Nothing real was touched.{" "}
         <span className="ah-when" suppressHydrationWarning>({timeAgo(lab.at)})</span>
       </p>
       <a className="ah-lab-link" href="/agent-lab">

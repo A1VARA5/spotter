@@ -226,11 +226,11 @@ describe("evidence pack: what it says", () => {
     }
   });
 
-  it("a denied payment's pack says the spotter said no and PayPal released the money", async () => {
+  it("a denied payment's pack says the spotter said no and PayPal cancelled the hold", async () => {
     await deny(deps, paymentId, "Sam");
     const t = await (await get("txt")).text();
     expect(t).toMatch(/Sam said no/);
-    expect(t).toMatch(/PayPal released the/);
+    expect(t).toMatch(/PayPal cancelled the/);
   });
 
   it("after a decision, the case file's PayPal hold line is in the past tense and no offer ids show", async () => {
@@ -247,7 +247,7 @@ describe("evidence pack: what it says", () => {
       const t = await (await get(format)).text();
       expect(t).not.toMatch(/holding the money|nothing has been paid yet|If nobody approves/);
       expect(t).not.toContain("offer_");
-      expect(t).toContain("PayPal released the hold, so nothing was paid.");
+      expect(t).toContain("PayPal cancelled the hold, so nothing was paid.");
     }
   });
 

@@ -261,7 +261,7 @@ export function DashboardMain() {
         <Hint q="How does a hold work?">
           <p>
             Spotter asks PayPal to authorise the payment instead of taking it. The money is reserved on the payer&apos;s side, but nothing reaches the payee. Approve and
-            PayPal captures it. Deny and PayPal releases it. Unanswered holds expire on their own.
+            PayPal captures it. Deny and PayPal cancels the hold. Unanswered holds expire on their own.
           </p>
         </Hint>
       </div>

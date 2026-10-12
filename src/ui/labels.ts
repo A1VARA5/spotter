@@ -46,7 +46,7 @@ export const OUTCOME_WORDS: Record<TrackState, { short: string; long: string; ex
   paid: { short: "Paid", long: "Paid", explain: "Within the rules, and nothing looked wrong." },
   blocked: { short: "Stopped", long: "Stopped", explain: "Spotter stopped it before any money moved." },
   protected: { short: "Protected", long: "Protected, not sent", explain: "Not sent the unsafe way. Pay with a protected PayPal payment instead." },
-  returned: { short: "Denied", long: "Denied, money released", explain: "You said no, so PayPal released the hold. Nothing was paid." },
+  returned: { short: "Denied", long: "Denied, hold cancelled", explain: "You said no, so PayPal cancelled the hold. Nothing was paid." },
   failed: { short: "Failed", long: "PayPal said no", explain: "PayPal didn't take the payment. Nothing was paid." },
 };
 

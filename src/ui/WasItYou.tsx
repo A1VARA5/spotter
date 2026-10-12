@@ -43,12 +43,12 @@ export function wiyStatus(w: WasItYou, status: string, now = Date.now()): { tone
         // The spotter answered their own question: talk to them as "you".
         const released = status === "voided" || status === "voiding";
         return released
-          ? { tone: "safe", state: "You said not me", detail: "So Spotter released the hold. Nothing was paid." }
+          ? { tone: "safe", state: "You said not me", detail: "So PayPal cancelled the hold. Nothing was paid." }
           : { tone: "ring", state: "You said not me", detail: waiting ? "But the hold wasn't released. Deny it now." : "Spotter won't pay this." };
       }
       // Only "released" when PayPal really released it.
       if (status === "voided" || status === "voiding")
-        return { tone: "safe", state: `${w.who} said not me`, detail: `The message wasn't from ${w.who}, so Spotter released the hold. Nothing was paid.` };
+        return { tone: "safe", state: `${w.who} said not me`, detail: `The message wasn't from ${w.who}, so PayPal cancelled the hold. Nothing was paid.` };
       if (status === "captured" || status === "capturing")
         return { tone: "ring", state: `${w.who} said not me`, detail: `${w.who} says it wasn't them, but it was already approved and paid. Ring the person who paid and report it to PayPal now.` };
       if (waiting) return { tone: "ring", state: `${w.who} said not me`, detail: `${w.who} says it wasn't them, but the hold wasn't released. Deny it now.` };
@@ -117,7 +117,7 @@ export function WasItYouLine({ w, status, paymentId, now }: { w: WasItYou | null
             <button type="button" className="btn btn-quiet wiy-line-btn" onClick={(e) => answer("it_was_me", e.currentTarget)} aria-disabled={busy || undefined}>
               Yes, it&apos;s me
             </button>
-            <span className="wiy-line-note">{busy ? "Sending" : "Not me releases the hold. Yes never pays: approving still needs your PIN."}</span>
+            <span className="wiy-line-note">{busy ? "Sending" : "Not me cancels the hold. Yes never pays: approving still needs your PIN."}</span>
           </div>
         )}
         {error && (

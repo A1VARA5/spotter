@@ -112,7 +112,7 @@ export function makeDiscordDecided(dm: Dm) {
         ? `**${notMeText(w, p)}**`
         : p.status === "captured"
         ? `**${spender.spotter_name} said yes.** ${amountOf(p)} to ${p.request.payee.name} has been paid.`
-        : `**${spender.spotter_name} said no.** ${amountOf(p)} to ${p.request.payee.name} was not paid, and PayPal released the hold.`,
+        : `**${spender.spotter_name} said no.** ${amountOf(p)} to ${p.request.payee.name} was not paid, and PayPal cancelled the hold.`,
     );
   };
 }

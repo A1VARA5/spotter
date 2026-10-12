@@ -305,7 +305,7 @@ const PAYPAL_LABEL: Record<string, string> = {
   "CHECKOUT.ORDER.APPROVED": "Order approved at PayPal",
   "CHECKOUT.ORDER.COMPLETED": "PayPal completed the order",
   "PAYMENT.AUTHORIZATION.CREATED": "PayPal is holding the money",
-  "PAYMENT.AUTHORIZATION.VOIDED": "PayPal released the hold",
+  "PAYMENT.AUTHORIZATION.VOIDED": "PayPal cancelled the hold",
   "PAYMENT.CAPTURE.COMPLETED": "PayPal captured",
   "PAYMENT.CAPTURE.PENDING": "PayPal capture pending",
   "PAYMENT.CAPTURE.DENIED": "PayPal declined the capture",

@@ -21,9 +21,9 @@ export function tripOf(p: TripInput): "tripwire" | "decoy" | "paused" | null {
 }
 
 const OUTCOME = {
-  tripwire: { long: "Stopped by a tripwire", explain: "The agent reached for a tool it never needs, so Spotter froze it and PayPal released the hold." },
-  decoy: { long: "Stopped by a decoy key", explain: "Someone used the decoy key planted in the agent's settings, so Spotter froze it and PayPal released the hold." },
-  paused: { long: "Stopped: agent paused", explain: "Spotter had paused this agent, so PayPal released the hold." },
+  tripwire: { long: "Stopped by a tripwire", explain: "The agent reached for a tool it never needs, so Spotter froze it and PayPal cancelled the hold." },
+  decoy: { long: "Stopped by a decoy key", explain: "Someone used the decoy key planted in the agent's settings, so Spotter froze it and PayPal cancelled the hold." },
+  paused: { long: "Stopped: agent paused", explain: "Spotter had paused this agent, so PayPal cancelled the hold." },
 } as const;
 
 /** The outcome pill and its sentence. Shown in the Stopped colour; null when this wasn't a tripwire stop. */

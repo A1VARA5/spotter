@@ -35,7 +35,7 @@ function exampleCase(payee: string, authorizationId: string, live?: { headline: 
     headline: live?.headline ?? `${EXAMPLE_LABEL}: this looks like the Hi Mum scam. Someone on a new number says they're Tom and wants £250 sent to a friend's account today.`,
     findings: [
       { text: `Gran has never paid ${payee} before.`, tool: "payee_history", source: "example_history" },
-      { text: "PayPal is holding the £250 in the sandbox. Deny releases it, approve pays it.", tool: "paypal_hold", source: "example_hold" },
+      { text: "PayPal is holding the £250 in the sandbox. Deny cancels it, approve pays it.", tool: "paypal_hold", source: "example_hold" },
     ],
     ask: ["Ring Tom on the number you already have for him and ask if he sent this.", "Don't reply to the new number or call it back."],
     calls,
