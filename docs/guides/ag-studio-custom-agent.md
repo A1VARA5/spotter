@@ -2,7 +2,7 @@
 
 On the live site, typing "What did Leo spend on games?" into Watchtower put a chart on the board in about 18 s with 13 tool calls (12 October). My own agent configured none of it. It placed one empty tile, then handed the chart to the Widget agent and the sum to the Data agent that ship with AG Studio 3.0. Here's how, and what broke on the way.
 
-<img src="../media/spotter-ag-studio.gif" alt="Typing the Leo question: Spotter places a tile, the Widget and Data agents build it, and the receipt shows 0 money actions with an Undo button">
+<img src="../media/spotter-ag-studio.gif" alt="Asking the suggested Leo question: Building your chart holds the new tile, the Widget and Data agents build a one bar chart on a £ axis, and the answer card shows £9.98 with a receipt of 14 calls, Money actions 0 and Ask next buttons. Live site, the wait sped up 3x; in real time it took 15.8 s">
 
 ## The roster
 
