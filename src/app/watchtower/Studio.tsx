@@ -31,7 +31,8 @@ import { accessOf, createRecorder, type Recorder } from "@/watchtower/receipt";
 import { createGate, gated, holdingHarness, scammerTexts, taintIndex, type Taint } from "@/watchtower/hold";
 import { captureEnd, captureStart, type RunStartSnapshot } from "@/watchtower/runUndo";
 import { HeldBar, spotterToolDisplay } from "./ToolCards";
-import { JarEntry } from "./Jar";
+import { JarMenu } from "./Jar";
+import { HELD_PROMPT } from "@/watchtower/jar";
 import { ReceiptBar, createReceiptBook, keepStart, record, useBook, type ReceiptBook } from "./ReceiptBar";
 import { AiChecksWidget } from "./AiChecks";
 import { AnswerSummaryWidget, createAnswerFeed, type Starter } from "./AnswerCard";
@@ -1240,6 +1241,13 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
                 </span>
               ))}
             </nav>
+            {demo && (
+              <JarMenu
+                granLabel={labels.viewLabel}
+                onGran={() => switchTo("gran")}
+                onAskHeld={!phone && kind === "family" ? () => void askInChat("Test: copy a scammer's words", HELD_PROMPT, "The assistant didn't open. Try again.") : undefined}
+              />
+            )}
             {!phone && (
               <Confirm
                 trigger="Reset board"
@@ -1283,7 +1291,6 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           <HeldBar gate={gate} />
           {board}
           {!phone && <ReceiptBar book={book} api={() => apiRef.current} />}
-          {demo && <JarEntry />}
         </>
       )}
     </>

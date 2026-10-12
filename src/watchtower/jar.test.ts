@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createGate } from "./hold";
-import { JAR_PAYEE, JAR_SCAM, runJar } from "./jar";
+import { HELD_PROMPT, JAR_PAYEE, JAR_SCAM, runJar } from "./jar";
+import { PLANTED_PAYEE } from "./sample";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -76,5 +77,16 @@ describe("glass jar: a scripted test agent with fake tools", () => {
     for (const i of imports) expect(["./hold", "ag-studio"]).toContain(i);
     expect(src).not.toMatch(/paypal\//i);
     expect(src).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|WebSocket|node:http|require\(/);
+  });
+
+  it("the jar's text is the fake tax office, not the crowded new number story", () => {
+    expect(JAR_SCAM).not.toMatch(/new number/i);
+    expect(JAR_SCAM).toMatch(/tax/i);
+    expect(JAR_SCAM.startsWith("Sample.")).toBe(true);
+  });
+
+  it("the held call test asks about the planted £49.99 stop, so the assistant has scammer words to copy", () => {
+    expect(HELD_PROMPT).toContain("£49.99");
+    expect(PLANTED_PAYEE.length).toBeGreaterThanOrEqual(12);
   });
 });

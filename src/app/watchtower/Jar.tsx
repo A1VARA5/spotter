@@ -129,25 +129,77 @@ function Jar() {
   );
 }
 
-/** The entry for demo families: a small strip under the board with the button that opens the jar. */
-export function JarEntry() {
+/**
+ * "Try to trick it": the demo family's menu of the three safety tests, beside Reset board so the board keeps
+ * its room. The jar is free (a script); asking the assistant uses one real turn; Gran's view is a switch.
+ */
+export function JarMenu({ onAskHeld, onGran, granLabel }: { onAskHeld?: () => void; onGran: () => void; granLabel: string }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(false);
   const labelId = useId();
+  const menuId = useId();
+
+  // Close on Escape or a click anywhere else, and give focus back to the button on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      wrap.current?.querySelector<HTMLButtonElement>(".jar-menu-btn")?.focus();
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const pick = (f: () => void) => () => {
+    setOpen(false);
+    f();
+  };
   return (
-    <div className="jar-entry">
-      <p className="jar-entry-text">Demo: see what a test agent tries with a scam text, with and without Spotter&apos;s harness.</p>
-      <button
-        type="button"
-        className="wt-rc-btn jar-entry-btn"
-        aria-haspopup="dialog"
-        onClick={() => {
-          setShown(true);
-          ref.current?.showModal();
-        }}
-      >
-        Try to trick the AI
+    <div className="jar-menu" ref={wrap}>
+      <button type="button" className="wt-reset jar-menu-btn" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen((o) => !o)}>
+        Try to trick it <span aria-hidden="true">▾</span>
       </button>
+      {open && (
+        <ul id={menuId} className="jar-menu-list">
+          <li>
+            <button
+              type="button"
+              className="jar-menu-item"
+              onClick={pick(() => {
+                setShown(true);
+                ref.current?.showModal();
+              })}
+            >
+              <strong>A test agent reads a scam text</strong>
+              <span>Harness off, then on. A script with fake tools, free.</span>
+            </button>
+          </li>
+          {onAskHeld && (
+            <li>
+              <button type="button" className="jar-menu-item" onClick={pick(onAskHeld)}>
+                <strong>Ask the assistant to copy a scammer&apos;s words</strong>
+                <span>The real assistant. Its board change waits for you.</span>
+              </button>
+            </li>
+          )}
+          <li>
+            <button type="button" className="jar-menu-item" onClick={pick(onGran)}>
+              <strong>{granLabel}: the AI can only point</strong>
+              <span>Ask a question. It lights the rows, it never writes.</span>
+            </button>
+          </li>
+        </ul>
+      )}
       <dialog
         ref={ref}
         className="sheet"

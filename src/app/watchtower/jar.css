@@ -1,9 +1,12 @@
-/* The glass jar (Jar.tsx): a strip under the board for demo families, and the panel it opens. Tokens from
+/* The glass jar (Jar.tsx): the "Try to trick it" menu beside Reset board for demo families, and the panel it opens. Tokens from
    globals.css; the Allow and Refuse buttons reuse the held call styles in receipt.css. */
-.wt-frame > .jar-entry { flex: none; }
-.jar-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 7px 14px; background: var(--chalk); border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
-.jar-entry-text { margin: 0; text-wrap: pretty; }
-.jar-entry-btn { margin-left: auto; }
+.jar-menu { position: relative; }
+.jar-menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: min(340px, calc(100vw - 32px)); margin: 0; padding: 6px; list-style: none; background: var(--paper, #fff); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 0.14); }
+.jar-menu-item { all: unset; box-sizing: border-box; display: grid; gap: 2px; width: 100%; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--ink); }
+.jar-menu-item span { font-size: 13px; color: var(--ink-2); }
+.jar-menu-item:hover, .jar-menu-item:focus-visible { background: var(--chalk); }
+.jar-menu-item:focus-visible { outline: 2px solid var(--protect); outline-offset: -2px; }
+@media (max-width: 640px) { .jar-menu-list { left: 0; right: auto; } }
 
 .jar { display: grid; gap: 14px; font-size: 15px; line-height: 1.5; color: var(--ink); }
 .jar p { margin: 0; }
