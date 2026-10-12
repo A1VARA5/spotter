@@ -172,9 +172,9 @@ export function Browser({ url, children }: { url: string; children: React.ReactN
 
 export const SCAM = {
   sms: "Hi mum I'm texting you off a friends phone I've smashed mine. Message me on my new number please x",
-  number: "+44 7700 900461",
+  number: "+44 7700 900183",
   chat: [
-    { me: false, text: "Hi mum its me, new number 🙂", at: "09:31" },
+    { me: false, text: "Hi Mum it's Tom, new number 🙂", at: "09:31" },
     { me: true, text: "Hello love, are you ok?", at: "09:33" },
     { me: false, text: "Not really, phones dead and I cant get into my banking on this one", at: "09:34" },
     { me: false, text: "I've got a bill that has to be paid today or I get a late fee. Can you send £250 to my mate Jamie's PayPal and I'll pay you back tomorrow", at: "09:34" },

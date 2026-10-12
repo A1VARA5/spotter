@@ -167,7 +167,7 @@ What took me a while to see: the toolkit is built for sellers. Refunds, invoices
 
 ![The agent lab: a scripted naive agent reads a hidden line, calls create_refund, Spotter freezes it, PayPal voids the hold and its webhook confirms it](docs/media/spotter-agent-lab.gif)
 
-<sub>The agent lab on the live site, the run sped up 1.6x. It's labelled what it is: a scripted naive test agent. Real Claude refused the same bait twice, which is good for Claude and annoying for my demo. Spotter doesn't rely on the model being careful. In this run the void landed 5.7 s after the start and the PayPal webhook confirmed it at 11.7 s.</sub>
+<sub>The agent lab on the live site, the run sped up 1.6x. It's labelled what it is: a scripted naive test agent. Real Claude refused the same bait twice, which is good for Claude and annoying for my demo. Spotter doesn't rely on the model being careful. The void lands about 5 s after the start and the PayPal webhook confirms it about 11 s in.</sub>
 
 - `create_order` becomes a Spotter payment. Spotter adds up the items itself, because the agent's own `itemTotal` could say anything.
 - `pay_order` never captures for a shopping agent. It tells the agent what Spotter decided.
@@ -224,13 +224,13 @@ Guide: [Price checks that change the decision, with Channel3](docs/guides/channe
 
 ![Typing "What did Leo spend on games?" in Watchtower: Spotter places a tile, the Widget and Data agents build the chart, and the receipt shows 0 money actions with an Undo button](docs/media/spotter-ag-studio.gif)
 
-<sub>Live Watchtower, the wait sped up 3x. In real time this answer took 19.5 s and 14 tool calls.</sub>
+<sub>Live Watchtower, the wait sped up 3x. In real time this answer takes about 18 s and 13 tool calls.</sub>
 
 - My own agent, "spotter", opens the chat. It has read only tools (`open_case_file`, `watch_alerts`, `scam_radar`, `paypal_status`, `real_price`, `fair_prices`, `add_page`) and one that places an empty tile (`place_widget`). It never configures a widget itself. It hands that to the built in AG Studio planning, page, widget and data agents through `delegate_to`, so in the clip the Widget agent builds the chart while the Data agent works out the £9.98 total. A second agent of mine, "brief", writes the weekly page the same way.
 - The receipt. The assistant reads words scammers wrote, so I don't take its word for what it did. The AG Studio telemetry records each tool call, and the receipt under the board says how many calls ran, money actions (always 0, and any tool not on Spotter's list turns that line red) and board changes. **Undo what Spotter changed** reverses exactly those changes using the Studio history.
 - 13 widgets of mine next to the built in ones: money kept, the hold track with cross filtering, watch alerts, money in mid air with the PayPal countdown, replay the month without Spotter, scam radar, case file, fair price, price watches, Spotter's own checks, and three for Gran.
 - Two themes: the family's, where the chart palette follows the outcomes present (Stopped red through Paid green), and Gran's, in big type with the official AG Studio Polish locale and Spotter's own words translated by hand ([src/watchtower/granLang.ts](src/watchtower/granLang.ts)).
-- The fair price question treats a price far below real shops as a fake shop sign, never a saving. The tool hands the assistant that verdict as data, so it can't decide a suspected fake was a bargain. In my run it answered in 5.0 s with one tool call.
+- The fair price question treats a price far below real shops as a fake shop sign, never a saving. The tool hands the assistant that verdict as data, so it can't decide a suspected fake was a bargain. On the live site it answers in about 6 s with 2 tool calls.
 - Every agent runs on Claude through my own adapter in place of the AG Studio model layer, so the key stays on the server. 60 turns per family and 600 a day. Image and free text widgets are switched off, so a scammer's payee name can't turn into a picture or a paragraph on the board.
 
 Guide: [A custom AG Studio agent that lets the built in agents do the building](docs/guides/ag-studio-custom-agent.md).
@@ -245,7 +245,7 @@ Guide: [A custom AG Studio agent that lets the built in agents do the building](
 
 ## Technology
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,688 tests in 132 files, all passing.
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. Over 1,800 tests, all passing (the exact count and date are in [docs/numbers.md](docs/numbers.md)).
 
 ```mermaid
 flowchart LR
@@ -280,7 +280,7 @@ The full picture, with the money path, the webhook path and every service, is in
 The person deciding is usually somebody's son or daughter on a phone, with Gran waiting. So the held card leads with one sentence, who and how much, and Deny before Approve. Everything else folds behind **See the evidence (N)**, so Deny and Approve stay on the first screen.
 
 - No sideways scroll at any width from 320 to 2560 px. App pages use wide screens with a side rail instead of a narrow column next to empty space.
-- axe (WCAG 2.2 AA tags) on 14 routes at 390 and 1440 px on the live site, 11 October: 0 violations everywhere except 2 low contrast nodes in the AG Studio assistant's step text on `/watchtower` after a run. "Skip to main content" is the first Tab stop, my last full keyboard walk found visible focus on every stop and no traps, and results are announced in live regions.
+- axe (WCAG 2.2 AA tags) on 16 routes at 390 and 1440 px on the live site, 12 October: 0 violations. "Skip to main content" is the first Tab stop, my last full keyboard walk found visible focus on every stop and no traps, and results are announced in live regions.
 - Gran's view is its own design: big type, plain words, nothing to approve, and a hand written glossary so "held" can never read like "approved" in Polish.
 - Sample shops and people have made up names, and a test keeps real brand names out of the demo data.
 
@@ -298,16 +298,18 @@ Nobody installs anything new. Gran forwards texts on Telegram or by email, her s
 
 Every claim in this README can be tried on the live site in under 5 minutes with no account, and every loop above is a screen recording of that site. The Try page says which engine each scenario shows, and `/checks` shows each engine's work on your own payments.
 
-Timed on the live site on 11 October 2026:
+Timed on the live site with a fresh demo family on 12 October 2026. Where each number comes from is in [docs/numbers.md](docs/numbers.md).
 
 | Step | Time |
 | --- | --- |
-| Try it on fake money to a ready dashboard with a real sandbox hold | 3.0 s |
-| The four tour scenarios, Send it to the verdict | 4.3 to 8.3 s. "Checking" shows on the first click |
-| Case files written by the case agent | finished before I opened the dashboard, sends 30 s apart |
-| Watchtower, "What did Leo spend on games?" (builds a chart) | 19.5 s, 14 tool calls |
-| Watchtower, "Did we pay fair prices this month?" | 5.0 s, 1 tool call |
-| Agent lab, hijacked agent frozen and its hold voided at PayPal | 5.7 s in my latest run (4.8 s and 6.0 s in two earlier ones). The PayPal webhook confirmed it at 11.7 s (10.8 s and 12.0 s before) |
+| Try it on fake money to a ready dashboard with a real sandbox hold | the held card is there within 1.0 s |
+| The four tour scenarios, Send it to the verdict | 4.3 to 8.3 s (11 October). The £4.99 skillet took 6.3 s, with "Checking" 250 ms after the click |
+| Was it you?, Tom's Not me to "Your money is safe" | 1.1 s |
+| Case files written by the case agent | settled 2.3 s after opening the dashboard |
+| Approve with the PIN to paid | 1.9 s |
+| Watchtower, "What did Leo spend on games?" (builds a chart) | 18.0 s, 13 tool calls |
+| Watchtower, "Did we pay fair prices this month?" | 6.0 s, 2 tool calls |
+| Agent lab, hijacked agent frozen and its hold voided at PayPal | 5.3 s. The PayPal webhook confirmed it at 11.3 s |
 
 The demo video isn't up yet. Its YouTube link goes here with the submission.
 
@@ -358,7 +360,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run     # 1,688 tests in 132 files
+npx vitest run --maxWorkers=4   # over 1,800 tests
 npm run build
 ```
 

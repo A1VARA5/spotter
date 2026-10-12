@@ -8,7 +8,7 @@ Status and honesty
 - `/api/health`: one entry each for the database, the PayPal sandbox, the AI check (main key, backup key or backup model), KERNEL, Channel3 (with the shared price watch) and PayPal webhooks, with the last time each one really worked. Cached for a minute and rate limited per address, only free probes, and no keys, ids or error text in the answer.
 - `/api/badge`: a shields.io badge from the same answer.
 - `/status` says it in plain words with a live dot, and `/real-money` lists what would need to be true before real money. Both are linked from the footer and from How it works.
-- Repo: dependabot for npm and GitHub Actions, a CodeQL workflow that only runs once the repo is public, and SECURITY.md now explains the known `npm audit` warnings (all from PayPal's Agent Toolkit dependencies) and where secrets live.
+- Repo: dependabot for npm and GitHub Actions, a CodeQL workflow that only runs once the repo is public, and SECURITY.md now explains the known `npm audit` warnings (all from the dependencies of the PayPal Agent Toolkit) and where secrets live.
 
 Docs
 - Four partner guides written from real runs, in `docs/guides/`: AG Studio, Channel3, KERNEL and the PayPal Agent Toolkit. The README gets a What's real table, links to the guides, and a badge row without the static test count.
@@ -47,7 +47,7 @@ Watchtower and the app
 - Case agent with read only tools, the Spotter network, safe swap, Telegram and Discord channels.
 - Verified PayPal webhooks that record the truth and settle stuck payments, and a daily reconcile job.
 - KERNEL: opening suspicious links in a throwaway cloud browser, seen vs read, the GadgetBarn demo shop, replays.
-- Watchtower on AG Studio: saved boards, incident pages, money in mid air, replay, scam radar, Spotter's own agent leading AG's built in agents, a weekly brief agent, the fair price widget.
+- Watchtower on AG Studio: saved boards, incident pages, money in mid air, replay, scam radar, Spotter's own agent leading the built in AG Studio agents, a weekly brief agent, the fair price widget.
 - PayPal Agent Toolkit tools with a spotter at `/api/toolkit/mcp`, and the first real toolkit agent run.
 - Business mode: household kind, presets, changed bank details sign, business scenarios.
 - The safer option when Spotter stops an agent's payment for shop reasons.

@@ -23,18 +23,19 @@ Tracking costs 1 credit per product per day, so watches are capped at 10 per fam
 
 ### The shared live watch, and its honest history
 
-A demo can't wait days for a drop, so a demo family gets two watches. One is labelled Example: £89 falling to £69 over ten days, made at demo start. The other is real. [src/core/shared-watch.ts](../../src/core/shared-watch.ts) tracks one product (Channel3 id `nepgse3`, a pair of over ear headphones) for every demo family, so each demo start doesn't buy a new subscription. It stores only what Channel3 returned, with no target and no drop that Channel3's own points don't show.
+A demo can't wait days for a drop, so a demo family gets two watches. One is labelled Example: £89 falling to £69 over ten days, made at demo start. The other is real. [src/core/shared-watch.ts](../../src/core/shared-watch.ts) tracks one product (Channel3 id `nepgse3`, a pair of over ear headphones) for every demo family, so each demo start doesn't buy a new subscription. It stores only what Channel3 returned, with no target and no drop that the points from Channel3 don't show.
 
-Here is what the live endpoint said when I read it for this guide:
+Tracking started on 11 October, and Channel3 refreshes its products daily, so the history fills in about a point a day from then. Here is what `GET /api/watches/shared` said for a fresh demo family at 00:50 UTC on 12 October (shop names cut):
 
 ```json
 "trackingSince": "2026-10-11T22:17:58.116Z",
 "points": [],
 "lastCheckedAt": "2026-10-11T23:58:24.007Z",
-"shops": [{ "price": 19900 }, { "price": 22900 }]
+"shops": [{ "price": 19900 }, { "price": 22900 }],
+"checked": "cached"
 ```
 
-Zero points. Tracking had been running for 1 h 40 min and Channel3 hadn't recorded a price yet, so the panel says that instead of drawing a line. The two shop prices come from the product listing. The panel asks Channel3 at most once an hour, and the daily job refreshes it.
+Still zero points 2 h 30 min in: Channel3 hadn't recorded its first daily price yet, so the panel says "Starting one point a day" instead of drawing a line. The two shop prices come from the product listing. The panel asks Channel3 at most once an hour (`"checked": "cached"` means it used the stored answer), and the daily job refreshes it.
 
 ### The webhook
 
@@ -71,13 +72,32 @@ When a payment is held for a shop reason, the case file puts the shop next to th
 
 | What happened | What I changed | Where |
 | --- | --- | --- |
-| An Australian shop's converted price landed in a UK going rate | Shops with another country's web address are left out | `5951dcc` |
-| Three of eight skillet results were one £169 designer pan | Designer brands only count when the item names them, and the expensive tail goes | `4f82555` |
-| Earbuds were priced against a fashion shop | Fashion shops only count for things you wear or carry | `4f82555` |
-| A card printed raw `offer_1:` ids from my own code | Offer and payment ids never reach a person | `4f82555` |
-| The safer option offered a naive Claude agent earbuds from an Irish shop at £154 instead of the £19.99 order | Same UK only rule, the same day | `5951dcc` |
-| Once the going rate was honest, my £6.99 demo skillet was 44% of £15.99, over the 40% line, so it stopped looking fake | The demo price went to £4.99 | `4f82555` |
-| Spot the difference said "about £28" next to a £15.99 listing | It compares with the listing it shows | `4f82555` |
+| An Australian shop's converted price landed in a UK going rate | Shops with another country's web address are left out | [`5951dcc`](https://github.com/A1VARA5/spotter/commit/5951dcc) |
+| Three of eight skillet results were one £169 designer pan | Designer brands only count when the item names them, and the expensive tail goes | [`4f82555`](https://github.com/A1VARA5/spotter/commit/4f82555) |
+| Earbuds were priced against a fashion shop | Fashion shops only count for things you wear or carry | [`4f82555`](https://github.com/A1VARA5/spotter/commit/4f82555) |
+| A card printed raw `offer_1:` ids from my own code | Offer and payment ids never reach a person | [`4f82555`](https://github.com/A1VARA5/spotter/commit/4f82555) |
+| The safer option offered a naive Claude agent earbuds from an Irish shop at £154 instead of the £19.99 order | Same UK only rule, the same day | [`5951dcc`](https://github.com/A1VARA5/spotter/commit/5951dcc) |
+| Once the going rate was honest, my £6.99 demo skillet was 44% of £15.99, over the 40% line, so it stopped looking fake | The demo price went to £4.99 | [`4f82555`](https://github.com/A1VARA5/spotter/commit/4f82555) |
+| Spot the difference said "about £28" next to a £15.99 listing | It compares with the listing it shows | [`4f82555`](https://github.com/A1VARA5/spotter/commit/4f82555) |
+
+## What it costs
+
+Channel3 bills in credits: 1,000 free a month, then $0.007 each, and the hackathon promo code adds 20,000.
+
+- A tracked product costs 1 credit a day. The shared live watch is one product for every demo family, so it's 1 credit a day in total.
+- A search, an image search or a lookup is 1 credit. Searches are cached in Postgres for up to 7 days, so the same skillet twice costs once.
+- A photo price check is 1 credit plus 1 for each thing it finds in the picture.
+- Searches stop at 10 per family and 300 a day, and watches at 10 per family and 40 a day, so searches alone can't pass 300 credits (about $2.10) in a day.
+
+## If it doesn't work
+
+| What you see | What to check |
+| --- | --- |
+| No real shop prices on any card | `CHANNEL3_API_KEY` isn't set, so the price checks switch off. Without it a £4.99 skillet just gets paid. |
+| No **Watch the price** button | `priceWatchFits` said no: the payment has to be held, denied or stopped, for a named product, priced above the cheapest real shop, and not from a shop that looked fake. |
+| The shared watch shows no line | Channel3 hasn't recorded a point yet. The panel says so on purpose and never draws made up points. |
+| "Spotter has looked up all the products it can today" | The daily cap. It resets within 24 hours. |
+| Channel3 webhooks get a 503 | `CHANNEL3_WEBHOOK_SECRET` isn't set, so every delivery is refused. Drops still arrive through the daily job. |
 
 ## Run it
 

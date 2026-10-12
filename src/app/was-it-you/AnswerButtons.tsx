@@ -4,7 +4,7 @@ import { plainError, readJson } from "@/ui/http";
 
 export function AnswerButtons({ token, answered }: { token: string; answered: "not_me" | "it_was_me" | null }) {
   const [busy, setBusy] = useState<"not_me" | "it_was_me" | null>(null);
-  const [reply, setReply] = useState<string | null>(answered ? `You already answered: ${answered === "not_me" ? "not me" : "it was me"}.` : null);
+  const [reply, setReply] = useState<string | null>(answered ? `You already answered "${answered === "not_me" ? "Not me" : "Yes, it's me"}".` : null);
   const [error, setError] = useState<string | null>(null);
   const out = useRef<HTMLParagraphElement>(null);
   useEffect(() => {

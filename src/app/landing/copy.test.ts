@@ -16,6 +16,8 @@ import { toSources } from "@/watchtower/data";
 import { DEMO_SPENDERS } from "@/server/seed";
 import { WAS_IT_YOU_EXAMPLE } from "@/server/example-hold";
 import { STORY_FLAGS } from "./Walkthrough";
+import { SCAM } from "./Devices";
+import { COLLECTOR } from "@/app/demo-shop/redelivery/kit";
 
 describe("the landing's sample numbers match the live board's sample month", () => {
   it("adds up the same money kept, per outcome and for Gran", () => {
@@ -98,8 +100,15 @@ describe("two faces and where the money goes", () => {
     expect(r.compared && r.differs).toBe(true);
     expect(r.verdict).toBe(FACES.verdict);
     const desk = moneyTrail({ startUrl: page, finalUrl: page, forms: [], scriptTargets: [], items: null });
-    const phone = moneyTrail({ startUrl: page, finalUrl: page, forms: [{ action: "https://collect-pay.example/c", money: true }], scriptTargets: [], items: null });
+    const phone = moneyTrail({ startUrl: page, finalUrl: page, forms: [{ action: `${COLLECTOR}/c`, money: true }], scriptTargets: [], items: null });
     expect(phoneTrail(desk, phone).line).toBe(FACES.trail);
+  });
+});
+
+describe("one story across the landing and the demo", () => {
+  it("uses one phone number for the scam text and the demo's card collector address", () => {
+    expect(SCAM.number).toBe(GRAN.from);
+    expect(FACES.trail).toContain(new URL(COLLECTOR).host);
   });
 });
 

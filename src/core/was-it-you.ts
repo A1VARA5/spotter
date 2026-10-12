@@ -224,7 +224,7 @@ export async function answerWasItYou(deps: Deps, input: { token: string; answer:
   const { p: before, w } = found;
   const who = w.who;
   if (w.state === "not_me" || w.state === "it_was_me") {
-    return { ok: false, code: "answered", reply: `You already answered: ${w.state === "not_me" ? "not me" : "it was me"}. Nothing else changed.`, payment: before };
+    return { ok: false, code: "answered", reply: `You already answered "${w.state === "not_me" ? "Not me" : "Yes, it's me"}". Nothing else changed.`, payment: before };
   }
   if (w.state !== "asked") return { ok: false, code: "invalid", reply: "That button isn't valid for you. Nothing changed." };
   if (new Date(w.expiresAt).getTime() < Date.now()) {
@@ -325,9 +325,9 @@ export function wasItYouLine(w: WasItYou | null | undefined): string | null {
     case "asked":
       return w.channel === "alert" ? `It says it's from you (${w.who}). Was it you?` : `Spotter asked ${w.who} if they sent it. Waiting for an answer.`;
     case "not_me":
-      return `${w.who}: not me. The message wasn't from ${w.who}.`;
+      return `${w.who} said not me. The message wasn't from ${w.who}.`;
     case "it_was_me":
-      return `${w.who}: it was me. ${w.who} says they sent it. It still needs your PIN to pay.`;
+      return `${w.who} said yes, it's me. ${w.who} says they sent it. It still needs your PIN to pay.`;
     case "no_channel":
       return `It says it's from ${w.who}, but ${w.who} has nothing linked to Spotter. Ring ${w.who} on the number you already have.`;
     case "send_failed":
