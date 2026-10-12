@@ -31,6 +31,7 @@ import { accessOf, createRecorder, type Recorder } from "@/watchtower/receipt";
 import { createGate, gated, holdingHarness, scammerTexts, taintIndex, type Taint } from "@/watchtower/hold";
 import { captureEnd, captureStart, type RunStartSnapshot } from "@/watchtower/runUndo";
 import { HeldBar, spotterToolDisplay } from "./ToolCards";
+import { JarEntry } from "./Jar";
 import { ReceiptBar, createReceiptBook, keepStart, record, useBook, type ReceiptBook } from "./ReceiptBar";
 import { AiChecksWidget } from "./AiChecks";
 import { AnswerSummaryWidget, createAnswerFeed, type Starter } from "./AnswerCard";
@@ -1282,6 +1283,7 @@ export default function Studio({ sources, initialState, store, notify, kind, spo
           <HeldBar gate={gate} />
           {board}
           {!phone && <ReceiptBar book={book} api={() => apiRef.current} />}
+          {demo && <JarEntry />}
         </>
       )}
     </>

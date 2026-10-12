@@ -1,0 +1,49 @@
+/* The glass jar (Jar.tsx): a strip under the board for demo families, and the panel it opens. Tokens from
+   globals.css; the Allow and Refuse buttons reuse the held call styles in receipt.css. */
+.wt-frame > .jar-entry { flex: none; }
+.jar-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 7px 14px; background: var(--chalk); border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
+.jar-entry-text { margin: 0; text-wrap: pretty; }
+.jar-entry-btn { margin-left: auto; }
+
+.jar { display: grid; gap: 14px; font-size: 15px; line-height: 1.5; color: var(--ink); }
+.jar p { margin: 0; }
+.jar-kicker { font-size: 13px; font-weight: 650; color: var(--protect); }
+.jar-lede { color: var(--ink-2); text-wrap: pretty; }
+
+.jar-labels { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.jar-labels li { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--chalk); font-size: 13px; font-weight: 600; }
+.jar-labels .jar-money { color: var(--go-text); border-color: var(--go); background: var(--go-soft); }
+
+.jar-text { margin: 0; display: grid; gap: 4px; }
+.jar-text figcaption { font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.jar-text blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--hold); background: var(--hold-soft); border-radius: 0 8px 8px 0; overflow-wrap: anywhere; }
+
+.jar-switch { all: unset; box-sizing: border-box; cursor: pointer; justify-self: start; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 14px 4px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); font-weight: 650; }
+.jar-switch:focus-visible { outline: 3px solid var(--protect); outline-offset: 2px; }
+.jar-track { position: relative; width: 40px; height: 24px; border-radius: 999px; background: var(--ink-2); transition: background-color 160ms var(--ease-out); }
+.jar-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); transition: transform 200ms var(--ease-out); }
+.jar-switch[aria-checked="true"] .jar-track { background: var(--go); }
+.jar-switch[aria-checked="true"] .jar-thumb { transform: translateX(16px); }
+.jar-switch-state { min-width: 2.2em; }
+
+.jar-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; min-height: 120px; align-content: start; }
+.jar-step { display: grid; gap: 4px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); animation: jar-in 220ms var(--ease-out) both; }
+.jar-step-what { display: flex; align-items: center; gap: 8px; font-weight: 650; }
+.jar-step-n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--chalk); border: 1px solid var(--line); font-size: 12px; }
+.jar-step-fake { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 0 6px; border: 1px dashed var(--ink-2); border-radius: 6px; }
+.jar-step-args { color: var(--ink-2); overflow-wrap: anywhere; }
+.jar-step-out { font-weight: 700; }
+.jar-step[data-outcome="ran (fake)"] { border-color: var(--stop); }
+.jar-step[data-outcome="ran (fake)"] .jar-step-out { color: var(--stop-text); }
+.jar-step[data-outcome="held"] { border-color: var(--hold); background: linear-gradient(var(--hold-soft), var(--hold-soft)), var(--paper); }
+.jar-step[data-outcome="refused"] .jar-step-out { color: var(--go-text); }
+.jar-step[data-outcome="allowed (fake)"] .jar-step-out { color: var(--protect); }
+.jar-step-ask { display: grid; gap: 8px; margin-top: 4px; }
+.jar-said { font-weight: 600; min-height: 1.5em; }
+.jar-foot { font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+
+@keyframes jar-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .jar-step { animation: none; }
+  .jar-track, .jar-thumb { transition: none; }
+}
