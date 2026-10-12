@@ -12,7 +12,7 @@ Every number the README, the guides and the Devpost text quote comes from this p
 | KERNEL guide command | 153 tests in 10 files | 12 Oct 2026 | the command in [the KERNEL guide](guides/kernel-seen-vs-read.md#run-it) |
 | Agent Toolkit guide command | 66 tests in 6 files | 12 Oct 2026 | the command in [the toolkit guide](guides/paypal-agent-toolkit-tripwires.md#run-it) |
 
-Without `--maxWorkers=4`, a full run on a laptop can time out a few PGlite setup hooks under full parallel load (6 tests in 5 files in the 12 October judge round, and those files pass alone). CI is green either way.
+The 12 October judge round saw 6 tests in 5 files time out on a laptop under full parallel load (PGlite setup hooks over 10 s, and those files passed alone). Commit `050829a` raised the local test and hook timeouts to match CI, and `--maxWorkers=4` keeps the load down too.
 
 ## Live timings
 
