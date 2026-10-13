@@ -242,6 +242,36 @@ async function defaultClient(apiKey: string): Promise<KernelLike> {
   return new Kernel({ apiKey, maxRetries: 0, timeout: TIMEOUT_MS }) as unknown as KernelLike;
 }
 
+// KERNEL's advice (#kernel, 12 Oct): 429 or 529 from POST /browsers means busy or at the concurrent browser limit and
+// no browser was made, so it is safe to ask again. Anything else (a 5xx, a timeout) may have made one: never retried.
+const BUSY = new Set([429, 529]);
+const BUSY_TRIES = 3;
+
+/** Opens a browser, asking again after a busy answer, waiting as Retry-After says but never past `deadline`. */
+async function createBrowser(client: KernelLike, body: CreateBody, deadline: number, stopped: () => boolean, counted: () => void) {
+  for (let attempt = 1; ; attempt++) {
+    counted();
+    try {
+      return await client.browsers.create(body);
+    } catch (e) {
+      const { status, headers } = (e ?? {}) as { status?: unknown; headers?: { get?: (name: string) => string | null } };
+      if (typeof status !== "number" || !BUSY.has(status) || stopped()) throw e;
+      // Keeps the status, so the phone face still won't fall back to a plain phone on a busy answer.
+      const busy = () => Object.assign(new Error("it's busy right now. Try again in a minute."), { status, cause: e });
+      if (attempt >= BUSY_TRIES) throw busy();
+      // Seconds only; a missing or empty header (Number(null) is 0) or the HTTP date form falls back to backoff.
+      const header = headers?.get?.("retry-after")?.trim();
+      const said = header ? Number(header) : NaN;
+      const wait = Number.isFinite(said) && said >= 0 ? said * 1000 : 500 * 2 ** (attempt - 1);
+      // Leave the page at least a few seconds once the browser is open.
+      if (Date.now() + wait > deadline - 5000) throw busy();
+      console.error(`[spotter] KERNEL is busy (${status}), asking again in ${wait} ms`);
+      await new Promise((r) => setTimeout(r, wait));
+      if (stopped()) throw e;
+    }
+  }
+}
+
 const plainText = (s: string, max: number) => s.replace(/[\u0000-\u001f\u007f<>"`]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
 /** How the phone face reaches the page: a KERNEL proxy (UK mobile or home network) and region, or neither. */
@@ -287,23 +317,20 @@ export async function visitInCloud(url: string, opts: VisitOpts = {}): Promise<P
         const route = opts.network ?? { kind: "direct" as const };
         const routed: CreateBody = { ...base, viewport: PHONE, ...(route.proxyId ? { proxy: { id: route.proxyId } } : {}), ...(route.region ? { region: route.region } : {}) };
         try {
-          calls++;
-          browser = await client.browsers.create(routed);
+          browser = await createBrowser(client, routed, started + limit, () => finished, () => calls++);
           network = route.proxyId ? route.kind : "direct";
         } catch (e) {
           // Only a refusal (4xx: the plan or the proxy said no) falls back. A timeout or server error may have made the
           // browser anyway, so trying again would leave one nobody counts or deletes; that visit fails instead.
           const status = (e as { status?: unknown })?.status;
-          if ((!route.proxyId && !route.region) || typeof status !== "number" || status < 400 || status >= 500) throw e;
+          if ((!route.proxyId && !route.region) || typeof status !== "number" || status < 400 || status >= 500 || BUSY.has(status)) throw e;
           // The plan or the proxy said no: still open it as a phone, without the UK network, and say so.
           console.error("[spotter] KERNEL refused the UK phone network, opening as a plain phone instead:", e instanceof Error ? e.message : e);
-          calls++;
-          browser = await client.browsers.create({ ...base, viewport: PHONE });
+          browser = await createBrowser(client, { ...base, viewport: PHONE }, started + limit, () => finished, () => calls++);
           network = "direct";
         }
       } else {
-        calls++;
-        browser = await client.browsers.create(base);
+        browser = await createBrowser(client, base, started + limit, () => finished, () => calls++);
       }
       session = browser.session_id;
       // Created after we already gave up: delete it now, nobody else will.

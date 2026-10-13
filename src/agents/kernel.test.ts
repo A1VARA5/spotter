@@ -71,6 +71,61 @@ describe("visitInCloud", () => {
     expect(k.browsers.deleteByID).toHaveBeenCalledWith("sess1");
   });
 
+  // KERNEL's advice (#kernel, 12 Oct): a 429 or 529 from POST /browsers means no browser was made (busy, or the
+  // concurrent browser limit), so retry with backoff and honour Retry-After.
+  const busy = (status: number, retryAfter?: string) =>
+    Object.assign(new Error(`${status} busy`), { status, headers: new Headers(retryAfter === undefined ? {} : { "retry-after": retryAfter }) });
+
+  it("retries opening the browser when KERNEL is busy (429 or 529), then visits as normal", async () => {
+    const k = fakeKernel(async () => good);
+    k.browsers.create.mockRejectedValueOnce(busy(429, "0")).mockRejectedValueOnce(busy(529, "0"));
+    const v = await visitInCloud("https://bargainpods.shop/airpods", { client: k });
+    expect(v.ok).toBe(true);
+    expect(k.browsers.create).toHaveBeenCalledTimes(3);
+    expect(k.browsers.deleteByID).toHaveBeenCalledWith("sess1");
+    // The case file shows "Calls to the cloud browser": the busy answers count too.
+    const plain = await visitInCloud("https://bargainpods.shop/airpods", { client: fakeKernel(async () => good) });
+    expect(v.ok && plain.ok && v.proof!.apiCalls - plain.proof!.apiCalls).toBe(2);
+  });
+
+  it("doesn't wait longer than the visit has left when Retry-After is too long", async () => {
+    const k = fakeKernel(async () => good);
+    k.browsers.create.mockRejectedValue(busy(429, "60"));
+    const t = Date.now();
+    const v = await visitInCloud("https://bargainpods.shop/airpods", { client: k, timeoutMs: 15_000 });
+    expect(Date.now() - t).toBeLessThan(1000);
+    expect(v.ok).toBe(false);
+    expect(k.browsers.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("backs off before asking again when KERNEL gives no Retry-After", async () => {
+    const k = fakeKernel(async () => good);
+    k.browsers.create.mockRejectedValueOnce(busy(429));
+    const t = Date.now();
+    const v = await visitInCloud("https://bargainpods.shop/airpods", { client: k });
+    expect(v.ok).toBe(true);
+    expect(Date.now() - t).toBeGreaterThanOrEqual(400);
+  });
+
+  it("stops retrying after a few busy answers", async () => {
+    const k = fakeKernel(async () => good);
+    k.browsers.create.mockRejectedValue(busy(429, "0"));
+    const v = await visitInCloud("https://bargainpods.shop/airpods", { client: k });
+    expect(v.ok).toBe(false);
+    expect(k.browsers.create).toHaveBeenCalledTimes(3);
+    // A plain "busy, try again" for the family, not the raw API answer.
+    expect(!v.ok && v.error).toMatch(/busy.*try again/i);
+    expect(!v.ok && v.error).not.toMatch(/429/);
+  });
+
+  it("never retries a server error or timeout (a browser may already exist)", async () => {
+    const k = fakeKernel(async () => good);
+    k.browsers.create.mockRejectedValueOnce(Object.assign(new Error("500 oops"), { status: 500 }));
+    const v = await visitInCloud("https://bargainpods.shop/airpods", { client: k });
+    expect(v.ok).toBe(false);
+    expect(k.browsers.create).toHaveBeenCalledTimes(1);
+  });
+
   it("gives up at the time limit and still deletes the browser", async () => {
     const k = fakeKernel(() => new Promise(() => {}));
     const v = await visitInCloud("https://slow.example/", { client: k, timeoutMs: 50 });

@@ -129,6 +129,15 @@ describe("honest edges", () => {
     expect(v.ok).toBe(false);
   });
 
+  it("retries the UK phone network when KERNEL is busy instead of dropping to a plain phone", async () => {
+    const k = fake(async () => result());
+    k.browsers.create.mockRejectedValueOnce(Object.assign(new Error("429 busy"), { status: 429, headers: new Headers({ "retry-after": "0" }) }));
+    const v = await visitInCloud("https://parcels.example/track", { client: k, face: "phone", network: { proxyId: "px1", kind: "uk_mobile", region: "eu-west" } });
+    expect(k.browsers.create).toHaveBeenCalledTimes(2);
+    expect(k.browsers.create.mock.calls[1]![0]).toHaveProperty("proxy");
+    expect(v.ok && v.network).toBe("uk_mobile");
+  });
+
   it("treats a cut off telemetry log as not recorded", async () => {
     const many = Array.from({ length: 1000 }, () => ourNav);
     const k = fake(async () => result(), { telemetry: { events: vi.fn(async () => ({ items: many })) } });
