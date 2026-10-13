@@ -99,7 +99,7 @@ I ran Spotter's real scam check on 80 texts from a public dataset (Mishra and So
 | --- | --- | --- | --- |
 | 93% | 93% (37 of 40) | 3 of 40 | 0 of 80 |
 
-It missed a bare "You have 1 new message. Call 0207..." premium rate text, which it should catch, and flagged a "can't settle my bills this month" text I'd want a second look at anyway. Every miss and false alarm, the sample, the script and the limits: [docs/eval.md](docs/eval.md).
+It missed a bare "You have 1 new message. Call 0207..." premium rate text, which it should catch, and flagged a "can't settle my bills this month" text I'd want a second look at anyway. The whole 5,971 text dataset is in [eval/data](eval/data) so the run can be repeated or widened. Every miss and false alarm, the script and the limits: [docs/eval.md](docs/eval.md).
 
 ## How I thought about it
 

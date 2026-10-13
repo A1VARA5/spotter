@@ -10,7 +10,7 @@ All 80 answers came from Claude (none from the backup model), about 6 seconds ea
 
 ## The data
 
-[SMS Phishing Dataset for Machine Learning and Pattern Recognition](https://data.mendeley.com/datasets/f45bkkt8pr) by Sandhya Mishra and Devpriya Soni (Mendeley Data, 2022, CC BY 4.0). It has 5,971 texts labelled ham, spam and smishing. I took 40 random "smishing" texts as scams and 40 random "ham" texts as ordinary, with a fixed seed so anyone gets the same 80. Marketing "spam" is left out, because "is this a scam" is the question Spotter answers. The sample is in [eval/data/sms-sample.json](../eval/data/sms-sample.json), every verdict with its reasons in [eval/results/2026-10-13.json](../eval/results/2026-10-13.json).
+[SMS Phishing Dataset for Machine Learning and Pattern Recognition](https://data.mendeley.com/datasets/f45bkkt8pr) by Sandhya Mishra and Devpriya Soni (Mendeley Data, 2022, CC BY 4.0). It has 5,971 texts labelled ham, spam and smishing. I took 40 random "smishing" texts as scams and 40 random "ham" texts as ordinary, with a fixed seed so anyone gets the same 80. Marketing "spam" is left out, because "is this a scam" is the question Spotter answers. The full dataset (all 5,971 texts) is in [eval/data/sms-phishing-dataset-5971.csv](../eval/data/sms-phishing-dataset-5971.csv), the 80 I ran are in [eval/data/sms-sample.json](../eval/data/sms-sample.json), every verdict with its reasons in [eval/results/2026-10-13.json](../eval/results/2026-10-13.json).
 
 ## What it got wrong
 
