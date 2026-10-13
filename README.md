@@ -24,6 +24,7 @@ In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't
 
 - [Try it in 5 minutes](#try-it-in-5-minutes)
 - [What's real](#whats-real)
+- [How well the check works](#how-well-the-check-works)
 - [How I thought about it](#how-i-thought-about-it)
 - [Who it's for, and what each person sees](#who-its-for-and-what-each-person-sees)
 - [PayPal](#paypal)
@@ -89,6 +90,16 @@ Open People, Shopping agent. In the connect panel pick **The PayPal Agent Toolki
 | Telegram and email alerts | Live | `/account` |
 | Discord DM alerts | Built, never seen one land | `/account` |
 | Gran's view in Polish | Live, not yet checked by a native speaker | `/watchtower`, simple view |
+
+## How well the check works
+
+I ran Spotter's real scam check on 80 texts from a public dataset (Mishra and Soni, 2022, CC BY 4.0): 40 labelled scams and 40 ordinary texts, picked with a fixed seed.
+
+| Precision | Recall | Ordinary texts called a scam | Failed checks |
+| --- | --- | --- | --- |
+| 93% | 93% (37 of 40) | 3 of 40 | 0 of 80 |
+
+It missed a bare "You have 1 new message. Call 0207..." premium rate text, which it should catch, and flagged a "can't settle my bills this month" text I'd want a second look at anyway. Every miss and false alarm, the sample, the script and the limits: [docs/eval.md](docs/eval.md).
 
 ## How I thought about it
 

@@ -1,0 +1,407 @@
+{
+ "source": "SMS Phishing Dataset for Machine Learning and Pattern Recognition, Sandhya Mishra and Devpriya Soni, Mendeley Data, V1, 2022, doi:10.17632/f45bkkt8pr.1",
+ "licence": "CC BY 4.0 (http://creativecommons.org/licenses/by/4.0)",
+ "sampling": "40 random 'smishing' messages as scam and 40 random 'ham' messages as normal, deduplicated, at most 600 characters, without unreadable characters, Python random.Random(20261013). Marketing 'spam' left out.",
+ "items": [
+  {
+   "id": "s01",
+   "label": "scam",
+   "text": "(Alert) Your Rbc Royal Bank has been suspended. To unlock your account, click here: http://reac.mobi/@mobile"
+  },
+  {
+   "id": "s02",
+   "label": "scam",
+   "text": "Dont forget you can place as many FREE Requests with 1stchoice.co.uk as you wish. For more Information call 08707808226."
+  },
+  {
+   "id": "s03",
+   "label": "scam",
+   "text": "T-Mobile customer you may now claim your FREE CAMERA PHONE upgrade & a pay & go sim card for your loyalty. Call on 0845 021 3680.Offer ends 28thFeb.T&C's apply"
+  },
+  {
+   "id": "s04",
+   "label": "scam",
+   "text": "You are entitled to update to the latest colour camera mobile for Free! Call The Mobile Update VCo FREE on 08002986906"
+  },
+  {
+   "id": "s05",
+   "label": "scam",
+   "text": "Englishvocabulary ululate: to mourn loudly and shrilly AD: Unlimited FREE calls to any mobile try out today http://bit.ly/unlmtdfreecall share wid frnd"
+  },
+  {
+   "id": "s06",
+   "label": "scam",
+   "text": "Shop till u Drop, IS IT YOU, either 10K, 5K, £500 Cash or £100 Travel voucher, Call now, 09064011000."
+  },
+  {
+   "id": "s07",
+   "label": "scam",
+   "text": "Todays Vodafone numbers ending with 4865 are selected to a receive a £350 award. If your number matches call 09064019014 to receive your £350 award."
+  },
+  {
+   "id": "s08",
+   "label": "scam",
+   "text": "CDs 4u: Congratulations ur awarded £500 of CD gift vouchers or £125 gift guaranteed & Freeentry 2 £100 wkly draw xt MUSIC to 87066 TnCs www.ldew.com1win150ppmx3age16"
+  },
+  {
+   "id": "s09",
+   "label": "scam",
+   "text": "URGENT! We are trying to contact U. Todays draw shows that you have won a £800 prize GUARANTEED. Call 09050001808 from land line. Claim M95. Valid12hrs only"
+  },
+  {
+   "id": "s10",
+   "label": "scam",
+   "text": "Congratulations ur awarded either £500 of CD gift vouchers & Free entry 2 our £100 weekly draw txt MUSIC to 87066 TnCs www.Ldew.com"
+  },
+  {
+   "id": "s11",
+   "label": "scam",
+   "text": "FREE camera phones with linerental from 4.49/month with 750 cross ntwk mins. 1/2 price txt bundle deals also avble. Call 08001950382"
+  },
+  {
+   "id": "s12",
+   "label": "scam",
+   "text": "RMO.00 R.HB: RM4388.00 Was Charged On Your Card Numer 9577 at AwG-KLIA2 On 24/10/16 1032:29 Reference Code 342152 Call 03216837293 if u did NOT perform this Txn"
+  },
+  {
+   "id": "s13",
+   "label": "scam",
+   "text": "Text & meet someone sexy today. U can find a date or even flirt its up to U. Join 4 just 10p. REPLY with NAME & AGE eg Sam 25. 18 -msg recd@thirtyeight pence"
+  },
+  {
+   "id": "s14",
+   "label": "scam",
+   "text": "URGENT! We are trying to contact U. Todays draw shows that you have won a £2000 prize GUARANTEED. Call 09058094507 from land line. Claim 3030. Valid 12hrs only"
+  },
+  {
+   "id": "s15",
+   "label": "scam",
+   "text": "WINNER!! As a valued network customer you have been selected to receivea £900 prize reward! To claim call 09061701461. Claim code KL341. Valid 12 hours only."
+  },
+  {
+   "id": "s16",
+   "label": "scam",
+   "text": "Your Mobile Won 500,000.00euro in Blackberry Netherlands Promo. For claims E-mail code: NL101 to claims@bbnetherlands.co.cc"
+  },
+  {
+   "id": "s17",
+   "label": "scam",
+   "text": "Hi babe its Jordan, how r u? Im home from abroad and lonely, text me back if u wanna chat xxSP visionsms.com Text stop to stopCost 150p 08712400603"
+  },
+  {
+   "id": "s18",
+   "label": "scam",
+   "text": "Want explicit SEX in 30 secs? Ring 02073162414 now! Costs 20p/min"
+  },
+  {
+   "id": "s19",
+   "label": "scam",
+   "text": "449050000301 You have won a £2,000 price! To claim, call 09050000301."
+  },
+  {
+   "id": "s20",
+   "label": "scam",
+   "text": "Dear V0DAF0NE Customer,You are a W1NNER of Rs. 1,00,000 Guaranteed Prize, this is our Final attempt to contact you! To Claim Call 6299257179 Now!"
+  },
+  {
+   "id": "s21",
+   "label": "scam",
+   "text": "URGENT! Your mobile No *********** WON a £2,000 Bonus Caller Prize on 02/06/03! This is the 2nd attempt to reach YOU! Call 09066362220 ASAP! BOX97N7QP, 150ppm"
+  },
+  {
+   "id": "s22",
+   "label": "scam",
+   "text": "You have been selected to stay in 1 of 250 top British hotels - FOR NOTHING! Holiday Worth £350! To Claim, Call London 02072069400. Bx 526, SW73SS"
+  },
+  {
+   "id": "s23",
+   "label": "scam",
+   "text": "YOU ARE CHOSEN TO RECEIVE A £350 AWARD! Pls call claim number 09066364312 to collect your award which you are selected to receive as a valued mobile customer."
+  },
+  {
+   "id": "s24",
+   "label": "scam",
+   "text": "You are a winner you have been specially selected to receive £1000 cash or a £2000 award. Speak to a live operator to claim call 087123002209am-7pm. Cost 10p"
+  },
+  {
+   "id": "s25",
+   "label": "scam",
+   "text": "Todays Voda numbers ending with 7634 are selected to receive a £350 reward. If you have a match please call 08712300220 quoting claim code 7684 standard rates apply."
+  },
+  {
+   "id": "s26",
+   "label": "scam",
+   "text": "Do you want a New Nokia 3510i Colour Phone Delivered Tomorrow? With 100 FREE text + FREE camcorder Reply or Call 08000930705"
+  },
+  {
+   "id": "s27",
+   "label": "scam",
+   "text": "Dear Customer,U've been selected to stay in F1VE STAR hotels - FOR T0DAY'S DRAW! Holiday valued at INR 5,00,000.Dial 8927307655 to claim"
+  },
+  {
+   "id": "s28",
+   "label": "scam",
+   "text": "URGENT! Your Mobile number has been awarded with a £2000 Bonus Caller Prize. Call 09058095201 from land line. Valid 12hrs only"
+  },
+  {
+   "id": "s29",
+   "label": "scam",
+   "text": "You have 1 new message. Call 0207-083-6089"
+  },
+  {
+   "id": "s30",
+   "label": "scam",
+   "text": "complimentary 4 STAR Ibiza Holiday or £10,000 cash needs your URGENT collection. 09066364349 NOW from Landline not to lose out! Box434SK38WP150PPM18+"
+  },
+  {
+   "id": "s31",
+   "label": "scam",
+   "text": "Dear Customer your pyatm wallet Has been booked and hold Your amount please complete your kyc contact customer care 8536074310"
+  },
+  {
+   "id": "s32",
+   "label": "scam",
+   "text": "Urgent! Please call 09061743810 from landline. Your ABTA complimentary 4* Tenerife Holiday or #5000 cash await collection SAE T&Cs Box 326 CW25WX 150 ppm"
+  },
+  {
+   "id": "s33",
+   "label": "scam",
+   "text": "Dear V0DAF0NE Customer,You are a 5,00,000 winner of Guaranteed Caller Prize, this is our Final attempt to contact you! To Claim Call 8927307655 Now!"
+  },
+  {
+   "id": "s34",
+   "label": "scam",
+   "text": "Dear PAYTM customer your Paytm KYC has expired. Contact customer care No-6200992462 immediately. your account will Block within 24 hr. Thank you PAYTM TEAM."
+  },
+  {
+   "id": "s35",
+   "label": "scam",
+   "text": "You have an important customer service announcement from PREMIER. Call FREEPHONE 0800 542 0578 now!"
+  },
+  {
+   "id": "s36",
+   "label": "scam",
+   "text": "Dear V0DAF0NE Customer,You are a 5,00,000 winner of Guaranteed Caller Prize, this is our Final attempt to contact you! To Claim Call 7044518857 Now!"
+  },
+  {
+   "id": "s37",
+   "label": "scam",
+   "text": "Please call our customer service representative on 7044518857 between 10am-9pm as you have W0N a guaranteed cash prize of Rs.5,00,000. FL1PKART TEAM"
+  },
+  {
+   "id": "s38",
+   "label": "scam",
+   "text": "Do you want 750 anytime any network mins 150 text and a NEW video phone for only five pounds per week call 08000776320 now or reply for delivery Tomorrow"
+  },
+  {
+   "id": "s39",
+   "label": "scam",
+   "text": "Dorothy@kiefer.com (Bank of Granite issues Strong-Buy) EXPLOSIVE PICK FOR OUR MEMBERS *****UP OVER 300% *********** Nasdaq Symbol CDGT That is a $5.00 per.."
+  },
+  {
+   "id": "s40",
+   "label": "scam",
+   "text": "Congrats! 1 year special cinema pass for 2 is yours. call 09061209467 now! C Suprman V, Matrix3, StarWars3, etc all 4 FREE! bx420-ip4-5we. 150pm. Dont miss out!"
+  },
+  {
+   "id": "n01",
+   "label": "normal",
+   "text": "Good evening Sir, Al Salam Wahleykkum.sharing a happy news.By the grace of God, i got an offer from Tayseer,TISSCO and i joined.Hope you are fine.Inshah Allah,meet you sometime.Rakhesh,visitor from India."
+  },
+  {
+   "id": "n02",
+   "label": "normal",
+   "text": "Sir, hope your day is going smoothly. i really hoped i wont have to bother you about this. I have some bills that i can't settle this month. I am out of all extra cash. I know this is a challenging time for you also but i have to let you know."
+  },
+  {
+   "id": "n03",
+   "label": "normal",
+   "text": "Dont show yourself. How far. Put new pictures up on facebook."
+  },
+  {
+   "id": "n04",
+   "label": "normal",
+   "text": "Nope thats fine. I might have a nap tho!"
+  },
+  {
+   "id": "n05",
+   "label": "normal",
+   "text": "Life style garments account no please."
+  },
+  {
+   "id": "n06",
+   "label": "normal",
+   "text": "Sure, whenever you show"
+  },
+  {
+   "id": "n07",
+   "label": "normal",
+   "text": "I will reach before ten morning"
+  },
+  {
+   "id": "n08",
+   "label": "normal",
+   "text": "Babe? You said 2 hours and it's been almost 4 ... Is your internet down ?"
+  },
+  {
+   "id": "n09",
+   "label": "normal",
+   "text": "You have to pls make a note of all she.s exposed to. Also find out from her school if anyone else was vomiting. Is there a dog or cat in the house? Let me know later."
+  },
+  {
+   "id": "n10",
+   "label": "normal",
+   "text": "Beerage?"
+  },
+  {
+   "id": "n11",
+   "label": "normal",
+   "text": "Princess, i like to make love &lt;#&gt; times per night. Hope thats not a problem!"
+  },
+  {
+   "id": "n12",
+   "label": "normal",
+   "text": "Hi Dev Call me its urgnt. I don't know whats your problem. You don't want to work or if you have any other problem.. Wating for your reply."
+  },
+  {
+   "id": "n13",
+   "label": "normal",
+   "text": "Oh yeah clearly it's my fault"
+  },
+  {
+   "id": "n14",
+   "label": "normal",
+   "text": "Gudnite....tc...practice going on"
+  },
+  {
+   "id": "n15",
+   "label": "normal",
+   "text": "Haha mayb u're rite... U know me well. Da feeling of being liked by someone is gd lor. U faster go find one then all gals in our group attached liao."
+  },
+  {
+   "id": "n16",
+   "label": "normal",
+   "text": "Yun ah.the ubi one say if ü wan call by tomorrow.call 67441233 look for irene.ere only got bus8,22,65,61,66,382. Ubi cres,ubi tech park.6ph for 1st 5wkg days.èn"
+  },
+  {
+   "id": "n17",
+   "label": "normal",
+   "text": "Hey. What happened? U switch off ur cell d whole day. This isnt good. Now if u do care, give me a call tomorrow."
+  },
+  {
+   "id": "n18",
+   "label": "normal",
+   "text": "Alright we're hooked up, where you guys at"
+  },
+  {
+   "id": "n19",
+   "label": "normal",
+   "text": "I am in office:)whats the matter..msg me now.i will call you at break:)."
+  },
+  {
+   "id": "n20",
+   "label": "normal",
+   "text": "Wen u miss someone, the person is definitely special for u..... But if the person is so special, why to miss them, just Keep-in-touch gdeve.."
+  },
+  {
+   "id": "n21",
+   "label": "normal",
+   "text": "Ill call u 2mrw at ninish, with my address that icky American freek wont stop callin me 2 bad Jen k eh?"
+  },
+  {
+   "id": "n22",
+   "label": "normal",
+   "text": "Am watching house – very entertaining – am getting the whole hugh laurie thing – even with the stick – indeed especially with the stick."
+  },
+  {
+   "id": "n23",
+   "label": "normal",
+   "text": "I only haf msn. It's yijue@hotmail.com"
+  },
+  {
+   "id": "n24",
+   "label": "normal",
+   "text": "Much better now thanks lol"
+  },
+  {
+   "id": "n25",
+   "label": "normal",
+   "text": "Also maaaan are you missing out"
+  },
+  {
+   "id": "n26",
+   "label": "normal",
+   "text": "By monday next week. Give me the full gist"
+  },
+  {
+   "id": "n27",
+   "label": "normal",
+   "text": "Hmm ill have to think about it... ok you're forgiven! =D"
+  },
+  {
+   "id": "n28",
+   "label": "normal",
+   "text": "Finally the match heading towards draw as your prediction."
+  },
+  {
+   "id": "n29",
+   "label": "normal",
+   "text": "Jason says it's cool if we pick some up from his place in like an hour"
+  },
+  {
+   "id": "n30",
+   "label": "normal",
+   "text": "Good night my dear.. Sleepwell&amp;Take care"
+  },
+  {
+   "id": "n31",
+   "label": "normal",
+   "text": "In work now. Going have in few min."
+  },
+  {
+   "id": "n32",
+   "label": "normal",
+   "text": "Jokin only lar... :-) depends on which phone my father can get lor..."
+  },
+  {
+   "id": "n33",
+   "label": "normal",
+   "text": "Old Orchard near univ. How about you?"
+  },
+  {
+   "id": "n34",
+   "label": "normal",
+   "text": "Ok... Then r we meeting later?"
+  },
+  {
+   "id": "n35",
+   "label": "normal",
+   "text": "We still on for tonight?"
+  },
+  {
+   "id": "n36",
+   "label": "normal",
+   "text": "Then ü come n pick me at 530 ar?"
+  },
+  {
+   "id": "n37",
+   "label": "normal",
+   "text": "True. Its easier with her here."
+  },
+  {
+   "id": "n38",
+   "label": "normal",
+   "text": "Night night, see you tomorrow"
+  },
+  {
+   "id": "n39",
+   "label": "normal",
+   "text": "Pls go there today &lt;#&gt; . I dont want any excuses"
+  },
+  {
+   "id": "n40",
+   "label": "normal",
+   "text": "Am on the uworld site. Am i buying the qbank only or am i buying it with the self assessment also?"
+  }
+ ]
+}

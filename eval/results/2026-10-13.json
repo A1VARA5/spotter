@@ -1,0 +1,1332 @@
+{
+ "date": "2026-10-13",
+ "source": "SMS Phishing Dataset for Machine Learning and Pattern Recognition, Sandhya Mishra and Devpriya Soni, Mendeley Data, V1, 2022, doi:10.17632/f45bkkt8pr.1",
+ "score": {
+  "scams": 40,
+  "normals": 40,
+  "caught": 37,
+  "missed": 3,
+  "falseAlarms": 3,
+  "failed": 0,
+  "precision": 0.925,
+  "recall": 0.925,
+  "falseAlarmRate": 0.075
+ },
+ "rows": [
+  {
+   "id": "n01",
+   "label": "normal",
+   "text": "Good evening Sir, Al Salam Wahleykkum.sharing a happy news.By the grace of God, i got an offer from Tayseer,TISSCO and i joined.Hope you are fine.Inshah Allah,meet you sometime.Rakhesh,visitor from India.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5029
+  },
+  {
+   "id": "n02",
+   "label": "normal",
+   "text": "Sir, hope your day is going smoothly. i really hoped i wont have to bother you about this. I have some bills that i can't settle this month. I am out of all extra cash. I know this is a challenging time for you also but i have to let you know.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: An unknown sender sharing money troubles is a common first step before asking you to send money."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This message from an unnamed stranger is building up to asking you for money, so don't send anything unless you can confirm who wrote it.",
+    "An unknown sender sharing money troubles is a common first step before asking you to send money. (\"I have some bills that i can't settle this month. I am out of all extra cash.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 4838
+  },
+  {
+   "id": "n03",
+   "label": "normal",
+   "text": "Dont show yourself. How far. Put new pictures up on facebook.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4183
+  },
+  {
+   "id": "n04",
+   "label": "normal",
+   "text": "Nope thats fine. I might have a nap tho!",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3938
+  },
+  {
+   "id": "n05",
+   "label": "normal",
+   "text": "Life style garments account no please.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: The message asks for account details without saying who is asking or why, which is a common way to collect information for fraud."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This short message asks for an account number with no explanation of who is asking or why, so check directly with the company before sharing any bank details.",
+    "The message asks for account details without saying who is asking or why, which is a common way to collect information for fraud. (\"account no please\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5592
+  },
+  {
+   "id": "n06",
+   "label": "normal",
+   "text": "Sure, whenever you show",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3688
+  },
+  {
+   "id": "n07",
+   "label": "normal",
+   "text": "I will reach before ten morning",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 12200
+  },
+  {
+   "id": "n08",
+   "label": "normal",
+   "text": "Babe? You said 2 hours and it's been almost 4 ... Is your internet down ?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7172
+  },
+  {
+   "id": "n09",
+   "label": "normal",
+   "text": "You have to pls make a note of all she.s exposed to. Also find out from her school if anyone else was vomiting. Is there a dog or cat in the house? Let me know later.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3264
+  },
+  {
+   "id": "n10",
+   "label": "normal",
+   "text": "Beerage?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3393
+  },
+  {
+   "id": "n11",
+   "label": "normal",
+   "text": "Princess, i like to make love &lt;#&gt; times per night. Hope thats not a problem!",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5981
+  },
+  {
+   "id": "n12",
+   "label": "normal",
+   "text": "Hi Dev Call me its urgnt. I don't know whats your problem. You don't want to work or if you have any other problem.. Wating for your reply.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "pressure: Rushing you to call straight away is a common way to stop you thinking clearly."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This message uses urgency and guilt to get you to call quickly, which is a common first step in scams, so check who sent it before replying or paying anything.",
+    "Rushing you to call straight away is a common way to stop you thinking clearly. (\"Call me its urgnt.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5956
+  },
+  {
+   "id": "n13",
+   "label": "normal",
+   "text": "Oh yeah clearly it's my fault",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4554
+  },
+  {
+   "id": "n14",
+   "label": "normal",
+   "text": "Gudnite....tc...practice going on",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3675
+  },
+  {
+   "id": "n15",
+   "label": "normal",
+   "text": "Haha mayb u're rite... U know me well. Da feeling of being liked by someone is gd lor. U faster go find one then all gals in our group attached liao.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7035
+  },
+  {
+   "id": "n16",
+   "label": "normal",
+   "text": "Yun ah.the ubi one say if ü wan call by tomorrow.call 67441233 look for irene.ere only got bus8,22,65,61,66,382. Ubi cres,ubi tech park.6ph for 1st 5wkg days.èn",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7432
+  },
+  {
+   "id": "n17",
+   "label": "normal",
+   "text": "Hey. What happened? U switch off ur cell d whole day. This isnt good. Now if u do care, give me a call tomorrow.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 8174
+  },
+  {
+   "id": "n18",
+   "label": "normal",
+   "text": "Alright we're hooked up, where you guys at",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4814
+  },
+  {
+   "id": "n19",
+   "label": "normal",
+   "text": "I am in office:)whats the matter..msg me now.i will call you at break:).",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7421
+  },
+  {
+   "id": "n20",
+   "label": "normal",
+   "text": "Wen u miss someone, the person is definitely special for u..... But if the person is so special, why to miss them, just Keep-in-touch gdeve..",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7457
+  },
+  {
+   "id": "n21",
+   "label": "normal",
+   "text": "Ill call u 2mrw at ninish, with my address that icky American freek wont stop callin me 2 bad Jen k eh?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4029
+  },
+  {
+   "id": "n22",
+   "label": "normal",
+   "text": "Am watching house – very entertaining – am getting the whole hugh laurie thing – even with the stick – indeed especially with the stick.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3854
+  },
+  {
+   "id": "n23",
+   "label": "normal",
+   "text": "I only haf msn. It's yijue@hotmail.com",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5622
+  },
+  {
+   "id": "n24",
+   "label": "normal",
+   "text": "Much better now thanks lol",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4432
+  },
+  {
+   "id": "n25",
+   "label": "normal",
+   "text": "Also maaaan are you missing out",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3856
+  },
+  {
+   "id": "n26",
+   "label": "normal",
+   "text": "By monday next week. Give me the full gist",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5872
+  },
+  {
+   "id": "n27",
+   "label": "normal",
+   "text": "Hmm ill have to think about it... ok you're forgiven! =D",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5335
+  },
+  {
+   "id": "n28",
+   "label": "normal",
+   "text": "Finally the match heading towards draw as your prediction.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7895
+  },
+  {
+   "id": "n29",
+   "label": "normal",
+   "text": "Jason says it's cool if we pick some up from his place in like an hour",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3546
+  },
+  {
+   "id": "n30",
+   "label": "normal",
+   "text": "Good night my dear.. Sleepwell&amp;Take care",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5445
+  },
+  {
+   "id": "n31",
+   "label": "normal",
+   "text": "In work now. Going have in few min.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7525
+  },
+  {
+   "id": "n32",
+   "label": "normal",
+   "text": "Jokin only lar... :-) depends on which phone my father can get lor...",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 6100
+  },
+  {
+   "id": "n33",
+   "label": "normal",
+   "text": "Old Orchard near univ. How about you?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4983
+  },
+  {
+   "id": "n34",
+   "label": "normal",
+   "text": "Ok... Then r we meeting later?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 3237
+  },
+  {
+   "id": "n35",
+   "label": "normal",
+   "text": "We still on for tonight?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4495
+  },
+  {
+   "id": "n36",
+   "label": "normal",
+   "text": "Then ü come n pick me at 530 ar?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 6562
+  },
+  {
+   "id": "n37",
+   "label": "normal",
+   "text": "True. Its easier with her here.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4349
+  },
+  {
+   "id": "n38",
+   "label": "normal",
+   "text": "Night night, see you tomorrow",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5574
+  },
+  {
+   "id": "n39",
+   "label": "normal",
+   "text": "Pls go there today &lt;#&gt; . I dont want any excuses",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4373
+  },
+  {
+   "id": "n40",
+   "label": "normal",
+   "text": "Am on the uworld site. Am i buying the qbank only or am i buying it with the self assessment also?",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 7190
+  },
+  {
+   "id": "s01",
+   "label": "scam",
+   "text": "(Alert) Your Rbc Royal Bank has been suspended. To unlock your account, click here: http://reac.mobi/@mobile",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: It pretends to be RBC Royal Bank, but the link goes to an unrelated website, not the bank's real one.",
+    "other: This odd web address is not RBC's and is likely a fake page built to steal your login details.",
+    "pressure: It scares you with a locked account so you act quickly without checking."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a fake bank text trying to get you to click a link and hand over your banking details, so don't click it and call RBC using the number on your card instead.",
+    "It pretends to be RBC Royal Bank, but the link goes to an unrelated website, not the bank's real one. (\"Your Rbc Royal Bank has been suspended.\")",
+    "This odd web address is not RBC's and is likely a fake page built to steal your login details. (\"http://reac.mobi/@mobile\")",
+    "It scares you with a locked account so you act quickly without checking. (\"To unlock your account, click here\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6767
+  },
+  {
+   "id": "s02",
+   "label": "scam",
+   "text": "Dont forget you can place as many FREE Requests with 1stchoice.co.uk as you wish. For more Information call 08707808226.",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5465
+  },
+  {
+   "id": "s03",
+   "label": "scam",
+   "text": "T-Mobile customer you may now claim your FREE CAMERA PHONE upgrade & a pay & go sim card for your loyalty. Call on 0845 021 3680.Offer ends 28thFeb.T&C's apply",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: It pretends to be from a phone company to make an unexpected offer seem trustworthy.",
+    "other: Calling numbers like this can cost money and the caller may ask for personal or bank details."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a common scam text pretending to be from T-Mobile, offering a free phone to get you to call a costly number, so it is best not to call.",
+    "It pretends to be from a phone company to make an unexpected offer seem trustworthy. (\"T-Mobile customer you may now claim your FREE CAMERA PHONE upgrade\")",
+    "Calling numbers like this can cost money and the caller may ask for personal or bank details. (\"Call on 0845 021 3680\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8955
+  },
+  {
+   "id": "s04",
+   "label": "scam",
+   "text": "You are entitled to update to the latest colour camera mobile for Free! Call The Mobile Update VCo FREE on 08002986906",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Unsolicited messages offering free phones are a classic trick to get you to call and give personal or bank details."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a common spam text promising a free new phone to get you to call and hand over your details, so it is best ignored.",
+    "Unsolicited messages offering free phones are a classic trick to get you to call and give personal or bank details. (\"You are entitled to update to the latest colour camera mobile for Free!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6346
+  },
+  {
+   "id": "s05",
+   "label": "scam",
+   "text": "Englishvocabulary ululate: to mourn loudly and shrilly AD: Unlimited FREE calls to any mobile try out today http://bit.ly/unlmtdfreecall share wid frnd",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Too-good-to-be-true offers behind hidden shortened links often lead to subscription traps or sites that ask for your details."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a spam text that mixes a vocabulary word with an advert for 'unlimited free calls' behind a shortened link, so it's best not to tap the link.",
+    "Too-good-to-be-true offers behind hidden shortened links often lead to subscription traps or sites that ask for your details. (\"Unlimited FREE calls to any mobile try out today http://bit.ly/unlmtdfreecall\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5910
+  },
+  {
+   "id": "s06",
+   "label": "scam",
+   "text": "Shop till u Drop, IS IT YOU, either 10K, 5K, £500 Cash or £100 Travel voucher, Call now, 09064011000.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Numbers starting 09 are premium-rate lines that can charge you a lot per minute just for calling.",
+    "price: Unexpected big cash prizes for a competition you never entered are a common bait to get you to call or pay."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text that tries to get you to ring an expensive premium-rate number, so it is best to ignore and delete it.",
+    "Numbers starting 09 are premium-rate lines that can charge you a lot per minute just for calling. (\"Call now, 09064011000\")",
+    "Unexpected big cash prizes for a competition you never entered are a common bait to get you to call or pay. (\"either 10K, 5K, £500 Cash or £100 Travel voucher\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6302
+  },
+  {
+   "id": "s07",
+   "label": "scam",
+   "text": "Todays Vodafone numbers ending with 4865 are selected to a receive a £350 award. If your number matches call 09064019014 to receive your £350 award.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Numbers starting 09 are premium-rate lines that can charge several pounds a minute, so calling costs you money.",
+    "impersonation: It uses Vodafone's name to look official, but Vodafone does not hand out random cash awards like this.",
+    "other: An unexpected prize you never entered for is a classic trick to get you to act without thinking."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a common scam text pretending to be from Vodafone, trying to get you to ring an expensive premium-rate number for a prize that does not exist.",
+    "Numbers starting 09 are premium-rate lines that can charge several pounds a minute, so calling costs you money. (\"call 09064019014 to receive your £350 award\")",
+    "It uses Vodafone's name to look official, but Vodafone does not hand out random cash awards like this. (\"Todays Vodafone numbers ending with 4865 are selected\")",
+    "An unexpected prize you never entered for is a classic trick to get you to act without thinking. (\"are selected to a receive a £350 award\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6442
+  },
+  {
+   "id": "s08",
+   "label": "scam",
+   "text": "CDs 4u: Congratulations ur awarded £500 of CD gift vouchers or £125 gift guaranteed & Freeentry 2 £100 wkly draw xt MUSIC to 87066 TnCs www.ldew.com1win150ppmx3age16",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a prize you never entered, and this is a common way to lure people in.",
+    "other: Replying to this short code likely signs you up to costly premium-rate texts.",
+    "price: The small print hints at charges per message that are easy to miss."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize text scam that wants you to text a premium-rate number, which can cost you money, so it is best to ignore and delete it.",
+    "You can't win a prize you never entered, and this is a common way to lure people in. (\"Congratulations ur awarded £500 of CD gift vouchers or £125 gift guaranteed\")",
+    "Replying to this short code likely signs you up to costly premium-rate texts. (\"xt MUSIC to 87066\")",
+    "The small print hints at charges per message that are easy to miss. (\"150ppmx3age16\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 10815
+  },
+  {
+   "id": "s09",
+   "label": "scam",
+   "text": "URGENT! We are trying to contact U. Todays draw shows that you have won a £800 prize GUARANTEED. Call 09050001808 from land line. Claim M95. Valid12hrs only",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a draw you never entered; this is a fake prize.",
+    "other: Numbers starting 09 are premium rate and can cost a lot per minute.",
+    "pressure: Scammers shout urgency to make you act before thinking.",
+    "pressure: A short deadline is a trick to rush you."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text: you haven't entered any draw, and calling the premium-rate number would cost you money, so it's best to ignore and delete it.",
+    "You can't win a draw you never entered; this is a fake prize. (\"you have won a £800 prize GUARANTEED\")",
+    "Numbers starting 09 are premium rate and can cost a lot per minute. (\"Call 09050001808 from land line.\")",
+    "Scammers shout urgency to make you act before thinking. (\"URGENT! We are trying to contact U.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 10369
+  },
+  {
+   "id": "s10",
+   "label": "scam",
+   "text": "Congratulations ur awarded either £500 of CD gift vouchers & Free entry 2 our £100 weekly draw txt MUSIC to 87066 TnCs www.Ldew.com",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a prize you never entered, which is a classic scam opener.",
+    "other: Texting a short code like this often signs you up to expensive premium-rate messages."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a common prize scam text: you didn't enter anything, and texting back will likely sign you up to costly premium messages, so it's best to ignore and delete it.",
+    "You can't win a prize you never entered, which is a classic scam opener. (\"Congratulations ur awarded either £500 of CD gift vouchers\")",
+    "Texting a short code like this often signs you up to expensive premium-rate messages. (\"txt MUSIC to 87066\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5596
+  },
+  {
+   "id": "s11",
+   "label": "scam",
+   "text": "FREE camera phones with linerental from 4.49/month with 750 cross ntwk mins. 1/2 price txt bundle deals also avble. Call 08001950382",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 5006
+  },
+  {
+   "id": "s12",
+   "label": "scam",
+   "text": "RMO.00 R.HB: RM4388.00 Was Charged On Your Card Numer 9577 at AwG-KLIA2 On 24/10/16 1032:29 Reference Code 342152 Call 03216837293 if u did NOT perform this Txn",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: It pretends to be your bank but gives no bank name and has spelling mistakes, which real banks rarely send.",
+    "pressure: It frightens you with a big charge so you ring their number instead of the number on the back of your card."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a fake bank text trying to scare you into calling a number about a charge, where scammers would then ask for your card details or money.",
+    "It pretends to be your bank but gives no bank name and has spelling mistakes, which real banks rarely send. (\"RM4388.00 Was Charged On Your Card Numer 9577\")",
+    "It frightens you with a big charge so you ring their number instead of the number on the back of your card. (\"Call 03216837293 if u did NOT perform this Txn\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8282
+  },
+  {
+   "id": "s13",
+   "label": "scam",
+   "text": "Text & meet someone sexy today. U can find a date or even flirt its up to U. Join 4 just 10p. REPLY with NAME & AGE eg Sam 25. 18 -msg recd@thirtyeight pence",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "price: The advert promises 10p to join, but the payment is £10, which doesn't match.",
+    "other: Each message you receive is charged, so costs can quietly add up with this kind of premium text subscription."
+   ],
+   "reply": [
+    "It asks for £10.00 to dating text service. It has the signs of a scam.",
+    "This looks like a premium-rate dating text service: the advert says it costs 10p to join, but you are about to pay £10, and replies may be charged per message.",
+    "The advert promises 10p to join, but the payment is £10, which doesn't match. (\"Join 4 just 10p.\")",
+    "Each message you receive is charged, so costs can quietly add up with this kind of premium text subscription. (\"msg recd@thirtyeight pence\")",
+    "Don't pay, don't reply and don't click its links. Nothing was paid."
+   ],
+   "ms": 8193
+  },
+  {
+   "id": "s14",
+   "label": "scam",
+   "text": "URGENT! We are trying to contact U. Todays draw shows that you have won a £2000 prize GUARANTEED. Call 09058094507 from land line. Claim 3030. Valid 12hrs only",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a draw you never entered, so this prize is fake bait.",
+    "other: Numbers starting 09 are premium rate and can charge you a lot per minute.",
+    "pressure: Scammers shout urgency so you act before thinking.",
+    "pressure: A short deadline is meant to rush you into calling."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text: you haven't really won anything, and calling the premium-rate number would cost you money.",
+    "You can't win a draw you never entered, so this prize is fake bait. (\"you have won a £2000 prize GUARANTEED\")",
+    "Numbers starting 09 are premium rate and can charge you a lot per minute. (\"Call 09058094507 from land line.\")",
+    "Scammers shout urgency so you act before thinking. (\"URGENT! We are trying to contact U.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5647
+  },
+  {
+   "id": "s15",
+   "label": "scam",
+   "text": "WINNER!! As a valued network customer you have been selected to receivea £900 prize reward! To claim call 09061701461. Claim code KL341. Valid 12 hours only.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Numbers starting 09 are premium-rate lines that can charge you a lot per minute, which is how this scam makes money.",
+    "other: You can't win a prize you never entered, and real networks don't hand out surprise cash prizes by text.",
+    "impersonation: It vaguely pretends to be your phone company without naming it, to seem trustworthy.",
+    "pressure: A short deadline is meant to rush you into calling before you stop to think."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text that tries to get you to ring an expensive premium-rate number, so please don't call it.",
+    "Numbers starting 09 are premium-rate lines that can charge you a lot per minute, which is how this scam makes money. (\"To claim call 09061701461.\")",
+    "You can't win a prize you never entered, and real networks don't hand out surprise cash prizes by text. (\"you have been selected to receivea £900 prize reward!\")",
+    "It vaguely pretends to be your phone company without naming it, to seem trustworthy. (\"As a valued network customer\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6318
+  },
+  {
+   "id": "s16",
+   "label": "scam",
+   "text": "Your Mobile Won 500,000.00euro in Blackberry Netherlands Promo. For claims E-mail code: NL101 to claims@bbnetherlands.co.cc",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a prize draw you never entered, and these 'wins' are used to later ask for fees or bank details.",
+    "impersonation: It uses the Blackberry name but the email address is a cheap free domain, not the real company."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic fake prize message: you cannot win a lottery you never entered, and replying usually leads to requests for fees or personal details.",
+    "You can't win a prize draw you never entered, and these 'wins' are used to later ask for fees or bank details. (\"Your Mobile Won 500,000.00euro in Blackberry Netherlands Promo.\")",
+    "It uses the Blackberry name but the email address is a cheap free domain, not the real company. (\"claims@bbnetherlands.co.cc\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5414
+  },
+  {
+   "id": "s17",
+   "label": "scam",
+   "text": "Hi babe its Jordan, how r u? Im home from abroad and lonely, text me back if u wanna chat xxSP visionsms.com Text stop to stopCost 150p 08712400603",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Replying to this number is charged at a premium rate, so chatting back could quietly run up a big phone bill.",
+    "impersonation: It pretends to be someone you know so you feel you should reply, but it's a mass-sent marketing text."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a well-known premium-rate text scam where a 'friendly' stranger invites you to reply, and replying could cost you £1.50 per message.",
+    "Replying to this number is charged at a premium rate, so chatting back could quietly run up a big phone bill. (\"Text stop to stopCost 150p 08712400603\")",
+    "It pretends to be someone you know so you feel you should reply, but it's a mass-sent marketing text. (\"Hi babe its Jordan, how r u?\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8166
+  },
+  {
+   "id": "s18",
+   "label": "scam",
+   "text": "Want explicit SEX in 30 secs? Ring 02073162414 now! Costs 20p/min",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: This is an unsolicited adult spam message designed to get you to ring a charged phone line."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is an unsolicited adult advert pushing you to ring a phone number straight away, which may cost more than it says, so it's best to ignore and delete it.",
+    "This is an unsolicited adult spam message designed to get you to ring a charged phone line. (\"Want explicit SEX in 30 secs?\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 4975
+  },
+  {
+   "id": "s19",
+   "label": "scam",
+   "text": "449050000301 You have won a £2,000 price! To claim, call 09050000301.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Unexpected prize messages for competitions you never entered are a common scam.",
+    "other: Numbers starting 090 are premium-rate lines that charge you a lot per minute just to call."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a typical prize scam text: you didn't enter anything, and calling the premium-rate number would cost you money, so it's best to ignore and delete it.",
+    "Unexpected prize messages for competitions you never entered are a common scam. (\"You have won a £2,000 price!\")",
+    "Numbers starting 090 are premium-rate lines that charge you a lot per minute just to call. (\"To claim, call 09050000301.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8126
+  },
+  {
+   "id": "s20",
+   "label": "scam",
+   "text": "Dear V0DAF0NE Customer,You are a W1NNER of Rs. 1,00,000 Guaranteed Prize, this is our Final attempt to contact you! To Claim Call 6299257179 Now!",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: The company name is spelled with zeros instead of letters, a trick scammers use to pose as Vodafone.",
+    "other: You can't win a prize you never entered, and scammers use fake winnings to ask for fees or bank details.",
+    "pressure: Rushing you to call right away is meant to stop you from thinking it through or checking."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a fake prize message pretending to be from Vodafone, trying to get you to call a number where they will likely ask for money or personal details, so please don't call it.",
+    "The company name is spelled with zeros instead of letters, a trick scammers use to pose as Vodafone. (\"Dear V0DAF0NE Customer\")",
+    "You can't win a prize you never entered, and scammers use fake winnings to ask for fees or bank details. (\"You are a W1NNER of Rs. 1,00,000 Guaranteed Prize\")",
+    "Rushing you to call right away is meant to stop you from thinking it through or checking. (\"this is our Final attempt to contact you! To Claim Call 6299257179 Now!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8191
+  },
+  {
+   "id": "s21",
+   "label": "scam",
+   "text": "URGENT! Your mobile No *********** WON a £2,000 Bonus Caller Prize on 02/06/03! This is the 2nd attempt to reach YOU! Call 09066362220 ASAP! BOX97N7QP, 150ppm",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a prize you never entered; this is bait to get you to call.",
+    "other: 09 numbers are premium rate and charge you per minute, so the call itself takes your money.",
+    "pressure: Shouting that it's urgent is meant to make you act before thinking.",
+    "pressure: Claiming they've tried before pushes you to call quickly without checking."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text: you haven't won anything, and calling the number would cost you money at a premium rate.",
+    "You can't win a prize you never entered; this is bait to get you to call. (\"WON a £2,000 Bonus Caller Prize\")",
+    "09 numbers are premium rate and charge you per minute, so the call itself takes your money. (\"Call 09066362220 ASAP! BOX97N7QP, 150ppm\")",
+    "Shouting that it's urgent is meant to make you act before thinking. (\"URGENT!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 9900
+  },
+  {
+   "id": "s22",
+   "label": "scam",
+   "text": "You have been selected to stay in 1 of 250 top British hotels - FOR NOTHING! Holiday Worth £350! To Claim, Call London 02072069400. Bx 526, SW73SS",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Unexpected messages saying you have won a free prize are a common trick to get you to pay fees or share details.",
+    "other: Calling the number may lead to pressure to pay a booking or admin fee, or to give card details, to 'claim' the prize."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a classic prize scam text: you are told you have won a free hotel stay and asked to phone a number, where they will likely ask for money or personal details.",
+    "Unexpected messages saying you have won a free prize are a common trick to get you to pay fees or share details. (\"You have been selected to stay in 1 of 250 top British hotels - FOR NOTHING!\")",
+    "Calling the number may lead to pressure to pay a booking or admin fee, or to give card details, to 'claim' the prize. (\"To Claim, Call London 02072069400.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6031
+  },
+  {
+   "id": "s23",
+   "label": "scam",
+   "text": "YOU ARE CHOSEN TO RECEIVE A £350 AWARD! Pls call claim number 09066364312 to collect your award which you are selected to receive as a valued mobile customer.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a prize you never entered, and surprise award messages are a classic scam.",
+    "other: Numbers starting 090 are premium-rate lines that charge you heavily for the call.",
+    "impersonation: It vaguely suggests it's from your mobile provider without naming any real company."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a common prize scam: it says you've won £350 and asks you to ring a premium-rate 090 number, which can cost a lot per minute, so don't call it.",
+    "You can't win a prize you never entered, and surprise award messages are a classic scam. (\"YOU ARE CHOSEN TO RECEIVE A £350 AWARD!\")",
+    "Numbers starting 090 are premium-rate lines that charge you heavily for the call. (\"Pls call claim number 09066364312\")",
+    "It vaguely suggests it's from your mobile provider without naming any real company. (\"as a valued mobile customer\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 7291
+  },
+  {
+   "id": "s24",
+   "label": "scam",
+   "text": "You are a winner you have been specially selected to receive £1000 cash or a £2000 award. Speak to a live operator to claim call 087123002209am-7pm. Cost 10p",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You cannot win a prize you never entered, so this is a lure to get you to call or share details.",
+    "other: An 087 number is a premium-rate line, so calling it costs you money and puts you in touch with scammers."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text saying you have won money, designed to get you to ring a premium-rate number and hand over details, so it is best ignored and deleted.",
+    "You cannot win a prize you never entered, so this is a lure to get you to call or share details. (\"You are a winner you have been specially selected to receive £1000 cash or a £2000 award.\")",
+    "An 087 number is a premium-rate line, so calling it costs you money and puts you in touch with scammers. (\"Speak to a live operator to claim call 087123002209am-7pm. Cost 10p\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5595
+  },
+  {
+   "id": "s25",
+   "label": "scam",
+   "text": "Todays Voda numbers ending with 7634 are selected to receive a £350 reward. If you have a match please call 08712300220 quoting claim code 7684 standard rates apply.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: An unexpected prize you never entered for is a classic trick to get you to call or share details.",
+    "impersonation: It hints it comes from Vodafone, but real phone companies don't hand out surprise cash prizes like this.",
+    "other: Numbers starting 0871 can charge extra per minute, and the call may be used to take your money or personal details."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a common prize scam text pretending to be from Vodafone, trying to get you to ring a costly number to claim a reward you never entered for.",
+    "An unexpected prize you never entered for is a classic trick to get you to call or share details. (\"selected to receive a £350 reward\")",
+    "It hints it comes from Vodafone, but real phone companies don't hand out surprise cash prizes like this. (\"Todays Voda numbers ending with 7634 are selected\")",
+    "Numbers starting 0871 can charge extra per minute, and the call may be used to take your money or personal details. (\"please call 08712300220 quoting claim code 7684\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8218
+  },
+  {
+   "id": "s26",
+   "label": "scam",
+   "text": "Do you want a New Nokia 3510i Colour Phone Delivered Tomorrow? With 100 FREE text + FREE camcorder Reply or Call 08000930705",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: An unexpected message offering free gifts and asking you to reply or call is a typical bait to get your details or sign you up to charges."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like an old-style unsolicited text advert offering a free phone and gifts, which is a common way to lure people into calling and handing over details, so it is best ignored.",
+    "An unexpected message offering free gifts and asking you to reply or call is a typical bait to get your details or sign you up to charges. (\"With 100 FREE text + FREE camcorder Reply or Call 08000930705\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5527
+  },
+  {
+   "id": "s27",
+   "label": "scam",
+   "text": "Dear Customer,U've been selected to stay in F1VE STAR hotels - FOR T0DAY'S DRAW! Holiday valued at INR 5,00,000.Dial 8927307655 to claim",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a draw you never entered, and the odd spelling with numbers is a trick to slip past spam filters.",
+    "other: Calling this number usually leads to requests for a 'processing fee' or your personal and bank details.",
+    "pressure: Saying it's only for today is meant to rush you into calling before you think it over."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a typical prize scam text claiming you won a luxury holiday you never entered for, designed to get you to call a number where they will ask for fees or personal details.",
+    "You can't win a draw you never entered, and the odd spelling with numbers is a trick to slip past spam filters. (\"U've been selected to stay in F1VE STAR hotels - FOR T0DAY'S DRAW!\")",
+    "Calling this number usually leads to requests for a 'processing fee' or your personal and bank details. (\"Dial 8927307655 to claim\")",
+    "Saying it's only for today is meant to rush you into calling before you think it over. (\"FOR T0DAY'S DRAW!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8490
+  },
+  {
+   "id": "s28",
+   "label": "scam",
+   "text": "URGENT! Your Mobile number has been awarded with a £2000 Bonus Caller Prize. Call 09058095201 from land line. Valid 12hrs only",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: You can't win a prize you never entered; this is a common fake-prize scam.",
+    "other: Numbers starting 09 are premium-rate and can charge several pounds per minute, which is how this scam takes your money.",
+    "pressure: Scammers rush you so you act before thinking it through.",
+    "pressure: A short deadline is a trick to stop you checking whether it's real."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text: you haven't won anything, and calling the number would likely cost you a lot of money on a premium-rate line.",
+    "You can't win a prize you never entered; this is a common fake-prize scam. (\"Your Mobile number has been awarded with a £2000 Bonus Caller Prize\")",
+    "Numbers starting 09 are premium-rate and can charge several pounds per minute, which is how this scam takes your money. (\"Call 09058095201 from land line\")",
+    "Scammers rush you so you act before thinking it through. (\"URGENT!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 10423
+  },
+  {
+   "id": "s29",
+   "label": "scam",
+   "text": "You have 1 new message. Call 0207-083-6089",
+   "flagged": false,
+   "engine": "claude",
+   "flags": [],
+   "reply": [
+    "There's no request for money in this, so nothing was paid.",
+    "Spotter found no clear warning signs either. If someone asks you to pay later, forward that message too."
+   ],
+   "ms": 4946
+  },
+  {
+   "id": "s30",
+   "label": "scam",
+   "text": "complimentary 4 STAR Ibiza Holiday or £10,000 cash needs your URGENT collection. 09066364349 NOW from Landline not to lose out! Box434SK38WP150PPM18+",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Numbers starting 09 are premium-rate lines that charge a lot per minute, so calling costs you money.",
+    "price: Unexpected free holidays or big cash prizes you never entered for are not real.",
+    "pressure: Rushing you to act now is a common trick to stop you thinking it through.",
+    "other: The small print shows the call costs £1.50 a minute, which is how the scammers make money."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text that tries to get you to ring a very expensive premium-rate number to claim a holiday or cash that doesn't exist.",
+    "Numbers starting 09 are premium-rate lines that charge a lot per minute, so calling costs you money. (\"09066364349 NOW from Landline\")",
+    "Unexpected free holidays or big cash prizes you never entered for are not real. (\"complimentary 4 STAR Ibiza Holiday or £10,000 cash\")",
+    "Rushing you to act now is a common trick to stop you thinking it through. (\"needs your URGENT collection. 09066364349 NOW from Landline not to lose out!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6818
+  },
+  {
+   "id": "s31",
+   "label": "scam",
+   "text": "Dear Customer your pyatm wallet Has been booked and hold Your amount please complete your kyc contact customer care 8536074310",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: It pretends to be the Paytm wallet service, but the name is misspelled and real companies don't message like this.",
+    "pressure: It tries to scare you into calling an unknown phone number, where scammers usually ask for ID, bank details or codes."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a scam text pretending to be from Paytm, saying your wallet is on hold so you will call a number and hand over personal or payment details.",
+    "It pretends to be the Paytm wallet service, but the name is misspelled and real companies don't message like this. (\"your pyatm wallet Has been booked and hold Your amount\")",
+    "It tries to scare you into calling an unknown phone number, where scammers usually ask for ID, bank details or codes. (\"please complete your kyc contact customer care 8536074310\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5695
+  },
+  {
+   "id": "s32",
+   "label": "scam",
+   "text": "Urgent! Please call 09061743810 from landline. Your ABTA complimentary 4* Tenerife Holiday or #5000 cash await collection SAE T&Cs Box 326 CW25WX 150 ppm",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Numbers starting 09 are premium-rate lines that charge you heavily for every minute you stay on the call.",
+    "price: A free holiday or £5,000 for a competition you never entered is too good to be true.",
+    "pressure: It rushes you to call before you have time to think it through.",
+    "impersonation: It uses the name of a real travel body to look trustworthy, but ABTA does not give away free holidays by text.",
+    "other: The small print shows the call costs 150p per minute, which is how the scammers make their money."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a classic prize scam text: there is no free holiday, and calling the number would cost you a lot of money per minute, so it is best to ignore and delete it.",
+    "Numbers starting 09 are premium-rate lines that charge you heavily for every minute you stay on the call. (\"call 09061743810 from landline\")",
+    "A free holiday or £5,000 for a competition you never entered is too good to be true. (\"4* Tenerife Holiday or #5000 cash await collection\")",
+    "It rushes you to call before you have time to think it through. (\"Urgent! Please call 09061743810 from landline.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 7252
+  },
+  {
+   "id": "s33",
+   "label": "scam",
+   "text": "Dear V0DAF0NE Customer,You are a 5,00,000 winner of Guaranteed Caller Prize, this is our Final attempt to contact you! To Claim Call 8927307655 Now!",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: The company name is spelled with zeros instead of the letter O, a trick used to pretend to be Vodafone.",
+    "other: You can't win a prize you never entered, and such calls usually end with a request for a fee or your bank details.",
+    "pressure: Saying it's the last chance is meant to rush you into calling before you think it through."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a fake prize message pretending to be from Vodafone to get you to call a number, so don't call it or share any details.",
+    "The company name is spelled with zeros instead of the letter O, a trick used to pretend to be Vodafone. (\"Dear V0DAF0NE Customer\")",
+    "You can't win a prize you never entered, and such calls usually end with a request for a fee or your bank details. (\"You are a 5,00,000 winner of Guaranteed Caller Prize\")",
+    "Saying it's the last chance is meant to rush you into calling before you think it through. (\"this is our Final attempt to contact you! To Claim Call 8927307655 Now!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5483
+  },
+  {
+   "id": "s34",
+   "label": "scam",
+   "text": "Dear PAYTM customer your Paytm KYC has expired. Contact customer care No-6200992462 immediately. your account will Block within 24 hr. Thank you PAYTM TEAM.",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: Scammers pretend to be Paytm to make you trust them and hand over your details.",
+    "pressure: A threat to block your account is meant to rush you before you think it through.",
+    "other: Real companies don't send an ordinary mobile number to call; this likely connects you to a scammer."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This message pretends to be from Paytm and uses a scary 24-hour deadline to get you to ring a random phone number, which is a common scam to steal your account details or money, so do not call it.",
+    "Scammers pretend to be Paytm to make you trust them and hand over your details. (\"Dear PAYTM customer your Paytm KYC has expired.\")",
+    "A threat to block your account is meant to rush you before you think it through. (\"your account will Block within 24 hr.\")",
+    "Real companies don't send an ordinary mobile number to call; this likely connects you to a scammer. (\"Contact customer care No-6200992462 immediately.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5362
+  },
+  {
+   "id": "s35",
+   "label": "scam",
+   "text": "You have an important customer service announcement from PREMIER. Call FREEPHONE 0800 542 0578 now!",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "pressure: It pushes you to call straight away without saying why, which is a common way to rush people.",
+    "impersonation: It claims to be a company's customer service but gives no real details, a typical trick to make a scam call seem official."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a common scam text pretending to be from a company, urging you to call a number where someone may try to get your money or details, so it's best not to call and to contact the company using a number you already trust.",
+    "It pushes you to call straight away without saying why, which is a common way to rush people. (\"Call FREEPHONE 0800 542 0578 now!\")",
+    "It claims to be a company's customer service but gives no real details, a typical trick to make a scam call seem official. (\"You have an important customer service announcement from PREMIER.\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 8945
+  },
+  {
+   "id": "s36",
+   "label": "scam",
+   "text": "Dear V0DAF0NE Customer,You are a 5,00,000 winner of Guaranteed Caller Prize, this is our Final attempt to contact you! To Claim Call 7044518857 Now!",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: The company name is spelled with zeros instead of the letter O, a trick used to pretend to be Vodafone.",
+    "other: You cannot win a prize you never entered, and these fake wins usually lead to fees or requests for your details.",
+    "pressure: It rushes you to call right away so you don't stop and check whether it is real."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a fake prize message pretending to be from Vodafone, trying to get you to call a number where they will likely ask for money or personal details, so please do not call it.",
+    "The company name is spelled with zeros instead of the letter O, a trick used to pretend to be Vodafone. (\"Dear V0DAF0NE Customer\")",
+    "You cannot win a prize you never entered, and these fake wins usually lead to fees or requests for your details. (\"You are a 5,00,000 winner of Guaranteed Caller Prize\")",
+    "It rushes you to call right away so you don't stop and check whether it is real. (\"this is our Final attempt to contact you! To Claim Call 7044518857 Now!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6378
+  },
+  {
+   "id": "s37",
+   "label": "scam",
+   "text": "Please call our customer service representative on 7044518857 between 10am-9pm as you have W0N a guaranteed cash prize of Rs.5,00,000. FL1PKART TEAM",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "impersonation: The misspelled name pretends to be the real shop Flipkart, which does not send prize messages like this.",
+    "other: You cannot win a prize you never entered, and callers usually then ask for a 'fee' or bank details to release it.",
+    "pressure: It pushes you to phone a personal number where scammers can talk you into paying or sharing details."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a fake prize message pretending to be from Flipkart, designed to get you to call and then hand over money or personal details.",
+    "The misspelled name pretends to be the real shop Flipkart, which does not send prize messages like this. (\"FL1PKART TEAM\")",
+    "You cannot win a prize you never entered, and callers usually then ask for a 'fee' or bank details to release it. (\"you have W0N a guaranteed cash prize of Rs.5,00,000\")",
+    "It pushes you to phone a personal number where scammers can talk you into paying or sharing details. (\"Please call our customer service representative on 7044518857\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 5772
+  },
+  {
+   "id": "s38",
+   "label": "scam",
+   "text": "Do you want 750 anytime any network mins 150 text and a NEW video phone for only five pounds per week call 08000776320 now or reply for delivery Tomorrow",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "price: A new phone plus lots of minutes for five pounds a week is too cheap to be a genuine offer.",
+    "other: This is an unsolicited sales text from an unnamed sender, and replying can lead to unwanted charges or requests for your details."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a common unsolicited text scam offering a new video phone and minutes for an unrealistically low price, pushing you to call or reply right away.",
+    "A new phone plus lots of minutes for five pounds a week is too cheap to be a genuine offer. (\"a NEW video phone for only five pounds per week\")",
+    "This is an unsolicited sales text from an unnamed sender, and replying can lead to unwanted charges or requests for your details. (\"Do you want 750 anytime any network mins 150 text\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 6358
+  },
+  {
+   "id": "s39",
+   "label": "scam",
+   "text": "Dorothy@kiefer.com (Bank of Granite issues Strong-Buy) EXPLOSIVE PICK FOR OUR MEMBERS *****UP OVER 300% *********** Nasdaq Symbol CDGT That is a $5.00 per..",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "pressure: Hyped claims of huge gains are a common trick to rush people into buying shares in a 'pump and dump' scam.",
+    "impersonation: It borrows a bank's name to look trustworthy, but a real bank would not send stock tips in unsolicited emails like this.",
+    "other: Unsolicited tips for cheap shares are usually sent by people trying to push the price up before selling theirs."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This looks like a classic stock-tip spam email trying to get you excited about buying a cheap share so others can profit; it is best ignored and deleted.",
+    "Hyped claims of huge gains are a common trick to rush people into buying shares in a 'pump and dump' scam. (\"EXPLOSIVE PICK FOR OUR MEMBERS *****UP OVER 300%\")",
+    "It borrows a bank's name to look trustworthy, but a real bank would not send stock tips in unsolicited emails like this. (\"Bank of Granite issues Strong-Buy\")",
+    "Unsolicited tips for cheap shares are usually sent by people trying to push the price up before selling theirs. (\"Nasdaq Symbol CDGT That is a $5.00 per..\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 10078
+  },
+  {
+   "id": "s40",
+   "label": "scam",
+   "text": "Congrats! 1 year special cinema pass for 2 is yours. call 09061209467 now! C Suprman V, Matrix3, StarWars3, etc all 4 FREE! bx420-ip4-5we. 150pm. Dont miss out!",
+   "flagged": true,
+   "engine": "claude",
+   "flags": [
+    "other: Numbers starting 09 are premium-rate lines that charge a lot per minute, so calling costs you money.",
+    "other: You are told you've won a prize you never entered for, which is a classic scam opener.",
+    "pressure: It rushes you to act before you have time to think it through.",
+    "other: This hints the call costs £1.50 per minute, hidden in small print."
+   ],
+   "reply": [
+    "No money asked for yet, but this has the signs of a scam.",
+    "This is a typical prize scam text that tries to get you to ring an expensive premium-rate number to claim a 'free' cinema pass you never entered to win.",
+    "Numbers starting 09 are premium-rate lines that charge a lot per minute, so calling costs you money. (\"call 09061209467 now!\")",
+    "You are told you've won a prize you never entered for, which is a classic scam opener. (\"Congrats! 1 year special cinema pass for 2 is yours.\")",
+    "It rushes you to act before you have time to think it through. (\"Dont miss out!\")",
+    "Don't reply, don't click its links, and don't send anything. Nothing was paid."
+   ],
+   "ms": 7624
+  }
+ ]
+}
