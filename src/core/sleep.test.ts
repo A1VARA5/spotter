@@ -59,9 +59,12 @@ const reauth = vi.fn<NonNullable<Deps["paypal"]["reauthorizeAuthorization"]>>();
 const voidAuth = vi.fn<Deps["paypal"]["voidAuthorization"]>();
 const notify = vi.fn<NonNullable<Deps["notify"]>>();
 
+// Relative to the real clock: a fixed date here made these tests fail once it passed (found 11 Nov 2026).
+const inTwentyNineDays = () => new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString();
+
 beforeEach(async () => {
   db = await pgliteDb();
-  reauth.mockReset().mockResolvedValue({ authorizationId: "A2", expiresAt: "2026-11-09T00:11:31Z" });
+  reauth.mockReset().mockResolvedValue({ authorizationId: "A2", expiresAt: inTwentyNineDays() });
   voidAuth.mockReset().mockResolvedValue({ status: "VOIDED" });
   notify.mockReset().mockResolvedValue();
   deps = {
@@ -69,7 +72,7 @@ beforeEach(async () => {
     check: async () => ({ ok: true, flags: [], dropped: 0, hidden: [], summary: "Fine.", injectionAttempt: false }),
     notify,
     paypal: {
-      createAuthorizeOrder: async () => ({ orderId: "O1", authorizationId: "A1", expiresAt: "2026-11-09T00:11:31Z" }),
+      createAuthorizeOrder: async () => ({ orderId: "O1", authorizationId: "A1", expiresAt: inTwentyNineDays() }),
       captureAuthorization: vi.fn(async () => ({ captureId: "C1", status: "COMPLETED" })),
       voidAuthorization: voidAuth,
       reauthorizeAuthorization: reauth,

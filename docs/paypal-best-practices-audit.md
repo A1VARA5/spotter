@@ -1,6 +1,6 @@
 # Spotter against PayPal's own best practices
 
-On 12 October I went through the checks in PayPal's AI Toolkit ([`commands/doctor.md`](https://github.com/paypal/AI-Toolkit/blob/main/commands/doctor.md) and the [`paypal-best-practices`](https://github.com/paypal/AI-Toolkit/tree/main/skills/paypal-best-practices) skill) by hand against Spotter's code. I read the files instead of installing the plugin, and the toolkit's live probes need PayPal's hosted sandbox MCP server, which has been down since about 6 October, so this is the static half only.
+On 12 October I went through the checks in PayPal's AI Toolkit ([`commands/doctor.md`](https://github.com/paypal/AI-Toolkit/blob/main/commands/doctor.md) and the [`paypal-best-practices`](https://github.com/paypal/AI-Toolkit/tree/main/skills/paypal-best-practices) skill) by hand against Spotter's code. I read the files instead of installing the plugin, and the toolkit's live probes need PayPal's hosted sandbox MCP server, which was down from about 6 October until PayPal fixed it on 13 October, so this is the static half only.
 
 Two things failed. Both are fixed, with tests.
 

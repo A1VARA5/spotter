@@ -8,6 +8,8 @@ In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't
 
 **Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything runs on the PayPal sandbox with fake money)
 
+The scam check on 80 texts from a public dataset: 93% precision, 93% recall, 0 failed checks ([how I measured it](#how-well-the-check-works)).
+
 [![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
 [![Live checks](https://img.shields.io/endpoint?url=https%3A%2F%2Fspotter-pay.vercel.app%2Fapi%2Fbadge)](https://spotter-pay.vercel.app/status)
 [![Live demo](docs/badges/live-demo.svg)](https://spotter-pay.vercel.app)
