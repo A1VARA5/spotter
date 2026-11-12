@@ -19,22 +19,22 @@ beforeEach(async () => {
 
 describe("reportKey", () => {
   it("is the same for the same payee written differently", () => {
-    expect(reportKey(" Jamie.K1994@Gmail.com ")).toBe(reportKey("jamie.k1994@gmail.com"));
-    expect(reportKey("jamie.k1994@gmail.com​")).toBe(reportKey("jamie.k1994@gmail.com"));
+    expect(reportKey(" Jamie.K1994@Mail.Example ")).toBe(reportKey("jamie.k1994@mail.example"));
+    expect(reportKey("jamie.k1994@mail.example​")).toBe(reportKey("jamie.k1994@mail.example"));
   });
 
   it("never contains the identifier itself", () => {
-    expect(reportKey("jamie.k1994@gmail.com")).not.toContain("jamie");
-    expect(reportKey("jamie.k1994@gmail.com")).toMatch(/^[0-9a-f]{64}$/);
+    expect(reportKey("jamie.k1994@mail.example")).not.toContain("jamie");
+    expect(reportKey("jamie.k1994@mail.example")).toMatch(/^[0-9a-f]{64}$/);
   });
 });
 
 describe("network", () => {
   it("counts other families that said no, not your own", async () => {
-    await fileReport(db, { householdId: a, identifier: "jamie.k1994@gmail.com", kind: "denied" });
-    await fileReport(db, { householdId: b, identifier: "Jamie.K1994@gmail.com", kind: "blocked" });
-    expect((await networkCount(db, "jamie.k1994@gmail.com", c)).families).toBe(2);
-    expect((await networkCount(db, "jamie.k1994@gmail.com", a)).families).toBe(1);
+    await fileReport(db, { householdId: a, identifier: "jamie.k1994@mail.example", kind: "denied" });
+    await fileReport(db, { householdId: b, identifier: "Jamie.K1994@mail.example", kind: "blocked" });
+    expect((await networkCount(db, "jamie.k1994@mail.example", c)).families).toBe(2);
+    expect((await networkCount(db, "jamie.k1994@mail.example", a)).families).toBe(1);
   });
 
   it("counts a family once however often it reports", async () => {
@@ -44,7 +44,7 @@ describe("network", () => {
   });
 
   it("stores no raw identifier", async () => {
-    await fileReport(db, { householdId: a, identifier: "jamie.k1994@gmail.com", kind: "denied" });
+    await fileReport(db, { householdId: a, identifier: "jamie.k1994@mail.example", kind: "denied" });
     const rows = await db.query<Record<string, unknown>>("select * from reports");
     expect(JSON.stringify(rows)).not.toContain("jamie");
   });

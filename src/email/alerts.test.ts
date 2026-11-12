@@ -12,12 +12,12 @@ const payment = (over: Partial<Payment> = {}): Payment =>
     amount: 25000,
     currency: "GBP",
     request: {
-      payee: { name: "jamie.k1994@gmail.com", isNew: true },
+      payee: { name: "jamie.k1994@mail.example", isNew: true },
       context: "Can you send £250 to my mate Jamie's PayPal <script>alert(1)</script> please hurry",
       method: "paypal_order",
       category: "family",
     },
-    decision: { outcome: "ask", reasons: ["Over the £50.00 \"ask me first\" limit.", "First time paying jamie.k1994@gmail.com."] },
+    decision: { outcome: "ask", reasons: ["Over the £50.00 \"ask me first\" limit.", "First time paying jamie.k1994@mail.example."] },
     ai: { ok: true, flags: [{ kind: "pressure", severity: "medium", quote: "please hurry", why: "Rushing her." }], dropped: 0, hidden: [], summary: "Looks like the Hi Mum scam.", injectionAttempt: false },
     market: null,
     ...over,
@@ -28,7 +28,7 @@ describe("alert email", () => {
     const e = alertEmail(payment(), spender, "https://spotter.test");
     expect(e.subject).toBe("Gran wants to pay £250.00. It's on hold");
     expect(e.html).toContain("£250.00");
-    expect(e.html).toContain("jamie.k1994@gmail.com");
+    expect(e.html).toContain("jamie.k1994@mail.example");
     expect(e.html).toContain('href="https://spotter.test/dashboard"');
     expect(e.text).toContain("https://spotter.test/dashboard");
   });

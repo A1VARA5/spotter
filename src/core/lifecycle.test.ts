@@ -266,9 +266,9 @@ describe("Spotter network reports", () => {
   const others = async () => (await createHousehold(db, { name: "Other", spotterName: "Sam" })).id;
 
   it("a denied payee is reported to other families", async () => {
-    const p = await submitPayment(deps, input(2500, { payee: { name: "jamie.k1994@gmail.com", isNew: true } }));
+    const p = await submitPayment(deps, input(2500, { payee: { name: "jamie.k1994@mail.example", isNew: true } }));
     await deny(deps, p.id, "Aivaras");
-    expect((await networkCount(db, "jamie.k1994@gmail.com", await others())).families).toBe(1);
+    expect((await networkCount(db, "jamie.k1994@mail.example", await others())).families).toBe(1);
   });
 
   it("a block on a strong scam sign is reported, a plain budget block is not", async () => {

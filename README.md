@@ -8,6 +8,8 @@ In a gym, a spotter doesn't lift the bar for you. They stand there so it doesn't
 
 **Live demo: https://spotter-pay.vercel.app** (no sign up, no PayPal account, everything runs on the PayPal sandbox with fake money)
 
+**Demo video (2:47): https://youtu.be/8TxTQNpurN4**, where I try five ways to make it spend 1p of Gran's money.
+
 The scam check on 80 texts from a public dataset: 93% precision, 93% recall, 0 failed checks ([how I measured it](#how-well-the-check-works)).
 
 [![CI](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/A1VARA5/spotter/actions/workflows/ci.yml)
@@ -62,7 +64,7 @@ Open https://spotter-pay.vercel.app and press **Try it on fake money**. You get 
 | 8. **Activity** | Every payment in a table. Click a row and its case file opens in a drawer | AG Grid |
 | 9. **How it checked** (`/checks`) | Every engine's work on your own payments, and all 47 Agent Toolkit tools with what Spotter does to each | All of them |
 
-The four tour buttons on the Try page each run one live Claude check and make one real sandbox hold, and they come out the same in any order. If the allowance runs low after lots of sends, **Start fresh** fills it up again.
+The four tour buttons on the Try a payment page each run one live Claude check and make one real sandbox hold, and they come out the same in any order. If the allowance runs low after lots of sends, **Start fresh** fills it up again.
 
 What's an example and what's live: the £250 you start with, the price watch you start with (labelled Example) and Watchtower's sample month (labelled Sample) were made earlier. Everything you send yourself is checked live.
 
@@ -266,7 +268,7 @@ Guides: [A custom AG Studio agent that lets the built in agents do the building]
 
 ## Technology
 
-Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. Over 1,800 tests, all passing (the exact count and date are in [docs/numbers.md](docs/numbers.md)).
+Next.js 16 (App Router) and TypeScript in strict mode, Postgres on Neon (PGlite locally, so there's nothing to set up), deployed on Vercel. 1,992 tests, all passing, run by CI on every push.
 
 ```mermaid
 flowchart LR
@@ -317,7 +319,7 @@ Nobody installs anything new. Gran forwards texts on Telegram or by email, her s
 
 ## Presentation and live timings
 
-Every claim in this README can be tried on the live site in under 5 minutes with no account, and every loop above is a screen recording of that site. The Try page says which engine each scenario shows, and `/checks` shows each engine's work on your own payments.
+Every claim in this README can be tried on the live site in under 5 minutes with no account, and every loop above is a screen recording of that site. The Try a payment page says which engine each scenario shows, and `/checks` shows each engine's work on your own payments.
 
 Timed on the live site with a fresh demo family on 12 October 2026. Where each number comes from is in [docs/numbers.md](docs/numbers.md).
 
@@ -332,7 +334,7 @@ Timed on the live site with a fresh demo family on 12 October 2026. Where each n
 | Watchtower, "Did we pay fair prices this month?" | 6.0 s, 2 tool calls |
 | Agent lab, hijacked agent frozen and its hold voided at PayPal | 5.3 s. The PayPal webhook confirmed it at 11.3 s |
 
-The demo video isn't up yet. Its YouTube link goes here with the submission.
+Demo video (2:47): https://youtu.be/8TxTQNpurN4
 
 ## Security and what happens when things fail
 
@@ -381,7 +383,7 @@ Open http://localhost:3417 and press **Try it on fake money**. Without `DATABASE
 
 ```bash
 npm run typecheck
-npx vitest run --maxWorkers=4   # over 1,800 tests
+npx vitest run --maxWorkers=4   # 1,992 tests
 npm run build
 ```
 
@@ -410,6 +412,7 @@ More detail: [docs/architecture.md](docs/architecture.md), [docs/threat-model.md
 
 - PayPal REST APIs, Log in with PayPal, webhooks and the Agent Toolkit, all on the sandbox
 - Claude (Anthropic) for the scam check, the case agent, reading screenshots and the Watchtower agents
+- OpenAI gpt-5.4-mini as the backup for the scam check only, used when Claude can't answer
 - AG Studio (trial licence) for Watchtower and AG Grid Community for Activity
 - Channel3 for real shop prices, image search, photo checks and price tracking
 - KERNEL for the throwaway cloud browsers

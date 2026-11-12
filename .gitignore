@@ -12,3 +12,7 @@ node_modules/
 .agents/
 .claude/
 skills-lock.json
+
+# internal working notes, never public
+CLAUDE.md
+docs/plans/

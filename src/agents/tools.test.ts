@@ -46,23 +46,23 @@ function ctx(payment: Payment, over: Partial<CaseCtx> = {}): CaseCtx {
 
 describe("payee_history", () => {
   it("finds this family's past payments to the same or a look-alike payee, not other families'", async () => {
-    await pay("gran", "jamie.k1995@gmail.com", 1000);
-    await pay("stranger", "jamie.k1994@gmail.com", 1000);
-    const now = await pay("gran", "jamie.k1994@gmail.com", 25000);
-    const out = await runTool("payee_history", { payee: "jamie.k1994@gmail.com" }, ctx(now));
+    await pay("gran", "jamie.k1995@mail.example", 1000);
+    await pay("stranger", "jamie.k1994@mail.example", 1000);
+    const now = await pay("gran", "jamie.k1994@mail.example", 25000);
+    const out = await runTool("payee_history", { payee: "jamie.k1994@mail.example" }, ctx(now));
     expect(out.ok).toBe(true);
     const data = out.data as { exact: unknown[]; similar: Array<{ payee: string }> };
     expect(data.exact).toHaveLength(0);
-    expect(data.similar.map((s) => s.payee)).toEqual(["jamie.k1995@gmail.com"]);
+    expect(data.similar.map((s) => s.payee)).toEqual(["jamie.k1995@mail.example"]);
     expect(out.summary).toMatch(/never paid/i);
   });
 });
 
 describe("network_reports", () => {
   it("counts other families that said no", async () => {
-    await fileReport(db, { householdId: other, identifier: "jamie.k1994@gmail.com", kind: "denied" });
-    const now = await pay("gran", "jamie.k1994@gmail.com", 25000);
-    const out = await runTool("network_reports", { identifier: "jamie.k1994@gmail.com" }, ctx(now));
+    await fileReport(db, { householdId: other, identifier: "jamie.k1994@mail.example", kind: "denied" });
+    const now = await pay("gran", "jamie.k1994@mail.example", 25000);
+    const out = await runTool("network_reports", { identifier: "jamie.k1994@mail.example" }, ctx(now));
     expect((out.data as { families: number }).families).toBe(1);
   });
 });
@@ -174,7 +174,7 @@ describe("find_genuine_offer", () => {
 
 describe("paypal_hold", () => {
   it("reports the hold status and when it runs out", async () => {
-    const now = await pay("gran", "jamie.k1994@gmail.com", 25000);
+    const now = await pay("gran", "jamie.k1994@mail.example", 25000);
     const held = (await getPayment(db, now.id))!;
     const getAuthorization = vi.fn(async () => ({ status: "CREATED", expiresAt: "2026-11-07T00:00:00Z" }));
     const out = await runTool("paypal_hold", {}, ctx(held, { getAuthorization }));

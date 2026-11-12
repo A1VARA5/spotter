@@ -26,12 +26,12 @@ async function main() {
   const other = (await createHousehold(db, { name: "Other", spotterName: "Sam" })).id;
   await createSpender(db, { id: "gran", householdId: hh, name: "Gran", kind: "person", spotterName: "Aivaras",
     allowance: { weekly: gbp(30000), askAbove: gbp(5000), blockedCategories: ["gift_cards", "crypto"], allowedPayees: [], blockedPayees: [] } });
-  await fileReport(db, { householdId: other, identifier: "jamie.k1994@gmail.com", kind: "denied" });
+  await fileReport(db, { householdId: other, identifier: "jamie.k1994@mail.example", kind: "denied" });
 
   const cases = [
     {
-      money: gbp(25000), payee: { name: "jamie.k1994@gmail.com", isNew: true }, category: "family", method: "paypal_order" as const,
-      context: "Hi mum its me, I've smashed my phone this is my new number. Can you send £250 to my mate Jamie's PayPal jamie.k1994@gmail.com? The bill has to be paid today, can't get into my banking x",
+      money: gbp(25000), payee: { name: "jamie.k1994@mail.example", isNew: true }, category: "family", method: "paypal_order" as const,
+      context: "Hi mum its me, I've smashed my phone this is my new number. Can you send £250 to my mate Jamie's PayPal jamie.k1994@mail.example? The bill has to be paid today, can't get into my banking x",
     },
     {
       money: gbp(2499), payee: { name: "BargainPods", isNew: true }, category: "electronics", method: "paypal_order" as const,
