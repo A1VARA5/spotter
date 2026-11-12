@@ -103,7 +103,10 @@ async function seen(html: string, isolated = false): Promise<SeenVsRead> {
 describe.skipIf(!BROWSERS.length)("SEEN_VS_READ in a real browser", () => {
   beforeAll(async () => {
     dir = mkdtempSync(path.join(tmpdir(), "spotter-seen-"));
-    proc = spawn(BROWSERS[0]!, ["--headless=new", "--disable-gpu", "--no-first-run", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
+    // Linux CI runners block Chrome's sandbox (no unprivileged user namespaces), so Chrome exits before it starts.
+    // This test only ever loads its own HTML strings, so running without the sandbox there is fine.
+    const linux = process.platform === "linux" ? ["--no-sandbox"] : [];
+    proc = spawn(BROWSERS[0]!, ["--headless=new", "--disable-gpu", "--no-first-run", ...linux, "--remote-debugging-port=0", `--user-data-dir=${dir}`, "about:blank"], { stdio: "ignore" });
     const file = path.join(dir, "DevToolsActivePort");
     for (let i = 0; i < 100 && !existsSync(file); i++) await new Promise((r) => setTimeout(r, 100));
     port = Number(readFileSync(file, "utf8").split("\n")[0]);
